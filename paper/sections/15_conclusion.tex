@@ -171,7 +171,8 @@
         \textbf{7 ステップ時間ループ}（CLS 移流→再初期化→物性更新→曲率→
         運動量予測子→PPE→IPC 補正子）を本稿全体で整理した．
         分相 PPE + HFE + DC 経路は固定格子・現行 face-flux projection には統合済みだが，
-        Mode 2 再格子化では ALE 補正と全変数リマップを追加 gate とする．
+        Mode 2 再格子化は離散 GCL，ALE 保存更新，全変数リマップ，
+        界面面データ再構築を追加 gate とする．
 
   \item[\textbf{第\ref{sec:bootstrap}章：DCCD ブートストラップと Pure-FCCD DNS}]
         起動時の格子↔界面循環依存を解決する
@@ -360,7 +361,7 @@ V5 は CCD/FD 比ではなく CCD 寄生流れ絶対値 $u_\infty^{\mathrm{end}}
         水--空気級密度比・非一様格子・pressure-jump・浮力残差分解を同時に有効化する
         閉包 benchmark として位置付ける．まずは Mode 1 固定非一様格子で
         $B_f^{\mathrm{nu}}=s_fj_f/H_f$ の PPE/corrector 共有を検証し，
-        Mode 2 は jump face cache 再構築を別ゲートとする．
+        Mode 2 は ALE/GCL/保存リマップと jump face cache 再構築を別ゲートとする．
         体積保存，重心 $y_c(t)$，平均上昇速度，
         変形量の時系列を未完了の判定項目とする．
   \item[Rayleigh--Taylor 不安定（§\ref{sec:val_rayleigh_taylor}）：]
@@ -415,7 +416,7 @@ V5 は CCD/FD 比ではなく CCD 寄生流れ絶対値 $u_\infty^{\mathrm{end}}
         （§\ref{sec:split_ppe_pressure_jump_formulation}）の安定性確認，
         (iii) 固定非一様格子 Mode 1 上での
         $B_f^{\mathrm{nu}}=s_fj_f/H_f$ face-jump 演算子検証，
-        (iv) Mode 2 の ALE 補正，全変数保存リマップ，HFE/jump cache 再構築，
+        (iv) Mode 2 の離散 GCL，ALE 補正，全変数保存リマップ，HFE/jump cache 再構築，
         (v) Kang ら~\cite{Kang2000} の Ghost Fluid Method との完全整合
         （CSF $\Ord{\varepsilon^2}$ モデル誤差の原理的除去）への発展，である．
 

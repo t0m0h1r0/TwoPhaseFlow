@@ -177,10 +177,10 @@ periodic.  The canonical form is axis-local and monitor-based:
 - Legacy compact form remains accepted for interface-only grids:
   top-level `type/method/alpha` plus `axes: [x]`, `[y]`, `[x, y]`, or omitted.
   It cannot express wall refinement.
-- `schedule`: non-negative grid rebuild interval. `0` means initial tracked
-  interface only; `N > 0` rebuilds every N physical steps from the current
-  tracked interface. Legacy aliases `static`, `every_step`, and `every_N` are
-  still accepted.
+- `schedule`: non-negative grid rebuild interval. The paper-standard
+  interface-following route is `1`, meaning rebuild every physical step from
+  the current tracked interface. `static`/`0` remains available for explicit
+  fixed-grid comparisons.
 
 Uniform axes may not declare monitors. Nonuniform axes must declare at least
 one monitor. Periodic axes may use interface monitors but cannot use wall

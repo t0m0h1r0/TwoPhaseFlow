@@ -9,8 +9,8 @@
 # - Grid fitting: capillary wave is a graph y=η(x) on a periodic x domain,
 #   so x is a uniform periodic axis; y carries the interface/wall nonuniform
 #   monitor because the upper/lower boundaries are physical walls.
-#   Static fitting is built from the initial tracked ψ; dynamic schedules
-#   rebuild the y-monitor from the current tracked interface field.
+#   The standard route rebuilds the fitted grid every step from the current
+#   tracked ψ so the grid follows the interface.
 
 experiment:
   type: capillary_wave

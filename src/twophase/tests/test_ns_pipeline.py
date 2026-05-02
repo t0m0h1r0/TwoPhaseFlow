@@ -134,6 +134,12 @@ def test_rebuild_grid_noop_uniform():
     assert np.array_equal(psi2, psi_orig)
 
 
+def test_dynamic_grid_rebuild_schedule_is_default_for_fitted_solver():
+    """Interface-fitted solver construction follows the interface every step."""
+    s = _make_solver(alpha_grid=2.0)
+    assert s._interface_runtime.rebuild_freq == 1
+
+
 # ── Test 4: step with grid rebuild ───────────────────────────────────────────
 
 def test_step_nonuniform_no_nan():
@@ -847,6 +853,32 @@ def test_gridcfg_parse_alpha_grid():
     assert g.fitting_eps_g_factor == (2.0, 4.0)
     assert g.dx_min_floor == 1e-6  # default
     assert g.grid_rebuild_freq == 0
+
+
+def test_gridcfg_interface_fitting_defaults_to_every_step_rebuild():
+    """Omitted schedule follows the current interface every physical step."""
+    grid = {
+        "cells": [64, 64],
+        "domain": {"size": [1.0, 1.0], "boundary": "wall"},
+        "distribution": {
+            "axes": {
+                "x": {"type": "uniform"},
+                "y": {
+                    "type": "nonuniform",
+                    "monitors": {
+                        "interface": {
+                            "alpha": 3.0,
+                        },
+                    },
+                },
+            },
+        },
+    }
+    interface = {
+        "thickness": {"mode": "nominal", "base_factor": 1.5},
+    }
+    g = _parse_grid(grid, interface)
+    assert g.grid_rebuild_freq == 1
 
 
 def test_gridcfg_default_uniform():

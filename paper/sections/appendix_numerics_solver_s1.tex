@@ -49,13 +49,16 @@ $\sqrt{1000} \approx 32$ 倍大きな $\Delta t_\sigma$ が許される（制約
 %% 旧 appendix_numerics_schemes_s4.tex（ALE 効果）を統合
 % ═══════════════════════════════════════════════════════════════════════════════
 
-\subsubsection{時間変化格子と ALE 効果（本稿では未実装）}
+\subsubsection{時間変化格子と ALE 効果の補足}
 \label{app:grid_ale}
 
-本付録は §\ref{sec:grid_gen} の格子が時間発展する場合の ALE（Arbitrary Lagrangian-Eulerian）補正を説明する．
-\textbf{本稿の実装では格子を時間固定として扱う（$\bm{v}_\text{mesh} = 0$）}か，タイムステップごとに格子を再生成するが $\bm{v}_\text{mesh}$ の補正は省略する．
+本稿の界面追随格子の標準定義は §\ref{sec:grid_ale} に置く．
+本付録では，式~\eqref{eq:ale_omission_error} のスケール見積もりだけを補足する．
 
-ALE 定式化では格子速度 $\bm{v}_\text{mesh}$ を輸送方程式に追加する必要がある：$\partial\psi/\partial t + \nabla\cdot((\bm{u} - \bm{v}_\text{mesh})\psi) = 0$．ただしこの追加項の離散化は実装の複雑さを大きく増加させる．
+ALE 定式化では格子速度 $\bm{v}_\text{mesh}$ を輸送方程式に追加する必要がある：
+$\partial\psi/\partial t + \nabla\cdot((\bm{u} - \bm{v}_\text{mesh})\psi) = 0$．
+同じ相対速度 $\bm{u}-\bm{v}_\text{mesh}$ は運動量・密度輸送にも現れるため，
+$\psi$ だけを補間する格子追従は閉じた保存系ではない．
 
 \textbf{誤差の発生機構：}
 1ステップあたりの界面移動量を $\delta = |\bm{u}|\Delta t$ とすると，
@@ -64,35 +67,7 @@ ALE 補正を省略することで $\bm{v}_\text{mesh}$ による追加対流量
   \varepsilon_{\text{ALE}} \sim |\bm{v}_\text{mesh}| \cdot |\bnabla\psi| \cdot \Delta t \sim U_\Gamma \cdot \frac{1}{\varepsilon} \cdot \Delta t
 \]
 ここで $|\bnabla\psi| \sim 1/(4\varepsilon)$（界面近傍プロファイル），$U_\Gamma$ は界面速度である．
-
-\textbf{近似が有効な条件：}
-\begin{center}
-\PaperTableSetup
-\begin{tabular}{>{\raggedright\arraybackslash}p{48mm}c>{\raggedright\arraybackslash}p{42mm}}
-\hline
-条件 & 移動量 $\delta/h$ & ALE 省略の妥当性 \\
-\hline
-緩やかな界面変形 & $< 0.1$ & 良好（誤差 $< 10\%$ of $\Delta t^2$ 項） \\
-標準的な問題 & $\approx 0.5$ & 条件付きで可（格子収束確認要） \\
-大密度比 ($\rho_l/\rho_g{=}1000$) の高速界面 & $> 1$ & 精度劣化の可能性大（ALE 実装推奨） \\
-\hline
-\end{tabular}
-\end{center}
-
-$\rho_l/\rho_g = 1000$ の場合，液相変形が速く $\delta/h > 1$ となることがあり，ALE 補正なしの格子更新（Mode 2）は実質的に $O(\Delta t)$ 精度（1次）となりうる．
-本稿の実装では ALE 補正を省略しており，上昇気泡ベンチマークなど大変形問題では時間刻み精度の確認を格子収束テストとあわせて実施することを推奨する．
-
-\textbf{Mode 1（時間固定格子，本稿の主設計）：}
-格子速度 $\bm{v}_\text{mesh} = 0$ として格子を更新しない．ALE 誤差はゼロであり，全体時間精度 $O(\Delta t^2)$ が保持される（§\ref{sec:time_accuracy_table}）．
-ただし，格子は初期水準集合値 $\phi^{(0)}$ から生成されるため，界面が初期精細化領域から大きく離れる問題（例：上昇気泡ベンチマーク）では経時的に空間解像度が失われる．
-長時間・長距離移動を伴う計算では，適切な間隔で格子を再生成する（Mode 2 + ALE 実装）か，一様格子を選択することを推奨する．
-
-\textbf{Mode 2（タイムステップごとに格子を再生成，ALE 省略）：}
-上表の $\delta/h > 1$ 条件に該当する場合，$O(\Delta t)$ に精度が劣化し，本稿の全体時間精度 $O(\Delta t^2)$ の主張（§\ref{sec:time_accuracy_table}）と矛盾する．
-$\rho_l/\rho_g = 1000$（上昇気泡系）では特に注意が必要であり，Mode 2 を採用する場合は ALE 補正（$\bm{v}_\text{mesh} \neq 0$）の実装を強く推奨する（本稿では未実装）．
-さらに，Mode 2 は $\psi$ 転写だけで閉じない．
-$u,v,p,\delta p,\rho,\mu,\kappa_{lg},\hat{\bm n}_{lg},\phi,\psi$ の保存的リマップと，
-HFE 延長文脈・jump face cache の現在格子上での再構築を同時に満たす必要がある．
-これらが欠ける場合，格子追従の利得より operator mismatch が支配的になりうる．
+Mode 1/Mode 2 の判定，および大密度比・高速界面で必須となる保存的再写像，
+速度再投影，履歴リセット，面幾何再構築は §\ref{sec:grid_ale} の本編定義に従う．
 
 % ═══════════════════════════════════════════════════════════════════════════════

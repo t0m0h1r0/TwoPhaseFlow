@@ -4,8 +4,8 @@
 # - Boundary topology: x and y are both periodic; no wall monitor or wall
 #   velocity closure is declared.
 # - Grid fitting: both tensor-product axes are nonuniform, but the static
-#   equilibrium route builds the fitted grid once from the initial tracked
-#   interface instead of rebuilding/remapping every physical step.
+#   standard route rebuilds/remaps every physical step so the fitted grid
+#   follows the current interface geometry.
 
 experiment:
   type: circle

@@ -39,6 +39,14 @@ def rebuild_ns_grid(
     reprojector,
     wall_contacts=None,
 ) -> NSGridRebuildResult:
+    """Fit the grid to the supplied interface and remap primary fields.
+
+    The standard non-uniform solver path uses this both for initial fitted-grid
+    construction and scheduled interface-following rebuilds. The split rebuild
+    step remaps ``psi`` conservatively by volume correction, remaps velocity,
+    updates geometry-bound operators, invalidates pressure caches, and
+    reprojects velocity on the rebuilt grid.
+    """
     if alpha_grid <= 1.0:
         X, Y = grid.meshgrid()
         return NSGridRebuildResult(
