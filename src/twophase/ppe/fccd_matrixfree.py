@@ -28,6 +28,7 @@ import warnings
 
 import numpy as np
 
+from ..backend import is_device_array
 from ..core.array_checks import all_arrays_exact_zero
 from ..core.boundary import is_periodic_axis
 from ..coupling.interface_stress_closure import (
@@ -650,9 +651,7 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         return values.reshape(shape)
 
     def _is_device_array(self, arr) -> bool:
-        return self.backend.is_gpu() and hasattr(arr, "__cuda_array_interface__")
+        return self.backend.is_gpu() and is_device_array(arr)
 
     def _to_scalar(self, value) -> float:
-        if self._is_device_array(value):
-            return float(self.backend.asnumpy(value))
-        return float(value)
+        return self.backend.to_scalar(value)

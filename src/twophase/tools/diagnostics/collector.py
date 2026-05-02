@@ -30,19 +30,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
-
-def _xp_of(arr):
-    """Return the array namespace (numpy or cupy) matching ``arr``.
-
-    Uses :func:`cupy.get_array_module` when cupy is available, else numpy.
-    This lets :class:`DiagnosticCollector` stay constructor-compatible while
-    operating natively on whichever backend the simulation chose.
-    """
-    try:
-        import cupy
-        return cupy.get_array_module(arr)
-    except ImportError:
-        return np
+from ...backend import array_namespace as _xp_of, host_array, scalar_value
 
 
 @dataclass
@@ -229,7 +217,7 @@ class DiagnosticCollector:
             name: float(value)
             for name, value in zip(
                 scalar_names,
-                np.asarray(_to_host(xp.stack(scalar_values))) if scalar_values else [],
+                host_array(xp.stack(scalar_values)) if scalar_values else [],
             )
         }
 
@@ -295,7 +283,7 @@ class DiagnosticCollector:
                         xp.sum(xp.where(outside, p, 0.0)),
                     ])
                     n_in, n_out, p_in_sum, p_out_sum = [
-                        float(x) for x in np.asarray(_to_host(raw))
+                        float(x) for x in host_array(raw)
                     ]
                     p_in = (
                         p_in_sum / n_in
@@ -327,14 +315,6 @@ class DiagnosticCollector:
 
 
 # ── per-metric helpers ────────────────────────────────────────────────────────
-
-def _to_host(arr):
-    """Return a numpy copy of ``arr`` regardless of its backend."""
-    getter = getattr(arr, "get", None)
-    if callable(getter):
-        return getter()
-    return np.asarray(arr)
-
 
 def _deformation_axes(xp, shape: tuple[int, ...]):
     """Materialize index fields retained with diagnostic geometry."""
@@ -375,7 +355,7 @@ def _deformation(psi, geometry: DiagnosticRetainedGeometry | None = None) -> flo
         xp.sum(dy * dy) / n_safe,
         xp.sum(dx * dy) / n_safe,
     ])
-    stats = np.asarray(_to_host(raw))
+    stats = host_array(raw)
     n_pts = float(stats[0])
     if n_pts < 1.0:
         return 0.0
@@ -409,7 +389,7 @@ def _signed_deformation(
         xp.sum((X - xc) ** 2 * weight) / volume_safe,
         xp.sum((Y - yc) ** 2 * weight) / volume_safe,
     ])
-    volume_h, mxx, myy = [float(x) for x in np.asarray(_to_host(raw))]
+    volume_h, mxx, myy = [float(x) for x in host_array(raw)]
     if volume_h <= 0.0:
         return 0.0
     lx = np.sqrt(max(mxx, 1e-30))
@@ -427,8 +407,8 @@ def _symmetry_error(field, axis: int, parity: int = +1) -> float:
     """
     xp = _xp_of(field)
     flipped = xp.flip(field, axis=axis)
-    diff = float(xp.max(xp.abs(field - parity * flipped)))
-    scale = float(xp.max(xp.abs(field))) + 1e-30
+    diff = scalar_value(xp.max(xp.abs(field - parity * flipped)))
+    scale = scalar_value(xp.max(xp.abs(field))) + 1e-30
     return diff / scale
 
 
@@ -448,7 +428,7 @@ def _symmetry_errors(psi, u, v) -> tuple[float, float, float, float, float, floa
         flipped = xp.flip(field, axis=axis)
         raw.append(xp.max(xp.abs(field - parity * flipped)))
         raw.append(xp.max(xp.abs(field)))
-    stats = np.asarray(_to_host(xp.stack(raw)))
+    stats = host_array(xp.stack(raw))
     return tuple(
         float(stats[2 * i]) / (float(stats[2 * i + 1]) + 1e-30)
         for i in range(len(terms))
@@ -478,4 +458,4 @@ def _interface_amplitude(psi, Y, y_mid) -> float:
     amplitude = xp.max(
         xp.where(has_crossing, xp.abs(y_int - y_mid), 0.0)
     )
-    return float(np.asarray(_to_host(amplitude)))
+    return scalar_value(amplitude)

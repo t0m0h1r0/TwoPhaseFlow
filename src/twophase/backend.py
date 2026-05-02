@@ -23,6 +23,41 @@ import sys
 from functools import cached_property
 
 
+def is_device_array(arr) -> bool:
+    """Return True for CUDA device arrays without importing CuPy."""
+    return hasattr(arr, "__cuda_array_interface__")
+
+
+def array_namespace(arr):
+    """Return the array namespace that owns ``arr``.
+
+    This centralises the NumPy/CuPy dispatch used by diagnostics and runtime
+    setup code.  It avoids importing CuPy on ordinary NumPy arrays while still
+    delegating to ``cupy.get_array_module`` for CuPy-owned values.
+    """
+    if type(arr).__module__.split(".", 1)[0] == "cupy":
+        import cupy
+        return cupy.get_array_module(arr)
+    import numpy as np
+    return np
+
+
+def host_array(arr, dtype=None):
+    """Return ``arr`` as a NumPy array at an explicit host boundary."""
+    if is_device_array(arr) and hasattr(arr, "get"):
+        arr = arr.get()
+    import numpy as np
+    return np.asarray(arr, dtype=dtype)
+
+
+def scalar_value(value) -> float:
+    """Convert a backend scalar to ``float`` at an explicit host boundary."""
+    value = host_array(value) if is_device_array(value) else value
+    if hasattr(value, "item"):
+        value = value.item()
+    return float(value)
+
+
 class Backend:
     """Transparent numpy / cupy switcher.
 
@@ -137,6 +172,14 @@ class Backend:
     def asnumpy(self, arr):
         """CuPy-idiomatic alias of :meth:`to_host`."""
         return self.to_host(arr)
+
+    def host_array(self, arr, dtype=None):
+        """Return ``arr`` as a NumPy array at an explicit host boundary."""
+        return host_array(arr, dtype=dtype)
+
+    def to_scalar(self, value) -> float:
+        """Transfer a scalar result to Python ``float``."""
+        return scalar_value(value)
 
     def to_device(self, arr):
         """Transfer array to the configured device (no-op on CPU backend)."""
