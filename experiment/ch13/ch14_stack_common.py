@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pathlib
+from dataclasses import dataclass
 from collections.abc import Callable
 
 import numpy as np
@@ -31,6 +32,7 @@ def ch14_circle_config(
     eps_mode: str = "nominal",
     reinit_every: int = 20,
     curvature_cap: float = 5.0,
+    step_diagnostics: bool = False,
     initial_velocity: dict | None = None,
 ) -> ExperimentConfig:
     """Build a circle-droplet config using the §14 FCCD/UCCD6/filtered-curvature/PPE stack."""
@@ -91,7 +93,7 @@ def ch14_circle_config(
             "surface_tension": sigma,
             "gravity": 0.0,
         },
-        "run": {"time": time_cfg, "debug": {"step_diagnostics": True}},
+        "run": {"time": time_cfg, "debug": {"step_diagnostics": step_diagnostics}},
         "numerics": {
             "time": {"algorithm": "fractional_step"},
             "interface": {
@@ -190,6 +192,18 @@ def to_host(solver: TwoPhaseNSSolver, value) -> np.ndarray:
     return np.asarray(solver.backend.to_host(value))
 
 
+@dataclass(frozen=True)
+class CircleMetricContext:
+    """Device-resident static-droplet masks and quadrature data."""
+
+    dV: object
+    volume0: float
+    inside_mask: object
+    outside_mask: object
+    inside_count: int
+    outside_count: int
+
+
 def circle_phi(
     X: np.ndarray,
     Y: np.ndarray,
@@ -219,6 +233,74 @@ def phase_pressure_contrast(
     return float("nan")
 
 
+def make_circle_metric_context(
+    solver: TwoPhaseNSSolver,
+    psi,
+    *,
+    radius: float,
+    center: tuple[float, float],
+) -> CircleMetricContext:
+    """Precompute device-side masks for static circle-droplet diagnostics."""
+    xp = solver.backend.xp
+    dV = solver._grid.cell_volumes()
+    psi_dev = xp.asarray(psi)
+    volume0 = float(solver.backend.to_host(xp.sum(psi_dev * dV)))
+    phi = radius - xp.sqrt(
+        (solver.X - float(center[0])) ** 2
+        + (solver.Y - float(center[1])) ** 2
+    )
+    inside_mask = phi > 3.0 * solver.h_min
+    outside_mask = phi < -3.0 * solver.h_min
+    counts = np.asarray(
+        solver.backend.to_host(
+            xp.stack([xp.sum(inside_mask), xp.sum(outside_mask)])
+        )
+    )
+    return CircleMetricContext(
+        dV=dV,
+        volume0=volume0,
+        inside_mask=inside_mask,
+        outside_mask=outside_mask,
+        inside_count=int(counts[0]),
+        outside_count=int(counts[1]),
+    )
+
+
+def collect_circle_step_metrics(
+    solver: TwoPhaseNSSolver,
+    context: CircleMetricContext,
+    *,
+    psi,
+    u,
+    v,
+    p,
+) -> tuple[float, float, float]:
+    """Return ``u_inf``, volume drift, and pressure contrast with one scalar sync."""
+    xp = solver.backend.xp
+    psi_dev = xp.asarray(psi)
+    u_dev = xp.asarray(u)
+    v_dev = xp.asarray(v)
+    p_dev = xp.asarray(p)
+    u_inf = xp.sqrt(xp.max(u_dev * u_dev + v_dev * v_dev))
+    volume = xp.sum(psi_dev * context.dV)
+    volume_drift = xp.abs(volume - context.volume0) / max(abs(context.volume0), 1.0e-30)
+    if context.inside_count > 0 and context.outside_count > 0:
+        inside_sum = xp.sum(xp.where(context.inside_mask, p_dev, 0.0))
+        outside_sum = xp.sum(xp.where(context.outside_mask, p_dev, 0.0))
+        pressure_contrast = (
+            inside_sum / float(context.inside_count)
+            - outside_sum / float(context.outside_count)
+        )
+    else:
+        pressure_contrast = xp.asarray(float("nan"))
+    metrics = np.asarray(
+        solver.backend.to_host(
+            xp.stack([u_inf, volume_drift, pressure_contrast])
+        )
+    )
+    return float(metrics[0]), float(metrics[1]), float(metrics[2])
+
+
 def run_ch14_case(
     *,
     cfg: ExperimentConfig,
@@ -244,9 +326,12 @@ def run_ch14_case(
         v = solver.backend.to_device(v_host)
     X = to_host(solver, solver.X)
     Y = to_host(solver, solver.Y)
-    dV = to_host(solver, solver._grid.cell_volumes())
-    psi0 = to_host(solver, psi).copy()
-    volume0 = float(np.sum(psi0 * dV))
+    metric_context = make_circle_metric_context(
+        solver,
+        psi,
+        radius=radius,
+        center=center,
+    )
     u_inf_history: list[float] = []
     dp_history: list[float] = []
     volume_history: list[float] = []
@@ -254,7 +339,7 @@ def run_ch14_case(
     limiter_history: list[str] = []
     blew_up = False
     error = ""
-    p = np.zeros_like(psi0)
+    p = solver.backend.xp.zeros_like(solver.backend.xp.asarray(psi))
     for step in range(cfg.run.max_steps or 0):
         try:
             if cfg.run.dt_fixed is None:
@@ -297,23 +382,16 @@ def run_ch14_case(
             blew_up = True
             error = f"{type(exc).__name__}: {exc}"
             break
-        psi_h = to_host(solver, psi)
-        u_h = to_host(solver, u)
-        v_h = to_host(solver, v)
-        p_h = to_host(solver, p)
-        speed = np.sqrt(u_h * u_h + v_h * v_h)
-        u_inf = float(np.max(speed))
-        volume = float(np.sum(psi_h * dV))
-        dp = phase_pressure_contrast(
-            p_h,
-            X,
-            Y,
-            radius=radius,
-            center=center,
-            h_min=solver.h_min,
+        u_inf, volume_drift, dp = collect_circle_step_metrics(
+            solver,
+            metric_context,
+            psi=psi,
+            u=u,
+            v=v,
+            p=p,
         )
         u_inf_history.append(u_inf)
-        volume_history.append(abs(volume - volume0) / max(abs(volume0), 1.0e-30))
+        volume_history.append(volume_drift)
         dp_history.append(dp)
         dt_history.append(dt)
         if not np.isfinite(u_inf) or u_inf > velocity_limit:
