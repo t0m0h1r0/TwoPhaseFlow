@@ -1,0 +1,15 @@
+{
+  "lock_id": "BB9BCFE3-D4C5-4142-A68E-D1EF7C8CBAC1",
+  "owner": "Codex",
+  "task": "RA Chapter 10 implementation fidelity audit",
+  "branch": "ra-ch10-implementation-audit-20260502",
+  "created_utc": "2026-05-02T14:20:00Z",
+  "status": "active",
+  "scope": [
+    "paper/sections/10_grid.tex",
+    "paper/sections/10b_ccd_extensions.tex",
+    "paper/sections/10c_fccd_nonuniform.tex",
+    "paper/sections/10d_ridge_eikonal_nonuniform.tex",
+    "src/twophase"
+  ]
+}
