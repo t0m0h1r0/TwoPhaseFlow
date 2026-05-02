@@ -53,13 +53,17 @@ def _kappa_2d_formula(phi_x, phi_y, phi_xx, phi_yy, phi_xy, grad_cube):
     return -num / grad_cube
 
 
+def _coefficient_slice(coeff, sl):
+    return coeff[tuple(sl)] if hasattr(coeff, "ndim") and coeff.ndim > 0 else coeff
+
+
 def _dccd_filter_1d(
     xp,
     f,
     ax: int,
     ndim: int,
     N_ax: int,
-    eps_d: float,
+    eps_d,
     *,
     periodic: bool = False,
 ):
@@ -73,7 +77,8 @@ def _dccd_filter_1d(
         unique_sl = [slice(None)] * ndim
         unique_sl[ax] = slice(0, N_ax)
         unique = f[tuple(unique_sl)]
-        filtered = unique + eps_d * (
+        eps_unique = _coefficient_slice(eps_d, unique_sl)
+        filtered = unique + eps_unique * (
             xp.roll(unique, -1, axis=ax) - 2.0 * unique + xp.roll(unique, 1, axis=ax)
         )
         result[tuple(unique_sl)] = filtered
@@ -90,22 +95,17 @@ def _dccd_filter_1d(
     sl_c[ax] = slice(1, N_ax)
     sl_m[ax] = slice(0, N_ax - 1)
     sl_p[ax] = slice(2, N_ax + 1)
-    w_c = 1.0 - 2.0 * eps_d
-    w_n = eps_d
-    result[tuple(sl_c)] = w_c * f[tuple(sl_c)] + w_n * (f[tuple(sl_m)] + f[tuple(sl_p)])
-    # Neumann ghost at boundaries
-    for bdry, nbr in [(0, 1), (N_ax, N_ax - 1)]:
-        sl_b = [slice(None)] * ndim
-        sl_n = [slice(None)] * ndim
-        sl_b[ax] = bdry
-        sl_n[ax] = nbr
-        result[tuple(sl_b)] = (w_c + w_n) * f[tuple(sl_b)] + w_n * f[tuple(sl_n)]
+    eps_c = _coefficient_slice(eps_d, sl_c)
+    result[tuple(sl_c)] = f[tuple(sl_c)] + eps_c * (
+        f[tuple(sl_p)] - 2.0 * f[tuple(sl_c)] + f[tuple(sl_m)]
+    )
     return result
 
 
-def _dccd_filter_nd(xp, f, grid, eps_d: float, *, bc_type: str = "wall"):
+def _dccd_filter_nd(xp, f, grid, eps_d: float, *, bc_type: str = "wall", switch=None):
     """Apply DCCD filter along all spatial axes with boundary topology."""
     result = f
+    coeff = eps_d if switch is None else eps_d * switch
     for ax in range(grid.ndim):
         result = _dccd_filter_1d(
             xp,
@@ -113,9 +113,18 @@ def _dccd_filter_nd(xp, f, grid, eps_d: float, *, bc_type: str = "wall"):
             ax,
             grid.ndim,
             grid.N[ax],
-            eps_d,
+            coeff,
             periodic=is_periodic_axis(bc_type, ax, grid.ndim),
         )
+    for ax in range(grid.ndim):
+        if is_periodic_axis(bc_type, ax, grid.ndim):
+            continue
+        left = [slice(None)] * grid.ndim
+        right = [slice(None)] * grid.ndim
+        left[ax] = 0
+        right[ax] = grid.N[ax]
+        result[tuple(left)] = f[tuple(left)]
+        result[tuple(right)] = f[tuple(right)]
     return result
 
 
@@ -170,6 +179,7 @@ class CurvatureCalculator(ICurvatureCalculator):
 
         # Ensure psi is on the correct device (no-op on CPU).
         psi = xp.asarray(psi)
+        dccd_switch = (2.0 * psi - 1.0) ** 2 if self.dccd_eps > 0 else None
 
         # Invert ψ → φ (§3.6)
         phi = invert_heaviside(xp, psi, eps)
@@ -181,10 +191,12 @@ class CurvatureCalculator(ICurvatureCalculator):
             g1, g2 = ccd.differentiate(phi, ax)
             if self.dccd_eps > 0:
                 g1 = _dccd_filter_nd(
-                    xp, g1, ccd.grid, self.dccd_eps, bc_type=ccd.bc_type
+                    xp, g1, ccd.grid, self.dccd_eps, bc_type=ccd.bc_type,
+                    switch=dccd_switch,
                 )
                 g2 = _dccd_filter_nd(
-                    xp, g2, ccd.grid, self.dccd_eps, bc_type=ccd.bc_type
+                    xp, g2, ccd.grid, self.dccd_eps, bc_type=ccd.bc_type,
+                    switch=dccd_switch,
                 )
             d1.append(g1)
             d2.append(g2)
@@ -201,7 +213,7 @@ class CurvatureCalculator(ICurvatureCalculator):
             n_filtered = self.normal_filter.apply(d1, phi)
             kappa = kappa_from_normals(xp, ccd, n_filtered)
         elif ndim == 2:
-            kappa = self._kappa_2d(xp, d1, d2, ccd, phi, grad_cube)
+            kappa = self._kappa_2d(xp, d1, d2, ccd, phi, grad_cube, dccd_switch)
         else:
             kappa = self._kappa_3d(xp, d1, d2, ccd, phi, grad_sq, grad_cube)
 
@@ -214,7 +226,7 @@ class CurvatureCalculator(ICurvatureCalculator):
 
     # ── 2-D formula (Eq. 30) ──────────────────────────────────────────────
 
-    def _kappa_2d(self, xp, d1, d2, ccd, phi, grad_cube):
+    def _kappa_2d(self, xp, d1, d2, ccd, phi, grad_cube, dccd_switch=None):
         """κ = −[φ_y² φ_xx − 2 φ_x φ_y φ_xy + φ_x² φ_yy] / |∇φ|³"""
         phi_x, phi_y = d1[0], d1[1]
         phi_xx       = d2[0]
@@ -224,7 +236,8 @@ class CurvatureCalculator(ICurvatureCalculator):
         phi_xy, _ = ccd.differentiate(d1[0], 1)
         if self.dccd_eps > 0:
             phi_xy = _dccd_filter_nd(
-                self.xp, phi_xy, ccd.grid, self.dccd_eps, bc_type=ccd.bc_type
+                self.xp, phi_xy, ccd.grid, self.dccd_eps, bc_type=ccd.bc_type,
+                switch=dccd_switch,
             )
 
         return _kappa_2d_formula(phi_x, phi_y, phi_xx, phi_yy, phi_xy, grad_cube)

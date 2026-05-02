@@ -102,12 +102,10 @@ class CCDSolver:
         self.ndim = grid.ndim
         self.bc_type = bc_type
 
-        # Build one solver per axis (wall BC)
+        # Wall-BC solvers are built lazily per used axis. This avoids
+        # constructing a lower-order closure for thin batch axes that are never
+        # differentiated, while still rejecting paper-inexact axes on use.
         self._solvers: dict = {}
-        for ax in range(self.ndim):
-            n_pts = grid.N[ax] + 1
-            h = float(grid.L[ax] / grid.N[ax])   # uniform spacing for CCD system
-            self._solvers[ax] = self._build_axis_solver(n_pts, h)
 
         # Build periodic solvers if needed (block-circulant, dense LU)
         self._periodic_solvers: dict = {}
@@ -284,6 +282,13 @@ class CCDSolver:
             _boundary_coeffs_right,
         )
 
+    def _get_axis_solver(self, axis: int) -> dict:
+        if axis not in self._solvers:
+            n_pts = self.grid.N[axis] + 1
+            h = float(self.grid.L[axis] / self.grid.N[axis])
+            self._solvers[axis] = self._build_axis_solver(n_pts, h)
+        return self._solvers[axis]
+
     # DO NOT DELETE — CHK-117 legacy reference.
     # Pre-dense-LU block-Thomas path retained per C2 (never delete tested
     # code). Not wired to any call site; kept for auditability + rollback.
@@ -401,9 +406,8 @@ def _boundary_coeffs_left(h: float, n_pts: int) -> dict:
     Equations (§5 eq:bc_left, eq:bcII_left):
         Eq-I-bc  (O(h⁵)): f'₀ + (3/2)f'₁ − (3h/2)f''₁
                     = (1/h)(−23/6·f₀ + 21/4·f₁ − 3/2·f₂ + 1/12·f₃)
-        Eq-II-bc:
-          n_pts < 6 → O(h²) 4-point: f''₀ = (1/h²)(2f₀−5f₁+4f₂−f₃)
-          n_pts ≥ 6 → O(h⁴) 6-point: f''₀ = (1/(12h²))(45f₀−154f₁+214f₂−156f₃+61f₄−10f₅)
+        Eq-II-bc (O(h⁴), requires n_pts ≥ 6):
+            f''₀ = (1/(12h²))(45f₀−154f₁+214f₂−156f₃+61f₄−10f₅)
 
     Eq-II-bc is independent of f'₁, f''₁ (γ=δ=0 in §5 eq:bcII_general).
 
@@ -412,15 +416,11 @@ def _boundary_coeffs_left(h: float, n_pts: int) -> dict:
         M[1,:] = [0,     0   ]   (Eq-II-bc is standalone — no fp₁/fpp₁ coupling)
     and the data-dependent RHS coefficients are returned in c_I, c_II.
     """
+    _require_eqii_h4_boundary_points(n_pts)
     M = np.array([[-3.0 / 2.0, 3.0 * h / 2.0],
                    [ 0.0,       0.0            ]])
     c_I  = np.array([-23.0/6.0, 21.0/4.0, -3.0/2.0, 1.0/12.0]) / h
-    if n_pts >= 6:
-        # O(h⁴) 6-point formula (§5 eq:bcII_left_h4)
-        c_II = np.array([45.0, -154.0, 214.0, -156.0, 61.0, -10.0]) / (12.0 * h * h)
-    else:
-        # O(h²) 4-point fallback for very small grids
-        c_II = np.array([2.0, -5.0, 4.0, -1.0]) / (h * h)
+    c_II = np.array([45.0, -154.0, 214.0, -156.0, 61.0, -10.0]) / (12.0 * h * h)
     return {'M': M, 'c_I': c_I, 'c_II': c_II}
 
 
@@ -432,21 +432,25 @@ def _boundary_coeffs_right(h: float, n_pts: int) -> dict:
     Equations (§5 eq:bc_left mirror, eq:bcII_left mirror):
         Eq-I-bc  (O(h⁵)): f'_N + (3/2)f'_{N-1} + (3h/2)f''_{N-1}
                     = (1/h)(23/6·f_N − 21/4·f_{N-1} + 3/2·f_{N-2} − 1/12·f_{N-3})
-        Eq-II-bc:
-          n_pts < 6 → O(h²) 4-point: f''_N = (1/h²)(2f_N−5f_{N-1}+4f_{N-2}−f_{N-3})
-          n_pts ≥ 6 → O(h⁴) 6-point (mirror of left): coefficients applied as f[N-k]
+        Eq-II-bc (O(h⁴), requires n_pts ≥ 6):
+            mirror of left boundary, coefficients applied as f[N-k].
 
     After solving for [f'_N, f''_N]:
         M[0,:] = [-3/2, -3h/2]   (from Eq-I-bc mirror)
         M[1,:] = [0,     0   ]   (Eq-II-bc is standalone)
     """
+    _require_eqii_h4_boundary_points(n_pts)
     M = np.array([[-3.0 / 2.0, -3.0 * h / 2.0],
                    [ 0.0,        0.0            ]])
     c_I  = np.array([23.0/6.0, -21.0/4.0, 3.0/2.0, -1.0/12.0]) / h
-    if n_pts >= 6:
-        # O(h⁴) 6-point formula — mirror of left boundary (applied as f[N-k])
-        c_II = np.array([45.0, -154.0, 214.0, -156.0, 61.0, -10.0]) / (12.0 * h * h)
-    else:
-        # O(h²) 4-point fallback for very small grids
-        c_II = np.array([2.0, -5.0, 4.0, -1.0]) / (h * h)
+    c_II = np.array([45.0, -154.0, 214.0, -156.0, 61.0, -10.0]) / (12.0 * h * h)
     return {'M': M, 'c_I': c_I, 'c_II': c_II}
+
+
+def _require_eqii_h4_boundary_points(n_pts: int) -> None:
+    if n_pts < 6:
+        raise ValueError(
+            "CCD wall Eq-II boundary closure requires n_pts >= 6 for the "
+            "paper §4 O(h^4) six-point formula; lower-order fallback is "
+            "prohibited by paper-exact policy."
+        )

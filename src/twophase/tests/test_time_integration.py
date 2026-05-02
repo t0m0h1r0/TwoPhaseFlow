@@ -26,13 +26,60 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 from twophase.backend import Backend
 from twophase.config import SimulationConfig, GridConfig
 from twophase.core.grid import Grid
-from twophase.levelset.advection import LevelSetAdvection, DissipativeCCDAdvection
+from twophase.levelset.advection import (
+    LevelSetAdvection,
+    DissipativeCCDAdvection,
+    _dccd_adaptive_filter_stencil,
+)
 from twophase.ccd.ccd_solver import CCDSolver
 
 
 @pytest.fixture
 def backend():
     return Backend(use_gpu=False)
+
+
+def test_dccd_adaptive_filter_zeroes_interface_switch(backend):
+    """Paper §4 DCCD switch S(ψ)=(2ψ−1)² disables filtering at ψ=0.5."""
+    xp = backend.xp
+    fp = xp.asarray(np.array([1.0, 2.0, 4.0]))
+    fp_p1 = xp.asarray(np.array([2.0, 4.0, 8.0]))
+    fp_m1 = xp.asarray(np.array([0.0, 1.0, 2.0]))
+    psi_interface = xp.full(fp.shape, 0.5)
+    psi_bulk = xp.ones(fp.shape)
+
+    unchanged = _dccd_adaptive_filter_stencil(
+        fp, fp_p1, fp_m1, psi_interface, 0.05
+    )
+    filtered = _dccd_adaptive_filter_stencil(fp, fp_p1, fp_m1, psi_bulk, 0.05)
+
+    np.testing.assert_allclose(np.asarray(unchanged), np.asarray(fp))
+    np.testing.assert_allclose(
+        np.asarray(filtered),
+        np.asarray(fp + 0.05 * (fp_p1 - 2.0 * fp + fp_m1)),
+    )
+
+
+def test_dissipative_ccd_wall_filter_preserves_boundary_derivative(backend):
+    """Paper §4 DCCD wall/outflow boundaries remain unfiltered."""
+    N = 16
+    Ny = 8
+    cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, Ny), L=(1.0, 1.0)))
+    grid = Grid(cfg.grid, backend)
+    ccd = CCDSolver(grid, backend, bc_type="wall")
+    advect = DissipativeCCDAdvection(backend, grid, ccd, bc="zero")
+
+    x = np.linspace(0.0, 1.0, N + 1)
+    y = np.linspace(0.0, 1.0, Ny + 1)
+    X, Y = np.meshgrid(x, y, indexing="ij")
+    psi = 0.5 + 0.25 * np.sin(np.pi * X) * np.cos(np.pi * Y)
+    velocity = [np.ones_like(psi), np.zeros_like(psi)]
+
+    rhs = advect._rhs(psi, velocity)
+    fp, _ = ccd.differentiate(psi * velocity[0], axis=0)
+
+    np.testing.assert_allclose(np.asarray(rhs[0, :]), -np.asarray(fp[0, :]))
+    np.testing.assert_allclose(np.asarray(rhs[-1, :]), -np.asarray(fp[-1, :]))
 
 
 # ── ヘルパー：線形回帰で収束次数を推定 ─────────────────────────────────────

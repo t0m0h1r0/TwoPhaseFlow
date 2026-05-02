@@ -28,6 +28,13 @@ def _dccd_filter_stencil(fp, fp_p1, fp_m1, eps_d):
 
 
 @_fuse
+def _dccd_adaptive_filter_stencil(fp, fp_p1, fp_m1, psi, eps_d):
+    """Adaptive DCCD filter with S(ψ)=(2ψ−1)² from paper §4."""
+    switch = (2.0 * psi - 1.0) * (2.0 * psi - 1.0)
+    return fp + eps_d * switch * (fp_p1 - 2.0 * fp + fp_m1)
+
+
+@_fuse
 def _weno5_pos_impl(q0, q1, q2, q3, q4):
     _t0a = q0 - 2*q1 + q2;  _t0b = q0 - 4*q1 + 3*q2
     _t1a = q1 - 2*q2 + q3;  _t1b = q1 - q3

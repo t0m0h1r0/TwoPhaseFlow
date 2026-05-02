@@ -120,8 +120,9 @@ $p=5$: $0/12 = 0$，$p=6$: $-6576/12 = -548 \ne 0$．したがって $\Ord{h^4}$
 \paragraph{実装}
 
 \texttt{ccd/ccd\_solver.py} の \texttt{\_boundary\_coeffs\_left(h, n\_pts)} において，
-$n_\mathrm{pts} \ge 6$ のとき式~\eqref{eq:bcII_left_h4} を，$n_\mathrm{pts} < 6$ のとき
-旧来の $\Ord{h^2}$ 公式をフォールバックとして使用する．右境界では
+$n_\mathrm{pts} \ge 6$ を paper-exact 実装条件として式~\eqref{eq:bcII_left_h4} を用いる．
+$n_\mathrm{pts} < 6$ は 6 点 $\Ord{h^4}$ 境界閉包を構成できないため明示的に拒否し，
+低次公式への暗黙フォールバックは行わない．右境界では
 $f_0 \to f_N,\, f_1 \to f_{N-1},\ldots$ の鏡像公式を適用する．
 
 \paragraph{収束効果}

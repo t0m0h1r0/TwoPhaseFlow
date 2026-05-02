@@ -211,6 +211,26 @@ def test_dccd_filter_preserves_periodic_image(backend):
     assert np.max(np.abs(filtered[N, :] - filtered[0, :])) < 1.0e-14
 
 
+def test_dccd_filter_leaves_wall_boundaries_unfiltered(backend):
+    """Paper §4 DCCD wall/outflow boundary nodes keep the unfiltered value."""
+    xp = backend.xp
+    N = 16
+    field = np.arange((N + 1) * (N + 1), dtype=float).reshape(N + 1, N + 1)
+    filtered = _dccd_filter_nd(
+        xp,
+        xp.asarray(field),
+        SimpleNamespace(ndim=2, N=(N, N)),
+        0.05,
+        bc_type="wall",
+    )
+    filtered_host = np.asarray(filtered)
+
+    np.testing.assert_allclose(filtered_host[0, :], field[0, :])
+    np.testing.assert_allclose(filtered_host[-1, :], field[-1, :])
+    np.testing.assert_allclose(filtered_host[:, 0], field[:, 0])
+    np.testing.assert_allclose(filtered_host[:, -1], field[:, -1])
+
+
 def test_curvature_psi_circle(backend):
     """CurvatureCalculatorPsi: κ ≈ −1/R for a circle (section 3b eq. curvature_psi_2d)."""
     N = 64

@@ -83,6 +83,8 @@ class CurvatureCalculatorPsi(ICurvatureCalculator):
         xp = self.xp
         ccd = self.ccd
         ndim = ccd.ndim
+        psi = xp.asarray(psi)
+        dccd_switch = (2.0 * psi - 1.0) ** 2 if self.dccd_eps > 0 else None
 
         # CCD derivatives of psi (O(h^6) accuracy) + optional DCCD filter
         d1 = []  # d psi / d x_i
@@ -91,10 +93,12 @@ class CurvatureCalculatorPsi(ICurvatureCalculator):
             g1, g2 = ccd.differentiate(psi, ax)
             if self.dccd_eps > 0:
                 g1 = _dccd_filter_nd(
-                    xp, g1, ccd.grid, self.dccd_eps, bc_type=ccd.bc_type
+                    xp, g1, ccd.grid, self.dccd_eps, bc_type=ccd.bc_type,
+                    switch=dccd_switch,
                 )
                 g2 = _dccd_filter_nd(
-                    xp, g2, ccd.grid, self.dccd_eps, bc_type=ccd.bc_type
+                    xp, g2, ccd.grid, self.dccd_eps, bc_type=ccd.bc_type,
+                    switch=dccd_switch,
                 )
             d1.append(g1)
             d2.append(g2)
@@ -103,7 +107,7 @@ class CurvatureCalculatorPsi(ICurvatureCalculator):
         grad_sq = sum(g * g for g in d1)
 
         if ndim == 2:
-            kappa = self._kappa_2d(xp, d1, d2, ccd, psi, grad_sq)
+            kappa = self._kappa_2d(xp, d1, d2, ccd, psi, grad_sq, dccd_switch)
         else:
             kappa = self._kappa_3d(xp, d1, d2, ccd, psi, grad_sq)
 
@@ -119,7 +123,7 @@ class CurvatureCalculatorPsi(ICurvatureCalculator):
 
     # -- 2-D formula (eq. curvature_psi_2d) --------------------------------
 
-    def _kappa_2d(self, xp, d1, d2, ccd, psi, grad_sq):
+    def _kappa_2d(self, xp, d1, d2, ccd, psi, grad_sq, dccd_switch=None):
         """kappa = -[psi_y^2 psi_xx - 2 psi_x psi_y psi_xy + psi_x^2 psi_yy]
                     / (psi_x^2 + psi_y^2)^{3/2}
         """
@@ -131,7 +135,8 @@ class CurvatureCalculatorPsi(ICurvatureCalculator):
         psi_xy, _ = ccd.differentiate(d1[0], 1)
         if self.dccd_eps > 0:
             psi_xy = _dccd_filter_nd(
-                self.xp, psi_xy, ccd.grid, self.dccd_eps, bc_type=ccd.bc_type
+                self.xp, psi_xy, ccd.grid, self.dccd_eps, bc_type=ccd.bc_type,
+                switch=dccd_switch,
             )
 
         numerator = (psi_y**2 * psi_xx

@@ -371,7 +371,8 @@ def test_wall_option_iv_face_gradient_nonzero_shear(backend):
 def test_advection_rhs_momentum_shape(mode, backend):
     """advection_rhs returns a list of ndim arrays matching grid shape."""
     N = 16
-    grid = make_grid(N, backend, L=1.0, ndim=2)
+    cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)))
+    grid = Grid(cfg.grid, backend)
     fccd = FCCDSolver(grid, backend, bc_type="wall")
 
     X, Y = grid.meshgrid()
@@ -389,7 +390,8 @@ def test_advection_rhs_momentum_shape(mode, backend):
 def test_advection_rhs_scalar_shape(mode, backend):
     """advection_rhs scalar form returns a 1-element list."""
     N = 16
-    grid = make_grid(N, backend, L=1.0, ndim=2)
+    cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)))
+    grid = Grid(cfg.grid, backend)
     fccd = FCCDSolver(grid, backend, bc_type="wall")
 
     X, Y = grid.meshgrid()
