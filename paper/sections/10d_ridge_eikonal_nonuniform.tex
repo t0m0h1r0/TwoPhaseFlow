@@ -5,7 +5,7 @@
 %        非一様格子へ拡張する 4 補正 D1–D4 を本節で定式化する．
 %
 % ═══════════════════════════════════════════════════════════════════════════════
-\subsection{Ridge--Eikonal の非一様格子定式化：D1--D4 補正}
+\subsection{Ridge--Eikonal の非一様格子定式化：D1--D4 と壁閉包}
 \label{sec:ridge_eikonal_nu_grid}
 % ═══════════════════════════════════════════════════════════════════════════════
 
@@ -18,7 +18,7 @@
 閉領域 $\overline{\Omega}$ 上で閉じていない，
 の 4 か所で一様格子不変量が破れる．これらを 4 補正
 D1（$\sigma_\text{eff}$ の空間倍率）・D2（物理空間ヘッセ行列）・
-D3（非一様 FMM）・D4（再構成幅 $\varepsilon$ の空間依存化）と
+D3（非一様 FMM）・D4（Ridge--Eikonal 再構成幅 $\varepsilon_\text{local}$）と
 壁閉包補正 W で解消し，
 \S\ref{sec:grid_density}（格子密度関数）・
 \S\ref{sec:grid_coord}（メトリクス係数）・
@@ -110,12 +110,12 @@ $D<0$ のときは一次元単調更新 $d=\min(a_x+h_x,\,a_y+h_y)$ を採用す
 粘性一意性は \eqref{eq:fmm_nonuniform} が物理空間で書かれている限り
 §~\ref{sec:ridge_fmm_reconstruction} の粘性解一意性証明がそのまま成立する．
 
-\paragraph{D4 — 再構成幅 $\varepsilon$ の空間依存化}
+\paragraph{D4 — Ridge--Eikonal 再構成幅 $\varepsilon_\text{local}$}
 再構成幅を
 \begin{equation}
   \varepsilon_\text{local}(\bm{x})
-  = \varepsilon_\text{scale}\cdot \varepsilon_\xi \cdot h(\bm{x}),
-  \qquad \varepsilon_\xi = \varepsilon/h_\text{min}
+  = \varepsilon_\text{scale}\cdot \varepsilon_{\mathrm{RE},\xi} \cdot h(\bm{x}),
+  \qquad \varepsilon_{\mathrm{RE},\xi} = \varepsilon_{\mathrm{RE}}/h_\text{min}
   \label{eq:eps_local}
 \end{equation}
 と空間依存にする
@@ -330,10 +330,11 @@ FMM の確定順序を定める各更新で参照する必要がある．
 % -------------------------------------------------------------------------------
 
 式~\eqref{eq:eps_local} の再構成幅
-$\varepsilon_\text{local}(\bm{x}) = \varepsilon_\text{scale}\cdot\varepsilon_\xi\cdot h(\bm{x})$ を
+$\varepsilon_\text{local}(\bm{x}) = \varepsilon_\text{scale}\cdot\varepsilon_{\mathrm{RE},\xi}\cdot h(\bm{x})$ を
 D1 と同様に格子点上の空間場として定義する．
 ここでの $\varepsilon_\text{local}$ は Ridge--Eikonal 再構成幅であり，
-CSF 表面張力の $\delta_\varepsilon(\phi)$ に空間可変幅を使う許可ではない
+CLS/CSF 界面厚み $\varepsilon_\Gamma$ とは別の幾何量である．
+したがって CSF 表面張力の $\delta_{\varepsilon_\Gamma}(\phi)$ に空間可変幅を使う許可ではない
 （§~\ref{box:eps_xi_csf_warning}）．
 $\xiridge$ から $\phi$ への再構成式
 \begin{equation*}
@@ -373,7 +374,7 @@ D1--D4 の効果が次のように簡素化される：
         狭帯域のみで定義する．$D<0$ の一次元単調更新は
         密度勾配帯が急すぎないことを確認する診断量となる．
   \item \textbf{D4 $\varepsilon_\text{local}$}：界面帯で一様値
-        $\varepsilon_\text{local}\approx \varepsilon_\text{scale}\cdot\varepsilon_0$．
+        $\varepsilon_\text{local}\approx \varepsilon_\text{scale}\cdot\varepsilon_{\mathrm{RE}}$．
 \end{itemize}
 つまり界面適合格子では Ridge--Eikonal の非一様補正は
 「界面帯での一様近似 + 密度勾配帯での正則化」として作用する．
