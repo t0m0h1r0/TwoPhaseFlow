@@ -8,6 +8,19 @@
 独自実装としてゴーストセル法を選択する場合は，PPE の Neumann 境界処理（§\ref{sec:ccd_neumann_bc}）を
 ゴーストセル法に合わせて再設計すること．
 
+\begin{tcolorbox}[warnbox, title={本付録 C.2 の適用範囲}]
+本節は\textbf{計算領域端点の CCD 境界閉包}だけを扱う．
+面上 FCCD ジェットは §\ref{sec:fccd_derivation}--§\ref{sec:fccd_matrix} の
+$\mathbf{D}_1\mathbf{u}-\mathbf{D}_2\mathbf{q}$（式~\eqref{eq:fccd_matrix_system}）で定義され，
+端点値と 1 階微分だけから作る 3 次 Hermite 面補間へ置換しない．
+また，分相 PPE の Young--Laplace ジャンプ，GFM/HFE による片側場延長，および界面ゴーストジェットは
+第\ref{sec:pressure}章（特に §\ref{sec:split_ppe_pressure_jump_formulation}, §\ref{sec:hfe}）の
+\textbf{界面閉包}であり，本節の領域境界ゴーストセル法とは別物である．
+壁面の標準片側コンパクト閉包は付録~\ref{app:ccd_bc_derivation_I}--\ref{app:ccd_bc_derivation_II_h4} の
+$\alpha=3/2$ と 6 点 $\Ord{h^4}$ Equation-II を用いる．
+$\alpha$ を安定化目的で自由に選ぶ方式は別スキームであり，本稿の標準 CCD 実装では採用しない．
+\end{tcolorbox}
+
 計算領域の外側に仮想セル（$i = -1$，$i = N$）を1層追加し，
 境界条件に応じた値を設定することで，内点スキーム（3点ステンシル）を境界近傍でもそのまま適用できる．
 これにより行列アセンブリのコードが統一される利点がある．

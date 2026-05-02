@@ -47,6 +47,25 @@ def test_wall_ccd_rejects_lower_order_eqii_fallback(backend):
         ccd.differentiate(field, axis=0)
 
 
+def test_periodic_ccd_uses_unique_cyclic_nodes(backend):
+    """Appendix C.2 periodic CCD solves unique nodes and syncs image node N."""
+    N = 32
+    grid = make_grid_1d(N, backend)
+    ccd = CCDSolver(grid, backend, bc_type="periodic")
+    x = np.asarray(grid.coords[0])
+    field = np.sin(2.0 * np.pi * x)
+    field_2d = np.broadcast_to(field[:, None], (N + 1, 5)).copy()
+
+    d1, d2 = ccd.differentiate(field_2d, axis=0)
+
+    np.testing.assert_allclose(d1[-1, :], d1[0, :], rtol=0.0, atol=1e-12)
+    np.testing.assert_allclose(d2[-1, :], d2[0, :], rtol=0.0, atol=1e-12)
+    np.testing.assert_allclose(
+        d1[:, 2], 2.0 * np.pi * np.cos(2.0 * np.pi * x), atol=5e-8
+    )
+    np.testing.assert_allclose(d2[:, 2], -(2.0 * np.pi) ** 2 * field, atol=5e-6)
+
+
 # ── Test 1: O(h⁶) convergence for d1 ─────────────────────────────────────
 
 def _ccd_d1_error(N, backend):
