@@ -10,6 +10,7 @@ values found in ch14 YAMLs):
 
   capillary_wave  → CapillaryWaveHandler
   circle          → CircleInterfaceHandler
+  ellipse         → CircleInterfaceHandler
   perturbed_circle → CircleInterfaceHandler
 
 Both share the same lifecycle (``run`` for live simulation, ``plot`` for
@@ -255,6 +256,7 @@ class CapillaryWaveHandler(_NSSimulationHandler):
 
 
 @register_handler("circle")
+@register_handler("ellipse")
 @register_handler("perturbed_circle")
 class CircleInterfaceHandler(_NSSimulationHandler):
     """Two-phase circle-interface benchmarks: static and oscillating droplets."""
