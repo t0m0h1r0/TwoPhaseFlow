@@ -26,10 +26,14 @@ class _SameOperatorStub(IPPESolver):
         self.solve_calls = 0
         self.apply_calls = 0
         self.seen_tolerances = []
+        self.static_cache_flags = []
         self.last_diagnostics = {"ppe_interface_coupling_affine_jump": 1.0}
 
     def prepare_operator(self, rho):
         self.rho = np.asarray(rho)
+
+    def set_static_operator_cache(self, enabled):
+        self.static_cache_flags.append(bool(enabled))
 
     def apply(self, pressure):
         self.apply_calls += 1
@@ -83,3 +87,22 @@ def test_different_operator_defect_correction_keeps_residual_loop():
     assert base.seen_tolerances[0] == 1.0e-6
     assert operator.apply_calls >= 1
     assert solver.last_residual_history
+
+
+def test_defect_correction_forwards_static_operator_cache():
+    grid = object()
+    base = _SameOperatorStub(grid)
+    operator = _DifferentOperatorStub(grid)
+    solver = PPESolverDefectCorrection(
+        _BackendStub(),
+        grid,
+        base,
+        operator,
+        max_corrections=2,
+        tolerance=1.0e-8,
+    )
+
+    solver.set_static_operator_cache(True)
+
+    assert base.static_cache_flags == [True]
+    assert operator.static_cache_flags == [True]

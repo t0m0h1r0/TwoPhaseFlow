@@ -17,6 +17,7 @@ def invalidate_fccd_matrixfree_cache(solver) -> None:
     """Drop density-dependent cached preconditioner state."""
     solver._rho = None
     solver._rho_dev = None
+    solver._prepared_rho_token = None
     solver._diag_inv = None
     solver._coeff_face = None
     solver._phase_mean_gauge_cache = None
@@ -42,7 +43,17 @@ def refresh_fccd_matrixfree_grid(solver, grid=None) -> None:
 
 def prepare_fccd_matrixfree_operator(solver, rho) -> None:
     """Cache density and optional diagonal preconditioner."""
-    solver._rho_dev = solver.xp.asarray(rho)
+    rho_dev = solver.xp.asarray(rho)
+    rho_token = _static_rho_token(rho_dev)
+    if (
+        getattr(solver, "_reuse_static_operator", False)
+        and solver._rho_dev is not None
+        and solver._coeff_face is not None
+        and getattr(solver, "_prepared_rho_token", None) == rho_token
+    ):
+        return
+    solver._rho_dev = rho_dev
+    solver._prepared_rho_token = rho_token
     needs_host_density = (
         solver.coefficient_scheme == "phase_separated"
         and getattr(solver, "interface_coupling_scheme", "none") != "affine_jump"
@@ -78,6 +89,12 @@ def prepare_fccd_matrixfree_operator(solver, rho) -> None:
             h_min=solver._h_min,
             pin_dofs=() if uses_mean_gauge else solver._pin_dofs,
         )
+
+
+def _static_rho_token(rho) -> tuple:
+    pointer = getattr(getattr(rho, "data", None), "ptr", None)
+    dtype = getattr(getattr(rho, "dtype", None), "str", str(getattr(rho, "dtype", "")))
+    return (id(rho), pointer, tuple(getattr(rho, "shape", ())), dtype)
 
 
 def refresh_fccd_phase_gauges(solver) -> None:

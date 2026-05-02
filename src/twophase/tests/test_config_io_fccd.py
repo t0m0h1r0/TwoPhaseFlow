@@ -252,6 +252,26 @@ def test_ch13_fccd_hfe_uccd_yaml_loads_execution_stack():
     assert cfg.run.phi_primary_transport is False
 
 
+def test_ch14_static_droplet_yaml_uses_gpu_static_route():
+    path = (
+        Path(__file__).resolve().parents[3]
+        / "experiment/ch14/config/ch14_static_droplet_periodic.yaml"
+    )
+    cfg = ExperimentConfig.from_yaml(path)
+
+    assert cfg.grid.NX == 128
+    assert cfg.grid.NY == 128
+    assert cfg.grid.bc_type == "periodic"
+    assert cfg.grid.grid_rebuild_freq == 0
+    assert cfg.run.T_final == pytest.approx(0.2)
+    assert cfg.run.dt_fixed == pytest.approx(0.001235)
+    assert cfg.run.interface_tracking_enabled is False
+    assert cfg.run.interface_tracking_method == "none"
+    assert cfg.run.convection_time_scheme == "ab2"
+    assert cfg.run.viscous_time_scheme == "forward_euler"
+    assert cfg.run.ppe_defect_correction is True
+
+
 def test_ch13_rising_bubble_water_air_yaml_loads_execution_stack():
     path = (
         Path(__file__).resolve().parents[3]

@@ -88,6 +88,13 @@ class PPESolverDefectCorrection(IPPESolver):
         self.base_solver.invalidate_cache()
         self.operator.invalidate_cache()
 
+    def set_static_operator_cache(self, enabled: bool) -> None:
+        """Forward static-density operator reuse to wrapped PPE components."""
+        for solver in (self.base_solver, self.operator):
+            setter = getattr(solver, "set_static_operator_cache", None)
+            if callable(setter):
+                setter(enabled)
+
     def set_interface_jump_context(self, *, psi, kappa, sigma: float) -> None:
         """Forward SP-M pressure-jump context to wrapped PPE components."""
         for solver in (self.base_solver, self.operator):

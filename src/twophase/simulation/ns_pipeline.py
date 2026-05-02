@@ -726,7 +726,55 @@ class TwoPhaseNSSolver:
         state: NSStepState,
     ) -> NSStepState:
         """Build density and viscosity fields for the current step."""
+        if not self._interface_tracking_enabled:
+            self._enable_static_ppe_operator_cache()
+            cache_key = self._static_material_cache_key(state)
+            cache = getattr(self, "_static_material_cache", None)
+            if cache is not None and cache["key"] == cache_key:
+                state.rho = cache["rho"]
+                state.mu_field = cache["mu_field"]
+                return state
+            state = materialise_ns_step_fields(state)
+            self._static_material_cache = {
+                "key": cache_key,
+                "rho": state.rho,
+                "mu_field": state.mu_field,
+            }
+            return state
         return materialise_ns_step_fields(state)
+
+    def _enable_static_ppe_operator_cache(self) -> None:
+        """Enable coefficient reuse for frozen-interface static diagnostics."""
+        if getattr(self, "_static_ppe_operator_cache_enabled", False):
+            return
+        setter = getattr(self._ppe_solver, "set_static_operator_cache", None)
+        if callable(setter):
+            setter(True)
+        self._static_ppe_operator_cache_enabled = True
+
+    @staticmethod
+    def _static_material_cache_key(state: NSStepState) -> tuple:
+        """Return an identity key for fields frozen by StaticInterfaceTransport."""
+        mu_value = state.mu
+        mu_pointer = getattr(getattr(mu_value, "data", None), "ptr", None)
+        mu_dtype = getattr(
+            getattr(mu_value, "dtype", None),
+            "str",
+            str(getattr(mu_value, "dtype", "")),
+        )
+        mu_shape = tuple(getattr(mu_value, "shape", ()))
+        return (
+            id(state.psi),
+            tuple(getattr(state.psi, "shape", ())),
+            float(state.rho_l),
+            float(state.rho_g),
+            state.mu_l,
+            state.mu_g,
+            id(mu_value),
+            mu_pointer,
+            mu_shape,
+            mu_dtype,
+        )
 
     def _surface_tension_stage(
         self,

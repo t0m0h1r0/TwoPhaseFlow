@@ -53,6 +53,13 @@ class PPESolverFDDirect(IPPESolver):
         self.ppb = PPEBuilder(backend, grid, bc_type, bc_spec)
         self._refresh_structure(grid)
         self._factor = None
+        self._reuse_static_operator = False
+        self._prepared_rho_token = None
+
+    def set_static_operator_cache(self, enabled: bool) -> None:
+        self._reuse_static_operator = bool(enabled)
+        if not enabled:
+            self._prepared_rho_token = None
 
     def _refresh_structure(self, grid: "Grid") -> None:
         dummy_rho = np.ones(grid.shape, dtype=np.float64)
@@ -65,13 +72,23 @@ class PPESolverFDDirect(IPPESolver):
         self.ppb = PPEBuilder(self.backend, grid, self.bc_type, self.bc_spec)
         self._refresh_structure(grid)
         self._factor = None
+        self._prepared_rho_token = None
 
     def invalidate_cache(self) -> None:
         self.ppb.invalidate_gpu_cache()
         self._factor = None
+        self._prepared_rho_token = None
 
     def prepare_operator(self, rho) -> None:
-        data = self.ppb.build_values(rho)
+        rho_dev = self.xp.asarray(rho)
+        rho_token = _static_rho_token(rho_dev)
+        if (
+            self._reuse_static_operator
+            and self._factor is not None
+            and self._prepared_rho_token == rho_token
+        ):
+            return
+        data = self.ppb.build_values(rho_dev)
         if self.backend.is_gpu():
             matrix = self.backend.sparse.csc_matrix(
                 (data, (self._rows, self._cols)),
@@ -85,6 +102,7 @@ class PPESolverFDDirect(IPPESolver):
                 shape=self._shape,
             )
         self._factor = self.backend.sparse_linalg.splu(matrix)
+        self._prepared_rho_token = rho_token
 
     def solve(self, rhs, rho, dt: float = 0.0, p_init=None):
         if self._factor is None:
@@ -94,3 +112,9 @@ class PPESolverFDDirect(IPPESolver):
         pressure_vec = self._factor.solve(rhs_vec)
         self.last_diagnostics = {"ppe_fd_direct_factor_reuse": 1.0}
         return self.xp.asarray(pressure_vec).reshape(self.ppb.shape_field)
+
+
+def _static_rho_token(rho) -> tuple:
+    pointer = getattr(getattr(rho, "data", None), "ptr", None)
+    dtype = getattr(getattr(rho, "dtype", None), "str", str(getattr(rho, "dtype", "")))
+    return (id(rho), pointer, tuple(getattr(rho, "shape", ())), dtype)

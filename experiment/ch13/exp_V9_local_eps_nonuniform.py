@@ -43,6 +43,7 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 import matplotlib.pyplot as plt
 import numpy as np
 
+from ch14_stack_common import collect_circle_step_metrics, make_circle_metric_context
 from twophase.simulation.config_io import ExperimentConfig
 from twophase.simulation.ns_pipeline import TwoPhaseNSSolver
 from twophase.simulation.ns_step_state import NSStepRequest
@@ -127,7 +128,7 @@ def _case_config(N: int, alpha: float, eps_mode: str) -> ExperimentConfig:
                 "cfl": CFL_MULTIPLIER,
                 "print_every": N_STEPS + 1,
             },
-            "debug": {"step_diagnostics": True},
+            "debug": {"step_diagnostics": False},
         },
         "numerics": {
             "time": {"algorithm": "fractional_step"},
@@ -271,9 +272,12 @@ def _run_case(N: int, case_id: str, alpha: float, eps_mode: str) -> dict:
 
     X = _to_host(solver, solver.X)
     Y = _to_host(solver, solver.Y)
-    dV = _control_volumes(solver)
-    psi0 = _to_host(solver, psi).copy()
-    vol0 = _volume(psi0, dV)
+    metric_context = make_circle_metric_context(
+        solver,
+        psi,
+        radius=R,
+        center=CENTER,
+    )
 
     u_inf_history = []
     dp_history = []
@@ -282,7 +286,7 @@ def _run_case(N: int, case_id: str, alpha: float, eps_mode: str) -> dict:
     limiter_history = []
     blew_up = False
     error = ""
-    p = np.zeros_like(psi0)
+    p = solver.backend.xp.zeros_like(solver.backend.xp.asarray(psi))
 
     for step in range(cfg.run.max_steps or N_STEPS):
         try:
@@ -322,18 +326,18 @@ def _run_case(N: int, case_id: str, alpha: float, eps_mode: str) -> dict:
             error = f"{type(exc).__name__}: {exc}"
             break
 
-        psi_h = _to_host(solver, psi)
-        u_h = _to_host(solver, u)
-        v_h = _to_host(solver, v)
-        p_h = _to_host(solver, p)
-        speed = np.sqrt(u_h * u_h + v_h * v_h)
-        u_inf = float(np.max(speed))
-        dp = _measure_dp(p_h, X, Y, solver.h_min)
-        volume = _volume(psi_h, dV)
+        u_inf, volume_drift, dp = collect_circle_step_metrics(
+            solver,
+            metric_context,
+            psi=psi,
+            u=u,
+            v=v,
+            p=p,
+        )
 
         u_inf_history.append(u_inf)
         dp_history.append(dp)
-        volume_history.append(abs(volume - vol0) / max(abs(vol0), 1.0e-30))
+        volume_history.append(volume_drift)
         dt_history.append(dt)
         limiter_history.append(str(budget.limiter))
         if not np.isfinite(u_inf) or u_inf > 1.0e3:
