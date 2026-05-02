@@ -1,15 +1,16 @@
 % paper/sections/10_grid.tex
-\section{界面適合非一様格子：固定格子幾何から高次演算子へ}
+\section{界面適合非一様格子：追随格子幾何から高次演算子へ}
 \label{sec:grid}
 
 \noindent\textbf{本章の位置付け：}
 前章までの圧力ジャンプ閉包と Balanced--Force 条件は，同じ界面面幾何を
 圧力勾配，表面張力，補正速度が共有することを要求した．
-非一様格子を導入する目的は，この共有面を動かさずに，
-界面帯と壁近傍だけへ格子点を配分し直すことである
+非一様格子を導入する目的は，各時刻の界面帯と壁近傍へ格子点を配分し直し，
+圧力勾配，表面張力，補正速度が共有する界面面幾何を現在格子上で再構築することである
 （解析的格子伸長関数の体系は~\cite{Vinokur1983}）．
-本章では，初期界面から定まる固定の界面適合格子をまず定義し，
-その格子上で座標変換，CCD/FCCD，Ridge--Eikonal が同じ幾何量を参照する流れを構成する
+本章では，固定時刻の界面から定まる界面適合格子をまず定義し，
+物理時間ステップごとの再生成では同じ構成を現在の界面へ適用する．
+その各時刻の格子上で，座標変換，CCD/FCCD，Ridge--Eikonal が同じ幾何量を参照する流れを構成する
 （離散対称性保存の観点は~\cite{VerstappenVeldman2003}）．
 一様計算空間 $\xi$ では高次演算子をそのまま定義し，
 物理空間 $x$ では連鎖律
@@ -20,17 +21,18 @@
 \begin{tcolorbox}[warnbox, title={非一様格子の適用範囲}]
 \label{box:nonuniform_scope_contract}
 本章が標準経路として支える範囲は，
-\textbf{固定非一様格子 + 固定 $\varepsilon_\Gamma$（CLS/CSF 界面厚み） + 静止または短時間・小変形界面}
+\textbf{毎ステップ界面追随非一様格子 + 固定 $\varepsilon_\Gamma$（CLS/CSF 界面厚み） + 保存的再写像/速度再投影/履歴リセット/面幾何再構築}
 である．
-移動界面で格子を追従再生成する経路は，ALE 補正，保存的な全変数リマップ，
+時間固定格子は，界面移動量が小さい場合の比較・診断経路に限る．
+移動界面では，ALE 補正または同等の保存的再写像，
 HFE 延長データと界面面幾何の再構築，壁面境界条件での PPE--速度補正面演算子統一を
-同時に満たすまでは未採用の検証課題であり，一般の標準経路とはみなさない．
+標準経路の一部として同時に満たす．
 \end{tcolorbox}
 
 \noindent\textbf{本章の構成：}
 §~\ref{sec:grid_density} では界面帯・壁帯をまとめた格子モニタを定義し，
 §~\ref{sec:grid_coord}--\ref{sec:grid_gen} では座標写像とメトリクス係数を導く．
-§~\ref{sec:grid_2d}--\ref{sec:grid_ale} ではテンソル積格子と固定格子の適用範囲を明確にし，
+§~\ref{sec:grid_2d}--\ref{sec:grid_ale} ではテンソル積格子と追随格子の閉包条件を明確にし，
 §~\ref{sec:eps_spatial_variable} では固定 $\varepsilon_\Gamma$ 標準経路から外れる空間可変幅の制約を述べる．
 続く §~\ref{sec:ccd_metric}--\ref{sec:ccd_mixed} で CCD の非一様化を述べ，
 §~\ref{sec:fccd_nonuniform} と §~\ref{sec:ridge_eikonal_nu_grid} で
@@ -354,17 +356,18 @@ CCD の $\Ord{h^6}$ 空間精度が $\Ord{h}$ または $\Ord{h^2}$ に低下す
 直交テンソル積格子を前提としており，$\partial x/\partial\eta = \partial y/\partial\xi = 0$ が成立する．
 非直交格子では追加のオフ対角メトリクス項が必要になるため，本稿の適用範囲外となる．
 
-\subsection{固定格子設計と移動格子に必要な条件}
+\subsection{追随格子設計と固定格子比較の条件}
 \label{sec:grid_ale}
 
 格子は物理時間 $t=0$ における初期水準集合値 $\phi^{(0)}$ から
 §~\ref{sec:grid_gen} の構成で生成する（初期化順序全体は付録~\ref{app:bootstrap} 参照）．
-本稿で採用するのは時間固定格子である．
-以下では，固定格子で成立する条件と，追従格子を採用する場合に追加で必要となる条件を分けて述べる：
+本稿で採用する標準経路は，物理時間ステップごとに現在の界面から格子を再生成する
+\textbf{界面追随格子}である．
+以下では，比較用の時間固定格子と，標準経路である追従格子の閉包条件を分けて述べる：
 
 \begin{tcolorbox}[mybox, title={固定格子経路と追従格子経路}]
 \label{box:grid_modes}
-\textbf{時間固定格子（本稿の標準経路）：}
+\textbf{時間固定格子（比較経路）：}
 $t=0$ に $\phi^{(0)}$ から格子を生成し，全時間段階で同一格子を使用する（$\bm{v}_\text{mesh}=0$）．
 格子運動に由来する ALE 項は消えるため，格子再生成による一次時間誤差を持ち込まない．
 界面が初期精細化帯内に留まる問題（定常または短時間計算）では空間解像度が最後まで維持される．
@@ -456,8 +459,37 @@ $B_f^{\mathrm{nu}}=s_fj_f/H_f$ を\textbf{必ず再構築}する．
 標準の界面追随格子経路とは呼ばない．
 \end{tcolorbox}
 
-ALE 補正を省略した場合の $\Ord{\Delta t}$ 精度劣化，および ALE 定式化が必要となる条件
-（大密度比・高速界面変形）については付録~\ref{app:grid_ale} で詳述する．
+\noindent\textbf{格子追随誤差の本編判定．}
+1 ステップあたりの界面移動量を $\delta=|\bm{u}|\Delta t$ とすると，
+保存的再写像なしに格子だけを動かす誤差は
+\[
+  \varepsilon_{\mathrm{ALE}}
+  \sim
+  |\bm{v}_{\mathrm{mesh}}|\,|\bnabla\psi|\,\Delta t
+  \sim
+  U_\Gamma\,\frac{\Delta t}{\varepsilon_\Gamma}
+  \label{eq:ale_omission_error}
+\]
+で見積もられる．
+したがって本稿の標準経路では，毎ステップ再生成と同時に
+式~\eqref{eq:ale_conservative_update} 相当の保存的再写像，速度再投影，履歴リセット，
+式~\eqref{eq:regrid_face_geometry} の界面面幾何再構築を行う．
+固定格子（Mode 1）は比較経路，毎ステップ再生成（Mode 2）は標準経路である．
+
+\begin{center}
+\PaperTableSetup
+\begin{tabular}{>{\raggedright\arraybackslash}p{50mm}c>{\raggedright\arraybackslash}p{44mm}}
+\hline
+条件 & 移動量 $\delta/h$ & 必要な閉包 \\
+\hline
+緩やかな界面変形 & $<0.1$ & 固定格子比較も可能 \\
+標準的な移動界面 & $\approx0.5$ & 毎ステップ追随 + 保存的再写像 \\
+大密度比・高速界面 & $>1$ & 追随格子，速度再投影，履歴リセット，面幾何再構築を必須化 \\
+\hline
+\end{tabular}
+\end{center}
+
+付録~\ref{app:grid_ale} は式~\eqref{eq:ale_omission_error} の補足見積もりだけを記す．
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsection{固定 \texorpdfstring{$\varepsilon_\Gamma$}{epsilonGamma} 標準経路と空間可変 Heaviside 幅の制約}

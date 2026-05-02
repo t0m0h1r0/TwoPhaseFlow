@@ -1,7 +1,7 @@
 {
-  "id": "CHK-RA-IFACE-REGRID-002",
+  "id": "CHK-RA-IFACE-REGRID-003",
   "branch": "ra-interface-reconstruction-theory-20260503",
   "worktree": ".claude/worktrees/ra-interface-reconstruction-theory-20260503",
-  "scope": "Every-step interface-following fitted-grid reconstruction default, paper audit, and implementation update",
+  "scope": "Every-step interface-following fitted-grid reconstruction default and main-text theory placement",
   "created_at": "2026-05-03T00:00:00+09:00"
 }

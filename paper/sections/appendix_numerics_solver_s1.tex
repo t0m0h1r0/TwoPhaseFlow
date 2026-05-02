@@ -49,14 +49,11 @@ $\sqrt{1000} \approx 32$ 倍大きな $\Delta t_\sigma$ が許される（制約
 %% 旧 appendix_numerics_schemes_s4.tex（ALE 効果）を統合
 % ═══════════════════════════════════════════════════════════════════════════════
 
-\subsubsection{時間変化格子と ALE 効果}
+\subsubsection{時間変化格子と ALE 効果の補足}
 \label{app:grid_ale}
 
-本付録は §\ref{sec:grid_gen} の格子が時間発展する場合の ALE（Arbitrary Lagrangian-Eulerian）補正を説明する．
-\textbf{本稿の標準経路では，界面適合格子を毎ステップ再生成し，保存的再写像と速度再投影で閉じる}．
-時間変化格子では，§\ref{sec:grid_ale} の
-離散幾何保存則，ALE 保存更新または同等の保存的再写像，全変数再写像，
-および界面面データ再構築ゲートを全て満たす必要がある．
+本稿の界面追随格子の標準定義は §\ref{sec:grid_ale} に置く．
+本付録では，式~\eqref{eq:ale_omission_error} のスケール見積もりだけを補足する．
 
 ALE 定式化では格子速度 $\bm{v}_\text{mesh}$ を輸送方程式に追加する必要がある：
 $\partial\psi/\partial t + \nabla\cdot((\bm{u} - \bm{v}_\text{mesh})\psi) = 0$．
@@ -70,37 +67,7 @@ ALE 補正を省略することで $\bm{v}_\text{mesh}$ による追加対流量
   \varepsilon_{\text{ALE}} \sim |\bm{v}_\text{mesh}| \cdot |\bnabla\psi| \cdot \Delta t \sim U_\Gamma \cdot \frac{1}{\varepsilon} \cdot \Delta t
 \]
 ここで $|\bnabla\psi| \sim 1/(4\varepsilon)$（界面近傍プロファイル），$U_\Gamma$ は界面速度である．
-
-\textbf{近似が有効な条件：}
-\begin{center}
-\PaperTableSetup
-\begin{tabular}{>{\raggedright\arraybackslash}p{48mm}c>{\raggedright\arraybackslash}p{42mm}}
-\hline
-条件 & 移動量 $\delta/h$ & ALE 省略の妥当性 \\
-\hline
-緩やかな界面変形 & $< 0.1$ & 良好（誤差 $< 10\%$ of $\Delta t^2$ 項） \\
-標準的な問題 & $\approx 0.5$ & 条件付きで可（格子収束確認要） \\
-大密度比 ($\rho_l/\rho_g{=}1000$) の高速界面 & $> 1$ & 精度劣化の可能性大（ALE 実装推奨） \\
-\hline
-\end{tabular}
-\end{center}
-
-$\rho_l/\rho_g = 1000$ の場合，液相変形が速く $\delta/h > 1$ となることがある．
-この場合，単純な $\psi$ 補間だけの格子更新は実質的に $O(\Delta t)$ 精度（1次）となりうるため，
-標準経路では体積重み付き質量補正，速度再投影，履歴リセット，面幾何再構築を同時に行う．
-
-\textbf{Mode 1（時間固定格子，比較経路）：}
-格子速度 $\bm{v}_\text{mesh} = 0$ として格子を更新しない．ALE 誤差はゼロであり，全体時間精度 $O(\Delta t^2)$ が保持される（§\ref{sec:time_accuracy_table}）．
-ただし，格子は初期水準集合値 $\phi^{(0)}$ から生成されるため，界面が初期精細化領域から大きく離れる問題（例：上昇気泡ベンチマーク）では経時的に空間解像度が失われる．
-長時間・長距離移動を伴う計算では，Mode 2 の界面追随格子を標準経路とする．
-
-\textbf{Mode 2（タイムステップごとに格子を再生成，標準経路）：}
-上表の $\delta/h > 1$ 条件に該当する場合，$O(\Delta t)$ に精度が劣化し，本稿の全体時間精度 $O(\Delta t^2)$ の主張（§\ref{sec:time_accuracy_table}）と矛盾する．
-$\rho_l/\rho_g = 1000$（上昇気泡系）では特に注意が必要であり，Mode 2 では ALE 補正または保存的再写像を必須とする．
-Mode 2 は $\psi$ 転写だけでは閉じない．
-$u,v,p,\delta p,\rho,\mu,\kappa_{lg},\hat{\bm n}_{lg},\phi,\psi$ の保存的リマップと，
-HFE 延長文脈・jump face cache の現在格子上での再構築を同時に満たす必要がある．
-これらが欠ける場合，格子追従の利得より operator mismatch が支配的になりうるため，
-式~\eqref{eq:ale_grid_gcl}--\eqref{eq:regrid_face_geometry} を標準経路の成立条件とする．
+Mode 1/Mode 2 の判定，および大密度比・高速界面で必須となる保存的再写像，
+速度再投影，履歴リセット，面幾何再構築は §\ref{sec:grid_ale} の本編定義に従う．
 
 % ═══════════════════════════════════════════════════════════════════════════════
