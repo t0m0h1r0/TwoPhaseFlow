@@ -1,7 +1,7 @@
 # Rayleigh-Lamb n=2 oscillating droplet benchmark derived from
 # ch14_static_droplet.yaml. The circular initial interface is replaced by
-# a true ellipse with semi-axes a=0.03, b=0.02. With water-air density and
-# sigma=0.072, the area-equivalent radius sqrt(ab)=0.02449 gives T≈1.16.
+# a true ellipse with semi-axes a=0.055, b=0.045. With water-air density and
+# sigma=0.811133, the area-equivalent radius sqrt(ab)=0.04975 gives T≈1.0.
 
 grid:
   cells: [128, 128]
@@ -29,11 +29,11 @@ interface:
   geometry:
     curvature:
       method: psi_direct_filtered
-      cap: 100.0
+      cap: 40.0
   reinitialization:
     algorithm: ridge_eikonal
     schedule:
-      every_steps: 20
+      every_steps: 0
     profile:
       eps_scale: 1.4
       ridge_sigma_0: 3.0
@@ -46,14 +46,15 @@ physics:
     gas:
       rho: 1.2
       mu: 1.8e-5
-  surface_tension: 0.072
+  surface_tension: 0.811133
   gravity: 0.0
 
 run:
   time:
     final: 1.5
-    # Use the theory capillary CFL selected from the fitted-grid h_min.
-    cfl: 1.0
+    # Period-one surface-tension forcing needs a stricter capillary CFL than
+    # the gentle static-droplet route.
+    cfl: 0.2
     print_every: 200
   debug:
     step_diagnostics: false
@@ -120,9 +121,9 @@ output:
       ylabel: "$D_s(t)$"
       analytical:
         formula: prosperetti
-        omega0: 5.418362
+        omega0: 6.283185
         beta: 0.0
-        D0: 0.20
+        D0: 0.10
       file: signed_deformation.pdf
 
     - type: time_series
@@ -162,7 +163,7 @@ diagnostics: [volume_conservation, kinetic_energy, deformation, signed_deformati
 initial_condition:
   type: ellipse
   center: [0.5, 0.5]
-  semi_axes: [0.03, 0.02]
+  semi_axes: [0.055, 0.045]
   interior_phase: liquid
 
 initial_velocity: null
