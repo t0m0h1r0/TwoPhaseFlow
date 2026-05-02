@@ -89,6 +89,24 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
     cfl_number, cfl_policy, cfl_adv, cfl_cap, cfl_visc = resolve_cfl_policy(cfl_raw)
 
     tracking_redist = tracking_redistance(options.tracking)
+    reinit_schedule = options.reinit_schedule
+    reinit_trigger_mode = str(
+        reinit_schedule.get(
+            "mode",
+            "fixed" if "every_steps" in reinit_schedule else "adaptive",
+        )
+    ).strip().lower()
+    if reinit_trigger_mode not in {"adaptive", "fixed"}:
+        raise ValueError(
+            "interface.reinitialization.schedule.mode must be 'adaptive' or 'fixed', "
+            f"got {reinit_trigger_mode!r}"
+        )
+    reinit_threshold = float(
+        reinit_schedule.get("threshold", reinit_schedule.get("monitor_threshold", 1.10))
+    )
+    if reinit_threshold <= 1.0:
+        raise ValueError("interface.reinitialization.schedule.threshold must be > 1.0")
+    reinit_every = int(reinit_schedule.get("every_steps", 0))
     return RunCfg(
         T_final=opt_float(options.time_cfg["final"]),
         max_steps=int(options.time_cfg["max_steps"]) if "max_steps" in options.time_cfg else None,
@@ -106,7 +124,9 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
             options.operator_settings["viscous_time_scheme"]
             in {"crank_nicolson", "implicit_bdf2"}
         ),
-        reinit_every=int(options.reinit_schedule["every_steps"]),
+        reinit_every=reinit_every,
+        reinit_trigger_mode=reinit_trigger_mode,
+        reinit_threshold=reinit_threshold,
         reproject_mode=options.reproject_mode,
         phi_primary_transport=parse_tracking_primary(
             options.tracking,

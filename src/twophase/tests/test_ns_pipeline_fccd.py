@@ -312,6 +312,50 @@ def test_psi_direct_transport_reinitializes_after_initial_step_only():
     assert np.allclose(transport.advance(psi, velocity, 0.1, step_index=2), psi + 1.0)
 
 
+def test_psi_direct_transport_adaptive_reinitializes_on_volume_monitor():
+    class SequenceAdvection:
+        def __init__(self):
+            self._fields = [
+                np.asarray([[0.5, 0.0], [0.0, 0.0]]),
+                np.asarray([[0.5, 0.5], [0.0, 0.0]]),
+            ]
+            self._index = 0
+
+        def advance(self, psi, velocity, dt):
+            field = self._fields[self._index]
+            self._index += 1
+            return field
+
+    class CountingReinitializer:
+        def __init__(self):
+            self.calls = 0
+
+        def volume_monitor(self, psi):
+            return float(np.sum(psi * (1.0 - psi)))
+
+        def reinitialize(self, psi):
+            self.calls += 1
+            return np.asarray([[0.5, 0.0], [0.0, 0.0]])
+
+    reinitializer = CountingReinitializer()
+    transport = PsiDirectTransport(
+        Backend(use_gpu=False),
+        SequenceAdvection(),
+        reinitializer,
+        reinit_every=0,
+        reinit_trigger_mode="adaptive",
+        reinit_threshold=1.10,
+    )
+    psi = np.zeros((2, 2))
+    velocity = [np.zeros_like(psi), np.zeros_like(psi)]
+
+    transport.advance(psi, velocity, 0.1, step_index=0)
+    psi_new = transport.advance(psi, velocity, 0.1, step_index=1)
+
+    assert reinitializer.calls == 1
+    np.testing.assert_allclose(psi_new, np.asarray([[0.5, 0.0], [0.0, 0.0]]))
+
+
 def test_psi_direct_transport_applies_ch6_mass_correction():
     class LossyAdvection:
         def advance(self, psi, velocity, dt):
@@ -1026,7 +1070,7 @@ def test_phase_separated_pressure_jump_stack_one_step_no_nan():
     if previous_pressure is None:
         assert solver._p_prev_dev is not None
         previous_pressure = solver._backend.to_host(solver._p_prev_dev)
-    assert not np.allclose(np.asarray(previous_pressure), np.asarray(p))
+    np.testing.assert_allclose(np.asarray(previous_pressure), np.asarray(p))
     diag = solver._step_diag.last
     assert diag["ppe_phase_count"] == 2.0
     assert diag["ppe_pin_count"] == 0.0

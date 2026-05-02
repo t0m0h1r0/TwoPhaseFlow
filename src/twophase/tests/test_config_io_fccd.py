@@ -116,6 +116,21 @@ def test_readable_defaults_round_trip():
     assert cfg.run.cfl_advective == pytest.approx(0.1)
     assert cfg.run.cfl_capillary == pytest.approx(0.05)
     assert cfg.run.cfl_viscous == pytest.approx(1.0)
+    assert cfg.run.reinit_trigger_mode == "fixed"
+
+
+def test_reinitialization_adaptive_schedule_parses_threshold():
+    cfg = ExperimentConfig.from_dict(_minimal({
+        "interface": {
+            "reinitialization": {
+                "schedule": {"mode": "adaptive", "threshold": 1.25, "every_steps": 0},
+            },
+        },
+    }))
+
+    assert cfg.run.reinit_every == 0
+    assert cfg.run.reinit_trigger_mode == "adaptive"
+    assert cfg.run.reinit_threshold == pytest.approx(1.25)
 
 
 def test_local_epsilon_rejects_nonuniform_csf_surface_tension():
@@ -250,6 +265,7 @@ def test_ch13_fccd_hfe_uccd_yaml_loads_execution_stack():
     assert cfg.run.ppe_defect_correction is True
     assert cfg.grid.grid_rebuild_freq == 0
     assert cfg.run.reinit_every == 20
+    assert cfg.run.reinit_trigger_mode == "fixed"
     assert cfg.run.interface_tracking_method == "psi_direct"
     assert cfg.run.phi_primary_transport is False
 
@@ -288,6 +304,7 @@ def test_ch13_rising_bubble_water_air_yaml_loads_execution_stack():
     assert cfg.grid.grid_rebuild_freq == 0
     assert cfg.physics.g_acc == pytest.approx(0.001)
     assert cfg.run.reinit_every == 4
+    assert cfg.run.reinit_trigger_mode == "fixed"
     assert cfg.run.interface_tracking_method == "psi_direct"
     assert cfg.run.phi_primary_transport is False
     assert cfg.run.advection_scheme == "fccd_flux"

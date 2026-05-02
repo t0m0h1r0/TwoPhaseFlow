@@ -7,6 +7,8 @@ def bind_ns_interface_runtime(solver, state) -> None:
     solver._interface_runtime = state
     solver._rebuild_freq = state.rebuild_freq
     solver._reinit_every = state.reinit_every
+    solver._reinit_trigger_mode = state.reinit_trigger_mode
+    solver._reinit_threshold = state.reinit_threshold
     solver._reproject_variable_density = state.reproject_variable_density
     solver._face_flux_projection = state.face_flux_projection
     solver._reinit_eps_scale = state.reinit_eps_scale

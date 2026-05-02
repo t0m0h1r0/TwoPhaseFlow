@@ -124,7 +124,9 @@ class TwoPhaseNSSolver:
         use_local_eps: bool = False,
         eps_xi_cells: float | None = None,
         grid_rebuild_freq: int = 0,
-        reinit_every: int = 2,
+        reinit_every: int = 0,
+        reinit_trigger_mode: str = "adaptive",
+        reinit_threshold: float = 1.10,
         reinit_method: str = "ridge_eikonal",
         cn_viscous: bool = False,
         Re: float = 1.0,
@@ -223,6 +225,8 @@ class TwoPhaseNSSolver:
             interface=SolverInterfaceOptions(
                 grid_rebuild_freq=grid_rebuild_freq,
                 reinit_every=reinit_every,
+                reinit_trigger_mode=reinit_trigger_mode,
+                reinit_threshold=reinit_threshold,
                 reinit_method=reinit_method,
                 reproject_variable_density=reproject_variable_density,
                 reproject_mode=reproject_mode,
@@ -530,6 +534,7 @@ class TwoPhaseNSSolver:
         self.X, self.Y = result.X, result.Y
         self._p_prev = None
         self._p_prev_dev = None
+        self._p_base_prev_dev = None
         self._conv_prev = None
         self._conv_ab2_ready = False
         self._velocity_prev = None
@@ -692,6 +697,12 @@ class TwoPhaseNSSolver:
     ) -> NSStepState:
         """Promote step inputs to the active backend and normalise ``rho_ref``."""
         state = NSStepState.from_inputs(inputs, backend=self._backend)
+        if self._p_prev_dev is not None:
+            state.previous_pressure = self._backend.xp.asarray(self._p_prev_dev)
+        if self._p_base_prev_dev is not None:
+            state.previous_base_pressure = self._backend.xp.asarray(
+                self._p_base_prev_dev
+            )
         if (
             (self._canonical_face_state or self._preserve_projected_faces)
             and self._projected_face_components is not None
@@ -856,11 +867,13 @@ class TwoPhaseNSSolver:
             div_op=self._div_op,
             ppe_solver=self._ppe_solver,
             p_prev_dev=self._p_prev_dev,
+            p_base_prev_dev=self._p_base_prev_dev,
             surface_tension_scheme=self._surface_tension_scheme,
             face_native_predictor_state=self._face_native_predictor_state,
             bc_type=self.bc_type,
             face_no_slip_boundary_state=self._face_no_slip_boundary_state,
         )
+        self._p_base_prev_dev = state.pressure_base
         return state
 
     def _correct_velocity_stage(

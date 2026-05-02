@@ -38,6 +38,8 @@ class NSRuntimeComponentOptions:
     phi_primary_transport: bool
     phi_primary_redist_every: int
     reinit_every: int
+    reinit_trigger_mode: str
+    reinit_threshold: float
     debug_diagnostics: bool
     reproject_mode: str
     cn_viscous: bool
@@ -103,6 +105,8 @@ def build_ns_runtime_components(
             adv,
             reinit,
             reinit_every=options.reinit_every,
+            reinit_trigger_mode=options.reinit_trigger_mode,
+            reinit_threshold=options.reinit_threshold,
             grid=grid,
             mass_correction=True,
         )

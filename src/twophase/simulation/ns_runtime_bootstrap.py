@@ -65,6 +65,8 @@ def build_ns_runtime_bootstrap(
             phi_primary_transport=interface_runtime.phi_primary_transport,
             phi_primary_redist_every=interface_runtime.phi_primary_redist_every,
             reinit_every=interface_runtime.reinit_every,
+            reinit_trigger_mode=interface_runtime.reinit_trigger_mode,
+            reinit_threshold=interface_runtime.reinit_threshold,
             debug_diagnostics=scheme_options.debug_diagnostics,
             reproject_mode=interface_runtime.reproject_mode,
             cn_viscous=cn_viscous,
@@ -112,6 +114,7 @@ def bind_ns_runtime_bootstrap(solver, artifacts: NSRuntimeBootstrapArtifacts) ->
     """Bind runtime bootstrap artifacts onto the solver compatibility surface."""
     solver._p_prev = None
     solver._p_prev_dev = None
+    solver._p_base_prev_dev = None
     solver._reproj_iim = artifacts.reproj_iim
     solver._reinit = artifacts.reinit
     solver._cn_viscous = artifacts.cn_viscous

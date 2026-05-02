@@ -317,3 +317,113 @@ def test_psi_direct_mass_correction_keeps_gpu_device(tiny_grid_factory, gpu_back
 
     assert type(psi_new).__module__.split(".", 1)[0] == "cupy"
     assert float(gpu_backend.to_host(xp.abs(mass_after - mass_before))) < 1.0e-12
+
+
+def test_psi_direct_adaptive_reinit_keeps_gpu_device(gpu_backend):
+    """Ch11 adaptive M/M_ref reinit trigger preserves CuPy residency."""
+    from twophase.levelset.transport_strategy import PsiDirectTransport
+
+    class SequenceAdvection:
+        def __init__(self, xp):
+            self._fields = [
+                xp.asarray([[0.5, 0.0], [0.0, 0.0]]),
+                xp.asarray([[0.5, 0.5], [0.0, 0.0]]),
+            ]
+            self._index = 0
+
+        def advance(self, psi, velocity, dt):
+            field = self._fields[self._index]
+            self._index += 1
+            return field
+
+    class CountingReinitializer:
+        def __init__(self, backend):
+            self.backend = backend
+            self.xp = backend.xp
+            self.calls = 0
+
+        def volume_monitor(self, psi):
+            xp = self.xp
+            value = xp.sum(psi * (1.0 - psi))
+            return float(self.backend.to_host(value))
+
+        def reinitialize(self, psi):
+            self.calls += 1
+            return self.xp.asarray([[0.5, 0.0], [0.0, 0.0]])
+
+    xp = gpu_backend.xp
+    reinitializer = CountingReinitializer(gpu_backend)
+    transport = PsiDirectTransport(
+        gpu_backend,
+        SequenceAdvection(xp),
+        reinitializer,
+        reinit_every=0,
+        reinit_trigger_mode="adaptive",
+        reinit_threshold=1.10,
+    )
+    psi = xp.zeros((2, 2))
+    velocity = [xp.zeros_like(psi), xp.zeros_like(psi)]
+
+    transport.advance(psi, velocity, 0.1, step_index=0)
+    psi_new = transport.advance(psi, velocity, 0.1, step_index=1)
+
+    assert reinitializer.calls == 1
+    assert type(psi_new).__module__.split(".", 1)[0] == "cupy"
+
+
+def test_ipc_pressure_increment_keeps_gpu_device(gpu_backend):
+    """Ch11 IPC pressure increment stores device pressure and no host mirror."""
+    from twophase.simulation.ns_step_services import solve_ns_pressure_stage
+    from twophase.simulation.ns_step_state import NSStepInputs, NSStepState
+
+    xp = gpu_backend.xp
+    shape = (2, 2)
+    state = NSStepState.from_inputs(
+        NSStepInputs(
+            psi=xp.ones(shape),
+            u=xp.zeros(shape),
+            v=xp.zeros(shape),
+            dt=0.1,
+            rho_l=1.0,
+            rho_g=1.0,
+            sigma=0.0,
+            mu=1.0,
+        ),
+        backend=gpu_backend,
+    )
+    state.projection_dt = 0.1
+    state.rho = xp.ones(shape)
+    state.f_x = xp.zeros(shape)
+    state.f_y = xp.zeros(shape)
+    state.u_star = xp.ones(shape)
+    state.v_star = xp.ones(shape)
+    state.previous_pressure = xp.full(shape, 4.0)
+    state.previous_base_pressure = xp.full(shape, 4.0)
+
+    class UnitDivergence:
+        def divergence(self, components):
+            magnitude = xp.max(xp.abs(components[0])) + xp.max(xp.abs(components[1]))
+            if float(gpu_backend.to_host(magnitude)) == 0.0:
+                return xp.zeros(shape)
+            return xp.ones(shape)
+
+    class IncrementPPE:
+        def solve(self, rhs, rho, dt=0.0, p_init=None):
+            self.p_init = p_init
+            self.last_base_pressure = xp.full_like(rhs, 2.0)
+            return xp.full_like(rhs, 2.0)
+
+    state, next_pressure_dev, next_pressure = solve_ns_pressure_stage(
+        state,
+        backend=gpu_backend,
+        div_op=UnitDivergence(),
+        ppe_solver=IncrementPPE(),
+        p_prev_dev=state.previous_pressure,
+        p_base_prev_dev=state.previous_base_pressure,
+        surface_tension_scheme="none",
+    )
+
+    assert next_pressure is None
+    assert type(state.pressure).__module__.split(".", 1)[0] == "cupy"
+    assert type(state.p_corrector).__module__.split(".", 1)[0] == "cupy"
+    assert type(next_pressure_dev).__module__.split(".", 1)[0] == "cupy"
