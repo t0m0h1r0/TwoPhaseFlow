@@ -5,7 +5,7 @@
 %        Layer A/B/C 分離による正しい離散化.
 % §6.4  ρ, μ 物性値補間規則 (CHK-223 Phase 6 NEW: ρ/μ prescription co-location)
 %        sec:rho_mu_interpolation; ρ=ρ_g+(ρ_l-ρ_g)ψ 代数更新 + face μ arith/harm.
-%        CN Helmholtz + デフェクト補正 (旧 §6.6 末尾) は §7.4 (sec:viscous_cn_defect_v7) に集約.
+%        implicit-BDF2 Helmholtz + デフェクト補正は §7.4 (sec:time_viscous) に集約.
 %
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{粘性項：3 層アーキテクチャと変粘性対応}
@@ -191,23 +191,18 @@ $\Omega_\Gamma = \{\psi\in(\varepsilon_\psi, 1-\varepsilon_\psi)\}$
 （$\varepsilon_\psi$ は界面マスキング閾値；既定値の選定は §~\ref{sec:val_summary}）．
 
 % ─────────────────────────────────────────────────────────────────────────────
-% CHK-223 Phase 3.5: CN Helmholtz + デフェクト補正は時間積分 (CN 半陰的処理) であるため
-% §7.4 (sec:time_viscous) 末尾に移行．本ファイルは spatial discretization (Layer A/B/C
+% CHK-223 Phase 3.5: Helmholtz + デフェクト補正は時間積分であるため
+% §7.4 (sec:time_viscous) に集約．本ファイルは spatial discretization (Layer A/B/C
 % + 共有 tau_xy + 界面帯 stencil 設計) のみで完結．
-% backward-compat: 旧 \ref{sec:viscous_cn_defect} と \ref{eq:viscous_cn_helmholtz} は
-% phantomsection alias で外部参照保護．
 % ─────────────────────────────────────────────────────────────────────────────
-% backward-compat aliases for sec:viscous_cn_defect / eq:viscous_cn_helmholtz are
-% placed at the migration destination (§7.4) to avoid multiply-defined labels.
-
 \medskip
 \noindent\textbf{時間積分との結合：}
 本節で確立した空間 Layer A/B/C と共有 $\tau_{xy}$ 評価は時間積分のいずれの形式
-（陽的 / IMEX / CN 半陰的）にも入力される．
-特に CN（Crank--Nicolson）半陰的処理を採用する場合の Helmholtz 系
-$\bigl(I - \tfrac{\Delta t}{2\rho}L_H\bigr)\bm{u}^* = \text{RHS}$ と
-デフェクト補正解法（FGMRES + PCG/AMG/ADI/LU）の詳細は
-\S~\ref{sec:viscous_cn_defect_v7}（§7.4）に集約する．
+（陽的 / IMEX / implicit-BDF2）にも入力される．
+本稿の implicit-BDF2 では Helmholtz 系 \eqref{eq:helmholtz_implicit_bdf2} の
+高次残差 $A_H$ に本節の full-stress 演算子を用い，
+低次補正 $A_L$ は同じ物性値・境界位相・界面帯を共有する
+（\S~\ref{sec:time_viscous}）．
 
 % ═══════════════════════════════════════════════════════════════════════════════
 % §6.4  ρ, μ 物性値補間規則 (CHK-223 Phase 6: prescription co-location)
@@ -252,8 +247,8 @@ $\psi\in[0,1]$ なら $\rho\in[\rho_g,\rho_l]$ が代数的に保証される．
 \label{sec:mu_face_interpolation}
 % -------------------------------------------------------------------------------
 
-\textbf{Face 上の $\mu$} は face-flux 型の粘性実装や
-CN Helmholtz の主対角構築（§\ref{sec:viscous_cn_defect_v7}，§7.4）へ
+\textbf{Face 上の $\mu$} は face-flux 型の粘性評価や
+implicit-BDF2 Helmholtz の低次補正演算子（§\ref{sec:time_viscous}，§7.4）へ
 拡張する場合に必要となる補助量である．
 現行の §6.3 A3 経路は cell-center $\mu_{i,j}$ で
 \eqref{eq:viscous_layerC_x},\eqref{eq:viscous_layerC_y} を組むため，

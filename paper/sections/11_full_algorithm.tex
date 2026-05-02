@@ -314,20 +314,20 @@ $\rho\bm{g}=-\bnabla(\rho\Phi_g)+\Phi_g\bnabla\rho$ の面残差形（§~\ref{se
 一括 PPE 経路の CN/ADI 分裂の補足は付録~\ref{app:cn_adi_detail} に保持される．
 
 \medskip
-\noindent\textbf{粘性 Helmholtz 系の呼び出し順（CN + Defect Correction）：}
-一括 PPE / 分相 PPE 経路の対角粘性陰的化は CN 粘性 Helmholtz 系
-$(I-(\Delta t/2\rho)L_H)\mathbf{u}^*=\text{RHS}$ を解く必要がある．
-$L_H$ は CCD bulk + 2 次界面帯の混合演算子で前処理が困難なため，
-Defect Correction 分裂による外殻 FGMRES + 内部低次解器の 2 階層で呼び出す
-（形式定義と $L_L$ の構成・アンチパターン一覧は §\ref{sec:viscous_cn_defect}）：
+\noindent\textbf{粘性 Helmholtz 系の呼び出し順（implicit-BDF2 + Defect Correction）：}
+一括 PPE / 分相 PPE 経路の粘性陰的化は
+$A_H\bm{u}^*=\mathrm{RHS}^{n,n-1}$，
+$A_H=I-\gamma\Delta t\,\mathcal{L}_{\nu,H}$ の Helmholtz 系として扱う．
+$A_H$ は CCD bulk + 2 次界面帯の full-stress 演算子であるため，
+Defect Correction により高次残差と低次補正を分離する
+（形式定義と $A_L$ の構成は §\ref{sec:time_viscous}）：
 \begin{enumerate}[noitemsep,leftmargin=2em]
-  \item 高次残差 $r^{(m)} = \text{RHS} - A_H\mathbf{u}^{(m)}$ を CCD で評価．
-  \item 低次内部解 $A_L\delta\mathbf{u} = r^{(m)}$ を PCG+AMG / ADI / LU で求解
-        （規模に応じ選択：3D 大規模→PCG+AMG，構造 2D→ADI，小中規模→LU）．
-  \item $\mathbf{u}^{(m+1)} = \mathbf{u}^{(m)} + \delta\mathbf{u}$．
+  \item 高次残差 $r^{(m)} = \mathrm{RHS}^{n,n-1} - A_H\bm{u}^{(m)}$ を評価する．
+  \item 低次補正 $A_L\delta\bm{u} = r^{(m)}$ を同じ物性値・境界位相・界面帯で閉じる．
+  \item $\bm{u}^{(m+1)} = \bm{u}^{(m)} + \omega\delta\bm{u}$ と更新する．
 \end{enumerate}
-$L_L$ は $L_H$ と同じ $\mu$・同じ BC・同じ帯スイッチを共有する
-（§\ref{sec:viscous_cn_defect} 末尾アンチパターン）．
+$A_L$ は $A_H$ と同じ $\mu,\rho$・境界制約・界面帯を共有し，
+低次演算子は収束経路だけを変え，固定点は高次系 $A_H\bm{u}=\mathrm{RHS}^{n,n-1}$ に保たれる．
 
 \noindent\textbf{注意（移動界面 $+$ 表面張力での発散）：}
 表面張力あり（$\sigma > 0$）の移動界面では，本 Step の $-\bnabla p^n$ 項が
