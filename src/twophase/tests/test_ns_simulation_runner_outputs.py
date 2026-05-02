@@ -5,16 +5,9 @@ from pathlib import Path
 
 import numpy as np
 
-from twophase.simulation.config_io import ExperimentConfig
 
-
-def _load_ch13_runner():
-    """Load the unified runner's NS-simulation handler module (CHK-232).
-
-    The legacy ``experiment/ch13/run.py`` was retired; the snapshot
-    serialization helpers now live in
-    ``experiment/runner/handlers/ns_simulation.py``.
-    """
+def _load_ns_simulation_runner():
+    """Load the unified runner's NS-simulation handler module (CHK-232)."""
     root = Path(__file__).resolve().parents[3]
     if str(root) not in sys.path:
         sys.path.insert(0, str(root))
@@ -22,7 +15,7 @@ def _load_ch13_runner():
 
 
 def test_snapshot_fields_are_saved_as_npz_series():
-    runner = _load_ch13_runner()
+    runner = _load_ns_simulation_runner()
     flat = {}
     snaps = [
         {
@@ -59,7 +52,7 @@ def test_snapshot_fields_are_saved_as_npz_series():
 
 
 def test_snapshot_fields_reconstruct_plot_snapshots():
-    runner = _load_ch13_runner()
+    runner = _load_ns_simulation_runner()
     results = {
         "fields/times": np.array([0.0, 0.5]),
         "fields/psi": np.zeros((2, 2, 2)),
@@ -80,7 +73,7 @@ def test_snapshot_fields_reconstruct_plot_snapshots():
 
 
 def test_run_single_respects_save_npz_false(tmp_path, monkeypatch):
-    runner = _load_ch13_runner()
+    runner = _load_ns_simulation_runner()
     calls = {"save_results": 0, "generate_figures": 0}
 
     def fake_run_simulation(cfg):
@@ -112,31 +105,3 @@ def test_run_single_respects_save_npz_false(tmp_path, monkeypatch):
     assert results["times"].tolist() == [0.0]
     assert calls == {"save_results": 0, "generate_figures": 1}
     assert not (tmp_path / "data.npz").exists()
-
-
-def test_ch13_config_set_is_two_production_files():
-    config_dir = Path(__file__).resolve().parents[3] / "experiment/ch13/config"
-
-    config_names = sorted(path.name for path in config_dir.glob("*.yaml"))
-
-    assert config_names == [
-        "ch13_capillary_water_air_alpha2_n128.yaml",
-        "ch13_rising_bubble_water_air_alpha2_n128x256.yaml",
-    ]
-
-
-def test_ch13_configs_emit_required_field_snapshots():
-    config_dir = Path(__file__).resolve().parents[3] / "experiment/ch13/config"
-
-    for path in sorted(config_dir.glob("*.yaml")):
-        cfg = ExperimentConfig.from_yaml(path)
-        snapshot_fields = {
-            spec.get("field")
-            for spec in cfg.output.figures
-            if spec.get("type") == "snapshot_series"
-        }
-
-        assert cfg.output.save_npz is True
-        assert cfg.run.snap_interval is not None
-        assert cfg.run.snap_interval > 0.0
-        assert {"psi", "velocity", "pressure"} <= snapshot_fields

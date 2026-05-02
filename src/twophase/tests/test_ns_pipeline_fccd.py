@@ -4,7 +4,7 @@ reproject + InterfaceLimitedFilter HFE, end-to-end through
 ``TwoPhaseNSSolver``.
 
 Covers the minimum stack the user requested for
-``experiment/ch13/config/ch13_04_capwave_fullstack_alpha2.yaml`` at
+``experiment/ch14/config/ch14_capillary.yaml`` at
 ``N=16`` so the test stays fast, 2 steps, sigma>0.  No NaN, finite KE,
 non-trivial ψ advection after the stack swap.
 """
@@ -442,14 +442,15 @@ def test_fccd_solver_is_shared():
     assert solver._adv._fccd is solver._fccd
 
 
-def test_ch13_fccd_hfe_uccd_yaml_builds_solver():
-    """Checked-in ch13 YAML is executable: FCCD/HFE stack + UCCD convection."""
+def test_ch14_capillary_yaml_builds_solver():
+    """Checked-in ch14 capillary YAML is executable: FCCD/HFE stack + UCCD convection."""
     from twophase.ppe.defect_correction import PPESolverDefectCorrection
     from twophase.ppe.fccd_matrixfree import PPESolverFCCDMatrixFree
+    from twophase.ppe.fd_direct import PPESolverFDDirect
 
     path = (
         Path(__file__).resolve().parents[3]
-        / "experiment/ch13/config/ch13_capillary_water_air_alpha2_n128.yaml"
+        / "experiment/ch14/config/ch14_capillary.yaml"
     )
     cfg = ExperimentConfig.from_yaml(path)
     solver = TwoPhaseNSSolver.from_config(cfg)
@@ -461,22 +462,23 @@ def test_ch13_fccd_hfe_uccd_yaml_builds_solver():
     assert solver._surface_tension_gradient_scheme == "none"
     assert solver._surface_tension_scheme == "pressure_jump"
     assert solver._ppe_coefficient_scheme == "phase_separated"
-    assert solver._ppe_interface_coupling_scheme == "jump_decomposition"
+    assert solver._ppe_interface_coupling_scheme == "affine_jump"
     assert solver._hfe is not None
     assert isinstance(solver._transport, PsiDirectTransport)
-    assert solver._interface_runtime.rebuild_freq == 0
+    assert solver._interface_runtime.rebuild_freq == 1
     assert solver._interface_runtime.reinit_every == 20
     assert isinstance(solver._ppe_solver, PPESolverDefectCorrection)
-    assert isinstance(solver._ppe_solver.base_solver, PPESolverFCCDMatrixFree)
+    assert isinstance(solver._ppe_solver.operator, PPESolverFCCDMatrixFree)
+    assert isinstance(solver._ppe_solver.base_solver, PPESolverFDDirect)
     assert solver._div_op is solver._fccd_div_op
     assert solver._viscous_spatial_scheme == "ccd_bulk"
 
 
-def test_ch13_capillary_wave_yaml_builds_initial_field():
+def test_ch14_capillary_wave_yaml_builds_initial_field():
     """Capillary-wave YAML should build a sinusoidal two-phase initial field."""
     path = (
         Path(__file__).resolve().parents[3]
-        / "experiment/ch13/config/ch13_capillary_water_air_alpha2_n128.yaml"
+        / "experiment/ch14/config/ch14_capillary.yaml"
     )
     cfg = ExperimentConfig.from_yaml(path)
     solver = TwoPhaseNSSolver.from_config(cfg)
@@ -491,11 +493,11 @@ def test_ch13_capillary_wave_yaml_builds_initial_field():
     assert psi[x0, y_high] < 0.5
 
 
-def test_ch13_capillary_curvature_is_supported_on_interface_band():
+def test_ch14_capillary_curvature_is_supported_on_interface_band():
     """HFE must not reintroduce pressure-jump curvature in saturation tails."""
     path = (
         Path(__file__).resolve().parents[3]
-        / "experiment/ch13/config/ch13_capillary_water_air_alpha2_n128.yaml"
+        / "experiment/ch14/config/ch14_capillary.yaml"
     )
     cfg = ExperimentConfig.from_yaml(path)
     solver = TwoPhaseNSSolver.from_config(cfg)
@@ -523,13 +525,14 @@ def test_ch13_capillary_curvature_is_supported_on_interface_band():
     assert float(np.max(np.abs(kappa_h * (1.0 - psi_h)))) < 20.0
 
 
-def test_ch13_rising_bubble_water_air_yaml_builds_solver():
+def test_ch14_rising_bubble_yaml_builds_solver():
     from twophase.ppe.defect_correction import PPESolverDefectCorrection
     from twophase.ppe.fccd_matrixfree import PPESolverFCCDMatrixFree
+    from twophase.ppe.fd_direct import PPESolverFDDirect
 
     path = (
         Path(__file__).resolve().parents[3]
-        / "experiment/ch13/config/ch13_rising_bubble_water_air_alpha2_n128x256.yaml"
+        / "experiment/ch14/config/ch14_rising_bubble.yaml"
     )
     cfg = ExperimentConfig.from_yaml(path)
     solver = TwoPhaseNSSolver.from_config(cfg)
@@ -539,7 +542,7 @@ def test_ch13_rising_bubble_water_air_yaml_builds_solver():
     assert solver.LX == pytest.approx(1.0)
     assert solver.LY == pytest.approx(2.0)
     assert isinstance(solver._transport, PsiDirectTransport)
-    assert solver._interface_runtime.rebuild_freq == 0
+    assert solver._interface_runtime.rebuild_freq == 1
     assert solver._interface_runtime.reinit_every == 4
     assert solver._advection_scheme == "fccd_flux"
     assert solver._convection_scheme == "uccd6"
@@ -551,7 +554,8 @@ def test_ch13_rising_bubble_water_air_yaml_builds_solver():
     assert solver._canonical_face_state is True
     assert solver._face_native_predictor_state is True
     assert isinstance(solver._ppe_solver, PPESolverDefectCorrection)
-    assert isinstance(solver._ppe_solver.base_solver, PPESolverFCCDMatrixFree)
+    assert isinstance(solver._ppe_solver.operator, PPESolverFCCDMatrixFree)
+    assert isinstance(solver._ppe_solver.base_solver, PPESolverFDDirect)
 
 
 def test_phase_separated_fccd_ppe_cuts_cross_phase_faces():
