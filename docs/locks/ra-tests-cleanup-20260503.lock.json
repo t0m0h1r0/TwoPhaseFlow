@@ -1,0 +1,12 @@
+{
+  "branch": "ra-tests-cleanup-20260503",
+  "branch_slug": "ra-tests-cleanup-20260503",
+  "session_id": "C8F39CAE-2DC3-4CEA-9B67-A67E8FADD1BA",
+  "worktree_path": ".claude/worktrees/ra-tests-cleanup-20260503",
+  "holder_agent": "ResearchArchitect",
+  "id_prefix": "RA-TESTS",
+  "acquired_at": "2026-05-02T17:22:15Z",
+  "expires_at": "2026-05-03T17:22:15Z",
+  "meta_version": "7.1.0",
+  "scope": "src/twophase tests cleanup"
+}

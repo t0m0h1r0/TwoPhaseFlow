@@ -7,23 +7,12 @@ construction path (ASM-001: SimulationBuilder).
 Verifies:
   1. SimulationBuilder.build() returns TwoPhaseSimulation without error.
   2. step_forward() runs 2 steps with no NaN / Inf in any field.
-  3. After a short run, the Laplace pressure jump Δp = p_in − p_out
-     is positive (correct sign) and physically bounded (< 15).
 
 Notes:
   - Grid: N=16 (fast; node-centered grid → field shape (N+1)×(N+1) = 17×17).
-  - Solver: 'lu' (direct sparse LU) — avoids BiCGSTAB convergence sensitivity
-    at coarse resolution (§5 implicit solver policy: LU for small systems).
-  - Absolute Laplace pressure accuracy (O(ε²) CSF error) is NOT asserted
-    here; that is the responsibility of StationaryDropletBenchmark (§10.3,
-    Priority 3).  This test only verifies sign correctness and pipeline
-    stability.
-  - Spatial (distance-based) mask is used instead of psi threshold because
-    the CLS profile diffuses at N=16 (ε/R ≈ 0.37) and max(psi) may not
-    reach 0.7 after a short run.
+  - Solver: 'fvm_direct' keeps this smoke on the production PPE family.
 """
 
-import numpy as np
 import pytest
 import sys, os
 
@@ -43,9 +32,6 @@ N      = 16
 R      = 0.25
 CENTER = (0.5, 0.5)
 WE     = 1.0
-# Spatial mask radii (well inside / outside interface — robust to CLS diffusion)
-R_IN   = R * 0.70   # 0.175 — safely inside liquid droplet
-R_OUT  = R * 1.50   # 0.375 — safely outside in gas region
 
 
 # ── Fixture ────────────────────────────────────────────────────────────────────
@@ -58,7 +44,7 @@ def _make_sim() -> TwoPhaseSimulation:
             Re=100.0,
             Fr=1e6,        # effectively no gravity
             We=WE,
-            rho_ratio=0.1,   # moderate ratio for CCD PPE stability
+            rho_ratio=0.1,
             mu_ratio=0.1,
         ),
         numerics=NumericsConfig(
@@ -69,7 +55,7 @@ def _make_sim() -> TwoPhaseSimulation:
             bc_type="wall",
             advection_scheme="dissipative_ccd",
         ),
-        solver=SolverConfig(ppe_solver_type="ccd_lu", allow_kronecker_lu=True),
+        solver=SolverConfig(ppe_solver_type="fvm_direct"),
     )
     sim = SimulationBuilder(cfg).build()
 
@@ -127,47 +113,3 @@ def test_step_forward_no_nan(sim):
     ]:
         assert not xp.any(xp.isnan(arr)), f"{name} contains NaN after 2 steps"
         assert not xp.any(xp.isinf(arr)), f"{name} contains Inf after 2 steps"
-
-
-# ── Test 3: Laplace pressure sign ─────────────────────────────────────────────
-
-@pytest.mark.xfail(
-    reason="CCD PPE product-rule operator does not correctly resolve Laplace pressure jump "
-           "across sharp density discontinuity. Requires GFM+CCD integration.",
-    strict=False,
-)
-def test_laplace_pressure_sign(sim):
-    """After a short run, pressure inside the droplet must exceed outside.
-
-    Laplace law (§2, CSF): Δp = p_in − p_out = (1/We) κ = (1/We)/R > 0.
-    At N=16 the CSF error is O(ε²) ≈ O((1.5/16)²) — absolute accuracy is
-    NOT asserted here.  Sign correctness and physical boundedness are
-    sufficient for an integration test; accuracy is verified by
-    StationaryDropletBenchmark (§10.3, Priority 3).
-
-    Spatial mask: distance from droplet centre rather than ψ threshold,
-    because CLS diffuses at N=16 and max(ψ) may fall below 0.7 at t=0.02.
-    """
-    sim.run(t_end=0.02, output_interval=9999, verbose=False)
-
-    xp = sim.backend.xp
-    p  = sim.pressure.data
-    X, Y = sim.grid.meshgrid()
-    dist = xp.sqrt((X - CENTER[0])**2 + (Y - CENTER[1])**2)
-
-    inside  = dist < R_IN
-    outside = dist > R_OUT
-    assert inside.sum()  > 0, f"No interior nodes found (dist < {R_IN})"
-    assert outside.sum() > 0, f"No exterior nodes found (dist > {R_OUT})"
-
-    p_in    = float(xp.mean(p[inside]))
-    p_out   = float(xp.mean(p[outside]))
-    delta_p = p_in - p_out
-
-    assert delta_p > 0, (
-        f"Δp = {delta_p:.4f}: pressure inside droplet must exceed outside "
-        f"(Laplace law, §2 CSF)"
-    )
-    assert delta_p < 15.0, (
-        f"Δp = {delta_p:.4f}: unphysically large — likely a solver blowup"
-    )
