@@ -1,7 +1,8 @@
 # N=64 Rayleigh-Lamb n=2 oscillating droplet benchmark derived from
 # ch14_static_droplet.yaml. The circular initial interface is replaced by
-# a true ellipse with semi-axes a=0.055, b=0.045. With water-air density and
-# sigma=0.811133, the area-equivalent radius sqrt(ab)=0.04975 gives T≈1.0.
+# a true ellipse sized like the static-droplet benchmark: semi-axes
+# a=0.275, b=0.225 give area-equivalent radius sqrt(ab)=0.24875,
+# comparable to the static-droplet radius R=0.25.
 
 experiment:
   type: ellipse
@@ -49,7 +50,7 @@ physics:
     gas:
       rho: 1.2
       mu: 1.8e-5
-  surface_tension: 0.811133
+  surface_tension: 0.072
   gravity: 0.0
 
 run:
@@ -124,7 +125,7 @@ output:
       ylabel: "$D_s(t)$"
       analytical:
         formula: prosperetti
-        omega0: 6.283185
+        omega0: 0.167435
         beta: 0.0
         D0: 0.10
       file: signed_deformation.pdf
@@ -168,7 +169,7 @@ initial_condition:
   objects:
     - type: ellipse
       center: [0.5, 0.5]
-      semi_axes: [0.055, 0.045]
+      semi_axes: [0.275, 0.225]
       interior_phase: liquid
 
 initial_velocity: null
