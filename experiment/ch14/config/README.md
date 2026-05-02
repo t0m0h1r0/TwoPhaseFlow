@@ -60,6 +60,53 @@ The Rayleigh–Taylor YAML uses the same shape alias with `interior_phase: liqui
 (lower phase = liquid) and a `physics.phases.gas` slot relabeled as the heavy
 fluid (mercury); the `capillary_wave` handler key dispatches identically.
 
+## Object Collections and Velocity Perturbations
+
+Use `initial_condition.objects` for experiment-facing object placement.  The
+older `shapes` key remains accepted for low-level primitives, but checked-in
+benchmark YAMLs should prefer the domain wording when multiple physical objects
+are being placed:
+
+```yaml
+initial_condition:
+  background_phase: liquid
+  objects:
+    - type: bubble
+      center: [0.35, 0.50]
+      radius: 0.08
+    - type: bubble
+      center: [0.65, 0.50]
+      radius: 0.08
+```
+
+`bubble` is a gas-filled circle alias, so `interior_phase: gas` is optional.
+For non-bubble geometry, keep using the primitive type (`circle`, `ellipse`,
+`rectangle`, `half_space`, `capillary_wave`, `perturbed_circle`, or
+`zalesak_disk`) and set `interior_phase` explicitly when the default liquid
+interior is not intended.
+
+Initial velocity supports superposition through `base` and `perturbations`.
+Each child is a normal velocity primitive, so adding new perturbation families
+does not require a separate parser path:
+
+```yaml
+initial_velocity:
+  base:
+    type: uniform
+    velocity: [0.0, 0.0]
+  perturbations:
+    - type: sinusoidal_perturbation
+      component: y
+      axis: x
+      amplitude: 0.01
+      mode: 1
+      length: 1.0
+      phase: 0.0
+```
+
+This defines `v' = 0.01 sin(2π x / length + phase)` and leaves the horizontal
+component unchanged except for the base field.
+
 ## Interface Lifecycle
 
 `interface` groups settings that must be reasoned about together:

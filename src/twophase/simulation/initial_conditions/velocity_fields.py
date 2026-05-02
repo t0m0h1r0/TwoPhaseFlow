@@ -13,6 +13,8 @@ Design mirrors shapes.py for initial conditions:
 Supported types in YAML (velocity_field.type):
     rigid_rotation   — solid-body rotation: u = -ω(y-cy), v = ω(x-cx)
     uniform          — uniform background flow: u = const, v = const
+    composite        — superpose a base field and perturbation fields
+    sinusoidal_perturbation — one-component sinusoidal perturbation
 """
 
 from __future__ import annotations
@@ -30,6 +32,39 @@ def _xp_of(arr):
         return cupy.get_array_module(arr)
     except (ImportError, AttributeError):
         return np
+
+
+def _axis_index(value, *, name: str) -> int:
+    """Convert x|y|z or an integer-like value to an axis index."""
+    if value is None:
+        raise ValueError(f"{name} is required.")
+    if isinstance(value, str):
+        axis = value.lower()
+        if axis in {"x", "0"}:
+            return 0
+        if axis in {"y", "1"}:
+            return 1
+        if axis in {"z", "2"}:
+            return 2
+        raise ValueError(f"{name} must be x|y|z|0|1|2.")
+    return int(value)
+
+
+def _wave_wavelength(data: dict, *, owner: str) -> float:
+    """Resolve wavelength from an explicit value or mode/length pair."""
+    if "wavelength" in data:
+        wavelength = float(data["wavelength"])
+    else:
+        mode = int(data.get("mode", 0))
+        if mode <= 0:
+            raise ValueError(f"{owner}: provide 'wavelength' or positive 'mode'.")
+        length = float(data.get("length", data.get("domain_length", 1.0)))
+        if length <= 0.0:
+            raise ValueError(f"{owner}: length must be positive.")
+        wavelength = length / float(mode)
+    if wavelength <= 0.0:
+        raise ValueError(f"{owner}: wavelength must be positive.")
+    return wavelength
 
 
 # ── 基底クラス ────────────────────────────────────────────────────────────────
@@ -132,6 +167,82 @@ class UniformFlow(VelocityField):
             )
         xp = _xp_of(coords[0])
         return tuple(xp.full_like(c, v) for c, v in zip(coords, self.velocity))
+
+
+class CompositeVelocityField(VelocityField):
+    """Velocity field formed by summing independent component fields."""
+
+    def __init__(self, fields: Sequence[VelocityField]) -> None:
+        self.fields: Tuple[VelocityField, ...] = tuple(fields)
+
+    def compute(self, *coords: np.ndarray, t: float = 0.0) -> Tuple[np.ndarray, ...]:
+        """Return the component-wise sum of all configured fields."""
+        if not coords:
+            raise ValueError("CompositeVelocityField.compute: coords must be non-empty.")
+        xp = _xp_of(coords[0])
+        total_components = [xp.zeros_like(coord) for coord in coords]
+        for field in self.fields:
+            field_components = field.compute(*coords, t=t)
+            if len(field_components) != len(total_components):
+                raise ValueError(
+                    "CompositeVelocityField.compute: component count mismatch."
+                )
+            total_components = [
+                total_component + field_component
+                for total_component, field_component
+                in zip(total_components, field_components)
+            ]
+        return tuple(total_components)
+
+
+class SinusoidalPerturbation(VelocityField):
+    """One-component sinusoidal velocity perturbation."""
+
+    def __init__(
+        self,
+        component: int,
+        axis: int,
+        amplitude: float,
+        wavelength: float,
+        *,
+        phase: float = 0.0,
+        profile: str = "sin",
+        offset: float = 0.0,
+    ) -> None:
+        if wavelength <= 0.0:
+            raise ValueError("SinusoidalPerturbation: wavelength must be positive.")
+        profile_name = str(profile).lower()
+        if profile_name not in {"sin", "cos"}:
+            raise ValueError("SinusoidalPerturbation: profile must be sin|cos.")
+        self.component = int(component)
+        self.axis = int(axis)
+        self.amplitude = float(amplitude)
+        self.wavelength = float(wavelength)
+        self.phase = float(phase)
+        self.profile = profile_name
+        self.offset = float(offset)
+
+    def compute(self, *coords: np.ndarray, t: float = 0.0) -> Tuple[np.ndarray, ...]:
+        """Return zeros except for the configured perturbation component."""
+        if self.component < 0 or self.component >= len(coords):
+            raise ValueError(
+                "SinusoidalPerturbation.compute: component index is outside grid ndim."
+            )
+        if self.axis < 0 or self.axis >= len(coords):
+            raise ValueError(
+                "SinusoidalPerturbation.compute: wave axis is outside grid ndim."
+            )
+        xp = _xp_of(coords[0])
+        argument = 2.0 * xp.pi * coords[self.axis] / self.wavelength + self.phase
+        if self.profile == "sin":
+            perturbation = self.amplitude * xp.sin(argument)
+        else:
+            perturbation = self.amplitude * xp.cos(argument)
+        if self.offset != 0.0:
+            perturbation = perturbation + self.offset
+        components = [xp.zeros_like(coord) for coord in coords]
+        components[self.component] = perturbation
+        return tuple(components)
 
 
 class SingleVortex(VelocityField):
@@ -251,6 +362,31 @@ def _build_uniform_flow(data: dict) -> VelocityField:
     return UniformFlow(velocity=data["velocity"])
 
 
+def _build_composite_velocity(data: dict) -> VelocityField:
+    field_specs = _composite_field_specs(data)
+    return CompositeVelocityField(
+        [velocity_field_from_dict(field_spec) for field_spec in field_specs]
+    )
+
+
+def _build_sinusoidal_perturbation(data: dict) -> VelocityField:
+    return SinusoidalPerturbation(
+        component=_axis_index(
+            data.get("component", data.get("direction")),
+            name="SinusoidalPerturbation.component",
+        ),
+        axis=_axis_index(
+            data.get("axis", data.get("wave_axis", "x")),
+            name="SinusoidalPerturbation.axis",
+        ),
+        amplitude=float(data["amplitude"]),
+        wavelength=_wave_wavelength(data, owner="SinusoidalPerturbation"),
+        phase=float(data.get("phase", 0.0)),
+        profile=str(data.get("profile", data.get("function", "sin"))),
+        offset=float(data.get("offset", 0.0)),
+    )
+
+
 def _build_single_vortex(data: dict) -> VelocityField:
     return SingleVortex(period=float(data.get("period", 1.0)))
 
@@ -270,12 +406,35 @@ def _build_couette_shear(data: dict) -> VelocityField:
 
 
 _VELOCITY_FIELD_BUILDERS: dict[str, Callable[[dict], VelocityField]] = {
+    "composite": _build_composite_velocity,
+    "superposition": _build_composite_velocity,
     "rigid_rotation": _build_rigid_rotation,
     "uniform": _build_uniform_flow,
+    "sinusoidal": _build_sinusoidal_perturbation,
+    "sinusoidal_perturbation": _build_sinusoidal_perturbation,
     "single_vortex": _build_single_vortex,
     "double_shear_layer": _build_double_shear_layer,
     "couette_shear": _build_couette_shear,
 }
+
+
+def _composite_field_specs(data: dict) -> list[dict]:
+    """Return normalized child specs for a composite velocity field."""
+    if "fields" in data and "components" in data:
+        raise ValueError("CompositeVelocityField: use either 'fields' or 'components'.")
+
+    specs = []
+    base_spec = data.get("base")
+    if base_spec is not None:
+        specs.append(base_spec)
+
+    specs.extend(data.get("fields", data.get("components", [])) or [])
+    specs.extend(data.get("perturbations", []) or [])
+
+    for spec in specs:
+        if not isinstance(spec, dict):
+            raise ValueError("CompositeVelocityField: child specs must be dicts.")
+    return specs
 
 
 # ── ファクトリ関数（YAML ディクトから生成）────────────────────────────────────
@@ -299,6 +458,19 @@ def velocity_field_from_dict(d: dict) -> VelocityField:
             type: uniform
             velocity: [0.0, 1.0]  # constant (u, v)
 
+        composite::
+
+            base:
+              type: uniform
+              velocity: [0.0, 0.0]
+            perturbations:
+              - type: sinusoidal_perturbation
+                component: y
+                axis: x
+                amplitude: 0.01
+                mode: 1
+                length: 1.0
+
     Returns
     -------
     field : VelocityField
@@ -311,6 +483,11 @@ def velocity_field_from_dict(d: dict) -> VelocityField:
     data = dict(d)  # コピー（pop で元を壊さない）
     field_type = data.pop("type", None)
     if field_type is None:
+        if any(
+            key in data
+            for key in ("base", "fields", "components", "perturbations")
+        ):
+            return _build_composite_velocity(data)
         raise ValueError("velocity_field dict must have a 'type' key.")
 
     builder = _VELOCITY_FIELD_BUILDERS.get(field_type)

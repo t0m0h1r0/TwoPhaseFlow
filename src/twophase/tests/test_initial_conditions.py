@@ -25,7 +25,9 @@ from ..simulation.initial_conditions import (
     SinusoidalInterface,
     shape_from_dict,
     VelocityField,
+    CompositeVelocityField,
     RigidRotation,
+    SinusoidalPerturbation,
     UniformFlow,
     velocity_field_from_dict,
 )
@@ -613,6 +615,63 @@ def test_uniform_flow_from_dict():
     vf = velocity_field_from_dict(d)
     assert isinstance(vf, UniformFlow)
     assert vf.velocity == (2.0, -1.0)
+
+
+def test_sinusoidal_perturbation_vertical_component(grid_2d):
+    grid = grid_2d
+    X, Y = grid.meshgrid()
+    vf = velocity_field_from_dict({
+        "type": "sinusoidal_perturbation",
+        "component": "y",
+        "axis": "x",
+        "amplitude": 0.1,
+        "mode": 1,
+        "length": 1.0,
+        "profile": "cos",
+    })
+
+    u, v = vf.compute(X, Y)
+
+    assert isinstance(vf, SinusoidalPerturbation)
+    np.testing.assert_allclose(u, 0.0, atol=1e-12)
+    np.testing.assert_allclose(v, 0.1 * np.cos(2.0 * np.pi * X), atol=1e-12)
+
+
+def test_composite_velocity_from_base_and_perturbations(grid_2d):
+    grid = grid_2d
+    X, Y = grid.meshgrid()
+    vf = velocity_field_from_dict({
+        "base": {"type": "uniform", "velocity": [1.0, -0.2]},
+        "perturbations": [
+            {
+                "type": "sinusoidal_perturbation",
+                "component": "y",
+                "axis": "x",
+                "amplitude": 0.05,
+                "mode": 2,
+                "length": 1.0,
+            },
+        ],
+    })
+
+    u, v = vf.compute(X, Y)
+
+    assert isinstance(vf, CompositeVelocityField)
+    np.testing.assert_allclose(u, 1.0, atol=1e-12)
+    np.testing.assert_allclose(
+        v,
+        -0.2 + 0.05 * np.sin(4.0 * np.pi * X),
+        atol=1e-12,
+    )
+
+
+def test_composite_velocity_rejects_duplicate_child_keys():
+    with pytest.raises(ValueError, match="either 'fields' or 'components'"):
+        velocity_field_from_dict({
+            "type": "composite",
+            "fields": [],
+            "components": [],
+        })
 
 
 def test_velocity_field_from_dict_unknown_type():
