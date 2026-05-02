@@ -1,0 +1,11 @@
+{
+  "branch": "ra-ch9-narrative-20260502",
+  "branch_slug": "ra-ch9-narrative-20260502",
+  "id_prefix": "RA-CH9",
+  "session_id": "E55CB702-9F0F-4975-9699-AEA3F094763E",
+  "worktree_path": ".claude/worktrees/ra-ch9-narrative-20260502",
+  "holder_agent": "ResearchArchitect",
+  "acquired_at": "2026-05-02T08:21:21Z",
+  "expires_at": "2026-05-03T08:21:21Z",
+  "meta_version": "5.1.0"
+}
