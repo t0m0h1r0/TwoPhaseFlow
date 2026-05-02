@@ -25,7 +25,7 @@ def parse_run_poisson_settings(*, layout: dict, projection: dict) -> dict:
             if key in poisson
         }
     poisson_discretization = validate_choice(
-        poisson_operator.get("discretization", "fvm"),
+        poisson_operator.get("discretization", "fccd"),
         _PPE_DISCRETIZATIONS,
         layout["paths"]["poisson_discretization"],
     )

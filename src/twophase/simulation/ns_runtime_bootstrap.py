@@ -44,7 +44,7 @@ def build_ns_runtime_bootstrap(
         getattr(
             scheme_options,
             "viscous_time_scheme",
-            "crank_nicolson" if bool(scheme_options.cn_viscous) else "forward_euler",
+            "crank_nicolson" if bool(scheme_options.cn_viscous) else "implicit_bdf2",
         )
     )
     cn_viscous = viscous_time_scheme in {"crank_nicolson", "implicit_bdf2"}

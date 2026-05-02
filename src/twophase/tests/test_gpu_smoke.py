@@ -242,6 +242,31 @@ def test_fccd_matrixfree_phase_density_keeps_gpu_density_device(
     assert ppe._cell_volume_host is None
 
 
+def test_ch7_default_ns_stack_constructs_on_gpu():
+    """Ch7 default NS stack must honor GPU selection without CPU fallback."""
+    from twophase.ppe.fccd_matrixfree import PPESolverFCCDMatrixFree
+    from twophase.simulation.ns_pipeline import TwoPhaseNSSolver
+    from twophase.simulation.viscous_predictors import ImplicitBDF2ViscousPredictor
+
+    solver = TwoPhaseNSSolver(
+        8,
+        8,
+        1.0,
+        1.0,
+        use_gpu=True,
+        ppe_max_iterations=20,
+    )
+
+    assert solver._backend.is_gpu()
+    assert solver._convection_time_scheme == "imex_bdf2"
+    assert solver._viscous_time_scheme == "implicit_bdf2"
+    assert solver._surface_tension_scheme == "pressure_jump"
+    assert solver._ppe_coefficient_scheme == "phase_separated"
+    assert solver._ppe_interface_coupling_scheme == "affine_jump"
+    assert isinstance(solver._ppe_solver, PPESolverFCCDMatrixFree)
+    assert isinstance(solver._viscous_predictor, ImplicitBDF2ViscousPredictor)
+
+
 def test_psi_direct_mass_correction_keeps_gpu_device(tiny_grid_factory, gpu_backend):
     """Ch6 ψ-space mass correction remains on CuPy arrays."""
     from twophase.levelset.transport_strategy import PsiDirectTransport

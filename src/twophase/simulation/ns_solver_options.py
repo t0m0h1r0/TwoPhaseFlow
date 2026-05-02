@@ -44,7 +44,7 @@ class SolverInterfaceOptions:
 
     grid_rebuild_freq: int = 1
     reinit_every: int = 2
-    reinit_method: str = "eikonal_xi"
+    reinit_method: str = "ridge_eikonal"
     reproject_variable_density: bool = False
     reproject_mode: str = "legacy"
     phi_primary_transport: bool = True
@@ -63,16 +63,16 @@ class SolverInterfaceOptions:
 class SolverPPEOptions:
     """Pressure-solver settings."""
 
-    ppe_solver: str = "fvm_iterative"
+    ppe_solver: str = "fccd_iterative"
     ppe_dc_base_solver: str | None = None
     pressure_scheme: str | None = None
-    ppe_coefficient_scheme: str = "phase_density"
-    ppe_interface_coupling_scheme: str = "none"
+    ppe_coefficient_scheme: str = "phase_separated"
+    ppe_interface_coupling_scheme: str = "affine_jump"
     ppe_iteration_method: str = "gmres"
     ppe_tolerance: float = 1.0e-8
     ppe_max_iterations: int = 500
     ppe_restart: int | None = 80
-    ppe_preconditioner: str = "line_pcr"
+    ppe_preconditioner: str = "none"
     ppe_pcr_stages: int | None = 4
     ppe_c_tau: float = 2.0
     ppe_defect_correction: bool = False
@@ -89,15 +89,15 @@ class SolverSchemeOptions:
     reinit_steps: int = 4
     cn_viscous: bool = False
     Re: float = 1.0
-    surface_tension_scheme: str = "csf"
-    convection_time_scheme: str = "ab2"
+    surface_tension_scheme: str = "pressure_jump"
+    convection_time_scheme: str = "imex_bdf2"
     advection_scheme: str = "fccd_flux"
     convection_scheme: str = "uccd6"
-    pressure_gradient_scheme: str | None = None
-    surface_tension_gradient_scheme: str | None = None
-    momentum_gradient_scheme: str = "projection_consistent"
+    pressure_gradient_scheme: str | None = "fccd_flux"
+    surface_tension_gradient_scheme: str | None = "none"
+    momentum_gradient_scheme: str = "fccd_flux"
     viscous_spatial_scheme: str = "ccd_bulk"
-    viscous_time_scheme: str = "forward_euler"
+    viscous_time_scheme: str = "implicit_bdf2"
     viscous_solver: str = "defect_correction"
     viscous_solver_tolerance: float = 1.0e-8
     viscous_solver_max_iterations: int = 80

@@ -219,7 +219,7 @@ def normalise_ns_scheme_runtime(options) -> NSSchemeRuntimeState:
     raw_viscous_time_scheme = getattr(
         options,
         "viscous_time_scheme",
-        "crank_nicolson" if getattr(options, "cn_viscous", False) else "forward_euler",
+        "crank_nicolson" if getattr(options, "cn_viscous", False) else "implicit_bdf2",
     )
     viscous_time_scheme = canonicalize_viscous_time_scheme(raw_viscous_time_scheme)
     if convection_time_scheme == "imex_bdf2" and viscous_time_scheme != "implicit_bdf2":

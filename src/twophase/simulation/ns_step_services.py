@@ -34,7 +34,7 @@ def build_pressure_robust_buoyancy_residual_accel_faces(
     coords=None,
     Y=None,
     pressure_gradient: str = "fccd",
-    pressure_coefficient_scheme: str = "phase_density",
+    pressure_coefficient_scheme: str = "phase_separated",
 ) -> list | None:
     """Return buoyancy residual acceleration on projection-native faces.
 
@@ -239,7 +239,7 @@ def compute_ns_predictor_stage(
     pressure_grad_op=None,
     Y=None,
     coords=None,
-    ppe_coefficient_scheme: str = "phase_density",
+    ppe_coefficient_scheme: str = "phase_separated",
 ) -> tuple[NSStepState, bool, tuple | None, bool, tuple | None]:
     """Advance the momentum predictor stage."""
     xp = backend.xp

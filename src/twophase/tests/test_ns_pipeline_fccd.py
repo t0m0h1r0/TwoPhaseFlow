@@ -486,8 +486,7 @@ def test_phase_separated_fccd_ppe_cuts_cross_phase_faces():
         bc_type="wall",
         ppe_solver="fccd_iterative",
         pressure_scheme="fccd_iterative",
-        ppe_preconditioner="line_pcr",
-        ppe_pcr_stages=6,
+        ppe_preconditioner="none",
         ppe_coefficient_scheme="phase_separated",
         ppe_interface_coupling_scheme="jump_decomposition",
     )
@@ -851,9 +850,12 @@ def test_affine_jump_constructor_requires_face_flux_projection_path():
         TwoPhaseNSSolver(
             N, N, L, L,
             bc_type="wall",
+            ppe_solver="fvm_iterative",
             ppe_coefficient_scheme="phase_separated",
             ppe_interface_coupling_scheme="affine_jump",
             surface_tension_scheme="pressure_jump",
+            pressure_gradient_scheme="ccd",
+            surface_tension_gradient_scheme="none",
         )
 
 
@@ -1043,6 +1045,11 @@ def test_fccd_not_constructed_when_unused():
         N, N, L, L, bc_type="wall",
         advection_scheme="dissipative_ccd",
         convection_scheme="ccd",
+        ppe_solver="fvm_iterative",
+        ppe_coefficient_scheme="phase_density",
+        ppe_interface_coupling_scheme="none",
+        pressure_gradient_scheme="ccd",
+        surface_tension_scheme="none",
     )
     assert solver._fccd is None
     assert isinstance(solver._conv_term, ConvectionTerm)
@@ -1052,7 +1059,14 @@ def test_pipeline_uses_matrixfree_fvm_ppe():
     """Stage 4 PPE uses the shared NumPy/CuPy matrix-free FVM solver."""
     from twophase.ppe.fvm_matrixfree import PPESolverFVMMatrixFree
 
-    solver = TwoPhaseNSSolver(N, N, L, L, bc_type="wall")
+    solver = TwoPhaseNSSolver(
+        N, N, L, L, bc_type="wall",
+        ppe_solver="fvm_iterative",
+        ppe_coefficient_scheme="phase_density",
+        ppe_interface_coupling_scheme="none",
+        pressure_gradient_scheme="ccd",
+        surface_tension_scheme="none",
+    )
     assert isinstance(solver._ppe_solver, PPESolverFVMMatrixFree)
 
 
@@ -1069,6 +1083,10 @@ def test_pipeline_can_select_direct_fvm_ppe():
     solver = TwoPhaseNSSolver(
         N, N, L, L, bc_type="wall",
         ppe_solver="fvm_direct",
+        ppe_coefficient_scheme="phase_density",
+        ppe_interface_coupling_scheme="none",
+        pressure_gradient_scheme="ccd",
+        surface_tension_scheme="none",
     )
     assert isinstance(solver._ppe_solver, PPESolverFVMSpsolve)
 
@@ -1079,7 +1097,7 @@ def test_pipeline_can_solve_fccd_ppe_smoke():
         N, N, L, L, bc_type="wall",
         ppe_solver="fccd_iterative",
         pressure_gradient_scheme="fccd_flux",
-        surface_tension_gradient_scheme="fccd_flux",
+        surface_tension_gradient_scheme="none",
         ppe_preconditioner="none",
         ppe_max_iterations=100,
         ppe_tolerance=1.0e-8,
@@ -1103,6 +1121,7 @@ def test_surface_tension_uses_configured_gradient_operator():
         N, N, L, L, bc_type="wall",
         alpha_grid=2.0,
         grid_rebuild_freq=0,
+        surface_tension_scheme="csf",
         pressure_gradient_scheme="projection_consistent",
         surface_tension_gradient_scheme="fccd_flux",
     )
@@ -1135,6 +1154,11 @@ def test_weno5_advection_constructed_from_scheme():
         N, N, L, L, bc_type="wall",
         advection_scheme="weno5",
         convection_scheme="ccd",
+        ppe_solver="fvm_iterative",
+        ppe_coefficient_scheme="phase_density",
+        ppe_interface_coupling_scheme="none",
+        pressure_gradient_scheme="ccd",
+        surface_tension_scheme="none",
     )
     assert isinstance(solver._adv, LevelSetAdvection)
     assert solver._fccd is None

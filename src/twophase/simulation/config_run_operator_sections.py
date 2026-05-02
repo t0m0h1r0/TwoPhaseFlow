@@ -109,10 +109,10 @@ def parse_run_operator_settings(
         convection,
         _CONVECTION_TIME_SCHEMES,
         layout["paths"]["convection_time"],
-        default="ab2",
+        default="imex_bdf2",
         aliases=CONVECTION_TIME_SCHEME_ALIASES,
     )
-    raw_p_grad = pressure_term.get("gradient", pressure_term.get("spatial", "ccd"))
+    raw_p_grad = pressure_term.get("gradient", pressure_term.get("spatial", "fccd_flux"))
     pressure_gradient_scheme = canonicalize_momentum_gradient_scheme(
         raw_p_grad,
         path=layout["paths"]["pressure_spatial"],
@@ -120,9 +120,15 @@ def parse_run_operator_settings(
     surface_tension_scheme = validate_choice(
         _SURFACE_TENSION_ALIASES.get(
             str(
-                surface_tension.get("formulation", surface_tension.get("model", "csf"))
+                surface_tension.get(
+                    "formulation",
+                    surface_tension.get("model", "pressure_jump"),
+                )
             ).strip().lower(),
-            surface_tension.get("formulation", surface_tension.get("model", "csf")),
+            surface_tension.get(
+                "formulation",
+                surface_tension.get("model", "pressure_jump"),
+            ),
         ),
         _SURFACE_TENSION_SCHEMES,
         layout["paths"]["surface_tension_model"],
@@ -196,6 +202,7 @@ def parse_run_operator_settings(
         viscosity,
         _VISCOUS_TIME_SCHEMES,
         layout["paths"]["viscosity_time"],
+        default="implicit_bdf2",
         aliases=VISCOUS_TIME_SCHEME_ALIASES,
     )
     cn_mode = validate_choice(
@@ -266,7 +273,7 @@ def parse_run_operator_settings(
     predictor_cfg = momentum.get("predictor", {}) or {}
     raw_predictor_assembly = predictor_cfg.get(
         "assembly",
-        viscosity.get("predictor_assembly", "none"),
+        viscosity.get("predictor_assembly", "balanced_buoyancy"),
     )
     predictor_assembly = validate_choice(
         _PREDICTOR_ASSEMBLY_ALIASES.get(

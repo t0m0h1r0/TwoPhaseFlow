@@ -19,7 +19,6 @@ The ``scipy`` namespace is lazily resolved on first access and cached.
 from __future__ import annotations
 
 import os
-import sys
 from functools import cached_property
 
 
@@ -44,10 +43,9 @@ class Backend:
             self._configure_cuda_pools(cp)
         else:
             if use_gpu:
-                print(
-                    "WARNING: TWOPHASE_USE_GPU=1 but CuPy/CUDA unavailable; "
-                    "falling back to NumPy",
-                    file=sys.stderr,
+                raise RuntimeError(
+                    "TWOPHASE_USE_GPU=1 or use_gpu=True was requested, "
+                    "but CuPy/CUDA is unavailable."
                 )
             import numpy as np
             self.xp = np

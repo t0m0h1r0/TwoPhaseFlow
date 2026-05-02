@@ -41,6 +41,15 @@ def test_construction_uniform():
     s = _make_solver(alpha_grid=1.0)
     assert s._alpha_grid == 1.0
     assert s.h_min == pytest.approx(LX / N)
+    assert s._convection_time_scheme == "imex_bdf2"
+    assert s._viscous_time_scheme == "implicit_bdf2"
+    assert s._surface_tension_scheme == "pressure_jump"
+    assert s._ppe_solver_name == "fccd_iterative"
+    assert s._ppe_coefficient_scheme == "phase_separated"
+    assert s._ppe_interface_coupling_scheme == "affine_jump"
+    assert s._pressure_gradient_scheme == "fccd_flux"
+    assert s._surface_tension_gradient_scheme == "none"
+    assert s._cn_viscous is True
 
 
 def test_construction_nonuniform():
@@ -241,7 +250,11 @@ def test_dt_max_crank_nicolson_omits_viscous_stability_limit():
     """Implicit CN viscosity should not be governed by the CFL multiplier."""
     from twophase.simulation.config_io import PhysicsCfg
 
-    s = _make_solver(alpha_grid=1.0, viscous_time_scheme="crank_nicolson")
+    s = _make_solver(
+        alpha_grid=1.0,
+        convection_time_scheme="ab2",
+        viscous_time_scheme="crank_nicolson",
+    )
     u = np.ones(s._grid.shape)
     v = np.ones(s._grid.shape)
     ph = PhysicsCfg(rho_l=1.0, rho_g=1.0, sigma=0.0, mu=1.0e6)
