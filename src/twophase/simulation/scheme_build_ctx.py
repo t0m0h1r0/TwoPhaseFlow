@@ -63,6 +63,12 @@ class ViscousBuildCtx:
     spatial_scheme: str = "ccd_bulk"
     viscous_term: "ViscousTerm | None" = None
     cn_mode: str = "picard"
+    solver: str = "defect_correction"
+    solver_tolerance: float = 1.0e-8
+    solver_max_iterations: int = 80
+    solver_restart: int = 40
+    dc_max_iterations: int = 3
+    dc_relaxation: float = 0.8
 
 
 @dataclass

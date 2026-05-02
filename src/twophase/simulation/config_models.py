@@ -99,6 +99,12 @@ class RunCfg:
     convection_time_scheme: str = "ab2"
     viscous_spatial_scheme: str = "ccd_bulk"
     viscous_time_scheme: str = "explicit"
+    viscous_solver: str = "defect_correction"
+    viscous_solver_tolerance: float = 1.0e-8
+    viscous_solver_max_iterations: int = 80
+    viscous_solver_restart: int = 40
+    viscous_dc_max_iterations: int = 3
+    viscous_dc_relaxation: float = 0.8
     cn_mode: str = "picard"
     cn_buoyancy_predictor_assembly_mode: str = "none"
     pressure_gradient_scheme: str = "ccd"

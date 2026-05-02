@@ -31,6 +31,12 @@ def build_ns_viscous_predictor(
     reynolds_number: float,
     viscous_spatial_scheme: str,
     cn_mode: str = "picard",
+    viscous_solver: str = "defect_correction",
+    viscous_solver_tolerance: float = 1.0e-8,
+    viscous_solver_max_iterations: int = 80,
+    viscous_solver_restart: int = 40,
+    viscous_dc_max_iterations: int = 3,
+    viscous_dc_relaxation: float = 0.8,
 ):
     from .ns_option_canonicalizer import canonicalize_viscous_time_scheme
     from ..ns_terms.viscous import ViscousTerm
@@ -55,6 +61,12 @@ def build_ns_viscous_predictor(
             spatial_scheme=viscous_spatial_scheme,
             viscous_term=viscous_term,
             cn_mode=cn_mode,
+            solver=viscous_solver,
+            solver_tolerance=viscous_solver_tolerance,
+            solver_max_iterations=viscous_solver_max_iterations,
+            solver_restart=viscous_solver_restart,
+            dc_max_iterations=viscous_dc_max_iterations,
+            dc_relaxation=viscous_dc_relaxation,
         ),
     )
 

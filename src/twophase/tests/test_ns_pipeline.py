@@ -358,6 +358,8 @@ def test_implicit_bdf2_viscous_predictor_zero_operator_matches_formula():
     xp = backend.xp
 
     class ZeroViscous:
+        Re = 1.0
+
         def _evaluate(self, velocity_components, mu, rho, ccd, psi=None):
             return [xp.zeros_like(component) for component in velocity_components]
 
@@ -367,6 +369,7 @@ def test_implicit_bdf2_viscous_predictor_zero_operator_matches_formula():
         tolerance=1.0e-12,
         max_iterations=5,
         restart=5,
+        solver="gmres",
     )
     u = xp.array([[1.0, 2.0], [3.0, 4.0]])
     v = xp.array([[0.5, 0.25], [-0.25, -0.5]])
@@ -391,8 +394,133 @@ def test_implicit_bdf2_viscous_predictor_zero_operator_matches_formula():
 
     expected_u = (4.0 / 3.0) * u - (1.0 / 3.0) * u_prev + (2.0 / 3.0) * dt * conv_u
     expected_v = (4.0 / 3.0) * v - (1.0 / 3.0) * v_prev + (2.0 / 3.0) * dt * conv_v
-    np.testing.assert_allclose(u_star, expected_u, rtol=1.0e-12, atol=1.0e-12)
-    np.testing.assert_allclose(v_star, expected_v, rtol=1.0e-12, atol=1.0e-12)
+    np.testing.assert_allclose(
+        backend.asnumpy(u_star),
+        backend.asnumpy(expected_u),
+        rtol=1.0e-12,
+        atol=1.0e-12,
+    )
+    np.testing.assert_allclose(
+        backend.asnumpy(v_star),
+        backend.asnumpy(expected_v),
+        rtol=1.0e-12,
+        atol=1.0e-12,
+    )
+
+
+def test_implicit_bdf2_viscous_dc_zero_operator_matches_formula():
+    """With V=0, the DC low Helmholtz solve reduces to the BDF2 affine RHS."""
+    from twophase.simulation.ns_pipeline import TwoPhaseNSSolver
+    from twophase.simulation.viscous_predictors import ImplicitBDF2ViscousPredictor
+
+    solver_runtime = TwoPhaseNSSolver(4, 4, 1.0, 1.0)
+    backend = solver_runtime._backend
+    xp = backend.xp
+
+    class ZeroViscous:
+        Re = 1.0
+
+        def _evaluate(self, velocity_components, mu, rho, ccd, psi=None):
+            return [xp.zeros_like(component) for component in velocity_components]
+
+    predictor = ImplicitBDF2ViscousPredictor(
+        backend,
+        ZeroViscous(),
+        tolerance=1.0e-12,
+        dc_corrections=2,
+        dc_relaxation=0.8,
+    )
+    shape = solver_runtime._grid.shape
+    u = xp.arange(np.prod(shape), dtype=float).reshape(shape) / 10.0
+    v = xp.flip(u, axis=0)
+    u_prev = xp.zeros_like(u)
+    v_prev = xp.ones_like(v)
+    conv_u = xp.full_like(u, 0.25)
+    conv_v = xp.full_like(v, -0.125)
+    dt = 0.09
+
+    u_star, v_star = predictor.predict_bdf2(
+        u,
+        v,
+        u_prev,
+        v_prev,
+        conv_u,
+        conv_v,
+        xp.zeros_like(u),
+        xp.ones_like(u),
+        dt,
+        solver_runtime._ccd,
+    )
+
+    expected_u = (4.0 / 3.0) * u - (1.0 / 3.0) * u_prev + (2.0 / 3.0) * dt * conv_u
+    expected_v = (4.0 / 3.0) * v - (1.0 / 3.0) * v_prev + (2.0 / 3.0) * dt * conv_v
+    np.testing.assert_allclose(
+        backend.asnumpy(u_star),
+        backend.asnumpy(expected_u),
+        rtol=1.0e-12,
+        atol=1.0e-12,
+    )
+    np.testing.assert_allclose(
+        backend.asnumpy(v_star),
+        backend.asnumpy(expected_v),
+        rtol=1.0e-12,
+        atol=1.0e-12,
+    )
+    assert predictor.last_diagnostics["viscous_dc_low_factor_reuse"] == pytest.approx(1.0)
+
+
+def test_implicit_bdf2_viscous_dc_reduces_high_residual():
+    """DC iterations reduce the high-order viscous Helmholtz residual."""
+    from twophase.ns_terms.viscous import ViscousTerm
+    from twophase.simulation.ns_pipeline import TwoPhaseNSSolver
+    from twophase.simulation.viscous_predictors import ImplicitBDF2ViscousPredictor
+
+    solver_runtime = TwoPhaseNSSolver(
+        8,
+        8,
+        1.0,
+        1.0,
+        use_gpu=False,
+        convection_time_scheme="imex_bdf2",
+        viscous_time_scheme="implicit_bdf2",
+    )
+    X, Y = solver_runtime.X, solver_runtime.Y
+    u = np.sin(np.pi * X) * np.sin(np.pi * Y)
+    v = np.zeros_like(u)
+    zeros = np.zeros_like(u)
+    mu = np.full_like(u, 0.05)
+    rho = np.ones_like(u)
+    viscous = ViscousTerm(
+        solver_runtime._backend,
+        Re=1.0,
+        cn_viscous=True,
+        spatial_scheme="ccd_bulk",
+    )
+    predictor = ImplicitBDF2ViscousPredictor(
+        solver_runtime._backend,
+        viscous,
+        tolerance=1.0e-10,
+        dc_corrections=4,
+        dc_relaxation=0.8,
+    )
+
+    predictor.predict_bdf2(
+        u,
+        v,
+        u,
+        v,
+        zeros,
+        zeros,
+        mu,
+        rho,
+        0.01,
+        solver_runtime._ccd,
+    )
+
+    history = predictor.last_residual_history
+    assert len(history) == 4
+    assert all(after < before for before, after in zip(history, history[1:]))
+    assert history[-1] < 0.05 * history[0]
 
 
 def test_pressure_projection_uses_projection_dt():

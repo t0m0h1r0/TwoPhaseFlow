@@ -149,6 +149,14 @@ def _case_config(N: int, alpha: float, eps_mode: str) -> ExperimentConfig:
                     "viscosity": {
                         "spatial": "ccd",
                         "time_integrator": "implicit_bdf2",
+                        "solver": {
+                            "kind": "defect_correction",
+                            "tolerance": 1.0e-8,
+                            "corrections": {
+                                "max_iterations": 3,
+                                "relaxation": 0.8,
+                            },
+                        },
                     },
                     "surface_tension": {"formulation": "pressure_jump"},
                 },

@@ -106,7 +106,7 @@ mask rather than using a constant-coefficient surrogate.
 
 ## Implementation design
 
-1. Keep the existing GMRES path as legacy/test fallback.
+1. Keep the existing GMRES path as an explicit YAML-selectable solver.
 2. Add a `ViscousHelmholtzDCSolver` that owns only the algebraic solve.
 3. Evaluate the high residual with the existing `ViscousTerm._evaluate`.
 4. Build one sparse low-order scalar Helmholtz matrix per velocity component.
@@ -114,10 +114,38 @@ mask rather than using a constant-coefficient surrogate.
 6. Enforce periodic image rows as quotient constraints in the low solve.
 7. Expose residual history for validation and performance comparison.
 
+YAML selection:
+
+```yaml
+viscosity:
+  spatial: ccd
+  time_integrator: implicit_bdf2
+  solver:
+    kind: defect_correction
+    tolerance: 1.0e-8
+    max_iterations: 80
+    restart: 40
+    corrections:
+      max_iterations: 3
+      relaxation: 0.8
+```
+
+GMRES remains available as the explicit comparison path:
+
+```yaml
+viscosity:
+  spatial: ccd
+  time_integrator: implicit_bdf2
+  solver:
+    kind: gmres
+    tolerance: 1.0e-8
+    max_iterations: 80
+    restart: 40
+```
+
 ## SOLID audit
 
 [SOLID-X] No violation found in the design.  The viscous physics remains owned
 by `ViscousTerm`; the new solver owns only the Helmholtz algebra.  The existing
-GMRES implementation is retained as legacy fallback, so no tested code is
-deleted.
-
+GMRES implementation is retained as an explicit selectable solver, so no tested
+code is deleted.

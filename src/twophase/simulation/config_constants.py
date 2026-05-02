@@ -58,6 +58,12 @@ _SURFACE_TENSION_ALIASES = {
     "ppe_jump": "pressure_jump",
 }
 _VISCOUS_TIME_SCHEMES = ("forward_euler", "crank_nicolson", "implicit_bdf2")
+_VISCOUS_SOLVERS = ("defect_correction", "gmres")
+_VISCOUS_SOLVER_ALIASES = {
+    "dc": "defect_correction",
+    "viscous_dc": "defect_correction",
+    "defect-correction": "defect_correction",
+}
 _INTERFACE_TIME_SCHEMES = ("tvd_rk3",)
 _MOMENTUM_PREDICTORS = ("projection_predictor_corrector",)
 _CONVECTION_TIME_SCHEMES = ("ab2", "forward_euler", "imex_bdf2")

@@ -16,6 +16,8 @@ from .config_constants import (
     _SURFACE_TENSION_SCHEMES,
     _VISCOUS_SPATIAL_ALIASES as _VISCOUS_SPATIAL_ALIASES_BASE,
     _VISCOUS_SPATIAL_SCHEMES,
+    _VISCOUS_SOLVER_ALIASES,
+    _VISCOUS_SOLVERS,
     _VISCOUS_TIME_SCHEMES,
 )
 from .config_run_poisson_sections import parse_run_poisson_settings
@@ -202,6 +204,49 @@ def parse_run_operator_settings(
         _CN_MODES,
         f"{layout['paths']['viscosity_time']}.cn_mode",
     )
+    raw_viscous_solver = viscosity.get("solver", {}) or {}
+    if isinstance(raw_viscous_solver, str):
+        viscous_solver_cfg = {"kind": raw_viscous_solver}
+    else:
+        viscous_solver_cfg = dict(raw_viscous_solver)
+    viscous_solver = validate_choice(
+        _VISCOUS_SOLVER_ALIASES.get(
+            str(viscous_solver_cfg.get("kind", "defect_correction")).strip().lower(),
+            str(viscous_solver_cfg.get("kind", "defect_correction")).strip().lower(),
+        ),
+        _VISCOUS_SOLVERS,
+        f"{layout['paths']['viscosity_time']}.solver.kind",
+    )
+    viscous_dc_cfg = viscous_solver_cfg.get("corrections", {}) or {}
+    viscous_solver_tolerance = float(
+        viscous_solver_cfg.get("tolerance", viscous_dc_cfg.get("tolerance", 1.0e-8))
+    )
+    viscous_solver_max_iterations = int(viscous_solver_cfg.get("max_iterations", 80))
+    viscous_solver_restart = int(viscous_solver_cfg.get("restart", 40))
+    viscous_dc_max_iterations = int(viscous_dc_cfg.get("max_iterations", 3))
+    viscous_dc_relaxation = float(viscous_dc_cfg.get("relaxation", 0.8))
+    if viscous_solver_tolerance <= 0.0:
+        raise ValueError(
+            f"{layout['paths']['viscosity_time']}.solver.tolerance must be > 0"
+        )
+    if viscous_solver_max_iterations <= 0:
+        raise ValueError(
+            f"{layout['paths']['viscosity_time']}.solver.max_iterations must be > 0"
+        )
+    if viscous_solver_restart <= 0:
+        raise ValueError(
+            f"{layout['paths']['viscosity_time']}.solver.restart must be > 0"
+        )
+    if viscous_dc_max_iterations <= 0:
+        raise ValueError(
+            f"{layout['paths']['viscosity_time']}.solver.corrections.max_iterations "
+            "must be > 0"
+        )
+    if viscous_dc_relaxation <= 0.0:
+        raise ValueError(
+            f"{layout['paths']['viscosity_time']}.solver.corrections.relaxation "
+            "must be > 0"
+        )
     predictor_cfg = momentum.get("predictor", {}) or {}
     raw_predictor_assembly = predictor_cfg.get(
         "assembly",
@@ -252,6 +297,12 @@ def parse_run_operator_settings(
         "uccd6_sigma": uccd6_sigma,
         "viscous_spatial_scheme": viscous_spatial_scheme,
         "viscous_time_scheme": viscous_time_scheme,
+        "viscous_solver": viscous_solver,
+        "viscous_solver_tolerance": viscous_solver_tolerance,
+        "viscous_solver_max_iterations": viscous_solver_max_iterations,
+        "viscous_solver_restart": viscous_solver_restart,
+        "viscous_dc_max_iterations": viscous_dc_max_iterations,
+        "viscous_dc_relaxation": viscous_dc_relaxation,
         "cn_mode": cn_mode,
         "cn_buoyancy_predictor_assembly_mode": predictor_assembly,
     }

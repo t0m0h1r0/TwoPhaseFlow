@@ -214,7 +214,26 @@ All three ch14 YAMLs share the production stack:
   `momentum.terms.surface_tension.formulation: pressure_jump` — surface tension
   enters the PPE as an interface stress condition rather than as a CSF body force.
 - `momentum.terms.viscosity.spatial: ccd` + `time_integrator: implicit_bdf2` —
-  CN-family path for stiffness-relevant viscous terms (WIKI-X-026 / WIKI-X-030).
+  BDF2 Helmholtz path for stiffness-relevant viscous terms. The nested
+  `solver.kind` selects `defect_correction` (default production path) or
+  `gmres` (explicit comparison path). DC-specific settings live under
+  `solver.corrections`.
+
+Viscous BDF2 solver selection:
+
+```yaml
+viscosity:
+  spatial: ccd
+  time_integrator: implicit_bdf2
+  solver:
+    kind: defect_correction   # or gmres
+    tolerance: 1.0e-8
+    max_iterations: 80
+    restart: 40
+    corrections:
+      max_iterations: 3
+      relaxation: 0.8
+```
 - `projection.poisson.operator.discretization: fccd`,
   `coefficient: phase_separated`,
   `interface_coupling: affine_jump` — the FCCD pressure operator

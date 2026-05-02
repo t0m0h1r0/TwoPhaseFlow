@@ -228,6 +228,8 @@ def test_ch13_fccd_hfe_uccd_yaml_loads_execution_stack():
     assert cfg.run.convection_time_scheme == "imex_bdf2"
     assert cfg.run.viscous_spatial_scheme == "ccd_bulk"
     assert cfg.run.viscous_time_scheme == "implicit_bdf2"
+    assert cfg.run.viscous_solver == "defect_correction"
+    assert cfg.run.viscous_dc_max_iterations == 3
     assert cfg.run.cfl_policy == "theory_multiplier"
     assert cfg.run.cfl == pytest.approx(1.0)
     assert cfg.run.cfl_advective == pytest.approx(0.10)
@@ -272,6 +274,7 @@ def test_ch13_rising_bubble_water_air_yaml_loads_execution_stack():
     assert cfg.run.convection_scheme == "uccd6"
     assert cfg.run.convection_time_scheme == "imex_bdf2"
     assert cfg.run.viscous_time_scheme == "implicit_bdf2"
+    assert cfg.run.viscous_solver == "defect_correction"
     assert cfg.run.cn_buoyancy_predictor_assembly_mode == "balanced_buoyancy"
     assert cfg.run.face_flux_projection is True
     assert cfg.run.canonical_face_state is True
@@ -887,6 +890,32 @@ def test_implicit_bdf2_viscosity_requires_imex_bdf2_convection():
                 },
             },
         }))
+
+
+def test_implicit_bdf2_viscosity_solver_selects_gmres():
+    cfg = ExperimentConfig.from_dict(_minimal({
+        "numerics": {
+            "momentum": {
+                "terms": {
+                    "convection": {"time_integrator": "imex_bdf2"},
+                    "viscosity": {
+                        "time_integrator": "implicit_bdf2",
+                        "solver": {
+                            "kind": "gmres",
+                            "tolerance": 2.0e-7,
+                            "max_iterations": 42,
+                            "restart": 21,
+                        },
+                    },
+                },
+            },
+        },
+    }))
+
+    assert cfg.run.viscous_solver == "gmres"
+    assert cfg.run.viscous_solver_tolerance == pytest.approx(2.0e-7)
+    assert cfg.run.viscous_solver_max_iterations == 42
+    assert cfg.run.viscous_solver_restart == 21
 
 
 def test_invalid_interface_tracking_primary_rejected():

@@ -56,6 +56,12 @@ class NSPPERuntimeState:
 class NSSchemeRuntimeState:
     convection_time_scheme: str
     viscous_time_scheme: str
+    viscous_solver: str
+    viscous_solver_tolerance: float
+    viscous_solver_max_iterations: int
+    viscous_solver_restart: int
+    viscous_dc_max_iterations: int
+    viscous_dc_relaxation: float
     momentum_gradient_scheme: str
     pressure_gradient_scheme: str
     surface_tension_gradient_scheme: str
@@ -240,6 +246,12 @@ def normalise_ns_scheme_runtime(options) -> NSSchemeRuntimeState:
     return NSSchemeRuntimeState(
         convection_time_scheme=convection_time_scheme,
         viscous_time_scheme=viscous_time_scheme,
+        viscous_solver=str(getattr(options, "viscous_solver", "defect_correction")),
+        viscous_solver_tolerance=float(getattr(options, "viscous_solver_tolerance", 1.0e-8)),
+        viscous_solver_max_iterations=int(getattr(options, "viscous_solver_max_iterations", 80)),
+        viscous_solver_restart=int(getattr(options, "viscous_solver_restart", 40)),
+        viscous_dc_max_iterations=int(getattr(options, "viscous_dc_max_iterations", 3)),
+        viscous_dc_relaxation=float(getattr(options, "viscous_dc_relaxation", 0.8)),
         momentum_gradient_scheme=momentum_gradient_scheme,
         pressure_gradient_scheme=pressure_gradient_scheme,
         surface_tension_gradient_scheme=surface_tension_gradient_scheme,
