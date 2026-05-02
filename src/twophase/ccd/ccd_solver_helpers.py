@@ -37,7 +37,7 @@ def _apply_gpu_wall_operator_matrix(solver, info, data, axis: int, *, need_d1: b
 
 def differentiate_ccd_wall_raw(solver, data, axis: int, bc_left, bc_right):
     xp = solver.xp
-    info = solver._solvers[axis]
+    info = solver._get_axis_solver(axis)
     h = info['h']
     N = info['N']
     n_int = info['n_int']
@@ -79,7 +79,7 @@ def differentiate_ccd_wall_raw(solver, data, axis: int, bc_left, bc_right):
 
 def differentiate_ccd_wall_first_only(solver, data, axis: int, bc_left, bc_right, apply_metric: bool = True):
     xp = solver.xp
-    info = solver._solvers[axis]
+    info = solver._get_axis_solver(axis)
     if (
         solver.backend.device == "gpu"
         and bc_left is None
@@ -142,7 +142,7 @@ def differentiate_ccd_wall_first_only(solver, data, axis: int, bc_left, bc_right
 
 def differentiate_ccd_wall_second_only(solver, data, axis: int, bc_left, bc_right, apply_metric: bool = True):
     xp = solver.xp
-    info = solver._solvers[axis]
+    info = solver._get_axis_solver(axis)
     if (
         solver.backend.device == "gpu"
         and bc_left is None

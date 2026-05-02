@@ -38,6 +38,15 @@ def make_grid_2d(N: int, backend):
     return Grid(cfg.grid, backend)
 
 
+def test_wall_ccd_rejects_lower_order_eqii_fallback(backend):
+    """Paper-exact wall CCD requires the O(h⁴) six-point Eq-II closure."""
+    grid = make_grid_2d(4, backend)
+    ccd = CCDSolver(grid, backend, bc_type="wall")
+    field = np.zeros(grid.shape)
+    with pytest.raises(ValueError, match="n_pts >= 6"):
+        ccd.differentiate(field, axis=0)
+
+
 # ── Test 1: O(h⁶) convergence for d1 ─────────────────────────────────────
 
 def _ccd_d1_error(N, backend):

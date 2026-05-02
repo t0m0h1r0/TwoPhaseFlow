@@ -23,7 +23,7 @@ nodes unfiltered. This was fixed.
 | Paper equation / statement | Discretisation invariant | Code path | Result |
 |---|---|---|---|
 | `eq:CCD_I`, `eq:CCD_II`, `eq:coef_CCD` | Chu--Fan coefficients `(7/16, 15/16, 1/16, -1/8, 3, -9/8)` | `src/twophase/ccd/ccd_solver.py`, `src/twophase/ccd/ccd_solver_helpers.py` | PASS |
-| `eq:bc_left`, `eq:bcII_left`, appendix `eq:bcII_left_h4` | Eq-I one-sided closure; Eq-II six-point `O(h^4)` implementation default for `n_pts>=6`, `O(h^2)` fallback | `src/twophase/ccd/ccd_solver.py` | PASS; Chapter 4 prose clarified |
+| `eq:bc_left`, `eq:bcII_left`, appendix `eq:bcII_left_h4` | Eq-I one-sided closure; Eq-II six-point `O(h^4)` implementation requirement for `n_pts>=6`; lower-order fallback prohibited | `src/twophase/ccd/ccd_solver.py` | PASS AFTER FIX |
 | `eq:dccd_filter_transfer`, `eq:adaptive_eps`, `alg:dccd` | DCCD transfer function with adaptive `S(psi)` and unfiltered wall/outflow boundary derivative nodes | `src/twophase/levelset/advection_dccd.py`, `src/twophase/levelset/advection_kernels.py`, `src/twophase/levelset/curvature.py`, `src/twophase/levelset/curvature_psi.py` | PASS AFTER FIX |
 | `eq:uccd6_semidiscrete`, `eq:uccd6_symbol`, `eq:uccd6_energy_id` | `-a D1 - sigma |a| h^7 (D2)^4` with non-positive hyperviscosity symbol | `src/twophase/ccd/uccd6.py`, `src/twophase/ns_terms/uccd6_convection.py` | PASS |
 | `eq:fccd_matrix_system`, `eq:face_value_formula`, `eq:face_grad_formula`, `eq:face_second_formula` | Face value/gradient/second-derivative jet from shared CCD `q=u''` | `src/twophase/ccd/fccd.py`, `src/twophase/ccd/fccd_helpers.py` | PASS |
@@ -72,11 +72,11 @@ Severity: PAPER CONSISTENCY.
 Status: FIXED IN PAPER.
 
 The implementation and appendix use the six-point `O(h^4)` Eq-II boundary
-closure when `n_pts>=6`, with the four-point `O(h^2)` formula retained as a
-small-grid fallback. The Chapter 4 boundary overview still described
-`O(h^2)` as the adopted Eq-II closure. The paper prose was clarified to state
-that the `O(h^2)` analysis is the conservative minimal-closure bound, while the
-implementation default is the appendix `O(h^4)` upgrade.
+closure when `n_pts>=6`. The four-point `O(h^2)` formula is only a theoretical
+minimal-closure comparison and must not be used as an implementation fallback.
+The Chapter 4 boundary overview and appendix implementation paragraph were
+clarified accordingly, and the code now rejects `n_pts<6` explicitly instead
+of silently switching formulae.
 
 ## GPU Optimisation Audit
 
@@ -101,6 +101,9 @@ PASS.
   - `twophase/tests/test_fccd.py`
   - DCCD adaptive/boundary targeted tests
   - Result: `48 passed in 12.41s`.
+- Follow-up validation after prohibiting lower-order Eq-II fallback:
+  - Same CCD/FCCD/UCCD6 plus DCCD adaptive/boundary focused set
+  - Result: `46 passed in 11.99s`.
 - Remote CuPy smoke:
   - `gpu True`
   - `cuda True True`
@@ -112,4 +115,3 @@ PASS.
 responsibilities. The adaptive switch was implemented as a narrow kernel/helper
 extension and injected through existing call sites. No tested implementation was
 deleted; compatibility export of `_dccd_filter_stencil` remains intact.
-

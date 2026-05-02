@@ -63,7 +63,7 @@ def test_dccd_adaptive_filter_zeroes_interface_switch(backend):
 def test_dissipative_ccd_wall_filter_preserves_boundary_derivative(backend):
     """Paper §4 DCCD wall/outflow boundaries remain unfiltered."""
     N = 16
-    Ny = 4
+    Ny = 8
     cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, Ny), L=(1.0, 1.0)))
     grid = Grid(cfg.grid, backend)
     ccd = CCDSolver(grid, backend, bc_type="wall")
