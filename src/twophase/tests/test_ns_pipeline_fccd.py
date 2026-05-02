@@ -1070,7 +1070,7 @@ def test_phase_separated_pressure_jump_stack_one_step_no_nan():
     if previous_pressure is None:
         assert solver._p_prev_dev is not None
         previous_pressure = solver._backend.to_host(solver._p_prev_dev)
-    assert not np.allclose(np.asarray(previous_pressure), np.asarray(p))
+    np.testing.assert_allclose(np.asarray(previous_pressure), np.asarray(p))
     diag = solver._step_diag.last
     assert diag["ppe_phase_count"] == 2.0
     assert diag["ppe_pin_count"] == 0.0

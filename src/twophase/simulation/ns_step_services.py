@@ -23,6 +23,18 @@ def _backend_is_gpu(backend) -> bool:
     return bool(getattr(backend, "is_gpu", lambda: False)())
 
 
+def _apply_solver_interface_jump(ppe_solver, base_pressure):
+    """Map a base pressure to the solver's physical pressure representation."""
+    applier = getattr(ppe_solver, "apply_interface_jump", None)
+    if callable(applier):
+        return applier(base_pressure)
+    operator = getattr(ppe_solver, "operator", None)
+    applier = getattr(operator, "apply_interface_jump", None)
+    if callable(applier):
+        return applier(base_pressure)
+    return base_pressure
+
+
 def build_pressure_robust_buoyancy_residual_accel_faces(
     *,
     buoyancy_force_components: list,
@@ -288,6 +300,14 @@ def compute_ns_predictor_stage(
         conv_step_u = conv_u
         conv_step_v = conv_v
 
+    if state.previous_pressure is not None:
+        if pressure_grad_op is None:
+            raise RuntimeError("IPC predictor requires pressure_grad_op for ∇p^n")
+        dpn_dx = pressure_grad_op.gradient(state.previous_pressure, 0)
+        dpn_dy = pressure_grad_op.gradient(state.previous_pressure, 1)
+        conv_step_u = conv_step_u - dpn_dx / state.rho
+        conv_step_v = conv_step_v - dpn_dy / state.rho
+
     predictor_kwargs = {}
     face_residual_buoyancy_state = None
     can_use_face_state = (
@@ -538,11 +558,12 @@ def solve_ns_pressure_stage(
     ppe_solver,
     p_prev_dev,
     surface_tension_scheme: str,
+    p_base_prev_dev=None,
     face_native_predictor_state: bool = False,
     bc_type: str = "wall",
     face_no_slip_boundary_state: bool = False,
 ) -> tuple[NSStepState, object, np.ndarray]:
-    """Solve PPE and prepare total corrector pressure plus base warm start."""
+    """Solve IPC PPE for δp and accumulate pⁿ⁺¹ = pⁿ + δp."""
     xp = backend.xp
     projection_dt = state.projection_dt if state.projection_dt is not None else state.dt
     predictor_faces = None
@@ -576,19 +597,31 @@ def solve_ns_pressure_stage(
             sigma=jump_sigma,
         )
 
-    state.pressure = ppe_solver.solve(
+    state.pressure_increment = ppe_solver.solve(
         rhs,
         state.rho,
         dt=projection_dt,
-        p_init=p_prev_dev,
+        p_init=None,
     )
-    next_p_prev_dev = getattr(ppe_solver, "last_base_pressure", state.pressure)
+    base_increment = getattr(ppe_solver, "last_base_pressure", state.pressure_increment)
+    previous_base = (
+        state.previous_base_pressure
+        if state.previous_base_pressure is not None
+        else p_base_prev_dev
+    )
+    if previous_base is None:
+        previous_base = p_prev_dev
+    if previous_base is None:
+        previous_base = xp.zeros_like(base_increment)
+    state.pressure_base = xp.asarray(previous_base) + xp.asarray(base_increment)
+    state.pressure = _apply_solver_interface_jump(ppe_solver, state.pressure_base)
+    next_p_prev_dev = xp.copy(state.pressure)
     next_p_prev = (
         None
         if _backend_is_gpu(backend)
         else np.asarray(backend.to_host(next_p_prev_dev))
     )
-    state.p_corrector = state.pressure
+    state.p_corrector = state.pressure_increment
     return state, next_p_prev_dev, next_p_prev
 
 def correct_ns_velocity_stage(

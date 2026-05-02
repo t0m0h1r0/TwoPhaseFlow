@@ -369,6 +369,78 @@ def test_imex_bdf2_predictor_uses_ext2_and_projection_dt():
     np.testing.assert_allclose(next_velocity[0], state.u)
 
 
+def test_predictor_includes_ipc_previous_pressure_gradient():
+    """Chapter 11 Step 5 requires the explicit -rho^-1 grad(p^n) term."""
+    from twophase.backend import Backend
+    from twophase.simulation.ns_step_services import compute_ns_predictor_stage
+    from twophase.simulation.ns_step_state import NSStepInputs, NSStepState
+
+    backend = Backend(use_gpu=False)
+    xp = backend.xp
+    shape = (2, 2)
+
+    class ZeroConvection:
+        def compute(self, ctx):
+            return xp.zeros_like(ctx.velocity[0]), xp.zeros_like(ctx.velocity[1])
+
+    class RecordingPredictor:
+        def predict(
+            self,
+            u,
+            v,
+            conv_u,
+            conv_v,
+            mu,
+            rho,
+            dt,
+            ccd,
+            buoy_v=None,
+            psi=None,
+            **kwargs,
+        ):
+            self.conv_u = xp.copy(conv_u)
+            self.conv_v = xp.copy(conv_v)
+            return u + dt * conv_u, v + dt * conv_v
+
+    class ConstantGradient:
+        def gradient(self, pressure, axis):
+            return xp.full_like(pressure, 4.0 + 2.0 * axis)
+
+    predictor = RecordingPredictor()
+    inputs = NSStepInputs(
+        psi=xp.ones(shape),
+        u=xp.zeros(shape),
+        v=xp.zeros(shape),
+        dt=0.25,
+        rho_l=2.0,
+        rho_g=2.0,
+        sigma=0.0,
+        mu=1.0,
+    )
+    state = NSStepState.from_inputs(inputs, backend=backend)
+    state.rho = xp.full(shape, 2.0)
+    state.mu_field = xp.ones(shape)
+    state.previous_pressure = xp.ones(shape)
+
+    state, *_ = compute_ns_predictor_stage(
+        state,
+        backend=backend,
+        ccd=None,
+        conv_term=ZeroConvection(),
+        viscous_predictor=predictor,
+        scheme_runtime=SimpleNamespace(convection_time_scheme="imex_bdf2"),
+        conv_ab2_ready=False,
+        conv_prev=None,
+        projection_consistent_buoyancy=True,
+        pressure_grad_op=ConstantGradient(),
+    )
+
+    np.testing.assert_allclose(predictor.conv_u, xp.full(shape, -2.0))
+    np.testing.assert_allclose(predictor.conv_v, xp.full(shape, -3.0))
+    np.testing.assert_allclose(state.u_star, xp.full(shape, -0.5))
+    np.testing.assert_allclose(state.v_star, xp.full(shape, -0.75))
+
+
 def test_implicit_bdf2_viscous_predictor_zero_operator_matches_formula():
     """With V=0, the matrix-free solve reduces exactly to the BDF2 affine RHS."""
     from twophase.backend import Backend
@@ -641,6 +713,7 @@ def test_pressure_projection_uses_projection_dt():
         def solve(self, rhs, rho, dt=0.0, p_init=None):
             self.rhs = xp.copy(rhs)
             self.dt = dt
+            self.p_init = p_init
             return xp.zeros_like(rhs)
 
     ppe_solver = CapturingPPE()
@@ -653,6 +726,7 @@ def test_pressure_projection_uses_projection_dt():
         surface_tension_scheme="none",
     )
     assert ppe_solver.dt == pytest.approx(0.2)
+    assert ppe_solver.p_init is None
     np.testing.assert_allclose(ppe_solver.rhs, xp.full(shape, 30.0))
 
     class ConstantGradient:
@@ -676,6 +750,67 @@ def test_pressure_projection_uses_projection_dt():
     )
     np.testing.assert_allclose(state.u, xp.full(shape, 1.0 - 0.2 * 2.0))
     np.testing.assert_allclose(state.v, xp.full(shape, 1.0 - 0.2 * 3.0))
+
+
+def test_pressure_stage_accumulates_ipc_pressure_increment():
+    """Chapter 11 Step 7 stores p^n + δp while correcting with δp only."""
+    from twophase.backend import Backend
+    from twophase.simulation.ns_step_services import solve_ns_pressure_stage
+    from twophase.simulation.ns_step_state import NSStepInputs, NSStepState
+
+    backend = Backend(use_gpu=False)
+    xp = backend.xp
+    shape = (2, 2)
+    state = NSStepState.from_inputs(
+        NSStepInputs(
+            psi=xp.ones(shape),
+            u=xp.zeros(shape),
+            v=xp.zeros(shape),
+            dt=0.1,
+            rho_l=1.0,
+            rho_g=1.0,
+            sigma=0.0,
+            mu=1.0,
+        ),
+        backend=backend,
+    )
+    state.projection_dt = 0.1
+    state.rho = xp.ones(shape)
+    state.f_x = xp.zeros(shape)
+    state.f_y = xp.zeros(shape)
+    state.u_star = xp.ones(shape)
+    state.v_star = xp.ones(shape)
+    state.previous_pressure = xp.full(shape, 4.0)
+    state.previous_base_pressure = xp.full(shape, 4.0)
+
+    class UnitDivergence:
+        def divergence(self, components):
+            if np.allclose(components[0], 0.0) and np.allclose(components[1], 0.0):
+                return xp.zeros(shape)
+            return xp.ones(shape)
+
+    class IncrementPPE:
+        def solve(self, rhs, rho, dt=0.0, p_init=None):
+            self.p_init = p_init
+            self.last_base_pressure = xp.full_like(rhs, 2.0)
+            return xp.full_like(rhs, 2.0)
+
+    ppe_solver = IncrementPPE()
+    state, next_pressure_dev, next_pressure = solve_ns_pressure_stage(
+        state,
+        backend=backend,
+        div_op=UnitDivergence(),
+        ppe_solver=ppe_solver,
+        p_prev_dev=state.previous_pressure,
+        p_base_prev_dev=state.previous_base_pressure,
+        surface_tension_scheme="none",
+    )
+
+    assert ppe_solver.p_init is None
+    np.testing.assert_allclose(state.p_corrector, xp.full(shape, 2.0))
+    np.testing.assert_allclose(state.pressure, xp.full(shape, 6.0))
+    np.testing.assert_allclose(next_pressure_dev, xp.full(shape, 6.0))
+    np.testing.assert_allclose(next_pressure, xp.full(shape, 6.0))
 
 
 # ── Test 6: config_io round-trip ─────────────────────────────────────────────
