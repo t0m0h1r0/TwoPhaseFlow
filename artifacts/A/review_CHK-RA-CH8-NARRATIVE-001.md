@@ -1,6 +1,6 @@
 # Review CHK-RA-CH8-NARRATIVE-001
 
-Date: 2026-05-02  
+Date: 2026-05-02
 Scope: `paper/sections/08_collocate.tex`, `paper/sections/08b_pressure.tex`, `paper/sections/08c_bf_failure.tex`, `paper/sections/08d_bf_seven_principles.tex`, `paper/sections/08e_fccd_bf.tex`, and required cross-reference edits.
 
 ## Verdict
