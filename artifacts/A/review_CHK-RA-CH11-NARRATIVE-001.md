@@ -33,3 +33,10 @@ OPEN MINOR: 0
 - A3 traceability through equation/operator/check references: PASS
 - [SOLID-X]: paper/review documentation only; no production-code boundary changed.
 
+## Validation
+
+- `git diff --check`: PASS
+- Chapter 11 prohibited-reader-framing grep: PASS, only `sec:newton_inversion` label false positive remains
+- `rg '\\(section|subsection|caption)\\{[^}]*\\$' paper/sections/11*.tex`: PASS
+- `latexmk -xelatex -interaction=nonstopmode -halt-on-error main.tex`: PASS (`paper/main.pdf`, 240 pages)
+- Log tail: output written successfully to `main.xdv`; nonfatal residual layout warnings are outside Chapter 11
