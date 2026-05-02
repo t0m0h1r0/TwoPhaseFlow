@@ -88,6 +88,42 @@ class Rectangle(ShapePrimitive):
 
 
 @dataclass
+class Layer(ShapePrimitive):
+    axis: int
+    lower: float
+    upper: float
+    _interior_phase: str = field(default="liquid", repr=False)
+
+    def __init__(
+        self,
+        axis: int,
+        lower: float,
+        upper: float,
+        interior_phase: str = "liquid",
+    ) -> None:
+        if axis < 0:
+            raise ValueError("Layer: axis must be non-negative.")
+        if upper <= lower:
+            raise ValueError("Layer: upper must be greater than lower.")
+        self.axis = int(axis)
+        self.lower = float(lower)
+        self.upper = float(upper)
+        self._interior_phase = interior_phase
+        validate_shape_phase(interior_phase)
+
+    @property
+    def interior_phase(self) -> str:
+        return self._interior_phase
+
+    def sdf(self, *coords: np.ndarray) -> np.ndarray:
+        if self.axis >= len(coords):
+            raise ValueError("Layer.sdf: axis is outside grid ndim.")
+        xp = _xp_like(coords[self.axis])
+        coord = coords[self.axis]
+        return xp.maximum(self.lower - coord, coord - self.upper)
+
+
+@dataclass
 class SinusoidalInterface(ShapePrimitive):
     axis: int
     mean: float

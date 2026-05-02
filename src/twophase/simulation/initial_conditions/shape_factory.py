@@ -9,6 +9,7 @@ from .shape_primitives import (
     Circle,
     Ellipse,
     HalfSpace,
+    Layer,
     PerturbedCircle,
     Rectangle,
     SinusoidalInterface,
@@ -37,6 +38,28 @@ def _axis_index(value) -> int:
             return 1
         raise ValueError("SinusoidalInterface: axis must be x|y|0|1.")
     return int(value)
+
+
+def _layer_bounds(data: dict) -> tuple[float, float]:
+    if "bounds" in data:
+        bounds = data["bounds"]
+        if len(bounds) != 2:
+            raise ValueError("Layer: bounds must contain [lower, upper].")
+        return float(bounds[0]), float(bounds[1])
+    if "lower" in data and "upper" in data:
+        return float(data["lower"]), float(data["upper"])
+    if "min" in data and "max" in data:
+        return float(data["min"]), float(data["max"])
+    if "center" in data and ("thickness" in data or "width" in data):
+        center = float(data["center"])
+        thickness = float(data.get("thickness", data.get("width")))
+        if thickness <= 0.0:
+            raise ValueError("Layer: thickness must be positive.")
+        half_width = 0.5 * thickness
+        return center - half_width, center + half_width
+    raise ValueError(
+        "Layer: provide bounds, lower/upper, min/max, or center with thickness."
+    )
 
 
 def _wave_wavelength(data: dict) -> float:
@@ -90,6 +113,16 @@ def _build_half_space(data: dict, phase: str) -> ShapePrimitive:
     )
 
 
+def _build_layer(data: dict, phase: str) -> ShapePrimitive:
+    lower, upper = _layer_bounds(data)
+    return Layer(
+        axis=_axis_index(data.get("axis", data.get("normal_axis", 1))),
+        lower=lower,
+        upper=upper,
+        interior_phase=phase,
+    )
+
+
 def _build_sinusoidal_interface(data: dict, phase: str) -> ShapePrimitive:
     return SinusoidalInterface(
         axis=_axis_index(data.get("axis", data.get("normal_axis", 1))),
@@ -133,6 +166,8 @@ _SHAPE_BUILDERS: dict[str, Callable[[dict, str], ShapePrimitive]] = {
     "bubble": _build_bubble,
     "circle": _build_circle,
     "rectangle": _build_rectangle,
+    "layer": _build_layer,
+    "slab": _build_layer,
     "half_space": _build_half_space,
     "sinusoidal_interface": _build_sinusoidal_interface,
     "capillary_wave": _build_sinusoidal_interface,

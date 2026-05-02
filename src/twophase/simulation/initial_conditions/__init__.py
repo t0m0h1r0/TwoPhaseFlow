@@ -17,6 +17,9 @@ Ellipse
 Rectangle
     Axis-aligned box region.
 
+Layer
+    Axis-aligned finite layer spanning the remaining coordinates.
+
 HalfSpace
     Half-space region defined by a hyperplane.
 
@@ -70,6 +73,7 @@ from .shapes import (
     Circle,
     Ellipse,
     HalfSpace,
+    Layer,
     PerturbedCircle,
     Rectangle,
     SinusoidalInterface,
@@ -92,6 +96,7 @@ __all__ = [
     "Circle",
     "Ellipse",
     "Rectangle",
+    "Layer",
     "HalfSpace",
     "SinusoidalInterface",
     "PerturbedCircle",

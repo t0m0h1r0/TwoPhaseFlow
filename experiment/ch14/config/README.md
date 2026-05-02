@@ -69,21 +69,27 @@ are being placed:
 
 ```yaml
 initial_condition:
-  background_phase: liquid
+  background_phase: gas
   objects:
-    - type: bubble
-      center: [0.35, 0.50]
+    - type: circle
+      center: [0.35, 0.30]
       radius: 0.08
-    - type: bubble
-      center: [0.65, 0.50]
-      radius: 0.08
+      interior_phase: liquid
+    - type: ellipse
+      center: [0.65, 0.30]
+      semi_axes: [0.12, 0.06]
+      interior_phase: liquid
+    - type: layer
+      axis: y
+      bounds: [0.60, 0.72]
+      interior_phase: liquid
 ```
 
-`bubble` is a gas-filled circle alias, so `interior_phase: gas` is optional.
-For non-bubble geometry, keep using the primitive type (`circle`, `ellipse`,
-`rectangle`, `half_space`, `capillary_wave`, `perturbed_circle`, or
-`zalesak_disk`) and set `interior_phase` explicitly when the default liquid
-interior is not intended.
+Supported object primitives currently include `circle`, `ellipse`, `layer`,
+`rectangle`, `half_space`, `capillary_wave`, `perturbed_circle`, and
+`zalesak_disk`.  `bubble` remains a convenience alias for a gas-filled circle,
+but it is not the object model itself.  Set `interior_phase` explicitly whenever
+the default liquid interior is not intended.
 
 Initial velocity supports superposition through `base` and `perturbations`.
 Each child is a normal velocity primitive, so adding new perturbation families

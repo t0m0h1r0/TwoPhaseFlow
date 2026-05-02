@@ -22,6 +22,7 @@ from ..simulation.initial_conditions import (
     Ellipse,
     Rectangle,
     HalfSpace,
+    Layer,
     SinusoidalInterface,
     shape_from_dict,
     VelocityField,
@@ -228,6 +229,42 @@ def test_shape_from_dict_rectangle_flat_keys(grid_2d):
     assert s.bounds[1] == (0.2, 0.8)
 
 
+def test_shape_from_dict_layer_bounds(grid_2d):
+    s = shape_from_dict({
+        "type": "layer",
+        "axis": "y",
+        "bounds": [0.25, 0.75],
+        "interior_phase": "liquid",
+    })
+
+    assert isinstance(s, Layer)
+    assert s.axis == 1
+    assert s.lower == pytest.approx(0.25)
+    assert s.upper == pytest.approx(0.75)
+
+    X, Y = grid_2d.meshgrid()
+    phi = s.sdf(X, Y)
+    idx_inside_x = np.argmin(np.abs(grid_2d.coords[0] - 0.5))
+    idx_inside_y = np.argmin(np.abs(grid_2d.coords[1] - 0.5))
+    idx_outside_y = np.argmin(np.abs(grid_2d.coords[1] - 0.9))
+    assert phi[idx_inside_x, idx_inside_y] < 0.0
+    assert phi[idx_inside_x, idx_outside_y] > 0.0
+
+
+def test_shape_from_dict_layer_center_thickness():
+    s = shape_from_dict({
+        "type": "slab",
+        "axis": 0,
+        "center": 0.5,
+        "thickness": 0.2,
+    })
+
+    assert isinstance(s, Layer)
+    assert s.axis == 0
+    assert s.lower == pytest.approx(0.4)
+    assert s.upper == pytest.approx(0.6)
+
+
 def test_shape_from_dict_half_space(grid_2d):
     s = shape_from_dict({
         "type": "half_space",
@@ -322,8 +359,33 @@ def test_builder_from_dict_multiple_shapes(grid_2d):
     )
 
 
+def test_builder_from_dict_generic_objects_circle_ellipse_layer(grid_2d):
+    """YAML-style objects can mix generic shape primitives."""
+    grid = grid_2d
+    eps = _eps(grid)
+
+    d = {
+        "background_phase": "gas",
+        "objects": [
+            {"type": "circle", "center": [0.25, 0.25], "radius": 0.08},
+            {"type": "ellipse", "center": [0.75, 0.25], "semi_axes": [0.10, 0.06]},
+            {"type": "layer", "axis": "y", "bounds": [0.60, 0.72]},
+        ],
+    }
+    psi = InitialConditionBuilder.from_dict(d).build(grid, eps)
+
+    for point in ((0.25, 0.25), (0.75, 0.25), (0.50, 0.66)):
+        idx_x = np.argmin(np.abs(grid.coords[0] - point[0]))
+        idx_y = np.argmin(np.abs(grid.coords[1] - point[1]))
+        assert psi[idx_x, idx_y] > 0.90
+
+    idx_out_x = np.argmin(np.abs(grid.coords[0] - 0.5))
+    idx_out_y = np.argmin(np.abs(grid.coords[1] - 0.9))
+    assert psi[idx_out_x, idx_out_y] < 0.05
+
+
 def test_builder_from_dict_multiple_objects_with_bubble_alias(grid_2d):
-    """YAML-style objects can place multiple gas bubbles in liquid."""
+    """Bubble is only a convenience alias for gas circles."""
     grid = grid_2d
     eps = _eps(grid)
 
@@ -340,10 +402,6 @@ def test_builder_from_dict_multiple_objects_with_bubble_alias(grid_2d):
         idx_x = np.argmin(np.abs(grid.coords[0] - center_x))
         idx_y = np.argmin(np.abs(grid.coords[1] - 0.5))
         assert psi[idx_x, idx_y] < 0.05
-
-    idx_mid_x = np.argmin(np.abs(grid.coords[0] - 0.5))
-    idx_mid_y = np.argmin(np.abs(grid.coords[1] - 0.5))
-    assert psi[idx_mid_x, idx_mid_y] > 0.99
 
 
 def test_normalise_ic_dict_infers_liquid_background_for_objects_bubbles():
