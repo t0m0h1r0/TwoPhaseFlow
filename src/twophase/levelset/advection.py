@@ -3,6 +3,7 @@
 from .advection_dccd import DissipativeCCDAdvection
 from .advection_kernels import (
     _EPS_D_ADV,
+    _dccd_adaptive_filter_stencil,
     _dccd_filter_stencil,
     _pad_bc,
     _weno5_neg,
@@ -12,6 +13,7 @@ from .advection_weno import LevelSetAdvection
 
 __all__ = [
     "_EPS_D_ADV",
+    "_dccd_adaptive_filter_stencil",
     "_dccd_filter_stencil",
     "_weno5_pos",
     "_weno5_neg",

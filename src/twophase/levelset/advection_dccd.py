@@ -8,7 +8,7 @@ from .interfaces import ILevelSetAdvection
 from ..core.boundary import boundary_axes, sync_periodic_image_nodes
 from ..time_integration.tvd_rk3 import tvd_rk3
 from .heaviside import apply_mass_correction
-from .advection_kernels import _EPS_D_ADV, _dccd_filter_stencil, _pad_bc
+from .advection_kernels import _EPS_D_ADV, _dccd_adaptive_filter_stencil, _pad_bc
 
 if TYPE_CHECKING:
     from ..backend import Backend
@@ -21,12 +21,11 @@ class DissipativeCCDAdvection(ILevelSetAdvection):
     """Advects ψ using Dissipative CCD + TVD-RK3.
 
     Scope: this class implements DCCD strictly for level-set / volume-fraction
-    advection (transport of an advected scalar). The DCCD 3-point filter must
-    NOT be applied to the pressure field (∇p): see Chapter 12 U9 negation test
-    (`paper/sections/12u9_dccd_pressure_prohibition.tex`). PPE / momentum
-    corrector paths use plain CCD; this is enforced by call-site separation
-    (only this class invokes ``_dccd_filter_stencil`` in the production
-    pipeline).
+    advection (transport of an advected scalar). It uses the paper §4 adaptive
+    filter strength ε_d(i)=ε_d,max(2ψ_i−1)² and keeps wall/outflow boundary
+    derivative nodes unfiltered. The DCCD 3-point filter must NOT be applied to
+    the pressure field (∇p): see Chapter 12 U9 negation test. PPE / momentum
+    corrector paths use plain CCD; this is enforced by call-site separation.
     """
 
     scheme_names = ("dissipative_ccd",)
@@ -104,6 +103,8 @@ class DissipativeCCDAdvection(ILevelSetAdvection):
 
     def _rhs(self, psi, vel):
         xp = self.xp
+        psi = xp.asarray(psi)
+        vel = [xp.asarray(component) for component in vel]
         ndim = len(vel)
         result = xp.zeros_like(psi)
 
@@ -121,15 +122,31 @@ class DissipativeCCDAdvection(ILevelSetAdvection):
                 fp_pad = _pad_bc(xp, fp, ax, 1, self._axis_bc(ax))
                 fp_p1 = fp_pad[_sl(2, n + 2)]
                 fp_m1 = fp_pad[_sl(0, n)]
-                F_tilde = _dccd_filter_stencil(fp, fp_p1, fp_m1, self._eps_d)
+                F_tilde = _dccd_adaptive_filter_stencil(
+                    fp, fp_p1, fp_m1, psi, self._eps_d
+                )
             else:
                 fp_xi, _ = self._ccd.differentiate(f, axis=ax, apply_metric=False)
                 fp_x = self._J_reshaped[ax] * fp_xi
                 fp_x_pad = _pad_bc(xp, fp_x, ax, 1, self._axis_bc(ax))
                 fp_x_p1 = fp_x_pad[_sl(2, n + 2)]
                 fp_x_m1 = fp_x_pad[_sl(0, n)]
-                F_tilde = _dccd_filter_stencil(fp_x, fp_x_p1, fp_x_m1, self._eps_d)
+                F_tilde = _dccd_adaptive_filter_stencil(
+                    fp_x, fp_x_p1, fp_x_m1, psi, self._eps_d
+                )
+
+            if self._axis_bc(ax) != "periodic":
+                source = fp if self._grid.uniform else fp_x
+                self._preserve_filter_boundary(F_tilde, source, ax)
 
             result -= F_tilde
 
         return result
+
+    def _preserve_filter_boundary(self, filtered, original, axis: int) -> None:
+        left = [slice(None)] * filtered.ndim
+        right = [slice(None)] * filtered.ndim
+        left[axis] = 0
+        right[axis] = filtered.shape[axis] - 1
+        filtered[tuple(left)] = original[tuple(left)]
+        filtered[tuple(right)] = original[tuple(right)]
