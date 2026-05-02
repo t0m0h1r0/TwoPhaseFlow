@@ -93,7 +93,7 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
         ),
         ppe=SolverPPEOptions(
             ppe_solver=str(getattr(run, "ppe_solver", "fccd_iterative")),
-            ppe_dc_base_solver=getattr(run, "ppe_dc_base_solver", None),
+            ppe_dc_base_solver=getattr(run, "ppe_dc_base_solver", "fd_direct"),
             pressure_scheme=str(getattr(run, "pressure_scheme", "fccd_matrixfree")),
             ppe_coefficient_scheme=str(
                 getattr(run, "ppe_coefficient_scheme", "phase_separated")
@@ -108,10 +108,10 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             ppe_preconditioner=str(getattr(run, "ppe_preconditioner", "none")),
             ppe_pcr_stages=getattr(run, "ppe_pcr_stages", 4),
             ppe_c_tau=float(getattr(run, "ppe_c_tau", 2.0)),
-            ppe_defect_correction=bool(getattr(run, "ppe_defect_correction", False)),
-            ppe_dc_max_iterations=int(getattr(run, "ppe_dc_max_iterations", 0)),
-            ppe_dc_tolerance=float(getattr(run, "ppe_dc_tolerance", 0.0)),
-            ppe_dc_relaxation=float(getattr(run, "ppe_dc_relaxation", 1.0)),
+            ppe_defect_correction=bool(getattr(run, "ppe_defect_correction", True)),
+            ppe_dc_max_iterations=int(getattr(run, "ppe_dc_max_iterations", 3)),
+            ppe_dc_tolerance=float(getattr(run, "ppe_dc_tolerance", 1.0e-8)),
+            ppe_dc_relaxation=float(getattr(run, "ppe_dc_relaxation", 0.8)),
         ),
         schemes=SolverSchemeOptions(
             cn_viscous=getattr(run, "cn_viscous", False),

@@ -30,7 +30,7 @@ def parse_ppe_solver_config(
     dc_enabled = kind == "defect_correction"
     dc_max_iterations = 0
     dc_tolerance = 0.0
-    dc_relaxation = 1.0
+    dc_relaxation = 0.8
     effective_solver_cfg = solver_cfg
     effective_kind = kind
     effective_path = path
@@ -77,7 +77,7 @@ def parse_ppe_solver_config(
         corrections = solver_cfg.get("corrections", {}) or {}
         dc_max_iterations = int(corrections.get("max_iterations", 3))
         dc_tolerance = float(corrections.get("tolerance", 1.0e-8))
-        dc_relaxation = float(corrections.get("relaxation", 1.0))
+        dc_relaxation = float(corrections.get("relaxation", 0.8))
         if dc_max_iterations <= 0:
             raise ValueError(f"{path}.corrections.max_iterations must be > 0")
         if dc_tolerance <= 0.0:

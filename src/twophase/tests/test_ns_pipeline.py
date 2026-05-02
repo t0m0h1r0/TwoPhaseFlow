@@ -45,6 +45,10 @@ def test_construction_uniform():
     assert s._viscous_time_scheme == "implicit_bdf2"
     assert s._surface_tension_scheme == "pressure_jump"
     assert s._ppe_solver_name == "fccd_iterative"
+    assert s._ppe_defect_correction is True
+    assert s._ppe_dc_base_solver_name == "fd_direct"
+    assert s._ppe_dc_max_iterations == 3
+    assert s._ppe_dc_relaxation == pytest.approx(0.8)
     assert s._ppe_coefficient_scheme == "phase_separated"
     assert s._ppe_interface_coupling_scheme == "affine_jump"
     assert s._pressure_gradient_scheme == "fccd_flux"

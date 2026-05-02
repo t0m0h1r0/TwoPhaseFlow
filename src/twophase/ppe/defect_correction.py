@@ -165,12 +165,10 @@ class PPESolverDefectCorrection(IPPESolver):
 
     def _enforce_rhs_compatibility(self, rhs, *, record_stats: bool = True):
         """Apply the matching Neumann compatibility constraint to a RHS."""
-        if self._uses_phase_mean_gauge() and hasattr(
-            self.operator,
-            "_project_rhs_compatibility",
-        ):
+        project_rhs = getattr(self.operator, "_project_rhs_compatibility", None)
+        if callable(project_rhs):
             return self._enforce_periodic_rhs(
-                self.operator._project_rhs_compatibility(
+                project_rhs(
                     rhs,
                     record_stats=record_stats,
                 )
