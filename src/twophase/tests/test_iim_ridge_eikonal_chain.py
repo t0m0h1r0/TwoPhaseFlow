@@ -106,9 +106,10 @@ def test_chain_phi_precision_alpha2(backend):
         backend, grid, ccd, eps=eps, sigma_0=3.0, eps_scale=1.4, mass_correction=True,
     )
     psi_out = np.asarray(reinit.reinitialize(psi))
-    # invert_heaviside(xp, psi, eps_local) returns φ
+    # invert_heaviside(xp, psi, eps_local) returns φ.  Use the same spatial
+    # ε_local field as RidgeEikonalReinitializer on the stretched grid.
     h_min = float(np.min(grid.h[0]))
-    eps_local = 1.4 * eps / h_min * h_min  # ε_local = ε_scale * ε_ξ * h ≈ 1.4·ε·h
+    eps_local = np.asarray(reinit._eps_local)
     phi_reinit = np.asarray(invert_heaviside(np, psi_out, eps_local))
 
     # Eikonal residual.
