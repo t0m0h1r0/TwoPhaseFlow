@@ -213,7 +213,7 @@ class PsiDirectTransport(ILevelSetTransport):
         xp = self.xp
         dV = self._dV if self._dV is not None else self.grid.cell_volumes()
         value = xp.sum(xp.asarray(psi) * (1.0 - xp.asarray(psi)) * dV)
-        return float(np.asarray(self.backend.to_host(value)).item())
+        return self.backend.to_scalar(value)
 
     def _should_reinitialize(self, psi, step_index: int) -> bool:
         if self.reinit_trigger_mode == "adaptive":

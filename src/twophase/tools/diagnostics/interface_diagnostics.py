@@ -8,6 +8,8 @@ from __future__ import annotations
 import numpy as np
 from typing import TYPE_CHECKING
 
+from ...backend import host_array, scalar_value
+
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
 
@@ -37,9 +39,9 @@ def measure_eps_eff(xp, psi, ccd: "CCDSolver", eps_nominal: float) -> float:
 
     band = (psi > 0.05) & (psi < 0.95)
     psi_1mpsi = psi * (1.0 - psi)
-    if xp.any(band):
+    if scalar_value(xp.any(band)):
         eps_local = psi_1mpsi[band] / xp.maximum(grad_psi[band], 1e-14)
-        return float(xp.median(eps_local))
+        return scalar_value(xp.median(eps_local))
     return eps_nominal
 
 
@@ -57,7 +59,7 @@ def interface_area(xp, psi, grid) -> float:
     area : float
     """
     dV = grid.cell_volumes()
-    return float(xp.sum(psi * dV))
+    return scalar_value(xp.sum(psi * dV))
 
 
 def parasitic_current_linf(velocity_components) -> float:
@@ -66,7 +68,7 @@ def parasitic_current_linf(velocity_components) -> float:
     For a static droplet at equilibrium, this should be close to zero.
     Non-zero values indicate balanced-force violations.
     """
-    sq_sum = sum(np.asarray(u) ** 2 for u in velocity_components)
+    sq_sum = sum(host_array(u) ** 2 for u in velocity_components)
     return float(np.max(np.sqrt(sq_sum)))
 
 
@@ -96,7 +98,7 @@ def find_interface_crossing(field, coords_1d, threshold: float = 0.5):
 
 def midband_fraction(psi, lo: float = 0.1, hi: float = 0.9) -> float:
     """Fraction of cells with lo < psi < hi (interface-band occupancy)."""
-    q = np.asarray(psi)
+    q = host_array(psi)
     if q.size == 0:
         return float("nan")
     return float(((q > lo) & (q < hi)).mean())
@@ -104,7 +106,7 @@ def midband_fraction(psi, lo: float = 0.1, hi: float = 0.9) -> float:
 
 def relative_mass_error(psi, dV, mass_ref: float) -> float:
     """Relative mass error |∫psi dV - mass_ref| / |mass_ref|."""
-    q = np.asarray(psi)
-    vol = np.asarray(dV)
+    q = host_array(psi)
+    vol = host_array(dV)
     m = float(np.sum(q * vol))
     return float(abs(m - mass_ref) / max(abs(mass_ref), 1e-30))

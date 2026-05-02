@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable, List
 
+from ..backend import host_array
+
 
 @dataclass(frozen=True)
 class PredictorAssemblySelection:
@@ -40,18 +42,21 @@ def select_gravity_aligned_axis(
         return None
     if preferred_axis is not None and 0 <= preferred_axis < len(force_components):
         return preferred_axis
-    magnitudes = []
-    for component in force_components:
+    magnitudes = [0.0] * len(force_components)
+    active_indices = []
+    reductions = []
+    for index, component in enumerate(force_components):
         if component is None:
-            magnitudes.append(0.0)
             continue
         component_array = xp.asarray(component)
         if component_array.size == 0:
-            magnitudes.append(0.0)
             continue
-        magnitudes.append(float(xp.max(xp.abs(component_array))))
-    if not magnitudes:
+        active_indices.append(index)
+        reductions.append(xp.max(xp.abs(component_array)))
+    if not active_indices:
         return None
+    for index, magnitude in zip(active_indices, host_array(xp.stack(reductions))):
+        magnitudes[index] = float(magnitude)
     axis = max(range(len(magnitudes)), key=lambda index: magnitudes[index])
     return axis if magnitudes[axis] > 0.0 else None
 

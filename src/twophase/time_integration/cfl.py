@@ -30,6 +30,8 @@ from __future__ import annotations
 import math
 from typing import List, Optional, TYPE_CHECKING
 
+from ..backend import scalar_value
+
 if TYPE_CHECKING:
     from ..backend import Backend
     from ..core.grid import Grid
@@ -105,7 +107,14 @@ class CFLCalculator:
         # Sum of per-axis max speeds (paper §7.9 eq:dt_adv):
         #   Δt_adv = CFL · h / Σ_i max|u_i|
         # Using sum rather than max gives a tighter (correct) stability bound.
-        u_sum = sum(float(xp.max(xp.abs(vel))) for vel in velocity_components)
+        speed_maxima = [
+            xp.max(xp.abs(xp.asarray(vel)))
+            for vel in velocity_components
+        ]
+        u_sum = (
+            scalar_value(xp.sum(xp.stack(speed_maxima)))
+            if speed_maxima else 0.0
+        )
         u_sum = max(u_sum, 1e-14)
 
         dt_conv = cfl * h / u_sum
@@ -117,7 +126,7 @@ class CFLCalculator:
         # CN (Heun predictor-corrector) and is NOT truly unconditionally
         # stable; see module docstring + docs/memo/extended_cn_impl_design.md §1.2.
         if not self._cn_viscous:
-            nu_max = float(xp.max(mu / rho))
+            nu_max = scalar_value(xp.max(mu / rho))
             nu_max = max(nu_max, 1e-14)
             dt_visc = cfl * h * h / (4.0 * nu_max)
             dt = min(dt, dt_visc)

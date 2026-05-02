@@ -22,14 +22,7 @@ from typing import Callable, Sequence, Tuple
 
 import numpy as np
 
-
-def _xp_of(arr):
-    """Return the array module (numpy or cupy) that owns *arr*."""
-    try:
-        import cupy
-        return cupy.get_array_module(arr)
-    except (ImportError, AttributeError):
-        return np
+from ...backend import array_namespace
 
 
 # ── 基底クラス ────────────────────────────────────────────────────────────────
@@ -101,7 +94,7 @@ class RigidRotation(VelocityField):
         """
         if len(coords) != 2:
             raise ValueError("RigidRotation.compute: only 2-D grids are supported.")
-        xp = _xp_of(coords[0])
+        xp = array_namespace(coords[0])
         X, Y = coords
         cx, cy = self.center
         omega = 2.0 * xp.pi / self.period
@@ -130,7 +123,7 @@ class UniformFlow(VelocityField):
                 f"UniformFlow.compute: expected {len(self.velocity)} coordinate arrays, "
                 f"got {len(coords)}."
             )
-        xp = _xp_of(coords[0])
+        xp = array_namespace(coords[0])
         return tuple(xp.full_like(c, v) for c, v in zip(coords, self.velocity))
 
 
@@ -159,10 +152,10 @@ class SingleVortex(VelocityField):
     def compute(self, *coords: np.ndarray, t: float = 0.0) -> Tuple[np.ndarray, ...]:
         if len(coords) != 2:
             raise ValueError("SingleVortex.compute: only 2-D grids are supported.")
-        xp = _xp_of(coords[0])
+        xp = array_namespace(coords[0])
         X, Y = coords
         T = self.period
-        cos_t = float(xp.cos(xp.asarray(np.pi * t / T)))
+        cos_t = float(np.cos(np.pi * t / T))
         u = -(xp.sin(np.pi * X) ** 2) * xp.sin(2.0 * np.pi * Y) * cos_t
         v =  (xp.sin(np.pi * Y) ** 2) * xp.sin(2.0 * np.pi * X) * cos_t
         return (u, v)
@@ -194,7 +187,7 @@ class DoubleShearLayer(VelocityField):
     def compute(self, *coords: np.ndarray, t: float = 0.0) -> Tuple[np.ndarray, ...]:
         if len(coords) != 2:
             raise ValueError("DoubleShearLayer.compute: only 2-D grids are supported.")
-        xp = _xp_of(coords[0])
+        xp = array_namespace(coords[0])
         X, Y = coords
         d = self.delta
         u = xp.where(
@@ -232,7 +225,7 @@ class CouetteShear(VelocityField):
     def compute(self, *coords: np.ndarray, t: float = 0.0) -> tuple:
         if len(coords) != 2:
             raise ValueError("CouetteShear.compute: only 2-D grids supported.")
-        xp = _xp_of(coords[0])
+        xp = array_namespace(coords[0])
         X, Y = coords
         y_mid = 0.5 * self.LY
         u = self.gamma_dot * (Y - y_mid)

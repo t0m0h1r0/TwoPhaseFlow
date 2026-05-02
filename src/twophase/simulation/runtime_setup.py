@@ -11,6 +11,7 @@ from typing import Callable
 
 import numpy as np
 
+from ..backend import array_namespace
 from ..core.boundary import (
     boundary_axes,
     is_all_periodic,
@@ -19,13 +20,6 @@ from ..core.boundary import (
 
 from .initial_conditions.builder import InitialConditionBuilder
 from .initial_conditions.velocity_fields import velocity_field_from_dict
-
-
-def _xp_of(array):
-    if type(array).__module__.split(".", 1)[0] == "cupy":
-        import cupy
-        return cupy
-    return np
 
 
 def normalise_ic_dict(ic: dict) -> dict:
@@ -80,7 +74,7 @@ def build_initial_velocity(
 ) -> tuple[np.ndarray, np.ndarray]:
     """Build the initial velocity field."""
     if initial_velocity is None:
-        xp = np if return_host else _xp_of(X)
+        xp = np if return_host else array_namespace(X)
         return xp.zeros(X.shape), xp.zeros(Y.shape)
 
     spec = dict(initial_velocity)

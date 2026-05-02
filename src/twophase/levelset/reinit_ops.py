@@ -9,6 +9,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, List, Tuple
 
 from .advection import _pad_bc
+from ..backend import scalar_value
 
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
@@ -206,4 +207,4 @@ def cn_diffusion_axis(xp, psi, axis, eps, dtau, h, cn_factors):
 def volume_monitor(xp, psi, grid) -> float:
     """M(τ) = ∫ ψ(1−ψ) dV — decreases during reinitialization."""
     dV = grid.cell_volumes()
-    return float(xp.sum(psi * (1.0 - psi) * dV))
+    return scalar_value(xp.sum(psi * (1.0 - psi) * dV))
