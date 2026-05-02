@@ -9,7 +9,9 @@ Dispatch (registered handler keys mirror ``initial_condition.type``
 values found in ch14 YAMLs):
 
   capillary_wave  → CapillaryWaveHandler
-  circle          → RisingBubbleHandler
+  circle          → CircleInterfaceHandler
+  ellipse         → CircleInterfaceHandler
+  perturbed_circle → CircleInterfaceHandler
 
 Both share the same lifecycle (``run`` for live simulation, ``plot`` for
 plot-only/regenerate from saved data) and only differ semantically.
@@ -254,5 +256,7 @@ class CapillaryWaveHandler(_NSSimulationHandler):
 
 
 @register_handler("circle")
-class RisingBubbleHandler(_NSSimulationHandler):
-    """Two-phase circle-interface benchmarks: rising bubble and static droplet."""
+@register_handler("ellipse")
+@register_handler("perturbed_circle")
+class CircleInterfaceHandler(_NSSimulationHandler):
+    """Two-phase circle-interface benchmarks: static and oscillating droplets."""

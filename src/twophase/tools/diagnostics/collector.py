@@ -11,6 +11,7 @@ kinetic_energy        ½ Σ ρ |u|² h²  (always collected; used for divergence
 mean_rise_velocity    volume-averaged v of the gas phase
 bubble_centroid       (xc, yc, vc) centroid of gas phase  → stores xc, yc, vc
 deformation           D = (L−B)/(L+B) from second moments of ψ > 0.5 region
+signed_deformation    signed x/y moment deformation for n=2 droplet oscillation
 interface_amplitude   max vertical deviation of ψ = 0.5 isoline from domain centre
 laplace_pressure      |Δp_sim − σ/R| / (σ/R)  (static-droplet only)
 symmetry_error        parity-aware reflection error under x/y mirror. Each
@@ -79,6 +80,7 @@ class DiagnosticCollector:
             "mean_rise_velocity",
             "bubble_centroid",
             "deformation",
+            "signed_deformation",
             "interface_amplitude",
             "laplace_pressure",
             "symmetry_error",
@@ -159,7 +161,12 @@ class DiagnosticCollector:
         """Return whether any requested metric uses grid geometry fields."""
         return any(
             metric in self.metrics
-            for metric in ("bubble_centroid", "deformation", "interface_amplitude")
+            for metric in (
+                "bubble_centroid",
+                "deformation",
+                "signed_deformation",
+                "interface_amplitude",
+            )
         )
 
     def collect(
@@ -261,6 +268,9 @@ class DiagnosticCollector:
 
             elif m == "deformation":
                 self._data[m].append(_deformation(psi, geometry))
+
+            elif m == "signed_deformation":
+                self._data[m].append(_signed_deformation(psi, dV, geometry))
 
             elif m == "interface_amplitude":
                 self._data[m].append(
@@ -376,6 +386,35 @@ def _deformation(psi, geometry: DiagnosticRetainedGeometry | None = None) -> flo
     L = np.sqrt(max(eig1, 1e-30))
     B = np.sqrt(max(eig2, 1e-30))
     return float((L - B) / (L + B)) if (L + B) > 1e-12 else 0.0
+
+
+def _signed_deformation(
+    psi,
+    dV,
+    geometry: DiagnosticRetainedGeometry | None = None,
+) -> float:
+    """Signed x/y deformation for the Rayleigh-Lamb n=2 droplet mode."""
+    if geometry is None:
+        return 0.0
+    xp = _xp_of(psi)
+    X = geometry.X
+    Y = geometry.Y
+    weight = psi * dV
+    volume = xp.sum(weight)
+    volume_safe = xp.where(volume > 0.0, volume, 1.0)
+    xc = xp.sum(X * weight) / volume_safe
+    yc = xp.sum(Y * weight) / volume_safe
+    raw = xp.stack([
+        volume,
+        xp.sum((X - xc) ** 2 * weight) / volume_safe,
+        xp.sum((Y - yc) ** 2 * weight) / volume_safe,
+    ])
+    volume_h, mxx, myy = [float(x) for x in np.asarray(_to_host(raw))]
+    if volume_h <= 0.0:
+        return 0.0
+    lx = np.sqrt(max(mxx, 1e-30))
+    ly = np.sqrt(max(myy, 1e-30))
+    return float((lx - ly) / (lx + ly)) if (lx + ly) > 1e-12 else 0.0
 
 
 def _symmetry_error(field, axis: int, parity: int = +1) -> float:

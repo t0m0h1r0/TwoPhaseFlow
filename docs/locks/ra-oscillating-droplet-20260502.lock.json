@@ -1,0 +1,12 @@
+{
+  "branch": "ra-oscillating-droplet-20260502",
+  "branch_slug": "ra-oscillating-droplet-20260502",
+  "session_id": "5DCE2E9C-57C7-4FE9-94A8-29DDE7D0CA9D",
+  "worktree_path": ".claude/worktrees/ra-oscillating-droplet-20260502",
+  "holder_agent": "ResearchArchitect",
+  "id_prefix": "RA-OSC",
+  "acquired_at": "2026-05-02T03:34:20Z",
+  "expires_at": "2026-05-03T03:34:20Z",
+  "meta_version": "7.1.0",
+  "scope": "oscillating droplet benchmark from static droplet YAML"
+}

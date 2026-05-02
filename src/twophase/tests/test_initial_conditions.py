@@ -19,6 +19,7 @@ import pytest
 from ..simulation.initial_conditions import (
     InitialConditionBuilder,
     Circle,
+    Ellipse,
     Rectangle,
     HalfSpace,
     SinusoidalInterface,
@@ -230,9 +231,31 @@ def test_shape_from_dict_half_space(grid_2d):
     np.testing.assert_allclose(np.linalg.norm(s.normal), 1.0)
 
 
+def test_shape_from_dict_ellipse(grid_2d):
+    """shape_from_dict should deserialize a 2-D ellipse."""
+    grid = grid_2d
+    eps = _eps(grid)
+    s = shape_from_dict({
+        "type": "ellipse",
+        "center": [0.5, 0.5],
+        "semi_axes": [0.30, 0.15],
+        "interior_phase": "liquid",
+    })
+    assert isinstance(s, Ellipse)
+
+    builder = InitialConditionBuilder(background_phase="gas")
+    builder.add(s)
+    psi = builder.build(grid, eps)
+
+    idx_x = np.argmin(np.abs(grid.coords[0] - 0.5))
+    idx_y = np.argmin(np.abs(grid.coords[1] - 0.5))
+    assert psi[idx_x, idx_y] > 0.99
+    assert psi[0, 0] < 0.01
+
+
 def test_shape_from_dict_unknown_type():
     with pytest.raises(ValueError, match="Unknown shape type"):
-        shape_from_dict({"type": "ellipse", "center": [0.5, 0.5]})
+        shape_from_dict({"type": "annulus", "center": [0.5, 0.5]})
 
 
 # ── 7. InitialConditionBuilder.from_dict ──────────────────────────────────────
