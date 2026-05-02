@@ -243,7 +243,9 @@ def test_fccd_matrixfree_phase_density_keeps_gpu_density_device(
 
 
 def test_ch7_default_ns_stack_constructs_on_gpu():
-    """Ch7 default NS stack must honor GPU selection without CPU fallback."""
+    """Default NS stack must honor GPU selection without CPU fallback."""
+    from twophase.ppe.defect_correction import PPESolverDefectCorrection
+    from twophase.ppe.fd_direct import PPESolverFDDirect
     from twophase.ppe.fccd_matrixfree import PPESolverFCCDMatrixFree
     from twophase.simulation.ns_pipeline import TwoPhaseNSSolver
     from twophase.simulation.viscous_predictors import ImplicitBDF2ViscousPredictor
@@ -263,8 +265,24 @@ def test_ch7_default_ns_stack_constructs_on_gpu():
     assert solver._surface_tension_scheme == "pressure_jump"
     assert solver._ppe_coefficient_scheme == "phase_separated"
     assert solver._ppe_interface_coupling_scheme == "affine_jump"
-    assert isinstance(solver._ppe_solver, PPESolverFCCDMatrixFree)
+    assert solver._ppe_defect_correction is True
+    assert solver._ppe_dc_max_iterations == 3
+    assert solver._ppe_dc_relaxation == 0.8
+    assert isinstance(solver._ppe_solver, PPESolverDefectCorrection)
+    assert isinstance(solver._ppe_solver.base_solver, PPESolverFDDirect)
+    assert isinstance(solver._ppe_solver.operator, PPESolverFCCDMatrixFree)
     assert isinstance(solver._viscous_predictor, ImplicitBDF2ViscousPredictor)
+
+    xp = solver._backend.xp
+    rho = xp.ones(solver._grid.shape, dtype=xp.float64)
+    rhs = xp.zeros(solver._grid.shape, dtype=xp.float64)
+    rhs[3, 4] = 1.0
+    rhs[4, 4] = -1.0
+
+    pressure = solver._ppe_solver.solve(rhs, rho, dt=1.0)
+
+    assert getattr(getattr(pressure, "data", None), "ptr", None) is not None
+    assert solver._ppe_solver.base_solver._factor is not None
 
 
 def test_psi_direct_mass_correction_keeps_gpu_device(tiny_grid_factory, gpu_backend):

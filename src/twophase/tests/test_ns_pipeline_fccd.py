@@ -517,6 +517,7 @@ def test_phase_separated_fccd_ppe_cuts_cross_phase_faces():
         bc_type="wall",
         ppe_solver="fccd_iterative",
         pressure_scheme="fccd_iterative",
+        ppe_defect_correction=False,
         ppe_preconditioner="none",
         ppe_coefficient_scheme="phase_separated",
         ppe_interface_coupling_scheme="jump_decomposition",
@@ -565,6 +566,7 @@ def test_phase_separated_fccd_ppe_projects_rhs_per_phase():
         bc_type="wall",
         ppe_solver="fccd_iterative",
         pressure_scheme="fccd_iterative",
+        ppe_defect_correction=False,
         ppe_preconditioner="none",
         ppe_coefficient_scheme="phase_separated",
         ppe_interface_coupling_scheme="jump_decomposition",
@@ -621,6 +623,7 @@ def test_phase_separated_mean_gauge_removes_phase_constant_modes():
         bc_type="wall",
         ppe_solver="fccd_iterative",
         pressure_scheme="fccd_iterative",
+        ppe_defect_correction=False,
         ppe_preconditioner="none",
         ppe_coefficient_scheme="phase_separated",
         ppe_interface_coupling_scheme="jump_decomposition",
@@ -645,6 +648,7 @@ def test_phase_separated_mean_gauge_preserves_mirror_symmetry():
         bc_type="wall",
         ppe_solver="fccd_iterative",
         pressure_scheme="fccd_iterative",
+        ppe_defect_correction=False,
         ppe_preconditioner="none",
         ppe_coefficient_scheme="phase_separated",
         ppe_interface_coupling_scheme="jump_decomposition",
@@ -820,6 +824,7 @@ def test_phase_separated_fccd_ppe_applies_pressure_jump_context():
         bc_type="wall",
         ppe_solver="fccd_iterative",
         pressure_scheme="fccd_iterative",
+        ppe_defect_correction=False,
         ppe_preconditioner="none",
         ppe_coefficient_scheme="phase_separated",
         ppe_interface_coupling_scheme="jump_decomposition",
@@ -904,7 +909,7 @@ def test_pressure_jump_constructor_accepts_affine_jump():
     )
 
     assert solver._ppe_interface_coupling_scheme == "affine_jump"
-    assert solver._ppe_solver.interface_coupling_scheme == "affine_jump"
+    assert solver._ppe_solver.operator.interface_coupling_scheme == "affine_jump"
 
 
 def test_affine_jump_corrector_forwards_interface_context():
@@ -1077,6 +1082,7 @@ def test_fccd_not_constructed_when_unused():
         advection_scheme="dissipative_ccd",
         convection_scheme="ccd",
         ppe_solver="fvm_iterative",
+        ppe_defect_correction=False,
         ppe_coefficient_scheme="phase_density",
         ppe_interface_coupling_scheme="none",
         pressure_gradient_scheme="ccd",
@@ -1093,6 +1099,7 @@ def test_pipeline_uses_matrixfree_fvm_ppe():
     solver = TwoPhaseNSSolver(
         N, N, L, L, bc_type="wall",
         ppe_solver="fvm_iterative",
+        ppe_defect_correction=False,
         ppe_coefficient_scheme="phase_density",
         ppe_interface_coupling_scheme="none",
         pressure_gradient_scheme="ccd",
@@ -1114,6 +1121,7 @@ def test_pipeline_can_select_direct_fvm_ppe():
     solver = TwoPhaseNSSolver(
         N, N, L, L, bc_type="wall",
         ppe_solver="fvm_direct",
+        ppe_defect_correction=False,
         ppe_coefficient_scheme="phase_density",
         ppe_interface_coupling_scheme="none",
         pressure_gradient_scheme="ccd",
@@ -1127,6 +1135,7 @@ def test_pipeline_can_solve_fccd_ppe_smoke():
     solver = TwoPhaseNSSolver(
         N, N, L, L, bc_type="wall",
         ppe_solver="fccd_iterative",
+        ppe_defect_correction=False,
         pressure_gradient_scheme="fccd_flux",
         surface_tension_gradient_scheme="none",
         ppe_preconditioner="none",
@@ -1186,6 +1195,7 @@ def test_weno5_advection_constructed_from_scheme():
         advection_scheme="weno5",
         convection_scheme="ccd",
         ppe_solver="fvm_iterative",
+        ppe_defect_correction=False,
         ppe_coefficient_scheme="phase_density",
         ppe_interface_coupling_scheme="none",
         pressure_gradient_scheme="ccd",

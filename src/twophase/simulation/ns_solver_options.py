@@ -64,7 +64,7 @@ class SolverPPEOptions:
     """Pressure-solver settings."""
 
     ppe_solver: str = "fccd_iterative"
-    ppe_dc_base_solver: str | None = None
+    ppe_dc_base_solver: str | None = "fd_direct"
     pressure_scheme: str | None = None
     ppe_coefficient_scheme: str = "phase_separated"
     ppe_interface_coupling_scheme: str = "affine_jump"
@@ -75,10 +75,10 @@ class SolverPPEOptions:
     ppe_preconditioner: str = "none"
     ppe_pcr_stages: int | None = 4
     ppe_c_tau: float = 2.0
-    ppe_defect_correction: bool = False
-    ppe_dc_max_iterations: int = 0
-    ppe_dc_tolerance: float = 0.0
-    ppe_dc_relaxation: float = 1.0
+    ppe_defect_correction: bool = True
+    ppe_dc_max_iterations: int = 3
+    ppe_dc_tolerance: float = 1.0e-8
+    ppe_dc_relaxation: float = 0.8
 
 
 @dataclass(frozen=True)
