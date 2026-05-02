@@ -1,0 +1,12 @@
+{
+  "lock_id": "269A4695-557C-4653-9F62-7A6189258CC8",
+  "owner": "Codex",
+  "task": "RA Chapter 7 implementation fidelity audit",
+  "branch": "ra-ch7-implementation-audit-20260502",
+  "created_utc": "2026-05-02T12:57:56Z",
+  "status": "active",
+  "scope": [
+    "paper/sections/07_time_integration.tex",
+    "src/twophase"
+  ]
+}
