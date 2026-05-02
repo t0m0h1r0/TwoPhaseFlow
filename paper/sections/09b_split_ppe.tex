@@ -14,13 +14,13 @@
 等密度ポアソン方程式に対して $\Ord{h^6}$ の設計精度を達成する．
 しかし二相流の PPE は変密度演算子 $\bnabla\cdot(\rho^{-1}\bnabla p) = q$ であり，
 界面を横切るステンシルが $\Ord{1}$ の打ち切り誤差を生じる．
-本節では，この本質的制約を回避する\textbf{分相 PPE 解法}を本稿の主要 PPE 戦略として定式化する．
-一言でいえば，全領域を一本の変密度 Poisson 問題として解くのをやめ，
-液相・気相では定数密度 Poisson 問題を解き，界面では圧力ジャンプ条件で両相を縫い合わせる，
-という設計である．
+本節では，この本質的制約を回避する\textbf{分相 PPE 解法}を本稿の主要な圧力閉包として定式化する．
+一言でいえば，全領域を一本の変密度 Poisson 問題として扱わず，
+液相・気相では定数密度 Poisson 問題を解き，界面では圧力ジャンプ条件で両相を接続する，
+という分解である．
 
 \noindent\textbf{本節の閉包条件：}
-分相 PPE は単独の手続き名ではなく，次の 5 つを同時に満たす圧力閉包を指す．
+分相 PPE は単一の離散化名ではなく，次の 5 つを同時に満たす圧力閉包を指す．
 \[
   \text{相内定数密度 Poisson}
   \;+\;
@@ -32,38 +32,38 @@
   \;+\;
   \text{大域ゲージ}
 \]
-この閉包では，一括 smoothed-Heaviside PPE は係数不連続の残るモデル，
+この閉包では，smoothed-Heaviside 一括 PPE は係数不連続の残るモデル，
 CSF 体積力は Balanced--Force 原理を説明するモデル，
 滑らかな補助圧力場によるジャンプ表現は代数的な対照モデルとして扱う．
 いずれも，界面ジャンプを PPE と速度補正が共有する
 面勾配契約へ直接入れる本節の閉包とは区別する．
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{変密度一括解法の本質的制約}
+\subsubsection{smoothed-Heaviside 一括 PPE の本質的制約}
 \label{sec:monolithic_ppe_limitation}
 % ─────────────────────────────────────────────────────────────────────────────
 
-smoothed-Heaviside 一括解法では，遷移層（幅 $\varepsilon = 1.5h$）内で
+smoothed-Heaviside 一括 PPE では，遷移層（幅 $\varepsilon = 1.5h$）内で
 $1/\rho$ が $\rho_l/\rho_g$ 倍のジャンプを持つ．
 界面を横切る CCD/FD ステンシルは $\Ord{1}$ の打ち切り誤差を生じ，
 PPE のグリーン関数の非局所性により解全体に伝播する
 （§~\ref{sec:ppe_condition_number}）．
 この誤差は反復回数 $k$ の増大や緩和係数 $\omega$ では回復不能であり，
-smoothed-Heaviside 一括解法の\textbf{本質的制約}である：
+smoothed-Heaviside 一括 PPE の\textbf{本質的制約}である：
 %
 \begin{itemize}[noitemsep]
   \item 中程度密度比：高解像度側で格子収束がプラトー化
   \item 中-高密度比：頑健な DC 発散閾値は仮定せず，界面型密度場で設計精度は回復しない
-  \item 水--空気級高密度比：一括 smoothed-Heaviside のみでの高精度計算は未保証
+  \item 水--空気級高密度比：smoothed-Heaviside 一括 PPE のみでの高精度計算は未保証
 \end{itemize}
 %
-したがって本章では，一括 smoothed-Heaviside PPE の高密度比利用を理論保証外とする．
+したがって本章では，smoothed-Heaviside 一括 PPE の高密度比利用を理論保証外とする．
 重要な点として，中程度の密度比でも界面近傍の精度は
 CCD の設計精度 $\Ord{h^6}$ から\textbf{大幅に劣化}しており，
-低密度比だから一括解法で十分ということはない．
+低密度比だから smoothed-Heaviside 一括 PPE で十分ということはない．
 
 \noindent\textbf{条件数の定量的見積もり：}
-smoothed-Heaviside 一括演算子 $\bnabla\cdot(\rho^{-1}\bnabla\cdot)$ の条件数は
+smoothed-Heaviside 一括 PPE 演算子 $\bnabla\cdot(\rho^{-1}\bnabla\cdot)$ の条件数は
 $\kappa_2 \approx (\rho_l/\rho_g)\cdot h^{-2}$ のオーダーで成長する．
 水--空気級の高密度比（$\rho_l/\rho_g \sim 10^3$），$h = 1/64$ では
 $\kappa_2 \sim 10^3\cdot 4096 \approx 4\times 10^{6}$ となり，
@@ -79,7 +79,7 @@ $\kappa_2 \sim 10^3\cdot 4096 \approx 4\times 10^{6}$ となり，
 % ─────────────────────────────────────────────────────────────────────────────
 
 分相 PPE 解法の核心は「各相で定数密度のラプラシアンを解く」ことにある．
-smoothed-Heaviside 一括解法が $\bnabla\cdot(\rho^{-1}\bnabla p) = q$ を
+smoothed-Heaviside 一括 PPE が $\bnabla\cdot(\rho^{-1}\bnabla p) = q$ を
 変動係数 $\rho(\psi)$ のまま全領域で解くのに対し，
 分相 PPE 解法は各相 $k\in\{\ell,g\}$ で
 %
@@ -254,7 +254,7 @@ $-D_h^\FCCD\rho_q^{-1} G_h^\FCCD$ は
 $\nabla^2 p_q = \rho_q\,q$ と等価：
 \textbf{前提}（明示）— $\rho_q$ は相 $q$ 全体で\textbf{格子点に依存しない定数}
 （液相・気相それぞれ単一値）；位相マスク境界 $\partial\Omega_q$ は
-GFM ゴーストジェット（\S\ref{sec:gfm_ghost_jet_stitch}）で扱い，
+GFM ゴーストジェット（\S\ref{sec:gfm_ghost_jet_connection}）で扱い，
 ステンシル内に $\rho$ ジャンプは現れない．
 従って積の微分第 2 項
 $(\bnabla\rho_q^{-1})\!\cdot G_h p_q$ は消滅し，
@@ -312,8 +312,8 @@ $\Phi_g\bnabla\rho'$ を面残差として評価する場合も，
 \textbf{同じ面係数・同じ面勾配・同じ面発散}まで含めて投影閉包と呼ぶ．
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{GFM ゴーストジェットによる位相ステッチ}
-\label{sec:gfm_ghost_jet_stitch}
+\subsubsection{GFM ゴーストジェットによる相間接続}
+\label{sec:gfm_ghost_jet_connection}
 % ─────────────────────────────────────────────────────────────────────────────
 
 界面 $\Gamma$ を跨ぐコンパクトステンシルを\textbf{単相化}するため，
@@ -323,20 +323,20 @@ $[\rho^{-1}\partial_n p]_\Gamma=0$
 から\textbf{ゴースト面ジェット}
 \begin{equation}
   \bigl(p_q^\ast,\,p_q'^\ast,\,p_q''^\ast\bigr)
-    = \text{GFM extrapolate of phase }\bar q
-      \text{ into } \Omega_q
+    = \mathcal{E}_{\bar q\to q}^{\mathrm{GFM}}
+      \bigl[p_{\bar q};J_p^\chi\bigr](x_f)
   \label{eq:gfm_ghost_jet}
 \end{equation}
 を構築する（$\bar q$ は対相）．面 $f\subset\Gamma$ 付近のステンシルは
 対相の値を\textbf{ゴーストジェットで置換}した上で FCCD を適用：
 \begin{equation}
-  (G_h^\FCCD p)_f^\text{stitched}
+  (G_h^\FCCD p)_f^\mathrm{conn}
     = G_h^\FCCD\bigl(\,\{p_{q,i}\}_{i\in\Omega_q}
       \cup \{p_q^\ast(x_i)\}_{i\in\Omega_{\bar q}}\bigr).
-  \label{eq:fccd_stitched_face}
+  \label{eq:fccd_connection_face}
 \end{equation}
 これにより\textbf{代数的な単相ステンシル}を各相で保ちつつ，
-物理的不連続をジャンプクロージャ経由で自動的に注入する．
+物理的不連続をジャンプ閉包として反映する．
 
 \noindent\textbf{ジャンプジェット構成}：
 $\phi$（符号付距離，\S\ref{sec:ridge_eikonal}）と面位置 $x_f$ から
@@ -370,7 +370,7 @@ $J_{ss}=\partial_s^2 J_p^\chi$ に縮退する．
 (H1) 滑らか延長 — 各相右辺 $\rho_q q$ は HFE（\S\ref{sec:hfe}）により
 界面近傍で $C^2$ 級に延長されている；
 (H2) フラックスジャンプ消失 — $J_n\equiv[\rho^{-1}\partial_n p]_\Gamma=0$
-（\S\ref{sec:gfm_ghost_jet_stitch}）；
+（\S\ref{sec:gfm_ghost_jet_connection}）；
 (H3) 単位法線整合 — $|\bnabla\phi|=1$（リッジ Eikonal SDF 上）．
 界面 $\Gamma$ 上で局所直交座標 $(s,n)$ を取る（$s$：接線弧長，
 $n$：法線距離 $\phi$ と整合）．
@@ -588,18 +588,20 @@ CSF 体積力の評価位置ずれだけではなく，鋭い Young--Laplace
 静止液滴・上昇気泡・平坦 Rayleigh--Taylor 界面の全てに同じ式を用いる．
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{再メッシュ再投影と PPE コンテキスト防護}
+\subsubsection{再メッシュ再投影における圧力ジャンプ情報の分離}
 \label{sec:split_ppe_regrid_guard}
 % ─────────────────────────────────────────────────────────────────────────────
 
 界面適合格子の動的再構築（\S\ref{sec:grid_ale}）では
-速度再投影 PPE がメインステップ PPE の\textbf{前段}で走る．
-前ステップの圧力ジャンプ $J_p^\chi$（典型的には $j_{gl}^n$）を継承すると
-不連続合成圧力が再投影内部で微分され，人工運動エネルギーを生む．
-したがって再投影 PPE には界面ジャンプコンテキスト（$\psi,\kappa_{lg},\sigma,j_{gl}$）を渡さず，
-メインステップ PPE のみが $[p]_\Gamma$ を保持する分離設計を採る．
+速度再投影 PPE が圧力射影段階に先立つ整合化問題として現れる．
+直前時刻の圧力ジャンプ $J_p^\chi$（典型的には $j_{gl}^n$）を継承すると
+不連続合成圧力が再投影方程式内で微分され，人工運動エネルギーを生む．
+したがって再投影 PPE の閉包条件には
+界面ジャンプ情報（$\psi,\kappa_{lg},\sigma,j_{gl}$）を含めず，
+圧力射影段階の PPE のみが $[p]_\Gamma$ を保持する分離原則を採る．
 格子再生成後は界面面幾何データ（界面交差位置，$s_f$，$H_f$，$\alpha_f$，$j_f$）と
-HFE 延長文脈を補間せず，現在の $\phi,\psi$ と格子幾何データから再構築する．
-これは $\psi$ の直接線形補間とは別の契約である．
+HFE 延長に必要な片側データを補間値として継承せず，
+現在の $\phi,\psi$ と格子幾何データから再定義する．
+これは $\psi$ の直接線形補間とは別の数学的要請である．
 全変数の整合的な再写像が数学的に定義されない限り，
 格子再生成を含む圧力ジャンプ閉包の完全性は主張しない．
