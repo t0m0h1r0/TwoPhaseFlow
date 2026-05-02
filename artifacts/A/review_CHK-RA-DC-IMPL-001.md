@@ -120,6 +120,12 @@ share the same physical face distance and nonuniform divergence. The fix:
 
 - Fully periodic nonuniform production routes existed in `experiment/ch14`, so
   this was not a dead code path.
+- GPU follow-up audit: the fixed FCCD periodic nonuniform divergence path was
+  numerically correct but not fully optimal because it rebuilt the periodic
+  nodal inverse-width vector inside each face-divergence call. Commit
+  `d09d28bf` moved that vector to `build_axis_weights()` and cached periodic
+  wrap face indices in `PPEBuilder`, removing avoidable per-call/per-build
+  device-array construction.
 - Existing broader remote `make test` currently fails for unrelated repository
   state, including missing ch13/ch14 config filenames and known non-DC
   stability tests. The two new targeted regression tests pass locally.
@@ -131,4 +137,7 @@ share the same physical face distance and nonuniform divergence. The fix:
 - PASS: `git diff --check`
 - PASS: `cd src && /Users/tomohiro/Downloads/TwoPhaseFlow/.venv/bin/python3 -m pytest twophase/tests/test_fccd.py::test_periodic_nonuniform_face_divergence_uses_control_volume_width twophase/tests/test_fvm_matrixfree.py::test_ppe_builder_periodic_nonuniform_wrap_uses_control_volume_width -q`
 - PASS result: `2 passed in 0.32s`
-
+- PASS after GPU follow-up: same targeted pytest, `2 passed in 0.28s`
+- PASS remote CuPy smoke: `Backend(use_gpu=True)` on host `python`, FCCD
+  periodic nonuniform divergence error `0.0`, and PPEBuilder `data/rows/cols`
+  all exposed `__cuda_array_interface__`.
