@@ -16,6 +16,18 @@ from .shape_primitives import (
 )
 
 
+_DEFAULT_PHASE_BY_SHAPE_TYPE = {
+    "bubble": "gas",
+}
+
+
+def default_shape_phase(shape_type: str | None) -> str:
+    """Return the default interior phase for a shape type."""
+    if shape_type is None:
+        return "liquid"
+    return _DEFAULT_PHASE_BY_SHAPE_TYPE.get(str(shape_type), "liquid")
+
+
 def _axis_index(value) -> int:
     if isinstance(value, str):
         axis = value.lower()
@@ -42,6 +54,14 @@ def _wave_wavelength(data: dict) -> float:
 
 
 def _build_circle(data: dict, phase: str) -> ShapePrimitive:
+    return Circle(
+        center=data["center"],
+        radius=data["radius"],
+        interior_phase=phase,
+    )
+
+
+def _build_bubble(data: dict, phase: str) -> ShapePrimitive:
     return Circle(
         center=data["center"],
         radius=data["radius"],
@@ -110,6 +130,7 @@ def _build_zalesak_disk(data: dict, phase: str) -> ShapePrimitive:
 
 
 _SHAPE_BUILDERS: dict[str, Callable[[dict, str], ShapePrimitive]] = {
+    "bubble": _build_bubble,
     "circle": _build_circle,
     "rectangle": _build_rectangle,
     "half_space": _build_half_space,
@@ -128,7 +149,7 @@ def shape_from_dict(d: dict) -> ShapePrimitive:
     if shape_type is None:
         raise ValueError("shape dict must have a 'type' key.")
 
-    phase = data.pop("interior_phase", "liquid")
+    phase = data.pop("interior_phase", default_shape_phase(shape_type))
     builder = _SHAPE_BUILDERS.get(shape_type)
     if builder is None:
         supported = "', '".join(_SHAPE_BUILDERS.keys())

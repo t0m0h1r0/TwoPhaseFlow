@@ -29,6 +29,7 @@ from ..simulation.initial_conditions import (
     UniformFlow,
     velocity_field_from_dict,
 )
+from ..simulation.runtime_setup import normalise_ic_dict
 from ..core.grid import Grid
 from ..config import GridConfig
 from ..backend import Backend
@@ -192,6 +193,13 @@ def test_shape_from_dict_circle(grid_2d):
     assert s_dict.interior_phase == "liquid"
 
 
+def test_shape_from_dict_bubble_defaults_to_gas():
+    s = shape_from_dict({"type": "bubble", "center": [0.5, 0.5], "radius": 0.2})
+
+    assert isinstance(s, Circle)
+    assert s.interior_phase == "gas"
+
+
 def test_shape_from_dict_rectangle_bounds(grid_2d):
     grid = grid_2d
     eps = _eps(grid)
@@ -310,6 +318,47 @@ def test_builder_from_dict_multiple_shapes(grid_2d):
     assert psi[ix_mid, iy_mid] > 0.99, (
         f"Between bubbles ψ = {psi[ix_mid, iy_mid]:.6f}, expected > 0.99"
     )
+
+
+def test_builder_from_dict_multiple_objects_with_bubble_alias(grid_2d):
+    """YAML-style objects can place multiple gas bubbles in liquid."""
+    grid = grid_2d
+    eps = _eps(grid)
+
+    d = {
+        "background_phase": "liquid",
+        "objects": [
+            {"type": "bubble", "center": [0.25, 0.5], "radius": 0.08},
+            {"type": "bubble", "center": [0.75, 0.5], "radius": 0.08},
+        ],
+    }
+    psi = InitialConditionBuilder.from_dict(d).build(grid, eps)
+
+    for center_x in (0.25, 0.75):
+        idx_x = np.argmin(np.abs(grid.coords[0] - center_x))
+        idx_y = np.argmin(np.abs(grid.coords[1] - 0.5))
+        assert psi[idx_x, idx_y] < 0.05
+
+    idx_mid_x = np.argmin(np.abs(grid.coords[0] - 0.5))
+    idx_mid_y = np.argmin(np.abs(grid.coords[1] - 0.5))
+    assert psi[idx_mid_x, idx_mid_y] > 0.99
+
+
+def test_normalise_ic_dict_infers_liquid_background_for_objects_bubbles():
+    normalised = normalise_ic_dict({
+        "type": "objects",
+        "objects": [
+            {"type": "bubble", "center": [0.5, 0.5], "radius": 0.2},
+        ],
+    })
+
+    assert normalised["background_phase"] == "liquid"
+    assert "objects" in normalised
+
+
+def test_builder_from_dict_rejects_mixed_shape_keys():
+    with pytest.raises(ValueError, match="either 'shapes' or 'objects'"):
+        InitialConditionBuilder.from_dict({"shapes": [], "objects": []})
 
 
 # ── 8. background_phase='liquid' + 気体円 ─────────────────────────────────────

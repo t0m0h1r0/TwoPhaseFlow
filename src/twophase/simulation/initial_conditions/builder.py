@@ -177,8 +177,15 @@ class InitialConditionBuilder:
         -------
         builder : InitialConditionBuilder
         """
+        if "shapes" in d and "objects" in d:
+            raise ValueError(
+                "InitialConditionBuilder.from_dict: use either 'shapes' or "
+                "'objects', not both."
+            )
+
         bg = d.get("background_phase", "gas")
         builder = cls(background_phase=bg)
-        for shape_dict in d.get("shapes", []):
+        shape_dicts = d.get("shapes", d.get("objects", []))
+        for shape_dict in shape_dicts:
             builder.add(shape_from_dict(shape_dict))
         return builder
