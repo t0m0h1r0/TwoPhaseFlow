@@ -57,7 +57,7 @@ def _set_axis_alpha(raw: dict, alpha: float) -> None:
 
 def _set_uniform_grid(raw: dict) -> None:
     raw["grid"]["distribution"] = {"type": "uniform", "schedule": 0}
-    raw["interface"]["thickness"]["mode"] = "global"
+    raw["interface"]["thickness"]["mode"] = "nominal"
 
 
 def _set_circle(raw: dict) -> None:
@@ -81,6 +81,7 @@ def _set_semi_axes(raw: dict, axes: tuple[float, float]) -> None:
 def _set_zero_viscosity_explicit(raw: dict) -> None:
     raw["physics"]["phases"]["liquid"]["mu"] = 0.0
     raw["physics"]["phases"]["gas"]["mu"] = 0.0
+    raw["numerics"]["momentum"]["terms"]["convection"]["time_integrator"] = "ab2"
     raw["numerics"]["momentum"]["terms"]["viscosity"]["time_integrator"] = "forward_euler"
 
 
@@ -264,6 +265,17 @@ def _load_summary(path: pathlib.Path) -> list[dict[str, float | str]]:
     return summaries
 
 
+def _merge_summaries(
+    previous: list[dict[str, float | str]],
+    current: list[dict[str, float | str]],
+) -> list[dict[str, float | str]]:
+    rows = {str(row["label"]): row for row in previous}
+    for row in current:
+        rows[str(row["label"])] = row
+    ordered_labels = [case.label for case in _cases() if case.label in rows]
+    return [rows[label] for label in ordered_labels]
+
+
 def main() -> None:
     parser = experiment_argparser(__doc__)
     parser.add_argument(
@@ -296,9 +308,15 @@ def main() -> None:
         results = run_simulation(cfg)
         elapsed = time.perf_counter() - start
         summaries.append(_summarize(case.label, case.hypothesis, results, elapsed))
+        merged = _merge_summaries(
+            _load_summary(npz_path) if npz_path.exists() else [],
+            summaries,
+        )
+        save_results(npz_path, _pack(merged))
 
-    _print_summary(summaries)
-    save_results(npz_path, _pack(summaries))
+    merged = _merge_summaries(_load_summary(npz_path) if npz_path.exists() else [], summaries)
+    _print_summary(merged)
+    save_results(npz_path, _pack(merged))
 
 
 if __name__ == "__main__":
