@@ -1,6 +1,6 @@
-# Rayleigh-Lamb n=2 oscillating droplet benchmark derived from
-# ch14_static_droplet.yaml. The circular initial interface is replaced by
-# r(theta)=R(1+epsilon cos(2 theta)); velocity and gravity remain zero.
+# Viscous-DC route probe for the Rayleigh-Lamb n=2 oscillating droplet.
+# Physical viscosity is zero, so the implicit-BDF2 Helmholtz equation reduces
+# to the identity; any new instability here would implicate the DC route itself.
 
 grid:
   cells: [32, 32]
@@ -51,11 +51,10 @@ physics:
 run:
   time:
     final: 0.15
-    # Use the theory capillary CFL selected from the fitted-grid h_min.
     cfl: 1.0
     print_every: 200
   debug:
-    step_diagnostics: false
+    step_diagnostics: true
 
 numerics:
   time:
@@ -71,12 +70,18 @@ numerics:
     terms:
       convection:
         spatial: uccd6
-        time_integrator: ab2
+        time_integrator: imex_bdf2
       pressure:
         gradient: fccd
       viscosity:
         spatial: ccd
-        time_integrator: forward_euler
+        time_integrator: implicit_bdf2
+        solver:
+          kind: defect_correction
+          tolerance: 1.0e-8
+          corrections:
+            max_iterations: 3
+            relaxation: 0.8
       surface_tension:
         formulation: pressure_jump
   projection:
@@ -99,13 +104,13 @@ numerics:
           kind: direct
 
 output:
-  dir: results/ch14_oscillating_droplet
+  dir: results/ch14_oscillating_droplet_viscous_dc_probe
   save_npz: true
   snapshots:
     interval: 0.05
   figures:
     - type: time_series
-      title: "Rayleigh-Lamb n=2 droplet: signed deformation"
+      title: "Rayleigh-Lamb n=2 droplet DC probe: signed deformation"
       x: times
       y: [signed_deformation]
       labels: ["simulation"]
@@ -119,7 +124,7 @@ output:
       file: signed_deformation.pdf
 
     - type: time_series
-      title: "Rayleigh-Lamb n=2 droplet: volume drift"
+      title: "Rayleigh-Lamb n=2 droplet DC probe: volume drift"
       x: times
       y: [volume_conservation]
       labels: ["$|\\Delta V|/V_0$"]
@@ -129,7 +134,7 @@ output:
       file: volume_drift.pdf
 
     - type: time_series
-      title: "Rayleigh-Lamb n=2 droplet: kinetic energy"
+      title: "Rayleigh-Lamb n=2 droplet DC probe: kinetic energy"
       x: times
       y: [kinetic_energy]
       labels: ["KE"]
@@ -137,18 +142,6 @@ output:
       ylabel: "$E_k$"
       yscale: log
       file: kinetic_energy.pdf
-
-    - type: snapshot_series
-      field: psi
-      file_prefix: psi_t
-
-    - type: snapshot_series
-      field: velocity
-      file_prefix: velocity_t
-
-    - type: snapshot_series
-      field: pressure
-      file_prefix: pressure_t
 
 diagnostics: [volume_conservation, kinetic_energy, deformation, signed_deformation]
 
