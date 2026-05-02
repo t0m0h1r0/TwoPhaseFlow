@@ -369,3 +369,61 @@ def test_psi_direct_adaptive_reinit_keeps_gpu_device(gpu_backend):
 
     assert reinitializer.calls == 1
     assert type(psi_new).__module__.split(".", 1)[0] == "cupy"
+
+
+def test_ipc_pressure_increment_keeps_gpu_device(gpu_backend):
+    """Ch11 IPC pressure increment stores device pressure and no host mirror."""
+    from twophase.simulation.ns_step_services import solve_ns_pressure_stage
+    from twophase.simulation.ns_step_state import NSStepInputs, NSStepState
+
+    xp = gpu_backend.xp
+    shape = (2, 2)
+    state = NSStepState.from_inputs(
+        NSStepInputs(
+            psi=xp.ones(shape),
+            u=xp.zeros(shape),
+            v=xp.zeros(shape),
+            dt=0.1,
+            rho_l=1.0,
+            rho_g=1.0,
+            sigma=0.0,
+            mu=1.0,
+        ),
+        backend=gpu_backend,
+    )
+    state.projection_dt = 0.1
+    state.rho = xp.ones(shape)
+    state.f_x = xp.zeros(shape)
+    state.f_y = xp.zeros(shape)
+    state.u_star = xp.ones(shape)
+    state.v_star = xp.ones(shape)
+    state.previous_pressure = xp.full(shape, 4.0)
+    state.previous_base_pressure = xp.full(shape, 4.0)
+
+    class UnitDivergence:
+        def divergence(self, components):
+            magnitude = xp.max(xp.abs(components[0])) + xp.max(xp.abs(components[1]))
+            if float(gpu_backend.to_host(magnitude)) == 0.0:
+                return xp.zeros(shape)
+            return xp.ones(shape)
+
+    class IncrementPPE:
+        def solve(self, rhs, rho, dt=0.0, p_init=None):
+            self.p_init = p_init
+            self.last_base_pressure = xp.full_like(rhs, 2.0)
+            return xp.full_like(rhs, 2.0)
+
+    state, next_pressure_dev, next_pressure = solve_ns_pressure_stage(
+        state,
+        backend=gpu_backend,
+        div_op=UnitDivergence(),
+        ppe_solver=IncrementPPE(),
+        p_prev_dev=state.previous_pressure,
+        p_base_prev_dev=state.previous_base_pressure,
+        surface_tension_scheme="none",
+    )
+
+    assert next_pressure is None
+    assert type(state.pressure).__module__.split(".", 1)[0] == "cupy"
+    assert type(state.p_corrector).__module__.split(".", 1)[0] == "cupy"
+    assert type(next_pressure_dev).__module__.split(".", 1)[0] == "cupy"
