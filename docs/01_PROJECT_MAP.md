@@ -86,7 +86,7 @@ src/twophase/
 │   ├── _core.py                # TwoPhaseSimulation — step_forward() 7-step loop
 │   ├── boundary_condition.py   # BoundaryConditionHandler (BCType enum)
 │   ├── builder.py              # SimulationBuilder — SOLE construction path (ASM-001)
-│   ├── viscous_helmholtz_dc.py # ViscousHelmholtzDCSolver — implicit-BDF2 DC (§07)
+│   ├── simulation/viscous_helmholtz_dc.py # ViscousHelmholtzDCSolver — implicit-BDF2 DC (§07)
 │   └── diagnostics.py          # Runtime diagnostics / convergence monitoring
 ├── diagnostics/                # Reusable analysis functions (extracted from experiments)
 │   ├── field_diagnostics.py    # kinetic_energy, divergence (Linf/L2)
