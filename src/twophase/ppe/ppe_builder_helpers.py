@@ -54,9 +54,9 @@ def build_ppe_matrix_triplets(builder, rho) -> tuple:
         col_list.extend([idx_R_xp, idx_L_xp, idx_L_xp, idx_R_xp])
 
         if is_periodic_axis(builder.bc_type, ax, builder.ndim):
-            idx_wL, idx_wR = builder._wrap_face_indices[ax]
-            rho_wL = rho_flat[xp.asarray(idx_wL)]
-            rho_wR = rho_flat[xp.asarray(idx_wR)]
+            idx_wL_xp, idx_wR_xp = _get_wrap_face_index_cache(builder, ax=ax)
+            rho_wL = rho_flat[idx_wL_xp]
+            rho_wR = rho_flat[idx_wR_xp]
             a_w = 2.0 / (rho_wL + rho_wR)
             if not builder.grid.uniform:
                 d_wrap, dv_wL, dv_wR = _get_nonuniform_wrap_cache(builder, ax=ax)
@@ -65,8 +65,6 @@ def build_ppe_matrix_triplets(builder, rho) -> tuple:
             else:
                 h = float(builder.grid.L[ax] / N_ax)
                 coeff_wL = coeff_wR = a_w / (h * h)
-            idx_wL_xp = xp.asarray(idx_wL)
-            idx_wR_xp = xp.asarray(idx_wR)
             data_list.extend([coeff_wL, coeff_wR, -coeff_wL, -coeff_wR])
             row_list.extend([idx_wL_xp, idx_wR_xp, idx_wL_xp, idx_wR_xp])
             col_list.extend([idx_wR_xp, idx_wL_xp, idx_wL_xp, idx_wR_xp])
@@ -185,6 +183,18 @@ def _get_nonuniform_face_cache(builder, *, ax: int, strides: list[int]):
             xp.asarray(d_face[ax_idx_L]),
             xp.asarray(dv[ax_idx_L]),
             xp.asarray(dv[ax_idx_R]),
+        )
+    return builder._gpu_coeff_cache[cache_key]
+
+
+def _get_wrap_face_index_cache(builder, *, ax: int):
+    xp = builder.xp
+    cache_key = ('wrap_indices', ax)
+    if cache_key not in builder._gpu_coeff_cache:
+        idx_wL, idx_wR = builder._wrap_face_indices[ax]
+        builder._gpu_coeff_cache[cache_key] = (
+            xp.asarray(idx_wL),
+            xp.asarray(idx_wR),
         )
     return builder._gpu_coeff_cache[cache_key]
 

@@ -485,8 +485,7 @@ class FCCDSolver:
             if w["uniform"]:
                 div_unique = (F - F_m1) * w["inv_H"]
             else:
-                H = xp.asarray(w["H"])
-                inv_width = self._broadcast_axis0(1.0 / (0.5 * (H + xp.roll(H, 1))), F.ndim)
+                inv_width = self._broadcast_axis0(w["inv_H_periodic_node"], F.ndim)
                 div_unique = (F - F_m1) * inv_width
             out_shape = (N + 1,) + F.shape[1:]
             out = xp.empty(out_shape, dtype=div_unique.dtype)
