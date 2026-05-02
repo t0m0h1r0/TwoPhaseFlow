@@ -117,10 +117,10 @@ periodic.  The canonical form is axis-local and monitor-based:
 - Legacy compact form remains accepted for interface-only grids:
   top-level `type/method/alpha` plus `axes: [x]`, `[y]`, `[x, y]`, or omitted.
   It cannot express wall refinement.
-- `schedule`: non-negative grid rebuild interval. `0` means initial tracked
-  interface only; `N > 0` rebuilds every N physical steps from the current
-  tracked interface. Legacy aliases `static`, `every_step`, and `every_N` are
-  still accepted.
+- `schedule`: `static`/`0` is the paper-standard path: initial tracked
+  interface only. Positive values are parsed for historical YAML
+  compatibility, but the solver runtime rejects them until the
+  ALE/GCL/conservative-remap closure is implemented.
 
 Uniform axes may not declare monitors. Nonuniform axes must declare at least
 one monitor. Periodic axes may use interface monitors but cannot use wall
@@ -137,7 +137,7 @@ grid:
         lower: wall
         upper: wall
   distribution:
-    schedule: 1
+    schedule: static
     axes:
       x:
         type: uniform

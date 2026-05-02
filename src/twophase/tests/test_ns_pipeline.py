@@ -134,6 +134,12 @@ def test_rebuild_grid_noop_uniform():
     assert np.array_equal(psi2, psi_orig)
 
 
+def test_dynamic_grid_rebuild_schedule_fails_closed():
+    """Scheduled moving-grid rebuilds require the full ALE/remap closure."""
+    with pytest.raises(ValueError, match="ALE/GCL/conservative-remap"):
+        _make_solver(alpha_grid=2.0, grid_rebuild_freq=1)
+
+
 # ── Test 4: step with grid rebuild ───────────────────────────────────────────
 
 def test_step_nonuniform_no_nan():

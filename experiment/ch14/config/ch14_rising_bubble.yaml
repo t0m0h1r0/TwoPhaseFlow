@@ -13,7 +13,7 @@ grid:
     size: [1.0, 2.0]
     boundary: wall
   distribution:
-    schedule: 1
+    schedule: static
     axes:
       x:
         type: nonuniform

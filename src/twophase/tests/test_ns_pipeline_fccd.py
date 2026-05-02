@@ -766,7 +766,7 @@ def test_ch14_capillary_yaml_uses_true_low_order_defect_base():
     assert cfg.run.ppe_solver == "fccd_iterative"
     assert cfg.run.ppe_dc_base_solver == "fd_direct"
     assert cfg.grid.bc_type == "periodic_wall"
-    assert cfg.grid.grid_rebuild_freq == 1
+    assert cfg.grid.grid_rebuild_freq == 0
     assert cfg.grid.fitting_axes == (False, True)
     assert cfg.grid.fitting_alpha_grid == (1.0, 2.0)
     assert cfg.grid.wall_refinement_axes == (False, True)

@@ -74,6 +74,12 @@ class NSSchemeRuntimeState:
 
 def normalise_ns_interface_runtime(options) -> NSInterfaceRuntimeState:
     rebuild_freq = max(0, int(options.grid_rebuild_freq))
+    if rebuild_freq > 0:
+        raise ValueError(
+            "grid_rebuild_freq > 0 requests dynamic interface-fitted grid rebuild, "
+            "but the ALE/GCL/conservative-remap closure is not implemented. "
+            "Use grid.distribution.schedule: static/0."
+        )
     reinit_every = int(options.reinit_every)
     reinit_trigger_mode = str(getattr(options, "reinit_trigger_mode", "adaptive")).strip().lower()
     if reinit_trigger_mode not in {"adaptive", "fixed"}:

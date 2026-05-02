@@ -39,6 +39,12 @@ def rebuild_ns_grid(
     reprojector,
     wall_contacts=None,
 ) -> NSGridRebuildResult:
+    """Fit the grid to the supplied interface and remap primary fields.
+
+    The standard solver path uses this for initial fitted-grid construction.
+    Scheduled dynamic rebuilds are rejected by runtime configuration until the
+    ALE/GCL/conservative-remap closure is implemented.
+    """
     if alpha_grid <= 1.0:
         X, Y = grid.meshgrid()
         return NSGridRebuildResult(
