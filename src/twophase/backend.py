@@ -19,6 +19,7 @@ The ``scipy`` namespace is lazily resolved on first access and cached.
 from __future__ import annotations
 
 import os
+import sys
 from functools import cached_property
 
 

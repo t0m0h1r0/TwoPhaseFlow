@@ -1,0 +1,16 @@
+{
+  "lock_id": "571DAFBD-77CE-43B0-B695-B5503A5D0B7A",
+  "owner": "Codex",
+  "task": "RA Chapter 8 implementation fidelity audit",
+  "branch": "ra-ch8-implementation-audit-20260502",
+  "created_utc": "2026-05-02T13:26:40Z",
+  "status": "active",
+  "scope": [
+    "paper/sections/08_collocate.tex",
+    "paper/sections/08b_pressure.tex",
+    "paper/sections/08c_bf_failure.tex",
+    "paper/sections/08d_bf_seven_principles.tex",
+    "paper/sections/08e_fccd_bf.tex",
+    "src/twophase"
+  ]
+}

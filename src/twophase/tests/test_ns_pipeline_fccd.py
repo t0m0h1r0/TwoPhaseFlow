@@ -82,6 +82,11 @@ def test_fccd_projection_divergence_matches_ppe_operator_nonuniform_wall():
             div_op.pressure_fluxes(pressure, rho, pressure_gradient="fccd")
         )
     ).ravel()
+    projection_apply_public_name = np.asarray(
+        div_op.divergence_from_faces(
+            div_op.pressure_fluxes(pressure, rho, pressure_gradient="fccd_flux")
+        )
+    ).ravel()
 
     mask = np.ones_like(ppe_apply, dtype=bool)
     mask[ppe._pin_dof] = False
@@ -91,6 +96,32 @@ def test_fccd_projection_divergence_matches_ppe_operator_nonuniform_wall():
         rtol=1.0e-12,
         atol=1.0e-12,
     )
+    np.testing.assert_allclose(
+        projection_apply_public_name[mask],
+        ppe_apply[mask],
+        rtol=1.0e-12,
+        atol=1.0e-12,
+    )
+
+
+def test_fccd_projection_rejects_unknown_face_options():
+    """Chapter 8 face subsystem must fail closed instead of changing locus."""
+    backend, grid, fccd = _make_nonuniform_fccd_wall_stack()
+    div_op = FCCDDivergenceOperator(fccd)
+    pressure = np.zeros(grid.shape)
+    rho = np.ones(grid.shape)
+
+    with pytest.raises(ValueError, match="pressure_gradient"):
+        div_op.pressure_fluxes(pressure, rho, pressure_gradient="central")
+    with pytest.raises(ValueError, match="coefficient_scheme"):
+        div_op.pressure_fluxes(pressure, rho, coefficient_scheme="arithmetic")
+    with pytest.raises(ValueError, match="interface_coupling_scheme"):
+        div_op.pressure_fluxes(
+            pressure,
+            rho,
+            coefficient_scheme="phase_separated",
+            interface_coupling_scheme="smoothed_jump",
+        )
 
 
 def test_fccd_matrixfree_enforces_mixed_periodic_image_rows():
