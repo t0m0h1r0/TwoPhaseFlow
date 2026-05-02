@@ -1,0 +1,14 @@
+{
+  "id": "CHK-RA-CH8-STRICT-REVIEW-001",
+  "branch": "ra-ch8-strict-review-20260502",
+  "worktree": ".claude/worktrees/ra-ch8-strict-review-20260502",
+  "created": "2026-05-02",
+  "scope": [
+    "paper/sections/08_collocate.tex",
+    "paper/sections/08b_pressure.tex",
+    "paper/sections/08c_bf_failure.tex",
+    "paper/sections/08d_bf_seven_principles.tex",
+    "paper/sections/08e_fccd_bf.tex"
+  ],
+  "status": "active"
+}
