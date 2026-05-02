@@ -31,8 +31,8 @@ Poisson 方程式を高次に離散化することだけではない．
         $G_\Gamma(p;j)=G(p)-B(j)$ のジャンプ補正付き面勾配で扱う．
   \item \textbf{高次ステンシル問題}：
         界面を跨ぐ CCD/FCCD ステンシルを禁止し，HFE で片側 Hermite データを延長する．
-  \item \textbf{求解コスト問題}：
-        高次演算子を直接「解く」ことに固執せず，欠陥補正で高次評価演算子と低次補正演算子を分離する．
+  \item \textbf{高次演算子処理問題}：
+        欠陥補正により，高次評価演算子と低次補正演算子の役割を分離する．
   \item \textbf{零モード・再投影問題}：
         圧力の定数自由度を大域ゲージで固定し，再投影 PPE では界面ジャンプ情報を分離する．
 \end{enumerate}
@@ -51,7 +51,7 @@ Poisson 方程式を高次に離散化することだけではない．
   \;+\;
   \text{大域ゲージ・再投影分離}
 \]
-である．FVM/FD，CSF，smoothed-Heaviside 一括 PPE，CCD-LU，
+である．FVM/FD，CSF，smoothed-Heaviside 一括 PPE，直接解型 CCD，
 および滑らかな補助圧力場によるジャンプ表現は，
 役割を限定して扱う数理モデルであり，本章の圧力ジャンプ型閉包そのものではない．
 精度の全体像と閉包条件は §~\ref{sec:pressure_accuracy_summary} にまとめる．
@@ -66,7 +66,7 @@ CCD 法は「既知の関数 $f$ の微分値 $f', f''$ を高精度に求める
 
 \begin{itemize}
   \item \textbf{役割1（微分演算子）：} 既知の $f$（$\phi$，$\bu$ など）から $\Ord{h^6}$ 精度の
-        $f', f'', f_{xy}$ を求める．曲率計算・粘性項評価に使用．
+        $f', f'', f_{xy}$ を求める．曲率評価・粘性項評価に用いる．
   \item \textbf{役割2（楕円型求解法）：} 未知の圧力 $p$ に対して CCD を適用し，
         $\Ord{h^6}$ 精度の演算子 $\mathbf{L}_{\mathrm{CCD}}^{\rho}$ を構成する（§~\ref{sec:ccd_poisson_matrix}）．
 \end{itemize}
