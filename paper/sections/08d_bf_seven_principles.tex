@@ -1,9 +1,9 @@
 % paper/sections/08_1_bf_seven_principles.tex
 %
-% §7.3  Balanced--Force 七原則
-%       P-1 位置一致 / P-2 PPE-corrector 共有 / P-3 geometry 経路統一 /
+% §8.4  Balanced--Force 七原則
+%       P-1 位置一致 / P-2 PPE-補正共有 / P-3 geometry 経路統一 /
 %       P-4 β_f 統一 / P-5 曲率への CCD 非適用 /
-%       P-6 界面ジャンプ補正 / P-7 BF sub-system 分離
+%       P-6 界面ジャンプ補正 / P-7 BF 部分系分離
 %
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{Balanced--Force 七原則}
@@ -15,8 +15,8 @@
 \textbf{BF 整合性の核は P-1（位置一致）/ P-2（補正 $G_h$ 共有）/ P-4（$\betaf$ 統一）/
 P-6（界面ジャンプ補正）の 4 原則}が担い，これらが欠けると寄生流れが
 $\Ord{h^0}$ で残留する．残る P-3（geometry 経路統一）/ P-5（曲率非 CCD 化）/
-P-7（sub-system 分離）は\textbf{次数改善および予防的役割}を持つ．
-\textbf{特に P-5 の status は適用形態に依存}：対称フィルタ適用時は
+P-7（BF 部分系分離）は\textbf{次数改善および予防的役割}を持つ．
+\textbf{特に P-5 の位置づけは適用形態に依存}：対称フィルタ適用時は
 P-1 維持の必要条件として連動する（§\ref{sec:bf_p5_curvature}），
 非対称・無フィルタ時は次数改善の予防策に留まる．主解消は依然 4 原則 (P-1/P-2/P-4/P-6) で完結する
 （詳細は §\ref{sec:bf_p5_curvature} および §\ref{sec:bf_failure_principle_map} の F$\times$P 表参照）．
@@ -89,7 +89,7 @@ $G_h^\text{bf} p_\sigma$ として構成できるよう設計すれば，
   \label{eq:bf_p3_cancel}
 \end{equation}
 が\textbf{PPE 解の精度}により成立する．
-独立に離散化された 2 ベクトルのキャンセルを期待する旧来設計と本質的に異なる．
+独立に離散化された 2 ベクトルの相殺を期待する構成と本質的に異なる．
 
 % -------------------------------------------------------------------------------
 \subsubsection{\texorpdfstring{P-4：$\betaf$ を 3 経路で統一}{P-4：beta f を 3 経路で統一}}
@@ -103,7 +103,7 @@ $\betaf = (1/\rho)_f$ は以下の 3 経路\textbf{すべてで同一}：
   \item 速度補正 $u_f^{n+1} = u_f^* - \Delta t_{\mathrm{proj}}\,\betaf\,(G_h^\text{bf} p)_f$，
   \item 界面張力正規化 $f_\sigma \propto \betaf\,\sigma\kappa_{lg}\,(\bnabla\psi)_f$（CSF
         標準式 $\sigma\kappa_{lg}\bnabla\psi$ に $\betaf$ 因子を付加した\textbf{変密度
-        corrector 離散化の特殊形}；等密度では $\betaf$ が定数で標準式に還元する）．
+        補正段離散化の特殊形}；等密度では $\betaf$ が定数で標準式に還元する）．
 \end{enumerate}
 PPE に調和平均，補正に算術平均という「混用」は
 $\rho_l/\rho_g \gg 1$ で BF 残差を界面で $\Ord{1}$ とする．
@@ -151,22 +151,22 @@ CCD は滑らかな場を仮定する．静止液滴で $j_{gl}=-\sigma\kappa_{l
 ほぼ常に\textbf{界面越えステンシルが圧力ジャンプを平滑化}している．
 必要な補正：
 \begin{itemize}[noitemsep]
-  \item \textbf{GFM 面フラックス補正}（実用閉包）：
+  \item \textbf{GFM 面フラックス補正}（標準 pressure-jump 閉包）：
   \begin{equation}
     (G_h^\text{bf} p)_f^\text{corrected}
       = (G_h^\text{bf} p)_f - \frac{j_{gl}}{H_f},
     \label{eq:bf_p6_gfm}
   \end{equation}
   bulk ステンシルは変更せず，ジャンプだけを面フラックスに注入．
-  2 次精度；H-01 診断と標準 pressure-jump 閉包の面整合条件に十分．
-  \item \textbf{IIM コンパクト行補正}（研究閉包）：
+  2 次精度；標準 pressure-jump 閉包の面整合条件に十分．
+  \item \textbf{IIM コンパクト行補正}（高次 pressure-jump 閉包）：
   FCCD のコンパクト関係 $M_f\mathbf{g} = R_f\mathbf{p}$ に対し
   $[p]_\Gamma,\,[\betaf\partial_n p]_\Gamma$ を Taylor 展開した
   補正ベクトル $c_\Gamma^\text{IIM}$ を加算．
 \end{itemize}
 
 % -------------------------------------------------------------------------------
-\subsubsection{P-7：BF sub-system と bulk 微分子の分離}
+\subsubsection{P-7：BF 部分系と bulk 微分演算子の分離}
 \label{sec:bf_p7_separation}
 % -------------------------------------------------------------------------------
 
@@ -176,19 +176,19 @@ CCD は滑らかな場を仮定する．静止液滴で $j_{gl}=-\sigma\kappa_{l
 タスク & 演算子 & 精度要求 \\
 \hline
 bulk 移流・拡散（$u,v$）& 節点 CCD / UCCD6 / FCCD & 高次（$\Ord{h^6}$） \\
-PPE + 補正 & $G_h^\text{bf},\,D_h^\text{bf}$（面随伴ペア）& 内整合（$\Ord{h^2}$--$\Ord{h^4}$） \\
-界面張力 $f_\sigma$ & $G_h^\text{bf}$ と同じ面スロット & 内整合 \\
+PPE + 補正 & $G_h^\text{bf},\,D_h^\text{bf}$（面随伴ペア）& 内部整合（$\Ord{h^2}$--$\Ord{h^4}$） \\
+界面張力 $f_\sigma$ & $G_h^\text{bf}$ と同じ面スロット & 内部整合 \\
 曲率 $\kappa_{lg}$ & 界面帯制限平滑化 & 2 次 \\
 \hline
 \end{tabular}
 \end{center}
 
 \noindent\textbf{設計哲学}：
-BF sub-system は\textbf{高次である必要はない}．
+BF 部分系は\textbf{高次である必要はない}．
 内部整合性（位置一致・随伴ペア・$\betaf$ 統一）があれば
 寄生流れは演算子精度ではなく
 \textbf{界面ジャンプ処理の精度}で律速される．
-bulk と BF で演算子を分けるのは「妥協」ではなく\textbf{設計原則}．
+bulk と BF で演算子を分けるのは「妥協」ではなく\textbf{設計原則}である．
 
 % -------------------------------------------------------------------------------
 \subsubsection{F-1--F-5 × P-1--P-7 対応マップ}
@@ -215,7 +215,7 @@ F-5（界面越えステンシル）\footnote{F-5 で P-6 単独は \(\Ord{h^2}\
 
 \noindent P-5（曲率 $\kappa_{lg}$ の非 CCD 化）と P-3（$f_\sigma$ を $p$ と同幾何）は
 F-5（界面越えステンシル平滑化）に対し副次的・間接的に寄与する．
-P-7（sub-system 分離）は F-1・F-2 の\textbf{設計レベル}での発生を防ぐ予防策．
+P-7（BF 部分系分離）は F-1・F-2 の\textbf{設計レベル}での発生を防ぐ予防策．
 \textbf{F-1..F-5 への主解消は P-1, P-2, P-4, P-6 の 4 原則}が担い，
 P-3, P-5, P-7 は次数改善・設計予防として\textbf{独立な設計目的}を持つ
 （各原則の設計動機は §\ref{sec:bf_p1_location}--\ref{sec:bf_p7_separation} 参照）．
