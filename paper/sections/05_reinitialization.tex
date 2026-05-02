@@ -26,7 +26,7 @@ Gaussian 補助場 $\xiridge$ と非一様 FMM を含む完全な Ridge--Eikonal
 \noindent\textbf{本章の構成：}
 \begin{itemize}
   \item \S~\ref{sec:cls_compression}（§5.1）\textbf{Ridge--Eikonal 補助距離再構成}：
-        飽和帯フォールバックおよびトポロジー変化時に，零点集合から
+        飽和帯の補助再構成およびトポロジー変化時に，零点集合から
         符号距離場と Heaviside 再構成で $\psi$ を復元する補助経路．
   \item \S~\ref{sec:cls_stages}（§5.2）\textbf{CLS A--F 6 段階アルゴリズム}：
         質量保存・幾何（法線・曲率）・質量補正の 3 責務を独立処理する
@@ -44,7 +44,7 @@ Gaussian 補助場 $\xiridge$ と非一様 FMM を含む完全な Ridge--Eikonal
 連続定式化と §~\ref{sec:ridge_eikonal}（§3.4 Ridge--Eikonal 連続定式化）に基づく
 補助的な距離再構成の離散実装を示す．§3.4 と同様，本経路は
 CLS 基本経路（保存形移流・$\psi$ 直接曲率）を置き換えるものではなく，
-飽和帯フォールバックおよびトポロジー変化時に
+飽和帯の補助再構成およびトポロジー変化時に
 零点集合から符号距離場と Heaviside 再構成で $\psi$ を復元する．
 本節の構成は以下である：
 \begin{itemize}
@@ -477,7 +477,7 @@ D4 空間依存 $\varepsilon_\text{local}(\bm{x})$ へ置き換える．
 \textbf{反復有無の切り分け：}
 本稿の Ridge--Eikonal／$\xi$-SDF／FMM 補助経路は 1 ショット距離再構成であり，
 仮想時間ループを持たない．以下の停止条件は，
-Godunov/WENO--HJ 型の反復 Eikonal solver を fallback として選ぶ場合にのみ適用する．
+Godunov/WENO--HJ 型の反復 Eikonal solver を明示比較経路として選ぶ場合にのみ適用する．
 反復型 Eikonal では $\Delta s = \min(h_x,h_y)$ とし，
 Hamilton--Jacobi CFL に基づく $\Delta\tau_\mathrm{HJ}\le C_\mathrm{HJ}\Delta s$
 （例：$C_\mathrm{HJ}=0.3$）を用いる．圧縮--拡散型旧実装の
@@ -494,7 +494,7 @@ Hamilton--Jacobi CFL に基づく $\Delta\tau_\mathrm{HJ}\le C_\mathrm{HJ}\Delta
 軽微な乱れでは3～5ステップ，界面トポロジー変化直後は10～20ステップ程度が目安．
 
 \medskip
-\noindent\textbf{終了判定（反復型 fallback の停止条件）：}
+\noindent\textbf{終了判定（反復型 Eikonal 経路の停止条件）：}
 再初期化ループを反復ごとに以下の条件でチェックし，いずれかを満たしたとき停止する：
 \begin{enumerate}
   \item \textbf{残差収束：}
@@ -506,7 +506,7 @@ Hamilton--Jacobi CFL に基づく $\Delta\tau_\mathrm{HJ}\le C_\mathrm{HJ}\Delta
         反復数による Eikonal 誤差の減衰は §~\ref{sec:U4_ridge_eikonal_reinit}
         の単体検証で確認する）
 \end{enumerate}
-反復型 fallback で物理タイムステップあたりの再初期化ステップ数（1--5 程度）が
+反復型 Eikonal 経路で物理タイムステップあたりの再初期化ステップ数（1--5 程度）が
 少なすぎる場合は $M(\tau)$ の時系列を記録し，蓄積的な乱れを検知すること．
 
 \noindent\textbf{トレードオフ：}

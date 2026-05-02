@@ -86,7 +86,7 @@ class RunCfg:
     phi_primary_heaviside_eps_scale: float = 1.0
     kappa_max: float | None = None
     reinit_method: str | None = None
-    dgr_phi_smooth_C: float = 1e-4
+    dgr_phi_smooth_C: float = 0.0
     ridge_sigma_0: float = 3.0
     advection_scheme: str = "dissipative_ccd"
     convection_scheme: str = "ccd"

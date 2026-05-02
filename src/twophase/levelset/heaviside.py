@@ -87,9 +87,8 @@ def invert_heaviside(xp, psi, eps: float):
       2. Saturated points: phi = +/- phi_max
       3. Standard region: s = eps * ln(psi / (1 - psi))
 
-    Newton fallback (eq. newton_inversion) is applied to saturated points
-    that fall within (delta_clamp, _PSI_CLIP) or (1-_PSI_CLIP, 1-delta_clamp),
-    though in practice such points are negligible (~O(e^{-15})).
+    No iterative alternative is applied: saturation is the analytic logit after
+    clipping ψ into [delta_clamp, 1-delta_clamp].
 
     Parameters
     ----------

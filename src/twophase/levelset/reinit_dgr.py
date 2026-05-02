@@ -21,15 +21,14 @@ class DGRReinitializer(IReinitializer):
     See WIKI-T-030 for proofs.
 
     Design note: DGR corrects interface THICKNESS only (assumes |∇φ_true|≈1).
-    For simulations with σ>0 and capillary dynamics, the interface develops
+    For simulations with σ>0 and capillary dynamics, the interface can develop
     folds (|∇ψ|→0 in band) that DGR cannot correct (global median scale≈1
-    is insensitive to local outliers). Use HybridReinitializer (split+DGR)
-    to provide shape restoration before DGR's thickness correction.
-    WIKI-T-030 §Hybrid Scheme explicitly recommends hybrid for production.
+    is insensitive to local outliers). Chapter 5 therefore forbids appending
+    DGR after split reinitialization for such oscillatory capillary cases.
     """
 
     def __init__(self, backend: "Backend", grid, ccd: "CCDSolver",
-                 eps: float, phi_smooth_C: float = 1e-4):
+                 eps: float, phi_smooth_C: float = 0.0):
         self.xp = backend.xp
         self.grid = grid
         self.ccd = ccd
@@ -67,6 +66,10 @@ class DGRReinitializer(IReinitializer):
         scale = eps_eff / self.eps if eps_eff > 1e-14 else 1.0
         phi_sdf = phi_raw * scale
 
+        # Optional non-paper compatibility smoothing on φ_sdf.
+        # Default is 0.0 so the Chapter 5 DGR map remains exactly:
+        # logit inversion → ε_eff/ε rescale → H_ε reconstruction → φ-shift.
+        #
         # CCD Laplacian smoothing on φ_sdf (WIKI-T-030 addendum).
         # ∇²φ ≈ κ = O(1) → C·h²·∇²φ = O(h²) → convergence-preserving.
         # Damps O(h^5) wall-boundary asymmetry accumulated over ~10^4 steps.
@@ -100,14 +103,11 @@ class DGRReinitializer(IReinitializer):
 class HybridReinitializer(IReinitializer):
     """Hybrid: shape restoration (split) + thickness correction (DGR).
 
-    Composes SplitReinitializer and DGRReinitializer sequentially.
-    This is the recommended production configuration (WIKI-T-030 §Hybrid Scheme):
-    - SplitReinitializer restores interface shape via compression-diffusion PDE,
-      correcting folds and |∇ψ|=0 regions that DGR cannot handle.
-    - DGRReinitializer then corrects the ~1.4× thickness broadening that
-      SplitReinitializer introduces.
-    Required for σ>0 capillary wave simulations (ch13) where interface folds
-    develop under capillary dynamics and cause CSF blowup without shape correction.
+    Composes SplitReinitializer and DGRReinitializer sequentially.  This path
+    is retained for explicit comparison/legacy studies only.  Chapter 5 states
+    that σ>0 oscillatory capillary cases must not append DGR after split
+    reinitialization because fold cells can make the median-width DGR correction
+    generate nonphysical curvature spikes.
     """
 
     def __init__(self, split: IReinitializer, dgr: IReinitializer):

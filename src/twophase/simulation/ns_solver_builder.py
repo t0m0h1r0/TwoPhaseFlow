@@ -87,7 +87,7 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
                 getattr(run, "phi_primary_heaviside_eps_scale", 1.0)
             ),
             kappa_max=getattr(run, "kappa_max", None),
-            dgr_phi_smooth_C=float(getattr(run, "dgr_phi_smooth_C", 1e-4)),
+            dgr_phi_smooth_C=float(getattr(run, "dgr_phi_smooth_C", 0.0)),
             reinit_eps_scale=float(getattr(run, "reinit_eps_scale", 1.0)),
             ridge_sigma_0=float(getattr(run, "ridge_sigma_0", 3.0)),
         ),
