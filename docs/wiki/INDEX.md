@@ -1,6 +1,6 @@
-# Wiki Index — 241 entries
+# Wiki Index — 244 entries
 
-## Theory (90)
+## Theory (93)
 
 | REF-ID | Title |
 |--------|-------|
@@ -94,6 +94,9 @@
 | [WIKI-T-088](theory/WIKI-T-088.md) | FCCD Telescoping Conservation: Shared Face Flux Before Clamp |
 | [WIKI-T-089](theory/WIKI-T-089.md) | Dissipation Channel Taxonomy: None, Post-Filter, Internal, and Face-Locus |
 | [WIKI-T-090](theory/WIKI-T-090.md) | Boundary Closure Honesty: Interior Order Is Not Whole-Domain Order |
+| [WIKI-T-091](theory/WIKI-T-091.md) | Variable-Viscosity Stress Must Stay in Full Divergence Form |
+| [WIKI-T-092](theory/WIKI-T-092.md) | Shared Shear Stress tau_xy Is a First-Class Discrete Object |
+| [WIKI-T-093](theory/WIKI-T-093.md) | rho/mu Are Post-CLS Algebraic Fields, Not High-Order Interpolants |
 
 ## Cross-Domain (39)
 
