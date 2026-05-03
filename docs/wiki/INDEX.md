@@ -1,6 +1,6 @@
-# Wiki Index — 244 entries
+# Wiki Index — 247 entries
 
-## Theory (93)
+## Theory (96)
 
 | REF-ID | Title |
 |--------|-------|
@@ -97,6 +97,9 @@
 | [WIKI-T-091](theory/WIKI-T-091.md) | Variable-Viscosity Stress Must Stay in Full Divergence Form |
 | [WIKI-T-092](theory/WIKI-T-092.md) | Shared Shear Stress tau_xy Is a First-Class Discrete Object |
 | [WIKI-T-093](theory/WIKI-T-093.md) | rho/mu Are Post-CLS Algebraic Fields, Not High-Order Interpolants |
+| [WIKI-T-094](theory/WIKI-T-094.md) | Non-Uniform Metrics Need a Single Geometric Source of Truth |
+| [WIKI-T-095](theory/WIKI-T-095.md) | Non-Uniform FCCD Order Has a Face-Centrality Gate |
+| [WIKI-T-096](theory/WIKI-T-096.md) | Regridding Requires Conservative Remap, History Reset, and Face Rebuild |
 
 ## Cross-Domain (39)
 

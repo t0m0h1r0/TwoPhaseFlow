@@ -1,14 +1,15 @@
 # 02_ACTIVE_LEDGER — Phase, Branch, CHK Register, Assumptions & Lessons
 # LIVE document — append-only for CHK/ASM/KL entries; phase/branch updated each session.
-# Last updated: 2026-05-04 (CHK-RA-PAPER-WIKI-001 ROUND-5 DONE — viscous/property individual knowledge cards stored in wiki.)
+# Last updated: 2026-05-04 (CHK-RA-PAPER-WIKI-001 ROUND-6 DONE — non-uniform grid/regridding individual knowledge cards stored in wiki.)
 
 ────────────────────────────────────────────────────────
 # § ACTIVE STATE
 
 | Key | Value |
 |---|---|
-| phase | CHK-RA-PAPER-WIKI-001 ROUND-5 DONE |
+| phase | CHK-RA-PAPER-WIKI-001 ROUND-6 DONE |
 | branch | `main` |
+| session_CHK | CHK-RA-PAPER-WIKI-001 ROUND-6 DONE 2026-05-04 — User 指示「新観点が出なくなるまで、もしくは10ラウンド超過するまで繰り返して」対応継続。No new worktree; current `main` worktree 上で実施。Round 6 は §10 non-uniform grid/regridding 章から個別知識カードを追加: `docs/wiki/theory/WIKI-T-094.md` (non-uniform metrics as single geometric source of truth), `docs/wiki/theory/WIKI-T-095.md` (non-uniform FCCD order has a face-centrality gate), `docs/wiki/theory/WIKI-T-096.md` (regridding requires conservative remap, history reset, and face rebuild). Updated `docs/wiki/INDEX.md`: total 244→247, Theory 93→96. [SOLID-X] docs/wiki/ledger only; no production code boundary changed, no tested code deleted, no FD/WENO/PPE fallback introduced. |
 | session_CHK | CHK-RA-PAPER-WIKI-001 ROUND-5 DONE 2026-05-04 — User 指示「新観点が出なくなるまで、もしくは10ラウンド超過するまで繰り返して」対応継続。No new worktree; current `main` worktree 上で実施。Round 5 は §6.3/§6.4 viscous/property 章から個別知識カードを追加: `docs/wiki/theory/WIKI-T-091.md` (variable-viscosity stress must stay in full divergence form), `docs/wiki/theory/WIKI-T-092.md` (shared shear stress `tau_xy` as first-class discrete object), `docs/wiki/theory/WIKI-T-093.md` (`rho/mu` are post-CLS algebraic fields, not high-order interpolants). Updated `docs/wiki/INDEX.md`: total 241→244, Theory 90→93. [SOLID-X] docs/wiki/ledger only; no production code boundary changed, no tested code deleted, no FD/WENO/PPE fallback introduced. |
 | session_CHK | CHK-RA-PAPER-WIKI-001 ROUND-4 DONE 2026-05-04 — User 指示「新観点が出なくなるまで、もしくは10ラウンド超過するまで繰り返して」対応継続。No new worktree; current `main` worktree 上で実施。Round 4 は §4/§6 spatial-operator 章から個別知識カードを追加: `docs/wiki/theory/WIKI-T-088.md` (FCCD telescoping conservation via shared face flux before clamp), `docs/wiki/theory/WIKI-T-089.md` (dissipation channel taxonomy: CCD/DCCD/UCCD6/FCCD), `docs/wiki/theory/WIKI-T-090.md` (boundary closure honesty: interior order is not whole-domain order). Updated `docs/wiki/INDEX.md`: total 238→241, Theory 87→90. [SOLID-X] docs/wiki/ledger only; no production code boundary changed, no tested code deleted, no FD/WENO/PPE fallback introduced. |
 | session_CHK | CHK-RA-PAPER-WIKI-001 ROUND-3 DONE 2026-05-04 — User 指示「新観点が出なくなるまで、もしくは10ラウンド超過するまで繰り返して」対応継続。No new worktree; current `main` worktree 上で実施。Round 3 は CLS/reinitialization 章から総括ではない個別知識カードを追加: `docs/wiki/theory/WIKI-T-085.md` (CLS A--F staging and three responsibilities), `docs/wiki/theory/WIKI-T-086.md` (mass closure has two spaces: psi-localized before reinit, phi-uniform after), `docs/wiki/theory/WIKI-T-087.md` (adaptive reinitialization trigger and DGR applicability limits). Updated `docs/wiki/INDEX.md`: total 235→238, Theory 84→87. [SOLID-X] docs/wiki/ledger only; no production code boundary changed, no tested code deleted, no FD/WENO/PPE fallback introduced. |
