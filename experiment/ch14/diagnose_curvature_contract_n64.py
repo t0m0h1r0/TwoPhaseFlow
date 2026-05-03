@@ -15,7 +15,9 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
 import twophase.simulation.ns_pipeline as ns_pipeline  # noqa: E402
+from twophase.core.boundary import sync_periodic_image_nodes  # noqa: E402
 from twophase.simulation.config_models import ExperimentConfig  # noqa: E402
+from twophase.time_integration.tvd_rk3 import tvd_rk3  # noqa: E402
 from twophase.tools.experiment import experiment_argparser, experiment_dir, save_results  # noqa: E402
 
 
@@ -352,6 +354,62 @@ def _record_curvature(rows: list[dict[str, float]], *, filter_C: float | None):
         ns_pipeline.compute_ns_surface_tension_stage = original_surface
 
 
+@contextmanager
+def _patch_face_native_transport(enabled: bool):
+    if not enabled:
+        yield
+        return
+
+    original_advance = ns_pipeline.TwoPhaseNSSolver._advance_interface_stage
+
+    def face_native_advance(self, state):
+        xp = self._backend.xp
+        face_velocity = state.face_velocity_components
+        if face_velocity is None:
+            face_velocity = self._div_op.face_fluxes([state.u, state.v])
+
+        def rhs(q):
+            total = xp.zeros_like(q)
+            for axis, velocity_face in enumerate(face_velocity):
+                psi_face = self._fccd.face_value(q, axis)
+                flux_face = psi_face * xp.asarray(velocity_face)
+                total = total - self._fccd.face_divergence(flux_face, axis)
+            return total
+
+        def post_stage(q):
+            return sync_periodic_image_nodes(xp.clip(q, 0.0, 1.0), self.bc_type)
+
+        state.psi = tvd_rk3(xp, state.psi, state.dt, rhs, post_stage=post_stage)
+        if (
+            self._alpha_grid > 1.0
+            and self._interface_runtime.rebuild_freq > 0
+            and state.step_index > 0
+            and (state.step_index % self._interface_runtime.rebuild_freq == 0)
+        ):
+            try:
+                state.psi, state.u, state.v = self._rebuild_grid(
+                    state.psi,
+                    state.u,
+                    state.v,
+                    rho_l=state.rho_l,
+                    rho_g=state.rho_g,
+                )
+            except TypeError:
+                state.psi, state.u, state.v = self._rebuild_grid(
+                    state.psi,
+                    state.u,
+                    state.v,
+                )
+            self._projected_face_components = None
+        return state
+
+    ns_pipeline.TwoPhaseNSSolver._advance_interface_stage = face_native_advance
+    try:
+        yield
+    finally:
+        ns_pipeline.TwoPhaseNSSolver._advance_interface_stage = original_advance
+
+
 def _pack(rows: list[dict[str, float]]) -> dict[str, np.ndarray]:
     return {key: np.asarray([row[key] for row in rows], dtype=float) for key in rows[0]}
 
@@ -380,6 +438,11 @@ def main() -> None:
         action="store_true",
         help="Disable interface transport to isolate pressure/curvature feedback.",
     )
+    parser.add_argument(
+        "--face-native-transport",
+        action="store_true",
+        help="Diagnostic: advect psi with projection-native face velocity fluxes.",
+    )
     args = parser.parse_args()
     output_name = "ch14_curvature_contract_n64"
     if args.static_grid:
@@ -389,6 +452,8 @@ def main() -> None:
     output_name = f"{output_name}{_filter_suffix(args.filter_C)}"
     if args.freeze_interface:
         output_name = f"{output_name}_frozen_iface"
+    if args.face_native_transport:
+        output_name = f"{output_name}_face_native_transport"
     outdir = experiment_dir(__file__, output_name)
     npz_path = outdir / "data.npz"
     if args.plot_only:
@@ -417,15 +482,16 @@ def main() -> None:
         return
 
     rows: list[dict[str, float]] = []
-    with _record_curvature(rows, filter_C=args.filter_C):
-        ns_pipeline.run_simulation(
-            _build_config(
-                args.reinit_every,
-                static_grid=args.static_grid,
-                filter_C=args.filter_C,
-                freeze_interface=args.freeze_interface,
+    with _patch_face_native_transport(args.face_native_transport):
+        with _record_curvature(rows, filter_C=args.filter_C):
+            ns_pipeline.run_simulation(
+                _build_config(
+                    args.reinit_every,
+                    static_grid=args.static_grid,
+                    filter_C=args.filter_C,
+                    freeze_interface=args.freeze_interface,
+                )
             )
-        )
     save_results(npz_path, _pack(rows))
     first = rows[0]
     final = rows[-1]
