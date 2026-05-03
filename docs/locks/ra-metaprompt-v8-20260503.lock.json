@@ -1,0 +1,11 @@
+{
+  "branch": "ra-metaprompt-v8-20260503",
+  "branch_slug": "ra-metaprompt-v8-20260503",
+  "id_prefix": "RA-META-V8",
+  "session_id": "B28BECDA-5DBB-4659-9AC5-008883464230",
+  "worktree_path": ".claude/worktrees/ra-metaprompt-v8-20260503",
+  "holder_agent": "ResearchArchitect",
+  "acquired_at": "2026-05-03T00:10:16Z",
+  "expires_at": "2026-05-04T00:10:16Z",
+  "meta_version": "8.0.0-candidate"
+}

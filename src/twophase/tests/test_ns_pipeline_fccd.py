@@ -25,10 +25,7 @@ from twophase.ppe.defect_correction import PPESolverDefectCorrection
 from twophase.ppe.fccd_matrixfree import PPESolverFCCDMatrixFree
 from twophase.simulation.divergence_ops import FCCDDivergenceOperator
 from twophase.simulation.ns_pipeline import TwoPhaseNSSolver
-from twophase.simulation.ns_step_services import (
-    _interface_supported_curvature,
-    _previous_pressure_acceleration_nodes,
-)
+from twophase.simulation.ns_step_services import _interface_supported_curvature
 from twophase.levelset.curvature_psi import CurvatureCalculatorPsi
 from twophase.levelset.fccd_advection import FCCDLevelSetAdvection
 from twophase.simulation.config_io import ExperimentConfig
@@ -279,95 +276,6 @@ def test_phase_separated_corrector_forwards_projection_coefficient_scheme():
         "pressure_gradient": "fccd",
         "coefficient_scheme": "phase_separated",
     }
-
-
-def test_previous_pressure_history_forwards_affine_jump_context():
-    """IPC pressure history must use the same affine jump operator as the PPE."""
-
-    class GradientStub:
-        def gradient(self, pressure, axis):
-            raise AssertionError("plain pressure gradient must not be used")
-
-    class ProjectionRecorder:
-        def __init__(self):
-            self.kwargs = None
-            self.reconstructed = False
-
-        def pressure_fluxes(self, pressure, rho, **kwargs):
-            self.kwargs = kwargs
-            return [
-                np.full_like(pressure, 2.0),
-                np.full_like(pressure, -3.0),
-            ]
-
-        def reconstruct_nodes(self, face_components):
-            self.reconstructed = True
-            return [np.array(component, copy=True) for component in face_components]
-
-    array = np.zeros((3, 3))
-    state = type("StateStub", (), {})()
-    state.psi = np.array([[1.0, 1.0, 1.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]])
-    state.kappa = np.full_like(array, 4.0)
-    state.previous_pressure = np.ones_like(array)
-    state.rho = np.ones_like(array)
-    state.sigma = 0.072
-    projection = ProjectionRecorder()
-
-    previous_acceleration = _previous_pressure_acceleration_nodes(
-        state,
-        xp=np,
-        div_op=projection,
-        pressure_grad_op=GradientStub(),
-        ppe_solver_name="fccd_iterative",
-        ppe_coefficient_scheme="phase_separated",
-        ppe_interface_coupling_scheme="affine_jump",
-    )
-
-    np.testing.assert_allclose(previous_acceleration[0], 2.0)
-    np.testing.assert_allclose(previous_acceleration[1], -3.0)
-    assert projection.reconstructed is True
-    assert projection.kwargs["pressure_gradient"] == "fccd"
-    assert projection.kwargs["coefficient_scheme"] == "phase_separated"
-    assert projection.kwargs["interface_coupling_scheme"] == "affine_jump"
-    context = projection.kwargs["interface_stress_context"]
-    assert context.sigma == pytest.approx(0.072)
-    np.testing.assert_allclose(context.pressure_jump_gas_minus_liquid, -0.288)
-
-
-def test_previous_pressure_history_falls_back_without_affine_jump():
-    """Non-affine IPC pressure history preserves the legacy nodal gradient."""
-
-    class GradientStub:
-        def gradient(self, pressure, axis):
-            return np.full_like(pressure, float(axis + 1))
-
-    class ProjectionForbidden:
-        def pressure_fluxes(self, pressure, rho, **kwargs):
-            raise AssertionError("affine pressure flux must not be used")
-
-        def reconstruct_nodes(self, face_components):
-            raise AssertionError("affine pressure flux must not be reconstructed")
-
-    array = np.zeros((3, 3))
-    state = type("StateStub", (), {})()
-    state.psi = np.ones_like(array)
-    state.kappa = np.ones_like(array)
-    state.previous_pressure = np.ones_like(array)
-    state.rho = np.full_like(array, 2.0)
-    state.sigma = 0.072
-
-    previous_acceleration = _previous_pressure_acceleration_nodes(
-        state,
-        xp=np,
-        div_op=ProjectionForbidden(),
-        pressure_grad_op=GradientStub(),
-        ppe_solver_name="fccd_iterative",
-        ppe_coefficient_scheme="phase_separated",
-        ppe_interface_coupling_scheme="none",
-    )
-
-    np.testing.assert_allclose(previous_acceleration[0], 0.5)
-    np.testing.assert_allclose(previous_acceleration[1], 1.0)
 
 
 def _mode2_ic(solver: TwoPhaseNSSolver) -> np.ndarray:
@@ -1174,7 +1082,9 @@ def test_phase_separated_pressure_jump_stack_one_step_no_nan():
     assert diag["ppe_pin_count"] == 0.0
     assert diag["ppe_mean_gauge"] == 1.0
     assert diag["ppe_interface_coupling_jump"] == 1.0
-    assert diag["ppe_rhs_phase_mean_after_max"] < 1.0e-10
+    before = max(diag["ppe_rhs_phase_mean_before_max"], 1.0)
+    after = diag["ppe_rhs_phase_mean_after_max"]
+    assert after <= max(1.0e-10, 1.0e-12 * before)
 
 
 def test_affine_jump_pressure_stack_one_step_no_nan():

@@ -108,6 +108,35 @@ Commit format: `{branch}: trivial — {summary}`. Upgrade to FAST-TRACK if diff 
 Retains: GIT-SP, DOM-02, HAND-03 checks 1–4 and 6, TEST-PASS + LOG-ATTACHED.
 Upgrade to FULL-PIPELINE if: fix requires `src/core/` or `docs/interface/`; theory inconsistency found.
 
+## Agent Effort Policy (v8.0.0-candidate)
+
+ResearchArchitect and TaskPlanner scale agent count to task complexity and independence, not to perceived importance.
+
+```yaml
+AGENT_EFFORT_POLICY:
+  TRIVIAL:
+    agents: 1
+    max_tool_calls: 3
+    no_subagents: true
+  FAST_TRACK:
+    agents: executor + verifier
+    max_replan_cycles: 1
+    audit: summary
+  FULL_PIPELINE:
+    agents: coordinator + specialist + independent auditor
+    multi_agent_allowed_if:
+      - independent_search_branches >= 2
+      - write_territory_conflict == false
+      - shared_context_dependency == low
+  RESEARCH_BREADTH:
+    agents: orchestrator + N subagents
+    N_rule: scale by source breadth and uncertainty
+    artifact_output_required: true
+```
+
+Coding, proof, and audit tasks with tight shared context prefer one executor plus an independent verifier.
+Breadth-heavy research may use multiple agents only when outputs can be artifact-separated.
+
 ────────────────────────────────────────────────────────
 # § PARALLEL EXECUTION — TaskPlanner Staged Dispatch
 
@@ -229,7 +258,7 @@ Schema SSoT: kernel-roles.md §SCHEMA-IN-CODE Hand04Payload, DebateResult.
 ────────────────────────────────────────────────────────
 # § CONTEXT-MANAGEMENT (v7.0.0)
 
-See kernel-ops.md §OP-CONDENSE for condensation procedure.
+See kernel-ops.md §OP-CONDENSE for v7-compatible condensation and v8 adaptive fields.
 
 **Condensation triggers:**
 - Context utilization ≥ 60%
@@ -241,6 +270,12 @@ See kernel-ops.md §OP-CONDENSE for condensation procedure.
 3. Resume from `next_action`.
 
 **Long session protocol:** At each HAND-02 emission, agent appends artifact paths + sha256 prefix to checkpoint buffer. Coordinator requests CONDENSE when either trigger is breached.
+
+**Adaptive compression (v8.0.0-candidate):**
+- Prefer `CONDENSE-CHECKPOINT-V2` when long sessions include unresolved STOP/AP flags, multiple artifacts, or handoff chains.
+- Include `immutable_constraints`, `state_delta`, `risk_flags`, and `lost_context_test`.
+- If resumed work fails because condensation omitted required context, record `compression_failure_log` and update the next checkpoint guideline.
+- Compression quality is evaluated by whether the resumed agent can answer `lost_context_test` without reopening the full transcript.
 
 ────────────────────────────────────────────────────────
 # § WARM_BOOT Fast-Path (SDP-01)

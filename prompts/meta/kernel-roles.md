@@ -151,6 +151,38 @@ type TicketIdV710 = string;
   ID-RESERVE-LOCAL, ID-COLLISION-CHECK procedures.
 
 ────────────────────────────────────────────────────────
+# § SCHEMA EXTENSIONS v8.0.0-candidate (Additive — immutable zone above unchanged)
+
+```typescript
+/** v8.0.0-candidate: optional token telemetry carried in HAND-02 detail */
+interface TokenTelemetryV800 {
+  static_prompt_tokens?: number;
+  loaded_rule_tokens?: number;
+  artifact_tokens?: number;
+  tool_result_tokens?: number;
+  handoff_tokens?: number;
+  output_tokens?: number;
+  tool_calls?: number;
+  compression_events?: number;
+  success_per_1k_tokens?: number;
+  reject_per_1k_tokens?: number;
+  replan_per_task?: number;
+}
+
+interface Hand02PayloadV800 extends Hand02PayloadV710 {
+  token_telemetry?: TokenTelemetryV800;
+}
+```
+
+**v8.0.0-candidate rules:**
+- `token_telemetry` is advisory evidence only; schema-valid telemetry cannot override
+  STOP, DDA, domain authority, or signed Interface Contracts.
+- Prompt generation HAND-02 SHOULD include telemetry. Ordinary task HAND-02 MAY omit it
+  unless DISPATCH explicitly requests METRIC-01.
+- Skill Capsules are referenced by ID in generated prompts and loaded JIT from
+  `prompts/skills/{SkillID}.md`; their full bodies are not embedded in agent prompts.
+
+────────────────────────────────────────────────────────
 # § COVE MANDATE — Chain-of-Verification
 
 <purpose>Mandatory post-production self-verification. INSIDE EXECUTE, AFTER artifact generation, BEFORE HAND-02.</purpose>
@@ -307,8 +339,8 @@ Does NOT produce content. M-Domain Protocol Enforcer (Root Admin archetype).
 | Section | Content |
 |---------|---------|
 | AUTHORITY | [Root Admin] Final merge `{domain}` → `main` (GIT-04 Phase B); issue HAND-01 to any agent; GIT-01 Step 0 |
-| CONSTRAINTS | Load ACTIVE_LEDGER before routing; **derive `id_prefix` from active branch via `kernel-ops.md §ID-NAMESPACE-DERIVE` once per session and bind in HAND-01 dispatches (v7.1.0)**; GIT-01 Step 0 on every request; classify C1-C5 before routing; 2+ independent sub-problems = C5 → TaskPlanner |
-| STOP | Ambiguous intent → ask user; unknown branch → CONTAMINATION; merge conflict → report user; cross-domain not merged to main → report; `id_prefix` collision with another active session → re-derive per ID-NAMESPACE-DERIVE step 6 (v7.1.0) |
+| CONSTRAINTS | Load ACTIVE_LEDGER before routing; **derive `id_prefix` from active branch via `kernel-ops.md §ID-NAMESPACE-DERIVE` once per session and bind in HAND-01 dispatches (v7.1.0)**; GIT-01 Step 0 on every request; classify C1-C5 before routing; apply `AGENT_EFFORT_POLICY` before spawning or routing to TaskPlanner; 2+ independent sub-problems = C5 → TaskPlanner |
+| STOP | Ambiguous intent → ask user; unknown branch → CONTAMINATION; merge conflict → report user; cross-domain not merged to main → report; multi-agent split lacks independent_search_branches >= 2 or has write-territory conflict → use single executor + verifier; `id_prefix` collision with another active session → re-derive per ID-NAMESPACE-DERIVE step 6 (v7.1.0) |
 
 ## TaskPlanner
 
@@ -316,10 +348,10 @@ Does NOT produce content. M-Domain Protocol Enforcer (Root Admin archetype).
 
 | Section | Content |
 |---------|---------|
-| DELIVERABLES | Structured plan YAML, dependency DAG, resource conflict report, ACTIVE_LEDGER plan entry |
+| DELIVERABLES | Structured plan YAML, dependency DAG, resource conflict report, effort-policy classification, ACTIVE_LEDGER plan entry |
 | AUTHORITY | Issue HAND-01 to any Coordinator or Specialist; write to docs/02_ACTIVE_LEDGER.md §ACTIVE STATE |
-| CONSTRAINTS | Plan-only; present to user before Stage 1 dispatch; T-L-E-A ordering; detect write-territory conflicts (PE-2); **inherit `id_prefix` from incoming HAND-01; emit any new CHK/ASM/KL via `kernel-ops.md §ID-RESERVE-LOCAL` (v7.1.0)** |
-| STOP | Cyclic dependency → STOP; resource conflict unresolvable → STOP; user rejects plan → await; emitted ID does not contain bound `id_prefix` → STOP-10 IDs (v7.1.0) |
+| CONSTRAINTS | Plan-only; present to user before Stage 1 dispatch; T-L-E-A ordering; detect write-territory conflicts (PE-2); spawn subagents only when independence buys more than shared-context cost; **inherit `id_prefix` from incoming HAND-01; emit any new CHK/ASM/KL via `kernel-ops.md §ID-RESERVE-LOCAL` (v7.1.0)** |
+| STOP | Cyclic dependency → STOP; resource conflict unresolvable → STOP; user rejects plan → await; independent_search_branches < 2 for proposed multi-agent plan → collapse to executor + verifier; emitted ID does not contain bound `id_prefix` → STOP-10 IDs (v7.1.0) |
 
 ────────────────────────────────────────────────────────
 # THEORY DOMAIN
@@ -471,9 +503,9 @@ Does NOT produce content. M-Domain Protocol Enforcer (Root Admin archetype).
 
 | Section | Content |
 |---------|---------|
-| DELIVERABLES | Generated prompt at prompts/agents-{env}/{AgentName}.md with GENERATED header |
-| AUTHORITY | [Gatekeeper] Write IF-AGREEMENT; merge dev/→prompt; read all kernel-*.md; write agents-claude/ and agents-codex/ |
-| CONSTRAINTS | Compose from kernel files only; verify A1-A11 preserved; Q1 standard template; Q1-Q4 apply |
+| DELIVERABLES | Generated agent prompts, Skill Capsule manifests, Token Telemetry report, root AGENTS.md derived repo instruction file |
+| AUTHORITY | [Gatekeeper] Write IF-AGREEMENT; merge dev/→prompt; read all kernel-*.md; write agents-claude/, agents-codex/, prompts/skills/, prompts/README.md, AGENTS.md |
+| CONSTRAINTS | Compose from kernel files only; verify A1-A11 preserved; Q1 standard template; Q1-Q4 apply; prefer SkillID/JIT reference over full operation text |
 | STOP | Axiom conflict in generated prompt → STOP; required kernel file missing → STOP |
 
 ## PromptAuditor
@@ -482,9 +514,9 @@ Does NOT produce content. M-Domain Protocol Enforcer (Root Admin archetype).
 
 | Section | Content |
 |---------|---------|
-| DELIVERABLES | Q3 checklist result (PASS/FAIL per item, 10 items v7.0.0), overall verdict, routing decision |
+| DELIVERABLES | Q3 checklist result (PASS/FAIL per item, 13 items v8.0.0-candidate), Skill Capsule audit, Token Telemetry audit, overall verdict, routing decision |
 | AUTHORITY | Read any agent prompt; issue PASS verdict; GIT-03; GIT-04 (`prompt`) |
-| CONSTRAINTS | Read-only — never auto-repair; report every failing item explicitly |
+| CONSTRAINTS | Read-only — never auto-repair; report every failing item explicitly; fail AP-13 when full operation syntax appears where SkillID/JIT reference suffices |
 | STOP | After full audit → route FAIL to PromptArchitect |
 
 ────────────────────────────────────────────────────────

@@ -12,7 +12,7 @@
 
 \paragraph{検証対象．}
 平衡液滴に対する Brackbill--Filonenko 力学的バランス~\cite{Brackbill1992}
-$\nabla p = \sigma \kappa\,\nabla H$（\autoref{sec:bf_seven_principles} 式~\eqref{eq:bf_fccd_unification}）が
+$\bnabla p = \sigma\kappa_{lg}\,\bnabla H$（\autoref{sec:bf_seven_principles} 式~\eqref{eq:bf_fccd_unification}）が
 $200$ ステップの長時間積分でも保たれること，かつ Laplace 圧力差
 $\Delta p_{\mathrm{exact}} = \sigma / r$ が漸近的に再現されることを確認する
 （寄生流れの定量比較は~\cite{Popinet2009,DennerVanWachem2015,HarvieDavidsonRudman2006}）．
@@ -45,7 +45,7 @@ $N$ & $h$ & $\Delta p_{\mathrm{meas}}$ & $|\Delta p_{\mathrm{rel}}|$ & $u_\infty
 \includegraphics[width=0.92\linewidth]{figures/ch13_v3_static_droplet.pdf}
 \caption{V3：静止液滴の長時間診断}
 \label{fig:V3_droplet}
-\PaperCaptionNote{$\Delta p_{\mathrm{rel}}$ は $N$ につれ $1\%$ 程度に収束（$N=64\!\to\!128$ で $1.23\%\!\to\!0.97\%$，slope $\sim 0.34$ — BF 平衡が解像度限界誤差床に到達）． $u_\infty^{\max}$ (peak over 200 step) は $N=64\!\to\!96$ で 4 倍上昇 → $N=128$ で微減． これは CSF $\kappa$ 推定が解像度向上に伴って高周波モードを励起するため， 履歴ピーク値は $N$ に対し非単調になる（V5 では final-time 指標で multistep + CCD/FD の寄与を切り分ける）．}
+\PaperCaptionNote{$\Delta p_{\mathrm{rel}}$ は $N$ につれ $1\%$ 程度に収束（$N=64\!\to\!128$ で $1.23\%\!\to\!0.97\%$，slope $\sim 0.34$ — BF 平衡が解像度限界誤差床に到達）． $u_\infty^{\max}$ (peak over 200 step) は $N=64\!\to\!96$ で 4 倍上昇 → $N=128$ で微減． これは CSF $\kappa_{lg}$ 推定が解像度向上に伴って高周波モードを励起するため， 履歴ピーク値は $N$ に対し非単調になる（V5 では final-time 指標で multistep + CCD/FD の寄与を切り分ける）．}
 \end{figure}
 
 \begin{figure}[!ht]
@@ -58,8 +58,8 @@ $N$ & $h$ & $\Delta p_{\mathrm{meas}}$ & $|\Delta p_{\mathrm{rel}}|$ & $u_\infty
 
 \paragraph{判定と制約条件．}
 \begin{itemize}\setlength{\itemsep}{0pt}
-  \item $|\Delta p_{\mathrm{rel}}| \le 1.3\%$ × 3 解像度で BF 平衡再現\checkmark（default 合格
-        （表~\ref{tab:v_accuracy_summary} caption の Type ラベル不在 = 当初設計基準満足）；
+  \item $|\Delta p_{\mathrm{rel}}| \le 1.3\%$ × 3 解像度で BF 平衡再現\checkmark（当初設計基準を満たす合格；
+        表~\ref{tab:v_accuracy_summary} の判定欄では Type 再分類なしの \checkmark として記録）；
         $1.3\%$ は実測 $N=64\!\to\!128$ の $1.23\%\!\to\!0.97\%$ の最悪値を切り上げた運用上限）．
         \autoref{fig:V3_droplet_snapshot} に $N=128$, 200 ステップ後の圧力場と速度場
         snapshot を示す（Laplace 圧力跳びが円形界面に沿って維持され，寄生流れは
@@ -71,7 +71,7 @@ $N$ & $h$ & $\Delta p_{\mathrm{meas}}$ & $|\Delta p_{\mathrm{rel}}|$ & $u_\infty
         （\autoref{fig:V3_droplet} 中の点線スケール参照）．
         本確認は §\ref{sec:verification} 「N 軸 vs.\ 時間軸 monotonicity の区別」 の
         時間軸条件を V3 で具体化したものである．
-  \item V3 の寄生流れは CSF $\kappa$ 推定の高周波誤差が支配的で，
+  \item V3 の寄生流れは CSF $\kappa_{lg}$ 推定の高周波誤差が支配的で，
         V5（$\mathrm{We}=10$）で $\rho_r$ / 演算子（CCD vs FD）依存性を
         final-time ベースで切り分ける．V3 は $\mathrm{We}=1$ で V5 ($\mathrm{We}=10$) より
         毛管力が 1 桁小さいため寄生流れ絶対値の桁も異なる
@@ -108,9 +108,9 @@ $\Delta t = h/4$, $n_{\mathrm{step}} = 200$．
 \cmidrule(lr){2-3}\cmidrule(lr){4-5}\cmidrule(lr){6-7}
 $N$ & CCD & FD & CCD & FD & CCD & FD \\
 \midrule
-32  & $1.76\times 10^{-2}$ & $1.03\times 10^{-1}$ & $1.73\times 10^{-3}$ & $8.97\times 10^{-2}$ & $1.86\times 10^{-4}$ & $4.78\times 10^{-2}$ \\
-64  & $4.50\times 10^{-4}$ & $4.97\times 10^{-3}$ & $1.68\times 10^{-4}$ & $1.50\times 10^{-3}$ & $1.68\times 10^{-4}$ & $4.19\times 10^{-4}$ \\
-128 & $6.27\times 10^{-4}$ & $2.61\times 10^{-3}$ & $6.27\times 10^{-4}$ & $8.45\times 10^{-4}$ & $6.26\times 10^{-4}$ & $6.73\times 10^{-4}$ \\
+32  & $1.93\times 10^{-2}$ & $1.05\times 10^{-1}$ & $1.92\times 10^{-3}$ & $9.05\times 10^{-2}$ & $2.19\times 10^{-4}$ & $4.80\times 10^{-2}$ \\
+64  & $3.55\times 10^{-4}$ & $4.99\times 10^{-3}$ & $1.69\times 10^{-4}$ & $1.52\times 10^{-3}$ & $1.69\times 10^{-4}$ & $4.16\times 10^{-4}$ \\
+128 & $6.28\times 10^{-4}$ & $2.63\times 10^{-3}$ & $6.27\times 10^{-4}$ & $8.50\times 10^{-4}$ & $6.27\times 10^{-4}$ & $6.73\times 10^{-4}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -127,14 +127,14 @@ $N$ & CCD & FD & CCD & FD & CCD & FD \\
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item \textbf{CCD 寄生流れ絶対値（主指標）}：$\rho_r=1$ で
         $N=32\!\to\!64\!\to\!128$ の $u_\infty^{\mathrm{end}}$ は
-        $1.76\!\times\!10^{-2} \to 4.50\!\times\!10^{-4} \to 6.27\!\times\!10^{-4}$．
-        $\rho_r=10$ では $1.73\!\times\!10^{-3} \to 1.68\!\times\!10^{-4} \to 6.27\!\times\!10^{-4}$，
-        $\rho_r=100$ では $1.86\!\times\!10^{-4} \to 1.68\!\times\!10^{-4} \to 6.26\!\times\!10^{-4}$．
+        $1.93\!\times\!10^{-2} \to 3.55\!\times\!10^{-4} \to 6.28\!\times\!10^{-4}$．
+        $\rho_r=10$ では $1.92\!\times\!10^{-3} \to 1.69\!\times\!10^{-4} \to 6.27\!\times\!10^{-4}$，
+        $\rho_r=100$ では $2.19\!\times\!10^{-4} \to 1.69\!\times\!10^{-4} \to 6.27\!\times\!10^{-4}$．
         $N=32$ の粗格子では $\rho_r$ 増大とともに減少し，全条件で
-        $u_\infty^{\mathrm{end}} \le 1.76\!\times\!10^{-2}$（$\sigma/\mathrm{Re}_c$ 寄生流れスケール
-        $\sim 10^{-2}$ を上回らない範囲）．\textbf{CCD 勾配は寄生流れ抑制に有効}\checkmark
+        $u_\infty^{\mathrm{end}} \le 1.93\!\times\!10^{-2}$（$\sigma/\mathrm{Re}_c$ 寄生流れスケール
+        $\sim 10^{-2}$ と同じ order の $2\times10^{-2}$ 以下）．\textbf{CCD 勾配は寄生流れ抑制に有効}\checkmark
         （Type-A revised criterion；表~\ref{tab:V_verdict_types}：CCD/FD 比から CCD 絶対値へ判定キー変更）．
-  \item \textbf{比較参照（CCD/FD 比）}：$\rho_r=1, N=32$ で CCD は FD の $1/5.85$，
+  \item \textbf{比較参照（CCD/FD 比）}：$\rho_r=1, N=32$ で CCD は FD の $1/5.44$，
         $\rho_r=100, N=64$ で $1/2.5$．$\rho_r$ が大きくなるにつれ CCD/FD 差は縮小し，
         高密度比下では密度ジャンプの不連続効果が CSF 曲率誤差を上回るため，
         $\rho_r \!\ge\! 100$ では分相 PPE + DC + HFE（U6, V6 / V7）が必要．
@@ -144,11 +144,11 @@ $N$ & CCD & FD & CCD & FD & CCD & FD \\
         本効果は §\ref{sec:verification} 「N 軸 vs.\ 時間軸 monotonicity の区別」 で
         記述した CCD 高次微分の短波長 spurious mode 励起特性に該当する Type-D
         現象である（収束 regime ではなく，固定 $\Delta t = h/4$ 下の累積振幅特性）．
-        全 $N$ で $\sigma/\mathrm{Re}_c \sim 10^{-2}$ 以下に留まるため判定は維持．
+        全 $N$ で $O(10^{-2})$ 以下に留まるため判定は維持．
         FD の同区間挙動は $\rho_r$ 依存：
-        $\rho_r=1$ で $4.97\!\to\!2.61\times 10^{-3}$（減少），
-        $\rho_r=10$ で $1.50\!\to\!0.85\times 10^{-3}$（減少），
-        $\rho_r=100$ で $4.19\!\to\!6.73\times 10^{-4}$（わずかに増加）．
+        $\rho_r=1$ で $4.99\!\to\!2.63\times 10^{-3}$（減少），
+        $\rho_r=10$ で $1.52\!\to\!0.85\times 10^{-3}$（減少），
+        $\rho_r=100$ で $4.16\!\to\!6.73\times 10^{-4}$（わずかに増加）．
         いずれの $\rho_r$ でも CCD は同条件 FD を下回り，絶対値優位性は維持される．
   \item 当 V5 結果は U7（§\ref{sec:U7_bf_static_droplet}）の単ステップ評価を
         $200$ ステップに延長した時間頑健性の確認．

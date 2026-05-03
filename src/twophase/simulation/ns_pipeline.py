@@ -860,8 +860,6 @@ class TwoPhaseNSSolver:
             Y=self.Y,
             coords=(self.X, self.Y),
             ppe_coefficient_scheme=self._ppe_coefficient_scheme,
-            ppe_interface_coupling_scheme=self._ppe_interface_coupling_scheme,
-            ppe_solver_name=self._ppe_solver_name,
         )
         return state
 

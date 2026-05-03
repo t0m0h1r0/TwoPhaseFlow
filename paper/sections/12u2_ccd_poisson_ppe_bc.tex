@@ -1,22 +1,22 @@
 % paper/sections/12u2_ccd_poisson_ppe_bc.tex
 %
-% U2: CCD-Poisson + PPE BC — Tier I (uniform grid)
+% U2: CCD-Poisson + current PPE BC — Tier I (uniform grid)
 % ═══════════════════════════════════════════════════════════════════════════════
-\subsubsection{U2：CCD--Poisson + PPE 境界条件 [Tier I]}
+\subsubsection{U2：CCD--Poisson + 現行 PPE 境界条件 [Tier I]}
 \label{sec:U2_ccd_poisson_ppe_bc}
 
 \paragraph{検証対象．}
-第~\ref{sec:ppe_solve}章 で導入した CCD--Poisson 楕円型ソルバ
-（§\ref{sec:ccd_elliptic}），defect--correction 反復
+第~\ref{sec:ppe_solve}章 で導入した defect--correction 反復
 （§\ref{sec:defect_correction_ppe}：$k$ 回反復で精度を段階的に押し上げる），
 PPE Neumann 境界条件 + 1 点ゲージ固定（§\ref{sec:ppe_solve} 末尾）の
 \textbf{単体精度}を確認する．
-本実験のうち U2-b は production の \texttt{PPESolverCCDLU}
-（CCD Kronecker + sparse LU；\texttt{src/twophase/ppe/ccd\_lu.py}）を直接呼び出して
-production 経路を検証する．U2-a の Dirichlet 変種は production の PPE 連
-（Neumann 専用 + 1 点ゲージ）には対応経路が無いため，CCD 楕円作用素 + 一般 DC
-反復理論の単体参照として local FD ヘルパで構成し，§\ref{sec:defect_correction_main}
-の段階収束理論を独立に検証する．
+U2-a の Dirichlet 変種は CCD 楕円作用素 + 一般 DC 反復理論の
+smooth reference として local FD ヘルパで構成し，
+§\ref{sec:defect_correction_main} の段階収束理論を独立に検証する．
+U2-b は \texttt{PPEBuilder} が組み立てる現行 FVM/spsolve 系の
+Neumann PPE + 1 点ゲージを直接測る．
+旧 \texttt{PPESolverCCDLU}（CCD Kronecker + sparse LU）は
+滑らかな component/reference 用に限定されるため，本 U2-b の production 経路からは外す．
 
 \paragraph{設定．}
 2D 矩形領域 $[0,1]^2$ 上で MMS による格子収束（壁境界条件下）．
@@ -27,16 +27,11 @@ production 経路を検証する．U2-a の Dirichlet 変種は production の P
         $k \ge 3 \to \Ord{h^7}$（スーパー収束）．
         実装は CCD 楕円作用素を残差評価に，FD Dirichlet Laplacian を inner solve
         として用いる手組 DC 反復（production の Neumann PPE--DC 連の数学的代理）．
-  \item[U2-b] Production CCD--PPE Kronecker 作用素 + Dirichlet 境界パッチ．
+  \item[U2-b] 現行 FVM--PPE 作用素 + Neumann ゲージ固定．
         $p^* = \cos(\pi x)\cos(\pi y)$，$f = -2\pi^2 p^*$．
-        production の \texttt{PPESolverCCDLU.\_build\_sparse\_operator} を直接駆動して
-        定数密度 ($\rho\!\equiv\!1$, $\nabla\rho\!=\!0$) 下の純 Kronecker Laplacian を
-        組み立て，境界行を Dirichlet 単位行で置換して全フルランク化
-        （production 自身が \texttt{src/twophase/tests/test\_pressure.py:200--207}
-        で採用する MMS 検証パターン；定数 $\rho$ 下の CCD Kronecker Laplacian は
-        $\sim$12 次元零空間を持ち，標準 \texttt{solve()} の 1 点ゲージでは
-        full-rank 化できないため）．理論期待：$\Ord{h^6}$（CCD 内部精度）に
-        境界スキーム支配の偏倚を許容．
+        \texttt{PPEBuilder} が定数密度 ($\rho\!\equiv\!1$) の 5 点 FVM Laplacian を
+        Neumann 境界条件 + 1 点ゲージ固定で組み立てる．理論期待は
+        現行 production baseline と同じ $\Ord{h^2}$．
 \end{description}
 
 \paragraph{結果．}
@@ -62,21 +57,21 @@ $N$ & $h$ & $\|e\|^\infty_{k=1}$ & $\|e\|^\infty_{k=2}$ & $\|e\|^\infty_{k=3}$ &
 \end{table}
 
 \begin{table}[!ht]
-\caption{U2-b：production 経路の Dirichlet 境界誤差}
+\caption{U2-b：現行 FVM--PPE Neumann ゲージ誤差}
 \label{tab:U2_neumann}
-\PaperCaptionNote{\texttt{PPESolverCCDLU.\_build\_sparse\_operator} 経由 + Dirichlet 境界パッチで $L_\infty$ 誤差を測る．細格子で 6 次精度（$\Ord{h^6}$, CCD 内部スキーム）に漸近，粗格子は境界 5 次の偏倚を残す．slopes 5.17 / 5.78 / 5.94 / 5.98（連続）．}
+\PaperCaptionNote{\texttt{PPEBuilder} 経由で現行 FVM/spsolve 系の Neumann PPE を組み立て，ゲージ自由度を exact 解に合わせて $L_\infty$ 誤差を測る．5 点 FVM Laplacian の設計どおり $\Ord{h^2}$ に収束する．}
 \centering\small
 \begin{tabular}{r r r}
 \toprule
 $N$ & $h$ & $\|e\|_\infty$ \\
 \midrule
-8   & $0.125$  & $1.48\times 10^{-4}$ \\
-16  & $0.0625$ & $4.10\times 10^{-6}$ \\
-32  & $0.0313$ & $7.45\times 10^{-8}$ \\
-64  & $0.0156$ & $1.21\times 10^{-9}$ \\
-128 & $0.0078$ & $1.92\times 10^{-11}$ \\
+8   & $0.125$  & $1.30\times 10^{-2}$ \\
+16  & $0.0625$ & $3.22\times 10^{-3}$ \\
+32  & $0.0313$ & $8.04\times 10^{-4}$ \\
+64  & $0.0156$ & $2.01\times 10^{-4}$ \\
+128 & $0.0078$ & $5.02\times 10^{-5}$ \\
 \midrule
-\multicolumn{2}{r}{slope ($N\!=\!8\!\to\!128$)} & $\mathbf{5.72}$ \\
+\multicolumn{2}{r}{slope ($N\!=\!8\!\to\!128$)} & $\mathbf{2.00}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -84,9 +79,9 @@ $N$ & $h$ & $\|e\|_\infty$ \\
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=0.88\linewidth]{figures/ch12_u2_ccd_poisson_ppe_bc}
-\caption{U2：CCD--Poisson + PPE 境界条件}
+\caption{U2：CCD--Poisson + 現行 PPE 境界条件}
 \label{fig:ch12_u2}
-\PaperCaptionNote{(a) Dirichlet defect--correction $k=1,2,3$ で slope $2.00 / 4.18 / 6.90$ の段階収束（$k\!\ge\!3$ 飽和）； (b) production \texttt{PPESolverCCDLU} 作用素 + Dirichlet パッチで連続 slope $5.17 \to 5.98$， overall $5.72$（粗格子の境界 5 次から内部 CCD 6 次への漸近）．}
+\PaperCaptionNote{(a) Dirichlet defect--correction $k=1,2,3$ で slope $2.00 / 4.18 / 6.90$ の段階収束（$k\!\ge\!3$ 飽和）； (b) 現行 \texttt{PPEBuilder} FVM--PPE + Neumann ゲージで slope $2.00$．}
 \end{figure}
 
 \paragraph{判定と次章への接続．}
@@ -97,10 +92,9 @@ $N$ & $h$ & $\|e\|_\infty$ \\
         $N\!=\!128$ で $k\!\ge\!3$ は $\Ord{10^{-12}}$ の機械精度床に達し，
         slope は床支配で頭打ちになる．$k=5,10$ は $k=3$ と同精度
         （DC が $k=3$ 時点で既に飽和；§\ref{sec:ppe_dc_accuracy} の段階理論と整合）．\checkmark
-  \item U2-b production CCD 作用素 + Dirichlet パッチ：slope $5.72$（連続 slope $5.17\!\to\!5.98$）．
-        細格子で内部 6 次に漸近し，粗格子は境界 5 次の偏倚を残す典型挙動．
-        \checkmark（production CCD-PPE 作用素ファクトリ \texttt{\_build\_sparse\_operator}
-        が想定どおり 6 次精度を生むことを直接確認）．
+  \item U2-b 現行 FVM--PPE + Neumann ゲージ：slope $2.00$．
+        ch12 以降の production baseline である \texttt{PPEBuilder}/FVM direct 経路が，
+        定数密度 Neumann MMS で設計 2 次を再現することを確認．\checkmark
 \end{itemize}
 検証対応：§\ref{sec:defect_correction_main} の DC 反復式に対し，
-Dirichlet MMS と Neumann ゲージ固定の格子収束を測定する．
+Dirichlet MMS と現行 Neumann ゲージ固定 PPE の格子収束を測定する．

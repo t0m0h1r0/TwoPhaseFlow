@@ -11,7 +11,7 @@ Eikonal 再初期化の Godunov 擬似時間 primitive
 （§\ref{sec:eikonal_reinit}：擬似時間 $\tau$ 上の
 Hamilton--Jacobi PDE $\partial_\tau \phi + \mathrm{sgn}(\phi)(|\nabla\phi|-1) = 0$）
 と Distance--Gauge Re-scaling（DGR；§\ref{sec:dgr_thickness}：
-バンド厚を target $\eps$ に揃える後処理スケーリング）の
+バンド厚を target $\varepsilon$ に揃える後処理スケーリング）の
 \textbf{単体精度}を確認する．
 本実験の再初期化は Godunov 型の擬似時間 sweep であり，
 single-shot FMM 型の距離再構成とは区別する．
@@ -41,7 +41,7 @@ artefact で，検証対象は上記 2 primitive である．
 \begin{table}[!ht]
 \caption{U4-a：Godunov Eikonal バンド勾配誤差}
 \label{tab:U4_reinit}
-\PaperCaptionNote{条件は $N=128$, $h_{\min} = 7.81\times 10^{-3}$, $\mathrm{d}\tau = 0.3 h_{\min}$．$n_\tau = 0$ の初期残差 $0.5$ は biased SDF $\phi_0 = \phi_{\mathrm{sdf}}/2$ に起因する設計値．$n_\tau = 1$ で $0.603$ へ一時的に増加するのは $\mathrm{sgn}(\phi_0)$ と $\phi_0$ の符号一致面での Hamilton--Jacobi 流の transient（$\partial_\tau \phi$ が $|\nabla\phi|<1$ 領域で正値を取り、最初の sweep で gradient overshoot を起こす設計上の挙動），その後 $n_\tau \ge 5$ で単調減衰し $n_\tau = 100$ で $9.16\times 10^{-3}$（$1.17h < 1.5h$）に到達．設計通りの $\eps$--Eikonal 流．}
+\PaperCaptionNote{条件は $N=128$, $h_{\min} = 7.81\times 10^{-3}$, $\mathrm{d}\tau = 0.3 h_{\min}$．$n_\tau = 0$ の初期残差 $0.5$ は biased SDF $\phi_0 = \phi_{\mathrm{sdf}}/2$ に起因する設計値．$n_\tau = 1$ で $0.603$ へ一時的に増加するのは $\mathrm{sgn}(\phi_0)$ と $\phi_0$ の符号一致面での Hamilton--Jacobi 流の transient（$\partial_\tau \phi$ が $|\nabla\phi|<1$ 領域で正値を取り、最初の sweep で gradient overshoot を起こす設計上の挙動），その後 $n_\tau \ge 5$ で単調減衰し $n_\tau = 100$ で $9.16\times 10^{-3}$（$1.17h < 1.5h$）に到達．設計通りの $\varepsilon$--Eikonal 流．}
 \centering\small
 \begin{tabular}{r r r}
 \toprule
@@ -61,15 +61,15 @@ $100$  & $0.234$    & $9.16\times 10^{-3}$ \\
 \begin{table}[!ht]
 \caption{U4-b：DGR バンド厚補正}
 \label{tab:U4_dgr}
-\PaperCaptionNote{初期 $\eps_{\eff}^{\mathrm{init}} = 2 \eps^{\star}$（ratio $= 2.0$）から DGR を 1 回適用するだけで $\eps^{\star}$ に機械精度で揃う． 合格判定は経験的緩条件 $|\mathrm{ratio} - 1| < 0.05$（biased $\psi$ の漸近 1 次理論限界 $|2\eps/\eps^\star - 1| \cdot \Ord{h}$ から導出した $\Ord{10^{-2}}$ 程度の余裕付き許容範囲）．実測 $|3.3 \times 10^{-6}|$ は これよりさらに 4 桁内側に入る．}
+\PaperCaptionNote{初期 $\varepsilon_{\eff}^{\mathrm{init}} = 2 \varepsilon^{\star}$（ratio $= 2.0$）から DGR を 1 回適用するだけで $\varepsilon^{\star}$ に機械精度で揃う． 合格判定は経験的緩条件 $|\mathrm{ratio} - 1| < 0.05$（biased $\psi$ の漸近 1 次理論限界 $|2\varepsilon/\varepsilon^\star - 1| \cdot \Ord{h}$ から導出した $\Ord{10^{-2}}$ 程度の余裕付き許容範囲）．実測 $|3.3 \times 10^{-6}|$ は これよりさらに 4 桁内側に入る．}
 \centering\small
 \begin{tabular}{l r r r}
 \toprule
-段階 & $\eps_{\eff}$ & ratio $\eps_{\eff} / \eps^\star$ & 残差 \\
+段階 & $\varepsilon_{\eff}$ & ratio $\varepsilon_{\eff} / \varepsilon^\star$ & 残差 \\
 \midrule
 初期 (init)        & $2.344\times 10^{-2}$ & $2.0000$ & $-$ \\
 DGR 1 step 適用後  & $1.172\times 10^{-2}$ & $1.0000033$ & $3.3\times 10^{-6}$ \\
-target ($\eps^\star = 1.5 h_{\min}$) & $1.172\times 10^{-2}$ & $1.0000$ & $-$ \\
+target ($\varepsilon^\star = 1.5 h_{\min}$) & $1.172\times 10^{-2}$ & $1.0000$ & $-$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -79,7 +79,7 @@ target ($\eps^\star = 1.5 h_{\min}$) & $1.172\times 10^{-2}$ & $1.0000$ & $-$ \\
 \includegraphics[width=0.88\linewidth]{figures/ch12_u4_ridge_eikonal_reinit}
 \caption{U4：Godunov Eikonal 再初期化 + DGR バンド厚補正}
 \label{fig:ch12_u4}
-\PaperCaptionNote{band 内 $\||\nabla\psi|-1\|_\infty$ は $n_\tau=20$ で $2.19\!\times\!10^{-2}$, $n_\tau=100$ で $9.16\!\times\!10^{-3}$ に漸近； DGR 1 ステップで $\eps_{\eff} / \eps^\star = 2.0 \to 1.0000033$ と機械精度で補正．}
+\PaperCaptionNote{band 内 $\||\nabla\psi|-1\|_\infty$ は $n_\tau=20$ で $2.19\!\times\!10^{-2}$, $n_\tau=100$ で $9.16\!\times\!10^{-3}$ に漸近； DGR 1 ステップで $\varepsilon_{\eff} / \varepsilon^\star = 2.0 \to 1.0000033$ と機械精度で補正．}
 \end{figure}
 
 \begin{figure}[!ht]
@@ -98,7 +98,7 @@ target ($\eps^\star = 1.5 h_{\min}$) & $1.172\times 10^{-2}$ & $1.0000$ & $-$ \\
         §\ref{sec:eikonal_reinit} の Godunov Eikonal 擬似時間 primitive と整合．\checkmark
   \item U4-b：DGR 1 ステップで ratio が $2.0 \to 1.0000033$ に補正．
         DGR は $\psi(1-\psi)/|\nabla\psi|$ の band 中央値から $\eps_{\eff}$ を推定し，
-        target $\eps^\star$ に揃える 1 段の rescaling 演算（§\ref{sec:dgr_thickness}）．
+        target $\varepsilon^\star$ に揃える 1 段の rescaling 演算（§\ref{sec:dgr_thickness}）．
         合格判定の許容帯 $|\mathrm{ratio} - 1| < 5\times 10^{-2}$ は，
         biased $\psi$ の 1 段スケーリングが残す漸近 1 次余項 $\Ord{h}$
         （$h=h_{\min}\approx 7.8\times 10^{-3}$）に十分な安全率を付した経験値．
@@ -108,4 +108,4 @@ target ($\eps^\star = 1.5 h_{\min}$) & $1.172\times 10^{-2}$ & $1.0000$ & $-$ \\
 検証対応：
 再初期化擬似時間刻み定義（Hamilton--Jacobi 形）と §\ref{sec:eikonal_reinit} の離散化に対し，
 band 内 $|\nabla\phi|-1$ 誤差を測定する．
-DGR スケーリング規則については，$\eps_{\eff}/\eps^\star$ の補正比を測定する．
+DGR スケーリング規則については，$\varepsilon_{\eff}/\varepsilon^\star$ の補正比を測定する．

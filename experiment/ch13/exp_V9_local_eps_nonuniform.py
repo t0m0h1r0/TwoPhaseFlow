@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""[V9] Local-epsilon validation on non-uniform grid with the §14 stack.
+"""[V9] Nominal/local-epsilon switch diagnostic with the §14 stack.
 
 Paper ref: §13.5 (sec:local_eps_validation).
 
 V9 is a reduced static-droplet diagnostic for the non-uniform-grid interface
-width rule.  The numerical path is deliberately config-driven through
+width mode switch.  The numerical path is deliberately config-driven through
 ``TwoPhaseNSSolver.from_config`` so that the tested operators match the §14
 production stack:
 
@@ -21,11 +21,14 @@ Cases
   C:  alpha = 2.0  + local eps_ij = 1.5 max(h_x_i, h_y_j)
 
 The material constants and resolution are intentionally reduced relative to
-§14's water-air run; V9 tests the operator-stack consistency and the local-eps
-choice, not the full §14 material benchmark.  In this pressure-jump path the
+§14's water-air run; V9 tests operator-stack consistency and whether the
+nominal/local-eps mode switch is an active lever in this reduced path, not the
+full §14 material benchmark.  In this pressure-jump path the
 returned pressure is a projection/corrector diagnostic, so the primary V9
 metrics are spurious current and volume drift; pressure contrast is plotted
-only as a secondary solver diagnostic.
+only as a secondary solver diagnostic.  With the current direct-ψ/HFE short
+static probe, nominal and local non-uniform cases can coincide; that is a valid
+diagnostic outcome rather than evidence that local eps is better.
 
 Usage
 -----
@@ -495,7 +498,7 @@ def make_figures(results: dict) -> None:
         )
         ax.set_xlabel("x")
         ax.set_ylabel("y")
-    fig_f.suptitle(f"V9: §14-stack local-epsilon fields (N={FIELD_N})", fontsize=11)
+    fig_f.suptitle(f"V9: §14-stack nominal/local-epsilon fields (N={FIELD_N})", fontsize=11)
     save_figure(
         fig_f,
         OUT / "V9_ch14_stack_field",
@@ -505,7 +508,7 @@ def make_figures(results: dict) -> None:
 
 def print_summary(results: dict) -> None:
     print(
-        "V9 (§14-stack local-ε validation; "
+        "V9 (§14-stack nominal/local-ε switch diagnostic; "
         "A=α1+nominal, B=α2+nominal, C=α2+local):"
     )
     runs = results["runs"]
