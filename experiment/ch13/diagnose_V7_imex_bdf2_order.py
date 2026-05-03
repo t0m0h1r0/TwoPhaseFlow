@@ -63,6 +63,8 @@ def _reinit_every(variant: str, n_steps: int) -> int:
         return max(1, n_steps // 4)
     if variant == "no_reinit":
         return 0
+    if variant == "static_interface":
+        return 0
     raise ValueError(f"unknown variant {variant!r}")
 
 
@@ -71,7 +73,7 @@ def _reinit_count(n_steps: int, every: int) -> int:
 
 
 def _case_config(n_steps: int, variant: str):
-    return ch14_circle_config(
+    cfg = ch14_circle_config(
         N=N_GRID,
         out_dir=OUT,
         radius=R,
@@ -86,6 +88,10 @@ def _case_config(n_steps: int, variant: str):
         dt=T_FINAL / n_steps,
         reinit_every=_reinit_every(variant, n_steps),
     )
+    if variant == "static_interface":
+        cfg.run.interface_tracking_enabled = False
+        cfg.run.interface_tracking_method = "none"
+    return cfg
 
 
 def _run_one(n_steps: int, variant: str) -> dict:
@@ -163,7 +169,7 @@ def _variant_rows(runs: list[dict]) -> list[dict]:
 
 
 def run_all() -> dict:
-    variants = ("each_step", "fixed_reinit_count", "no_reinit")
+    variants = ("each_step", "fixed_reinit_count", "no_reinit", "static_interface")
     all_runs: dict[str, list[dict]] = {}
     all_rows: dict[str, list[dict]] = {}
     for variant in variants:
