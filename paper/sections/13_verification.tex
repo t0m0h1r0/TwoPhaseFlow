@@ -104,7 +104,7 @@ $\sigma$/$\mathrm{We}$ は適用外．
 \begin{table}[!ht]
 \caption{V1--V10 の物理設定パラメータ}
 \label{tab:V_settings}
-\PaperCaptionNote{本表は各 V test の \textbf{設定}（本文の \texttt{paragraph} ブロック）で繰り返し参照される基準値を集約する．異なる Reynolds 数 / 密度比 sweep / Weber 数 sweep を含む test については代表値または範囲を示し，個別値は本文を参照．V1/V2 は単相 NS のため $\sigma$, $\mathrm{We}$ は適用外であり，参考に粘性条件（V1: $\nu=0.01$，V2: $\Re=40$）を 補足列に記す．V10 は CLS passive scalar 移流のため $\sigma$/$\mathrm{We}$/$\rho$ は適用外．\textsuperscript{$\dagger$}V2 のみ正方領域ではなくドメイン bound $[-0.5,1]\!\times\![0,1]$ の長辺$\times$短辺を示す．}
+\PaperCaptionNote{本表は各 V test の \textbf{設定}（本文の \texttt{paragraph} ブロック）で繰り返し参照される基準値を集約する．異なる Reynolds 数 / 密度比 sweep / Weber 数 sweep を含む test については代表値または範囲を示し，個別値は本文を参照．V1/V2 は単相 NS のため $\sigma$, $\mathrm{We}$ は適用外であり，参考に粘性条件（V1: $\nu=0.01$，V2: $\Re=40$）を補足列に記す．V10 は CLS passive scalar 移流のため $\sigma$/$\mathrm{We}$/$\rho$ は適用外．\textsuperscript{$\dagger$}V2 のみ正方領域ではなくドメイン bound $[-0.5,1]\!\times\![0,1]$ の長辺$\times$短辺を示す．}
 \centering\small
 \begin{tabular}{l l l l l l l}
 \toprule
@@ -166,32 +166,32 @@ N 軸での非単調挙動（$\Delta t = h/4$ 固定下で短波長 spurious mod
 \end{itemize}
 
 \paragraph{V1--V10 概観．}
-表~\ref{tab:V_summary} に各実験の検証対象と主要指標を示す．
+表~\ref{tab:V_summary} に各実験の検証対象・主要指標・判定を示す．
 詳細は本章内で個別に述べる．
 
 \begin{table}[!ht]
 \caption{V1--V10 統合検証の概観}
 \label{tab:V_summary}
-\PaperCaptionNote{本表は V 番号順で並び（V1/V10 は a/b 二行分割で計 12 行）．表~\ref{tab:v_accuracy_summary}（§\ref{sec:error_budget}；同一サブテスト集合）はさらに V10-a/V10-b を質量保存軸と形状軸の二軸 (Type-B / Type-D) に分割するため計 14 行となり，本表 12 行との対応は V1--V9 が 1:1，V10-a → \{mass, shape\}, V10-b → \{mass, shape\} の 1:2 拡張対応となる．主要指標欄は本表で全観測指標を列挙し，表~\ref{tab:v_accuracy_summary} では判定キー指標 1 種を軸毎に集約する．}
+\PaperCaptionNote{本表は V 番号順で並び（V1/V10 は a/b 二行分割で計 12 行）．表~\ref{tab:v_accuracy_summary}（§\ref{sec:error_budget}；同一サブテスト集合）はさらに V10-a/V10-b を質量保存軸と形状軸の二軸 (Type-B / Type-D) に分割するため計 14 行となり，本表 12 行との対応は V1--V9 が 1:1，V10-a → \{mass, shape\}, V10-b → \{mass, shape\} の 1:2 拡張対応となる．本表も判定列を持ち，表~\ref{tab:v_accuracy_summary} と同じ判定ラベルで読む；主要指標欄は本表で全観測指標を列挙し，表~\ref{tab:v_accuracy_summary} では判定キー指標 1 種を軸毎に集約する．}
 \PaperTableDenseSetup
-\begin{tabular}{l l l l}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.08\linewidth}>{\raggedright\arraybackslash}p{0.24\linewidth}>{\raggedright\arraybackslash}p{0.22\linewidth}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{0.16\linewidth}@{}}
 \toprule
-ID & 検証対象 & 図 & 主要指標 \\
+ID & 検証対象 & 図 & 主要指標 & 判定 \\
 \midrule
-V1-a & 単相 TGV 空間 ($N{=}32,48,64$)    & \autoref{fig:V1_tgv}            & $E_{\mathrm{rel}}$ slope (h) \\
-V1-b & 単相 TGV 時間 (standard PPE)    & \autoref{fig:V1_tgv}            & $E_{\mathrm{rel}}$ slope (dt) \\
-V2 & Kovasznay CCD 空間残差            & \autoref{fig:V2_kovasznay}       & $\|R\|_\infty$ slope (h) \\
-V3 & 静止液滴 long-term (200 step)    & \autoref{fig:V3_droplet}         & $u_\infty^{\mathrm{max}}$, $\Delta p_{\mathrm{rel}}$ \\
-V4 & fixed-wall Galilean offset 残差 & \autoref{fig:V4_galilean_offset} & $\|\Delta u\|_\infty/\|\bm U\|$ \\
-V5 & 寄生流れ multistep ($\rho_r$/op) & \autoref{fig:V5_spurious}        & $u_\infty^{\mathrm{end}}$ (CCD 主，FD 参照) \\
-V6 & 密度比収束 ($\rho_r=2..833$)      & \autoref{fig:V6_density_ratio}   & $|\Delta p_{\mathrm{corr}}|/(\sigma/r)$, $u_\infty^{\mathrm{end}}$ \\
-V7 & IMEX-BDF2 二相時間精度            & \autoref{fig:V7_imex_bdf2_time}  & $\|e\|_\infty$ slope ($\Delta t$) \\
-V8 & 非一様 NS 静止 (200 step)         & \autoref{fig:V8_nonuniform_static} & $u_\infty^{\mathrm{end}}$, $\Delta p_{\mathrm{rel}}$ \\
-V9 & nominal/local $\varepsilon$ switch (§14 stack) & \autoref{fig:V9_local_eps}, \autoref{fig:V9_ch14_stack_field} & $u_\infty^{\mathrm{max}}$, $|\Delta V|/V_0$ \\
-V10-a & Zalesak CLS 移流 ($\alpha=1$)  & \autoref{fig:V10_zalesak}, \autoref{fig:V10_zalesak_snapshot} & mass drift, centroid err \\
-V10-b & 単一渦 reversal ($\alpha=1$, $T=8$) & \autoref{fig:V10_single_vortex} & $L^1$ reversal err, mass drift \\
+V1-a & 単相 TGV 空間 ($N{=}32,48,64$)    & \autoref{fig:V1_tgv}            & $E_{\mathrm{rel}}$ slope (h) & \checkmark Type-A \\
+V1-b & 単相 TGV 時間 (standard PPE)    & \autoref{fig:V1_tgv}            & $E_{\mathrm{rel}}$ slope (dt) & \checkmark Type-A \\
+V2 & Kovasznay CCD 空間残差            & \autoref{fig:V2_kovasznay}       & $\|R\|_\infty$ slope (h) & \checkmark Type-A \\
+V3 & 静止液滴 long-term (200 step)    & \autoref{fig:V3_droplet}         & $u_\infty^{\mathrm{max}}$, $\Delta p_{\mathrm{rel}}$ & \checkmark \\
+V4 & fixed-wall Galilean offset 残差 & \autoref{fig:V4_galilean_offset} & $\|\Delta u\|_\infty/\|\bm U\|$ & \checkmark Type-A \\
+V5 & 寄生流れ multistep ($\rho_r$/op) & \autoref{fig:V5_spurious}        & $u_\infty^{\mathrm{end}}$ (CCD 主，FD 参照) & \checkmark Type-A \\
+V6 & 密度比収束 ($\rho_r=2..833$)      & \autoref{fig:V6_density_ratio}   & $|\Delta p_{\mathrm{corr}}|/(\sigma/r)$, $u_\infty^{\mathrm{end}}$ & \checkmark \\
+V7 & IMEX-BDF2 二相時間精度            & \autoref{fig:V7_imex_bdf2_time}  & $\|e\|_\infty$ slope ($\Delta t$) & $\triangle$ Type-D \\
+V8 & 非一様 NS 静止 (200 step)         & \autoref{fig:V8_nonuniform_static} & $u_\infty^{\mathrm{end}}$, $\Delta p_{\mathrm{rel}}$ & \checkmark \\
+V9 & nominal/local $\varepsilon$ switch (§14 stack) & \autoref{fig:V9_local_eps}, \autoref{fig:V9_ch14_stack_field} & $u_\infty^{\mathrm{max}}$, $|\Delta V|/V_0$ & \checkmark stack 診断 \\
+V10-a & Zalesak CLS 移流 ($\alpha=1$)  & \autoref{fig:V10_zalesak}, \autoref{fig:V10_zalesak_snapshot} & mass drift, centroid err & \shortstack[l]{mass \checkmark Type-B\\shape $\triangle$ Type-D} \\
+V10-b & 単一渦 reversal ($\alpha=1$, $T=8$) & \autoref{fig:V10_single_vortex} & $L^1$ reversal err, mass drift & \shortstack[l]{mass \checkmark Type-B\\shape $\triangle$ Type-D} \\
 \bottomrule
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 \paragraph{構成．}
