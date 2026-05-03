@@ -1,4 +1,4 @@
-# Wiki Index — 259 entries
+# Wiki Index — 264 entries
 
 ## Theory (104)
 
@@ -153,7 +153,7 @@
 | [WIKI-X-038](cross-domain/WIKI-X-038.md) | Theory-First CFL and Time-Integration Policy: SSPRK3 Scope, AB2 Risk, and IMEX-BDF2 Production Path |
 | [WIKI-X-039](cross-domain/WIKI-X-039.md) | Affine Jump Interface Stress: Oriented Young--Laplace Contract and ch14 Root Cause |
 
-## Experiment (38)
+## Experiment (43)
 
 | REF-ID | Title |
 |--------|-------|
@@ -196,6 +196,11 @@
 | [WIKI-E-036](experiment/WIKI-E-036.md) | U5 epsilon/h Window Is a Moment-Accuracy Gate, Not a Cosmetic Width |
 | [WIKI-E-037](experiment/WIKI-E-037.md) | U6 Monolithic High-Density PPE Sweep Is a Guard, Not a Production Primitive |
 | [WIKI-E-038](experiment/WIKI-E-038.md) | U9 Negation Pass: A Rule Violation Can Be a Successful Test |
+| [WIKI-E-039](experiment/WIKI-E-039.md) | V-Series Uses Reduced Stack Paths, Not One Monolithic Solver Path |
+| [WIKI-E-040](experiment/WIKI-E-040.md) | V-Series Verdict Labels Encode Why a Result Counts |
+| [WIKI-E-041](experiment/WIKI-E-041.md) | V7 Coupled-Stack Slope Is Interface-Band Limited, Not BDF2 Failure |
+| [WIKI-E-042](experiment/WIKI-E-042.md) | V10 Splits Mass Success from Shape Hard Limits |
+| [WIKI-E-043](experiment/WIKI-E-043.md) | V9 Local-Epsilon Switch Is a No-Regression Stack Diagnostic |
 
 ## Paper (14)
 
