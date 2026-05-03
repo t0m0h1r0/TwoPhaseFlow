@@ -127,6 +127,72 @@ class FCCDLevelSetAdvection(ILevelSetAdvection):
 
         return q_new
 
+    def advance_with_face_velocity(
+        self,
+        psi,
+        face_velocity_components: List,
+        dt: float,
+        clip_bounds=(0.0, 1.0),
+    ):
+        r"""Advance ψ by ``-D_f(P_f ψ\,u_f)`` using projected face velocities.
+
+        This is the projection-native conservative transport contract for
+        sharp-interface pressure-jump runs.  The supplied ``u_f`` is already the
+        face-normal velocity accepted by the PPE/projection operator; it must
+        not be reconstructed to nodes and then sampled again.
+        """
+        xp = self.xp
+        psi = xp.asarray(psi)
+        if len(face_velocity_components) != self._grid.ndim:
+            raise ValueError(
+                "face_velocity_components must provide one face-normal field "
+                f"per grid axis; got {len(face_velocity_components)} for "
+                f"{self._grid.ndim}D grid"
+            )
+        face_velocity_components = [
+            xp.asarray(component) for component in face_velocity_components
+        ]
+        sync_periodic_image_nodes(psi, self._fccd.bc_type)
+
+        if self._mass_correction:
+            M_old = xp.sum(psi * self._dV)
+
+        if (
+            not self._backend.is_gpu()
+            and all_arrays_exact_zero(xp, face_velocity_components)
+        ):
+            q_new = psi
+            if clip_bounds is not None:
+                lo, hi = clip_bounds
+                q_new = xp.clip(psi, lo, hi)
+                sync_periodic_image_nodes(q_new, self._fccd.bc_type)
+            if self._mass_correction:
+                q_new = apply_mass_correction(xp, q_new, self._dV, M_old)
+                sync_periodic_image_nodes(q_new, self._fccd.bc_type)
+            return q_new
+
+        def rhs(q):
+            total = xp.zeros_like(q)
+            for axis, face_velocity in enumerate(face_velocity_components):
+                psi_face = self._fccd.face_value(q, axis)
+                flux_face = psi_face * face_velocity
+                total = total - self._fccd.face_divergence(flux_face, axis)
+            return total
+
+        def post_stage(q):
+            if clip_bounds is not None:
+                lo, hi = clip_bounds
+                q = xp.clip(q, lo, hi)
+            return sync_periodic_image_nodes(q, self._fccd.bc_type)
+
+        q_new = tvd_rk3(xp, psi, dt, rhs, post_stage=post_stage)
+
+        if self._mass_correction:
+            q_new = apply_mass_correction(xp, q_new, self._dV, M_old)
+            sync_periodic_image_nodes(q_new, self._fccd.bc_type)
+
+        return q_new
+
     # ── RHS: −∇·(ψu) via FCCD ───────────────────────────────────────────
 
     def _rhs(self, psi, vel, *, skip_zero_check: bool = False):

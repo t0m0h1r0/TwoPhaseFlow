@@ -249,3 +249,34 @@ class PsiDirectTransport(ILevelSetTransport):
             psi = apply_mass_correction(xp, psi, self._dV, M_pre)
 
         return psi
+
+    def advance_with_face_velocity(
+        self,
+        psi: np.ndarray,
+        face_velocity_components: List[np.ndarray],
+        dt: float,
+        step_index: int = 0,
+    ) -> np.ndarray:
+        """Direct ψ advection with projection-native face velocities."""
+        advance_face = getattr(self.advection, "advance_with_face_velocity", None)
+        if not callable(advance_face):
+            raise RuntimeError(
+                "projection-native ψ transport requires "
+                "advection.advance_with_face_velocity"
+            )
+
+        xp = self.xp
+        if self.mass_correction:
+            M_pre = xp.sum(xp.asarray(psi) * self._dV)
+
+        psi = xp.asarray(advance_face(psi, face_velocity_components, dt))
+
+        if self._should_reinitialize(psi, step_index):
+            psi = xp.asarray(self.reinitializer.reinitialize(psi))
+            if self.reinit_trigger_mode == "adaptive":
+                self._reinit_reference_monitor = max(self._volume_monitor(psi), 1.0e-30)
+
+        if self.mass_correction:
+            psi = apply_mass_correction(xp, psi, self._dV, M_pre)
+
+        return psi

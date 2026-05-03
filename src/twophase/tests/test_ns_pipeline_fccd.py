@@ -312,6 +312,46 @@ def test_psi_direct_transport_reinitializes_after_initial_step_only():
     assert np.allclose(transport.advance(psi, velocity, 0.1, step_index=2), psi + 1.0)
 
 
+def test_psi_direct_transport_uses_projection_native_face_velocity():
+    class FaceAdvection:
+        def __init__(self):
+            self.face_velocity_components = None
+            self.dt = None
+
+        def advance(self, psi, velocity, dt):
+            raise AssertionError("nodal velocity path must not be used")
+
+        def advance_with_face_velocity(self, psi, face_velocity_components, dt):
+            self.face_velocity_components = face_velocity_components
+            self.dt = dt
+            return psi + 0.25
+
+    class IdentityReinitializer:
+        def reinitialize(self, psi):
+            return psi
+
+    advection = FaceAdvection()
+    transport = PsiDirectTransport(
+        Backend(use_gpu=False),
+        advection,
+        IdentityReinitializer(),
+        reinit_every=0,
+    )
+    psi = np.zeros((3, 3))
+    face_velocity_components = [np.ones((2, 3)), np.ones((3, 2))]
+
+    psi_new = transport.advance_with_face_velocity(
+        psi,
+        face_velocity_components,
+        0.1,
+        step_index=1,
+    )
+
+    assert advection.face_velocity_components is face_velocity_components
+    assert advection.dt == pytest.approx(0.1)
+    np.testing.assert_allclose(psi_new, psi + 0.25)
+
+
 def test_psi_direct_transport_adaptive_reinitializes_on_volume_monitor():
     class SequenceAdvection:
         def __init__(self):
@@ -385,6 +425,65 @@ def test_psi_direct_transport_applies_ch6_mass_correction():
     mass_after = np.sum(psi_new * grid.cell_volumes())
 
     assert mass_after == pytest.approx(mass_before, rel=1.0e-12, abs=1.0e-12)
+
+
+def test_ns_pipeline_advances_interface_with_projected_face_velocity():
+    from types import SimpleNamespace
+    from twophase.simulation.ns_step_state import NSStepState
+
+    class RecordingTransport:
+        def __init__(self):
+            self.face_velocity_components = None
+            self.nodal_advance_called = False
+
+        def advance(self, psi, velocity, dt, step_index=0):
+            self.nodal_advance_called = True
+            return psi - 1.0
+
+        def advance_with_face_velocity(
+            self,
+            psi,
+            face_velocity_components,
+            dt,
+            step_index=0,
+        ):
+            self.face_velocity_components = face_velocity_components
+            self.dt = dt
+            self.step_index = step_index
+            return psi + 1.0
+
+    solver = object.__new__(TwoPhaseNSSolver)
+    solver._transport = RecordingTransport()
+    solver._alpha_grid = 1.0
+    solver._interface_runtime = SimpleNamespace(rebuild_freq=0)
+
+    psi = np.zeros((3, 3))
+    face_velocity_components = [np.ones((2, 3)), np.ones((3, 2))]
+    state = NSStepState(
+        psi=psi,
+        u=np.full_like(psi, 7.0),
+        v=np.full_like(psi, -3.0),
+        dt=0.2,
+        rho_l=2.0,
+        rho_g=1.0,
+        sigma=0.0,
+        mu=0.0,
+        g_acc=0.0,
+        rho_ref=1.5,
+        mu_l=None,
+        mu_g=None,
+        bc_hook=None,
+        step_index=4,
+        face_velocity_components=face_velocity_components,
+    )
+
+    solver._advance_interface_stage(state)
+
+    assert solver._transport.face_velocity_components is face_velocity_components
+    assert solver._transport.dt == pytest.approx(0.2)
+    assert solver._transport.step_index == 4
+    assert not solver._transport.nodal_advance_called
+    np.testing.assert_allclose(state.psi, psi + 1.0)
 
 
 @pytest.mark.parametrize(

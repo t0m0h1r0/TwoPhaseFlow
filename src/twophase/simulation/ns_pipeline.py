@@ -727,9 +727,18 @@ class TwoPhaseNSSolver:
         state: NSStepState,
     ) -> NSStepState:
         """Advance the interface transport and optional grid rebuild."""
-        state.psi = self._transport.advance(
-            state.psi, [state.u, state.v], state.dt, step_index=state.step_index
-        )
+        advance_face = getattr(self._transport, "advance_with_face_velocity", None)
+        if state.face_velocity_components is not None and callable(advance_face):
+            state.psi = advance_face(
+                state.psi,
+                state.face_velocity_components,
+                state.dt,
+                step_index=state.step_index,
+            )
+        else:
+            state.psi = self._transport.advance(
+                state.psi, [state.u, state.v], state.dt, step_index=state.step_index
+            )
         if (
             self._alpha_grid > 1.0
             and self._interface_runtime.rebuild_freq > 0
