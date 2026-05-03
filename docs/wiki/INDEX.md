@@ -1,6 +1,6 @@
-# Wiki Index — 295 entries
+# Wiki Index — 315 entries
 
-## Theory (131)
+## Theory (143)
 
 | REF-ID | Title |
 |--------|-------|
@@ -135,6 +135,18 @@
 | [WIKI-T-129](theory/WIKI-T-129.md) | Variable-Density PPE Is a Pressure-Increment Equation in IPC |
 | [WIKI-T-130](theory/WIKI-T-130.md) | Nonuniform Projection Requires a Face-Adjoint Gradient Pair |
 | [WIKI-T-131](theory/WIKI-T-131.md) | HFE Is Mandatory Only When the Solved Pressure Field Has a Jump |
+| [WIKI-T-132](theory/WIKI-T-132.md) | Balanced-Force Mismatch Is a Positive Feedback Loop |
+| [WIKI-T-133](theory/WIKI-T-133.md) | The Adjoint PPE Pair Solves F-2 and F-3 Together |
+| [WIKI-T-134](theory/WIKI-T-134.md) | HFE Extension Normal Is an SDF Transport Direction, Not the Stress-Jump Normal |
+| [WIKI-T-135](theory/WIKI-T-135.md) | Nonuniform Geometry Data Is a Shared Source, Not Per-Operator Metadata |
+| [WIKI-T-136](theory/WIKI-T-136.md) | DCCD and UCCD6 Filtering Occur in Computational Space Before Metrics |
+| [WIKI-T-137](theory/WIKI-T-137.md) | Nonuniform FCCD Fourth Order Is a Central-Face Contract |
+| [WIKI-T-138](theory/WIKI-T-138.md) | Jump-Corrected Nonuniform Faces Must Share H_f |
+| [WIKI-T-139](theory/WIKI-T-139.md) | CLS Reinitialization Pseudo-Time CFL Is Not Physical Delta t |
+| [WIKI-T-140](theory/WIKI-T-140.md) | CLS Third-Order Time Is for Geometry Robustness, Not Global Third Order |
+| [WIKI-T-141](theory/WIKI-T-141.md) | Delta t_disc Covers Residual Explicit Spectra, Not Projection or Viscous CFL |
+| [WIKI-T-142](theory/WIKI-T-142.md) | HFE Is Direct Hermite Steady Extension, Not a Virtual-Time Solver |
+| [WIKI-T-143](theory/WIKI-T-143.md) | Mixed Derivatives Use Sequential 1D CCD, Not a Separate 2D Stencil |
 
 ## Cross-Domain (40)
 
@@ -181,7 +193,7 @@
 | [WIKI-X-039](cross-domain/WIKI-X-039.md) | Affine Jump Interface Stress: Oriented Young--Laplace Contract and ch14 Root Cause |
 | [WIKI-X-040](cross-domain/WIKI-X-040.md) | Recent Research Insight Digest: 2026-04-24 to 2026-05-03 |
 
-## Experiment (46)
+## Experiment (54)
 
 | REF-ID | Title |
 |--------|-------|
@@ -232,6 +244,14 @@
 | [WIKI-E-044](experiment/WIKI-E-044.md) | U1 Is an Operator-Family Contract, Not a Single CCD Test |
 | [WIKI-E-045](experiment/WIKI-E-045.md) | U3 Separates Nonuniform Operator Order from Metric Guardrails |
 | [WIKI-E-046](experiment/WIKI-E-046.md) | U4 Distinguishes HJ Gradient Recovery from DGR Width Closure |
+| [WIKI-E-047](experiment/WIKI-E-047.md) | U5 Delta Moments Certify Surface-Force Measure Support |
+| [WIKI-E-048](experiment/WIKI-E-048.md) | U6 Omega Sweep Is a Relaxation Guard Before Split PPE |
+| [WIKI-E-049](experiment/WIKI-E-049.md) | U9 DCCD Pressure Violation Is an Asymptotic Order-Gap Test |
+| [WIKI-E-050](experiment/WIKI-E-050.md) | V1 Measures the Implemented CCD/PPE Path, Not the Old FFT Proxy |
+| [WIKI-E-051](experiment/WIKI-E-051.md) | V3 Separates Pressure Accuracy from Spurious-Flow Monotonicity |
+| [WIKI-E-052](experiment/WIKI-E-052.md) | V6 Pressure-Correction Ratio Is Auxiliary, Not Laplace Error |
+| [WIKI-E-053](experiment/WIKI-E-053.md) | V7 RCA Localizes the Time-Order Limit to the Capillary Jump Band |
+| [WIKI-E-054](experiment/WIKI-E-054.md) | V8/V9/V10 Preserve Future Gates by Design |
 
 ## Paper (14)
 
