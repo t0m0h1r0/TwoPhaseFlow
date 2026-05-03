@@ -1,4 +1,4 @@
-# Wiki Index — 255 entries
+# Wiki Index — 259 entries
 
 ## Theory (104)
 
@@ -153,7 +153,7 @@
 | [WIKI-X-038](cross-domain/WIKI-X-038.md) | Theory-First CFL and Time-Integration Policy: SSPRK3 Scope, AB2 Risk, and IMEX-BDF2 Production Path |
 | [WIKI-X-039](cross-domain/WIKI-X-039.md) | Affine Jump Interface Stress: Oriented Young--Laplace Contract and ch14 Root Cause |
 
-## Experiment (34)
+## Experiment (38)
 
 | REF-ID | Title |
 |--------|-------|
@@ -192,6 +192,10 @@
 | [WIKI-E-032](experiment/WIKI-E-032.md) | ch13 Projection-Closure Trial Synthesis: Failed Hypotheses, Accepted Cause, Clean-Main Validation |
 | [WIKI-E-033](experiment/WIKI-E-033.md) | Negative Knowledge Guards in Chapters 12--13 |
 | [WIKI-E-034](experiment/WIKI-E-034.md) | Pressure Output Semantics in V-Series Verification |
+| [WIKI-E-035](experiment/WIKI-E-035.md) | U-Series Component Verification Is Not Integrated Physics Validation |
+| [WIKI-E-036](experiment/WIKI-E-036.md) | U5 epsilon/h Window Is a Moment-Accuracy Gate, Not a Cosmetic Width |
+| [WIKI-E-037](experiment/WIKI-E-037.md) | U6 Monolithic High-Density PPE Sweep Is a Guard, Not a Production Primitive |
+| [WIKI-E-038](experiment/WIKI-E-038.md) | U9 Negation Pass: A Rule Violation Can Be a Successful Test |
 
 ## Paper (14)
 
