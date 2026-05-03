@@ -23,7 +23,7 @@ pressure-jump/HFE 長時間非一様 run は追加 gate として残す．
 静止液滴 BF 平衡が長時間維持されること（\autoref{sec:U3_nonuniform_suite}）．
 $\alpha = 1$ で一様格子と一致し，$\alpha = 2$ で界面付近 $h_{\min} = 0.5\, h_{\mathrm{avg}}$．
 本 V8 は §\ref{sec:verification} 縮約路線 (ii)（二相縮約 BF；CCD 微分 + Neumann FVM PPE
-+ CSF $\kappa$，pressure-jump PPE は含まない）を非一様格子に拡張した縮約検証である．
++ CSF $\kappa_{lg}$，pressure-jump PPE は含まない）を非一様格子に拡張した縮約検証である．
 出力 $p$ は physical pressure であり，判定は Laplace 圧 $\sigma/(r\,\mathrm{We})$ に対する
 相対誤差 $\Delta p_{\mathrm{rel}}$ を用いる．
 
@@ -66,7 +66,7 @@ $N$ & $\alpha$ & $h_{\min}$ & $\Delta p_{\mathrm{final}}$ & $u_\infty^{\mathrm{e
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item $\alpha = 1$（一様）で $\Delta p_{\mathrm{rel}} \le 1.4\%$ → V3 結果と一致\checkmark．
   \item $\alpha = 2$（非一様）で $\Delta p_{\mathrm{rel}} \le 4\%$（$N=96$ で $2.86\%$）\checkmark — 設計通りの安定動作．
-        ただし非一様格子上の Heaviside--$\delta$ プロファイル（U5）と CSF $\kappa$ 推定の
+        ただし非一様格子上の Heaviside--$\delta$ プロファイル（U5）と CSF $\kappa_{lg}$ 推定の
         Jacobian 補正が要求精度を増やす．
   \item \textbf{$\alpha=1$ で $N=48\!\to\!64\!\to\!96$ の $u_\infty^{\mathrm{end}}$ N 軸 monotonicity 非単調}
         ($1.42\!\to\!1.35\!\to\!5.64\times10^{-4}$，$N=96$ で約 $4\times$ 上昇)：
@@ -147,8 +147,8 @@ $|\Delta p_{\mathrm{corr}}|/(\sigma/R)$ & $|\Delta V|/V_0$ \\
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item \textbf{§14 stack switch 診断として合格} (\checkmark)：nominal/local mode は
         §14 stack（FCCD/HFE/pressure-jump PPE）と同時に用いる条件下で，短時間静止液滴を破綻させない
-        （表~\ref{tab:V_verdict_types} 第四カテゴリ；design criterion default 合格・
-        Type-A/B/D 再分類のいずれとも独立）．
+        （表~\ref{tab:V_verdict_types} の §14 stack 診断；design criterion 合格・
+        Type-A/B/D 再分類のいずれとも異なる no-regression 診断）．
         $N=32$ では B/C が同一で，local mode はこの縮約経路で nominal より静かな界面を
         与えたとは主張しない．C/A の $u_\infty^{\max}$ 比は $2.36$，
         C/B 比は $1.00$ である．

@@ -126,17 +126,25 @@ $\times$（不合格）は本章では該当なし．主要結果：
 \end{itemize}
 
 \noindent\textbf{第~\ref{sec:verification}章 への接続：}
-次章（第~\ref{sec:verification}章）では，以下の対応で各結合効果を検出する
-V1--V10 の統合検証を実施する：
-\begin{itemize}[noitemsep]
-  \item 時間分裂誤差 → Taylor--Green 渦の運動エネルギー減衰
-        （§~\ref{sec:energy_conservation}）
-  \item PPE--速度結合 → 静止液滴の Laplace 圧維持
-        （§~\ref{sec:twophase_static_longterm}；U7 の 200-step 拡張）
-  \item 界面--圧力相互作用 → Galilean offset 残差
-        （§~\ref{sec:galilean_offset}）
-  \item 密度比依存性 → 変密度 PPE の格子収束（§~\ref{sec:varrho_dc_convergence}；
-        U6 の coupled 拡張）
-  \item 非一様格子整合性 → 界面適合格子液滴・界面横断 CLS 移流
-        （§~\ref{sec:nonuniform_grid_ns}；U3 の coupled 拡張）
-\end{itemize}
+次章（第~\ref{sec:verification}章）は，U1--U9 で確立した primitive を
+そのまま合成した時に初めて現れる結合効果を検出する．
+U 系列と V 系列の対応は，単なる章番号の継承ではなく
+\textbf{単体で合格した式・離散化が，どの統合物理指標で再検査されるか}の対応で読む：
+
+\begin{table}[!ht]
+\caption{§12 primitive から §13 統合検証への接続}
+\label{tab:U_to_V_bridge}
+\PaperCaptionNote{U 系列は component verification，V 系列は integration verification であり，判定基準は異なる．本表は「未検証の結合効果」を次章の V test に対応付ける橋渡しである．}
+\centering\small
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.20\linewidth}>{\raggedright\arraybackslash}p{0.31\linewidth}>{\raggedright\arraybackslash}X@{}}
+\toprule
+結合効果 & 主に引き継ぐ U primitive & §13 での再検査 \\
+\midrule
+標準 PPE 時間・速度結合 & U2-b, U8 & V1-b（Taylor--Green 渦；standard PPE の $O(\Delta t)$ trend）と V2（Kovasznay 残差）． \\
+BF 圧力--界面バランス & U5, U7, U9 & V3/V5（静止液滴と寄生流れ），V8（非一様静止液滴）． \\
+高密度比 pressure-jump stack & U6, U7, U8 & V6（密度比 sweep）と V7（FCCD/HFE/分相 PPE/DC を含む coupled-stack 時間精度）． \\
+非一様格子・局所厚み & U3, U5 & V8（非一様 NS 静止）と V9（§14 stack 条件下の nominal/local $\varepsilon$ switch）． \\
+CLS 保存移流 & U4, U5, U8 & V10-a/V10-b（一様格子 CLS-only 強変形移流；非一様 moving-interface CLS は future gate）． \\
+\bottomrule
+\end{tabularx}
+\end{table}

@@ -103,7 +103,7 @@ FCCD PPE + defect correction を同時に使ったときの実効時間精度を
 \paragraph{設定．}
 $\rho_l=10,\rho_g=1$ ($\rho_r=10$), 液滴半径 $r=0.25$, $\sigma=1$．
 $N=24$, $T=0.02$．初期速度は液相内に
-$u_0=0.02\cos(2\pi y)H_\epsilon$, $v_0=-0.02\cos(2\pi x)H_\epsilon$ を与える．
+$u_0=0.02\cos(2\pi y)H_\varepsilon$, $v_0=-0.02\cos(2\pi x)H_\varepsilon$ を与える．
 $n_{\mathrm{step}}\in\{8,16,32\}$ を粗解，$n_{\mathrm{ref}}=64$ を参照解とし，
 ridge-eikonal reinitialization は全 step で有効化する．
 
@@ -162,7 +162,7 @@ $n_{\mathrm{step}}$ & $\Delta t$ & $\|e\|_\infty$ & 連続比 \\
             完全な BDF2 単体 ($2.00$) ではなく
             \emph{Lie-limited coupled-stack regime} と解釈される．
       \item \textbf{pressure-jump PPE の非線形結合 (Ax8)}：
-            curvature/HFE と jump-decomposition PPE は界面位置と $\epsilon$ に
+            curvature/HFE と jump-decomposition PPE は界面位置と $\varepsilon$ に
             非線形依存するため，粗い時間刻みでは $u$ の差が単純な $\Delta t^2$ で
             減衰しない（連続比 $1.46, 2.06$ の非単調性は startup 域から asymptotic 域への
             遷移を反映している）．

@@ -12,7 +12,7 @@
 
 \paragraph{検証対象．}
 平衡液滴に対する Brackbill--Filonenko 力学的バランス~\cite{Brackbill1992}
-$\nabla p = \sigma \kappa\,\nabla H$（\autoref{sec:bf_seven_principles} 式~\eqref{eq:bf_fccd_unification}）が
+$\bnabla p = \sigma\kappa_{lg}\,\bnabla H$（\autoref{sec:bf_seven_principles} 式~\eqref{eq:bf_fccd_unification}）が
 $200$ ステップの長時間積分でも保たれること，かつ Laplace 圧力差
 $\Delta p_{\mathrm{exact}} = \sigma / r$ が漸近的に再現されることを確認する
 （寄生流れの定量比較は~\cite{Popinet2009,DennerVanWachem2015,HarvieDavidsonRudman2006}）．
@@ -45,7 +45,7 @@ $N$ & $h$ & $\Delta p_{\mathrm{meas}}$ & $|\Delta p_{\mathrm{rel}}|$ & $u_\infty
 \includegraphics[width=0.92\linewidth]{figures/ch13_v3_static_droplet.pdf}
 \caption{V3：静止液滴の長時間診断}
 \label{fig:V3_droplet}
-\PaperCaptionNote{$\Delta p_{\mathrm{rel}}$ は $N$ につれ $1\%$ 程度に収束（$N=64\!\to\!128$ で $1.23\%\!\to\!0.97\%$，slope $\sim 0.34$ — BF 平衡が解像度限界誤差床に到達）． $u_\infty^{\max}$ (peak over 200 step) は $N=64\!\to\!96$ で 4 倍上昇 → $N=128$ で微減． これは CSF $\kappa$ 推定が解像度向上に伴って高周波モードを励起するため， 履歴ピーク値は $N$ に対し非単調になる（V5 では final-time 指標で multistep + CCD/FD の寄与を切り分ける）．}
+\PaperCaptionNote{$\Delta p_{\mathrm{rel}}$ は $N$ につれ $1\%$ 程度に収束（$N=64\!\to\!128$ で $1.23\%\!\to\!0.97\%$，slope $\sim 0.34$ — BF 平衡が解像度限界誤差床に到達）． $u_\infty^{\max}$ (peak over 200 step) は $N=64\!\to\!96$ で 4 倍上昇 → $N=128$ で微減． これは CSF $\kappa_{lg}$ 推定が解像度向上に伴って高周波モードを励起するため， 履歴ピーク値は $N$ に対し非単調になる（V5 では final-time 指標で multistep + CCD/FD の寄与を切り分ける）．}
 \end{figure}
 
 \begin{figure}[!ht]
@@ -58,8 +58,8 @@ $N$ & $h$ & $\Delta p_{\mathrm{meas}}$ & $|\Delta p_{\mathrm{rel}}|$ & $u_\infty
 
 \paragraph{判定と制約条件．}
 \begin{itemize}\setlength{\itemsep}{0pt}
-  \item $|\Delta p_{\mathrm{rel}}| \le 1.3\%$ × 3 解像度で BF 平衡再現\checkmark（default 合格
-        （表~\ref{tab:v_accuracy_summary} caption の Type ラベル不在 = 当初設計基準満足）；
+  \item $|\Delta p_{\mathrm{rel}}| \le 1.3\%$ × 3 解像度で BF 平衡再現\checkmark（当初設計基準を満たす合格；
+        表~\ref{tab:v_accuracy_summary} の判定欄では Type 再分類なしの \checkmark として記録）；
         $1.3\%$ は実測 $N=64\!\to\!128$ の $1.23\%\!\to\!0.97\%$ の最悪値を切り上げた運用上限）．
         \autoref{fig:V3_droplet_snapshot} に $N=128$, 200 ステップ後の圧力場と速度場
         snapshot を示す（Laplace 圧力跳びが円形界面に沿って維持され，寄生流れは
@@ -71,7 +71,7 @@ $N$ & $h$ & $\Delta p_{\mathrm{meas}}$ & $|\Delta p_{\mathrm{rel}}|$ & $u_\infty
         （\autoref{fig:V3_droplet} 中の点線スケール参照）．
         本確認は §\ref{sec:verification} 「N 軸 vs.\ 時間軸 monotonicity の区別」 の
         時間軸条件を V3 で具体化したものである．
-  \item V3 の寄生流れは CSF $\kappa$ 推定の高周波誤差が支配的で，
+  \item V3 の寄生流れは CSF $\kappa_{lg}$ 推定の高周波誤差が支配的で，
         V5（$\mathrm{We}=10$）で $\rho_r$ / 演算子（CCD vs FD）依存性を
         final-time ベースで切り分ける．V3 は $\mathrm{We}=1$ で V5 ($\mathrm{We}=10$) より
         毛管力が 1 桁小さいため寄生流れ絶対値の桁も異なる
