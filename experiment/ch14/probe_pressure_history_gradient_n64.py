@@ -49,6 +49,8 @@ class ProbeCase:
     hypothesis: str
     disable_previous_pressure_gradient: bool = False
     constant_kappa: float | None = None
+    corrector_uses_base_increment: bool = False
+    history_uses_base_pressure: bool = False
 
 
 def _cases() -> tuple[ProbeCase, ...]:
@@ -73,6 +75,31 @@ def _cases() -> tuple[ProbeCase, ...]:
             ),
             constant_kappa=4.0,
         ),
+        ProbeCase(
+            label="base_corrector",
+            hypothesis=(
+                "diagnostic: projection corrector uses the PPE base increment "
+                "rather than the physical jump-bearing increment"
+            ),
+            corrector_uses_base_increment=True,
+        ),
+        ProbeCase(
+            label="base_history",
+            hypothesis=(
+                "diagnostic: IPC predictor history differentiates stored base pressure "
+                "rather than physical jump-bearing pressure"
+            ),
+            history_uses_base_pressure=True,
+        ),
+        ProbeCase(
+            label="base_corrector_base_history",
+            hypothesis=(
+                "diagnostic: both projection corrector and IPC history use base pressure "
+                "variables, leaving the affine jump operator to supply the interface jump"
+            ),
+            corrector_uses_base_increment=True,
+            history_uses_base_pressure=True,
+        ),
     )
 
 
@@ -88,15 +115,26 @@ def _build_config(raw_base: dict, label: str) -> ExperimentConfig:
 
 @contextmanager
 def _patch_solver_stages(case: ProbeCase):
-    if not case.disable_previous_pressure_gradient and case.constant_kappa is None:
+    if (
+        not case.disable_previous_pressure_gradient
+        and case.constant_kappa is None
+        and not case.corrector_uses_base_increment
+        and not case.history_uses_base_pressure
+    ):
         yield
         return
 
     original_predictor = ns_pipeline.compute_ns_predictor_stage
     original_surface = ns_pipeline.compute_ns_surface_tension_stage
+    original_pressure = ns_pipeline.solve_ns_pressure_stage
 
     def without_previous_pressure_gradient(state, **kwargs):
         state.previous_pressure = None
+        return original_predictor(state, **kwargs)
+
+    def with_base_pressure_history(state, **kwargs):
+        if state.previous_base_pressure is not None:
+            state.previous_pressure = state.previous_base_pressure
         return original_predictor(state, **kwargs)
 
     def with_constant_curvature(state, **kwargs):
@@ -108,15 +146,28 @@ def _patch_solver_stages(case: ProbeCase):
             state.f_y = xp.zeros_like(state.f_y)
         return state
 
+    def with_base_increment_corrector(state, **kwargs):
+        state, next_p_prev_dev, next_p_prev = original_pressure(state, **kwargs)
+        base_increment = getattr(kwargs["ppe_solver"], "last_base_pressure", None)
+        if base_increment is None:
+            raise RuntimeError("base-corrector probe requires ppe_solver.last_base_pressure")
+        state.p_corrector = kwargs["backend"].xp.asarray(base_increment)
+        return state, next_p_prev_dev, next_p_prev
+
     if case.disable_previous_pressure_gradient:
         ns_pipeline.compute_ns_predictor_stage = without_previous_pressure_gradient
+    if case.history_uses_base_pressure:
+        ns_pipeline.compute_ns_predictor_stage = with_base_pressure_history
     if case.constant_kappa is not None:
         ns_pipeline.compute_ns_surface_tension_stage = with_constant_curvature
+    if case.corrector_uses_base_increment:
+        ns_pipeline.solve_ns_pressure_stage = with_base_increment_corrector
     try:
         yield
     finally:
         ns_pipeline.compute_ns_predictor_stage = original_predictor
         ns_pipeline.compute_ns_surface_tension_stage = original_surface
+        ns_pipeline.solve_ns_pressure_stage = original_pressure
 
 
 def _phase_fraction(density: np.ndarray) -> np.ndarray:
