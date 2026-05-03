@@ -18,9 +18,9 @@
 \centering
 \caption{単体テスト U1--U9 の検証結果総括}
 \label{tab:verification_summary}
-\PaperCaptionNote{本表は表~\ref{tab:U_summary} と同一サブテスト集合を Tier 順に並べ直した総括表であり，表~\ref{tab:v_accuracy_summary} と同じ「ID / テスト / 期待・判定基準 / 実測・観測値 / 判定」文法で読む．}
+\PaperCaptionNote{本表は Chapter 12 の唯一の成果総括表である．冒頭の表~\ref{tab:U_summary} は検証設計マップであり，数値成績は本表に集約する．Chapter 13 の成果総括表~\ref{tab:v_accuracy_summary} と同じ「ID / テスト / 期待・判定基準 / 実測・観測値 / 判定」文法で読む．}
 \PaperTableExtraDenseSetup
-\begin{tabular}{l>{\raggedright\arraybackslash}p{0.20\linewidth}>{\raggedright\arraybackslash}p{0.18\linewidth}>{\raggedright\arraybackslash}p{0.22\linewidth}c}
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.10\linewidth}>{\raggedright\arraybackslash}p{0.18\linewidth}>{\raggedright\arraybackslash}p{0.23\linewidth}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{0.15\linewidth}@{}}
 \toprule
 ID & テスト & \shortstack{期待・判定\\基準} & \shortstack{実測・観測\\値} & 判定 \\
 \midrule
@@ -49,7 +49,6 @@ U5-b & $\delta_\varepsilon$ vs $h$ scaling（$c=\varepsilon/h$ 最適性）& $c 
 \multicolumn{5}{l}{\textbf{Tier IV：圧力ソルバ}} \\
 \midrule
 U6-a & DC $\omega$--収束（$\rho_l \in \{1,100,1000\}$, $k\in\{2,3\}$, $\omega \in \{0.2..0.9\}$） & $\rho_l=1$ clean，$\rho_l\!\ge\!100$ stall, $\omega$ 増大で残差減 & $\rho_l=1$: $5.19\!\times\!10^{-5}$, $\rho_l=1000$ best at $\omega=0.9, k=3$: $7.0\!\times\!10^{-6}$ converge        & \checkmark \\
-U6-b & lumped--PPE $\rho$-ratio 1:1--1:1000 & $\rho_l\le10$: $\Ord{h^2}$ 期待，高密度比律速の診断 & $\rho_l=1000$: $p\approx0.79$（N-sweep） & $\triangle$ \textsuperscript{(c)} \\
 U6-c & HFE 1D step extension  & $\Ord{h^6}$              & $\Ord{h^{5.91}}$（1D）   & \checkmark \\
 U6-c & HFE 2D band 診断       & 幾何込み条件付き & effective slope max $11.35$ / med $8.72$ & \checkmark \\
 \midrule
@@ -72,15 +71,15 @@ U7-b & face $\mu$ 補間 3 種 & $\Ord{h^2}$ 安定    & $1.91/1.81/1.91$       
 \bottomrule
 \multicolumn{5}{p{0.95\linewidth}}{\footnotesize
 $\triangle$ の類型——
-\textbf{(c) 一括 PPE 限界}：高密度比では分相 PPE への切替動機となる既知劣化．
-\checkmark: 設計精度達成，$\triangle$: 条件付き合格，$\bullet$: negation 成立（規則違反量が予測通り発散；合格扱い），$\times$: 未達（本章では該当なし）．
-本表は Tier 順で配置し（25 サブテスト；U6-c は 1D / 2D で 2 行に分割；U7-a も match / mismatch で 2 行に分割），表~\ref{tab:U_summary}（§\ref{sec:numerical_integrity}；U 番号順配置）と同一サブテスト集合に 1:1 対応する．
+\checkmark: 設計精度達成，$\bullet$: negation 成立（規則違反量が予測通り発散；合格扱い），$\times$: 未達（本章では該当なし）．
+本表は Tier 順で配置する（24 サブテスト；U6-c は 1D / 2D で 2 行に分割；U7-a も match / mismatch で 2 行に分割）．
+U6 の一括 PPE 高密度比 sweep は採用 primitive ではないため本成果表から除外し，U6 本文の設計経路説明に退避した．
 }
-\end{tabular}
+\end{tabularx}
 \end{table}
 
 \begin{tcolorbox}[resultbox, title={U1--U9 単体検証の総括}]
-9 件すべての単体テストが\textbf{合格}（$\checkmark$ / $\bullet$）または\textbf{条件付き合格}（$\triangle$）を達成．
+9 件すべての単体テストが\textbf{合格}（$\checkmark$ / $\bullet$）を達成．
 $\times$（不合格）は本章では該当なし．主要結果：
 \begin{itemize}[noitemsep]
   \item \textbf{空間（一様）：}CCD $\Ord{h^{6.0}}$，FCCD は面演算子設計次数 $\Ord{h^{4.0}}$（§\ref{sec:fccd_derivation}），
@@ -98,8 +97,9 @@ $\times$（不合格）は本章では該当なし．主要結果：
         $N\!\le\!64$ 域で $h^{11}$ 相当の超収束を示し，$N\!\ge\!128$ で
         Richardson 残差床 $\Ord{10^{-11}}$ へ saturation
         （$M_1 = M_0/2$ の比例関係；U5-b の $c=2$ では $1.83\!\times\!10^{-14}$ に到達）．
-  \item \textbf{圧力ソルバ：}lumped--PPE は高密度比 $\rho_l=1000$ で $p\approx0.79$ に律速し，
-        分相 PPE への切替動機を与える．HFE は 1D stencil $\Ord{h^{5.91}}$（設計達成），
+  \item \textbf{圧力ソルバ：}§9/§11 の標準経路は分相 PPE + HFE + DC であり，
+        U6 はその前提 primitive として DC 緩和 guard と HFE 単体精度を確認する．
+        HFE は 1D stencil $\Ord{h^{5.91}}$（設計達成），
         2D band は完全テンソル混合微分により低次化が消え，max $11.35$ / med $8.72$ の
         effective slope を示す（丸め床を含む診断値であり，§\ref{sec:hfe} の $\Ord{h^6}$ 設計と整合）．
   \item \textbf{時間積分：}TVD--RK3 $\Ord{\Delta t^{3.04}}$，EXT2/AB2 $\Ord{\Delta t^{2.05}}$，
