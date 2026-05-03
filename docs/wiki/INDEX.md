@@ -1,6 +1,6 @@
-# Wiki Index — 305 entries
+# Wiki Index — 310 entries
 
-## Theory (141)
+## Theory (143)
 
 | REF-ID | Title |
 |--------|-------|
@@ -145,6 +145,8 @@
 | [WIKI-T-139](theory/WIKI-T-139.md) | CLS Reinitialization Pseudo-Time CFL Is Not Physical Delta t |
 | [WIKI-T-140](theory/WIKI-T-140.md) | CLS Third-Order Time Is for Geometry Robustness, Not Global Third Order |
 | [WIKI-T-141](theory/WIKI-T-141.md) | Delta t_disc Covers Residual Explicit Spectra, Not Projection or Viscous CFL |
+| [WIKI-T-142](theory/WIKI-T-142.md) | HFE Is Direct Hermite Steady Extension, Not a Virtual-Time Solver |
+| [WIKI-T-143](theory/WIKI-T-143.md) | Mixed Derivatives Use Sequential 1D CCD, Not a Separate 2D Stencil |
 
 ## Cross-Domain (40)
 
@@ -191,7 +193,7 @@
 | [WIKI-X-039](cross-domain/WIKI-X-039.md) | Affine Jump Interface Stress: Oriented Young--Laplace Contract and ch14 Root Cause |
 | [WIKI-X-040](cross-domain/WIKI-X-040.md) | Recent Research Insight Digest: 2026-04-24 to 2026-05-03 |
 
-## Experiment (46)
+## Experiment (49)
 
 | REF-ID | Title |
 |--------|-------|
@@ -242,6 +244,9 @@
 | [WIKI-E-044](experiment/WIKI-E-044.md) | U1 Is an Operator-Family Contract, Not a Single CCD Test |
 | [WIKI-E-045](experiment/WIKI-E-045.md) | U3 Separates Nonuniform Operator Order from Metric Guardrails |
 | [WIKI-E-046](experiment/WIKI-E-046.md) | U4 Distinguishes HJ Gradient Recovery from DGR Width Closure |
+| [WIKI-E-047](experiment/WIKI-E-047.md) | U5 Delta Moments Certify Surface-Force Measure Support |
+| [WIKI-E-048](experiment/WIKI-E-048.md) | U6 Omega Sweep Is a Relaxation Guard Before Split PPE |
+| [WIKI-E-049](experiment/WIKI-E-049.md) | U9 DCCD Pressure Violation Is an Asymptotic Order-Gap Test |
 
 ## Paper (14)
 
