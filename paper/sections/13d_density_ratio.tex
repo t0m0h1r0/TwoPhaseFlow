@@ -143,7 +143,8 @@ $n_{\mathrm{step}}$ & $\Delta t$ & $\|e\|_\infty$ & 連続比 \\
     追加 RCA 診断で $n_{\mathrm{ref}}=128$ とし，
     再初期化 cadence，界面輸送，表面張力，二相係数を分離した．結果は，
     参照解品質と reinit cadence が誤差定数を変える一方，支配因子は
-    capillary pressure-jump / affine FCCD projection の界面帯誤差であることを示す．
+    capillary pressure-jump / affine FCCD projection の界面帯誤差であることを示す
+    （仮説監査と対照実験表は付録~\ref{app:v7_imex_bdf2_rca}）．
     \begin{enumerate}\setlength{\itemsep}{0pt}
       \item \textbf{参照解品質}：元の $n_{\mathrm{ref}}=64$ では finest slope $1.48$，
             $n_{\mathrm{ref}}=128$ では each-step reinit の finest slope $1.59$．参照解を
