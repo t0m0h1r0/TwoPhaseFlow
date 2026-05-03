@@ -27,7 +27,7 @@ Balanced--Force 条件の離散化整合性（本稿で系統化する 7 原則 
 非一様 moving-interface CLS および長時間・完全連成 NS 移動界面の収束性検証は §~\ref{sec:future_work} の future verification gate に整理する）．
 ただし CCD の $\Ord{h^6}$ は内点ステンシルの設計次数であり，
 境界 BC の打ち切り精度の影響により大域 $L^2$ 漸近では $\Ord{h^{5/2}}$ に低下する点を §~\ref{sec:CCD}章で詳述する．
-また二相結合では界面再初期化頻度差と曲率の陽的遅れ評価により実効時間精度は設計の $O(\Delta t^2)$ に届かず，
+また二相結合では capillary pressure-jump/projection 界面帯誤差により実効時間精度は設計の $O(\Delta t^2)$ に届かず，
 §~\ref{sec:imex_bdf2_twophase_time}（V7）で観測 slope $1.48$ までの回復に留まることを caveat として明記する．
 本稿で新たに定式化する中核演算子族（FCCD・UCCD6・HFE）と支持技術要素（CLS・分相 PPE・非一様格子）の
 詳細仕様は，第~\ref{sec:CCD}章末尾

@@ -44,7 +44,7 @@ $\times$ & 本稿の保証範囲外または設計未達． \\
 \midrule
 Type-A & 当初の理想化基準（EXT2/AB2 単体 2 次，CCD 内点 6 次，厳密 Galilean ゼロ残差，CCD/FD 比）を実装縮約 identity に対する文献根拠付き revised criterion へ再定義．V1-a, V1-b, V2, V4, V5 で適用． \\
 Type-B & 構造的アルゴリズム修正による合格化．V10-a/b 質量保存軸で Olsson--Kreiss mass correction~\cite{OlssonKreiss2005} を 10 step ごとに適用． \\
-Type-D & 連続方程式・離散構造に由来する theoretical hard limit と整合する条件付き合格．V7（Lie/reinit-cadence 制約下の coupled-stack slope）, V10-a 形状軸（slot under-resolution）, V10-b 形状軸（filament $<h$ sub-grid）で適用． \\
+Type-D & 連続方程式・離散構造に由来する theoretical hard limit と整合する条件付き合格．V7（capillary pressure-jump / projection 界面帯制約下の coupled-stack slope）, V10-a 形状軸（slot under-resolution）, V10-b 形状軸（filament $<h$ sub-grid）で適用． \\
 §14 stack 診断 & §14 stack と同時に用いる mode/switch の no-regression 診断．V9 で適用し，local mode の改善効果そのものは主張しない． \\
 \bottomrule
 \end{tabular}
@@ -127,11 +127,14 @@ V10 & $1$ & ---   & ---               & ---           & periodic-like  & passive
 \paragraph{各 V test の判定再分類．}
 V1-a / V1-b / V2 / V3 / V4 / V5 / V6 / V8 は主張を支持する結果（\checkmark）である．
 V7（二相 IMEX-BDF2 coupled-stack slope $1.48$）は §14 stack 化により $\times$ 区分から
-$\triangle$ 区分へ移動した：TVD-RK3（3 次）と IMEX-BDF2（2 次）の Lie 演算子分離では
-splitting 誤差が $O(\Delta t)$ で支配するため漸近 slope は $\to 1$ となる
-~\cite{Strang1968,HoldenKarlsenLieRisebro2010}．
-観測値 $1.48$ はこの Lie 1 次分割下限を上回るが，
-完全な BDF2 単体（$2.00$）には届かない splitting/cadence-limited Type-D として記録．
+$\triangle$ 区分へ移動した．追加 RCA では，参照解を $n_{\mathrm{ref}}=128$ に深くしても
+slope は $1.59$ に留まり，再初期化回数固定 (`fixed\_reinit\_count') や再初期化なしでも
+$1.50$--$1.57$ であった．さらに界面輸送を止めた static-interface 対照でも slope $1.58$ が
+残る一方，$\sigma=0$ にすると velocity error は $10^{-3}$--$10^{-2}$ から
+$10^{-7}$ 台へ落ちる．したがって支配因子は TVD-RK3/IMEX-BDF2 Lie 分割そのものではなく，
+capillary pressure-jump / affine FCCD projection が $\psi\simeq0.5$ の界面帯で作る
+低正則性誤差である．完全な BDF2 単体（$2.00$）は U8 で別途検証済みとし，
+V7 は capillary coupled-stack Type-D として記録する．
 V10-a（$\alpha=1$ Zalesak; §\ref{sec:zalesak_cls_advection}）は Type-B 修正（mass correction）により
 質量保存軸 \checkmark / 形状軸 $\triangle$（slot under-resolution の Type-D
 ~\cite{Zalesak1979,OlssonKreiss2005}）の二軸構造を取る．

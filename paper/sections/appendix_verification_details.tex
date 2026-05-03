@@ -3,6 +3,7 @@
 % 付録 G: 検証の補足解析
 %   G.1 PPE 離散化の選択（§12.5 から移動）
 %   G.2 HFE の smoothed Heaviside 圧力場への適合性（§12.4 から移動）
+%   G.3 V7 IMEX-BDF2 二相時間精度 RCA（§13.4 補足）
 % ═══════════════════════════════════════════════════════════════════════════════
 \section{検証の補足解析}
 \label{sec:appendix_verification}
@@ -123,3 +124,121 @@ HFE の適用範囲は以下のように明確に規定される：
         界面上のジャンプ条件を HFE で課す必要がある
         （§~\ref{sec:split_ppe_recovery}）．
 \end{enumerate}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsection{V7 IMEX-BDF2 二相時間精度の原因分析}
+\label{app:v7_imex_bdf2_rca}
+% ─────────────────────────────────────────────────────────────────────────────
+
+本付録は §~\ref{sec:imex_bdf2_twophase_time} の V7 に対する追加 RCA
+（root-cause analysis）を記録する．結論は，観測 slope $1.48$--$1.59$ が
+IMEX-BDF2 単体の係数誤りではなく，
+\textbf{capillary pressure-jump / affine FCCD projection が界面帯で作る低正則性・分裂誤差}
+に支配される，というものである．
+したがって V7 は BDF2 単体次数の試験ではなく，§14 と同じ
+capillary coupled stack の実効時間精度診断として読む．
+BDF2 単体の設計次数は U8（§~\ref{sec:U8_time_integration}）で独立に検証済みである．
+
+\paragraph{診断設計}
+
+基準 run は $N=24$, $T=0.02$, $\rho_l/\rho_g=10$, $\sigma=1$ とし，
+$n_{\mathrm{step}}=\{8,16,32,64,128\}$ の系列で
+$n_{\mathrm{ref}}=128$ を参照解に用いた．
+元の V7 と同じ各 step 再初期化に加え，再初期化回数固定，再初期化なし，
+界面静止，表面張力除去，一様係数化を分離して，低次数の必要条件を反証した．
+
+\begin{table}[!ht]
+\centering\scriptsize
+\caption{V7 RCA：対照実験による支配因子の切り分け}
+\label{tab:v7_rca_controls}
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{34mm}r r X}
+\toprule
+対照 run & finest slope & $n=64$ velocity $\|e\|_\infty$ & 解釈 \\
+\midrule
+\texttt{each\_step} & $1.59$ & $3.666\times10^{-3}$ &
+$n_{\mathrm{ref}}=64$ はやや粗いが，参照解を深くしても 2 次へは戻らない．\\
+\texttt{fixed\_reinit\_count} & $1.50$ & $9.358\times10^{-4}$ &
+再初期化 cadence は誤差定数を変えるが，指数の主因ではない．\\
+\texttt{no\_reinit} & $1.57$ & $1.670\times10^{-3}$ &
+再初期化そのものも主因ではない．\\
+\texttt{static\_interface} & $1.58$ & $1.870\times10^{-3}$ &
+界面輸送を止めても低次数が残るため，TVD-RK3/IMEX-BDF2 の Lie 分割は必要条件ではない．\\
+\texttt{static\_no\_capillary} & $1.54$ & $6.831\times10^{-8}$ &
+$\sigma=0$ で誤差振幅が 4--5 桁崩壊し，capillary jump が支配因子であることを示す．\\
+\texttt{uniform\_static\_capillary} & $1.59$ & $8.198\times10^{-3}$ &
+$\rho,\mu$ を一様化しても $\sigma=1$ なら大誤差が残り，密度・粘性 jump は振幅源ではない．\\
+一様係数，静止，$\sigma=0$ & $1.58$ & $7.302\times10^{-8}$ &
+一様係数かつ $\sigma=0$ では near-zero error となる．\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{仮説監査}
+
+表~\ref{tab:v7_rca_hypotheses} は，物理・数学モデルから自然に生じる候補原因を
+支配因子，副次因子，反証済みに分類したものである．ここで「反証」は
+該当メカニズムが完全にゼロであることではなく，V7 の観測次数低下を説明する
+一次支配因子ではないことを意味する．
+
+\begin{table}[!ht]
+\centering\scriptsize
+\caption{V7 RCA：仮説監査}
+\label{tab:v7_rca_hypotheses}
+\begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{9mm}X>{\raggedright\arraybackslash}p{23mm}X}
+\toprule
+ID & 仮説 & 判定 & 根拠 \\
+\midrule
+H01 & $n_{\mathrm{ref}}=64$ が粗すぎる & 副次因子 &
+ref128 で slope は $1.48\to1.59$ に改善するが，2 次には戻らない．\\
+H02 & step-based reinit cadence が主因 & 反証 &
+全系列で reinit 回数を固定しても slope $1.50$．\\
+H03 & 再初期化そのものが主因 & 反証 &
+no-reinit でも slope $1.57$．\\
+H04 & 界面輸送と IMEX の Lie split が必要条件 & 反証 &
+static-interface でも slope $1.58$．\\
+H05 & capillary pressure-jump projection が支配 & 支持 &
+$\sigma=0$ で velocity error が $10^{-3}$--$10^{-2}$ から $10^{-7}$ へ崩壊する．\\
+H06 & 密度比が振幅を支配 & 反証 &
+一様係数でも $\sigma=1$ なら $8.198\times10^{-3}$ の誤差が残る．\\
+H07 & 粘性比が振幅を支配 & 反証 &
+H06 と同じ一様係数対照で否定される．\\
+H08 & $\|e\|_\infty$ norm だけが判定を悪化 & 部分支持 &
+$L^2$ でも同様の slope 傾向を示すが，最大誤差は界面局在である．\\
+H09 & bulk velocity dynamics が律速 & 反証 &
+bulk error は interface-band error より数桁小さい．\\
+H10 & IMEX-BDF2 係数実装が誤り & 反証 &
+U8 は BDF2 単体を通し，$\sigma=0$ 対照は near-zero error となる．\\
+H11 & 旧 nodal pressure-history bug が残存 & 反証 &
+現行実装は projection-native face acceleration を使い，残差は capillary band に局在する．\\
+H12 & BDF1 startup が主因 & 非支持 &
+全対照で指数は近く，capillary 有無だけが振幅を桁で変える．\\
+H13 & 空間格子 $N=24$ だけが問題 & 副次因子 &
+同じ格子でも $\sigma=0$ では near-zero error となる．\\
+H14 & PPE tolerance / DC iteration が主因 & 非支持 &
+solver 設定を変えずに $\sigma=0$ とするだけで誤差が崩壊する．\\
+H15 & 曲率・再初期化更新頻度が主因 & 反証 &
+界面と曲率を固定しても capillary-limited behavior が残る．\\
+H16 & 圧力不連続の低正則性が max-norm 時間収束を制限 & 支持 &
+最大誤差は $\psi\simeq0.5$ に局在し，capillary jump 単独で大誤差を再現する．\\
+H17 & 壁境界条件が支配 & 反証 &
+最大誤差位置は壁ではなく円形界面上である．\\
+H18 & volume/mass drift が速度 norm を汚染 & 反証 &
+体積 drift は round-off floor に留まる．\\
+H19 & GPU/CPU 経路差が原因 & 非支持 &
+remote production path は本文値を再現し，局在構造も物理対照と整合する．\\
+H20 & V7 を純粋 BDF2 次数検証として読むべき & 反証 &
+V7 は capillary pressure-jump coupled-stack 診断であり，純粋 BDF2 は U8 が担う．\\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+\paragraph{根本原因}
+
+Young--Laplace pressure jump は界面上の分布的な不連続条件であり，
+affine FCCD PPE では cut face 上の圧力 jump と速度補正が同じ投影過程で閉じる．
+このとき bulk 解が滑らかでも，$\psi\simeq0.5$ の smeared interface band では
+時間発展の正則性が bulk と同等にはならない．
+実際，最大 velocity error は界面帯に局在し，bulk error と体積 drift は支配的でない．
+したがって V7 の $\triangle$ 判定は，閾値の緩和や reinit tuning で合格化する対象ではなく，
+capillary jump/projection の時間離散構造を上げない限り残る
+Type-D の theoretical hard limit として扱う．
