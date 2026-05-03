@@ -44,6 +44,12 @@ Finding: After the V7 rerun, slope $1.04$ is Lie-limited, not near-optimal above
 
 Fix: Updated Type-D wording in `paper/sections/13_verification.tex`, `paper/sections/13d_density_ratio.tex`, and `paper/sections/13f_error_budget.tex` to say “theoretical hard limit と整合” / “Lie-limited” instead of near-optimal for V7.
 
+### MINOR-2: Paper figures needed the same refresh as tables
+
+Finding: The first paper update regenerated V9 figures but not the remaining tracked paper figures whose plotted values changed after the rerun.
+
+Fix: Regenerated V5--V10 paper figures from cached NPZ data. While doing so, fixed `experiment/ch13/exp_V6_density_ratio_convergence.py` plot-only summary handling so NumPy-loaded rows do not fail boolean evaluation after figures are saved.
+
 ## Sufficiency Review
 
 - The current V1--V10 suite is necessary and sufficient for Chapter 13’s bounded claim: integrated verification of the Chapter 4--12 equation/discretization/code chain under reduced static, density-ratio, time-coupled, nonuniform-static, and uniform-CLS advection diagnostics.
@@ -53,10 +59,10 @@ Fix: Updated Type-D wording in `paper/sections/13_verification.tex`, `paper/sect
 ## Final Checks
 
 - Remote-first experiment refresh: `make run-all CH=ch13` PASS; `make pull` PASS.
-- V9 plot refresh: `make plot EXP=experiment/ch13/exp_V9_local_eps_nonuniform.py` failed locally because plain `python3` lacked `matplotlib`; fallback `.venv` plot-only run PASS and regenerated `paper/figures/ch13_v9_local_eps.pdf` plus `paper/figures/ch13_v9_ch14_stack_field.pdf`.
+- Plot refresh: `make plot EXP=experiment/ch13/exp_V9_local_eps_nonuniform.py` failed locally because plain `python3` lacked `matplotlib`; fallback `.venv` plot-only runs PASS for V5--V10 and regenerated all tracked V5--V10 paper figures.
 - Paper build: `latexmk -xelatex -interaction=nonstopmode -halt-on-error main.tex` PASS (`paper/main.pdf`, 244 pp).
 - Log guard: no fatal undefined/citation/multiply-defined warnings found; only the package-name occurrence of `rerunfilecheck`.
-- Static checks: `git diff --check` PASS; targeted `py_compile` for `experiment/ch13/exp_V9_local_eps_nonuniform.py` PASS.
+- Static checks: `git diff --check` PASS; targeted `py_compile` for `experiment/ch13/exp_V9_local_eps_nonuniform.py` and `experiment/ch13/exp_V6_density_ratio_convergence.py` PASS.
 - SOLID audit: [SOLID-X] paper/script/figure refresh only; no production boundary changed, no tested code deleted, no FD/WENO/PPE fallback introduced, and PR-4 `--plot-only` workflow remains intact.
 
 ## Merge Status
