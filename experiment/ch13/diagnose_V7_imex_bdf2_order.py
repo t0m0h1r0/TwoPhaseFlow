@@ -67,6 +67,8 @@ def _reinit_every(variant: str, n_steps: int) -> int:
         return 0
     if variant == "static_no_capillary":
         return 0
+    if variant == "uniform_static_capillary":
+        return 0
     if variant == "uniform_static_no_capillary":
         return 0
     raise ValueError(f"unknown variant {variant!r}")
@@ -84,7 +86,7 @@ def _case_config(n_steps: int, variant: str):
     sigma = SIGMA
     if variant in {"static_no_capillary", "uniform_static_no_capillary"}:
         sigma = 0.0
-    if variant == "uniform_static_no_capillary":
+    if variant in {"uniform_static_capillary", "uniform_static_no_capillary"}:
         rho_l = rho_g = 1.0
         mu_l = mu_g = MU_L
     cfg = ch14_circle_config(
@@ -105,6 +107,7 @@ def _case_config(n_steps: int, variant: str):
     if variant in {
         "static_interface",
         "static_no_capillary",
+        "uniform_static_capillary",
         "uniform_static_no_capillary",
     }:
         cfg.run.interface_tracking_enabled = False
@@ -193,6 +196,7 @@ def run_all() -> dict:
         "no_reinit",
         "static_interface",
         "static_no_capillary",
+        "uniform_static_capillary",
         "uniform_static_no_capillary",
     )
     all_runs: dict[str, list[dict]] = {}
