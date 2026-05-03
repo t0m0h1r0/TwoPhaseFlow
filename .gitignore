@@ -59,6 +59,7 @@ experiment/**/*.npz
 experiment/**/*.pkl
 experiment/**/*.png
 experiment/**/*.eps
+experiment/**/*.csv
 
 # TeX関連の一時ファイル
 paper/*.bbl
