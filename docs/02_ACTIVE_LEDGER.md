@@ -1,14 +1,15 @@
 # 02_ACTIVE_LEDGER — Phase, Branch, CHK Register, Assumptions & Lessons
 # LIVE document — append-only for CHK/ASM/KL entries; phase/branch updated each session.
-# Last updated: 2026-05-04 (CHK-RA-PAPER-WIKI-001 ROUND-19 DONE — projection/PPE/HFE cards stored.)
+# Last updated: 2026-05-04 (CHK-RA-PAPER-WIKI-001 ROUND-20 DONE — Chapter 12 primitive-verification cards stored; additional 10-round cap reached.)
 
 ────────────────────────────────────────────────────────
 # § ACTIVE STATE
 
 | Key | Value |
 |---|---|
-| phase | CHK-RA-PAPER-WIKI-001 ROUND-19 DONE |
+| phase | CHK-RA-PAPER-WIKI-001 ROUND-20 DONE |
 | branch | `ra-paper-wiki-insights-r11-20-20260504` |
+| session_CHK | CHK-RA-PAPER-WIKI-001 ROUND-20 DONE 2026-05-04 — Same worktree/branch, no new worktree. Round 20 added individual Chapter 12 primitive-verification cards: `docs/wiki/experiment/WIKI-E-044.md` (U1 is an operator-family contract, not a single CCD test), `docs/wiki/experiment/WIKI-E-045.md` (U3 separates nonuniform operator order from metric guardrails), `docs/wiki/experiment/WIKI-E-046.md` (U4 distinguishes HJ gradient recovery from DGR width closure). Updated `docs/wiki/INDEX.md`: total 291→294, Experiment 43→46. Stop condition for this request: additional 10 rounds (Round 11--20) reached; no Round 21 started. [SOLID-X] docs/wiki/ledger only; no production code boundary changed, no tested code deleted, no FD/WENO/PPE fallback introduced. |
 | session_CHK | CHK-RA-PAPER-WIKI-001 ROUND-19 DONE 2026-05-04 — Same worktree/branch, no new worktree. Round 19 added individual projection/PPE/HFE cards: `docs/wiki/theory/WIKI-T-129.md` (variable-density PPE is a pressure-increment equation in IPC), `docs/wiki/theory/WIKI-T-130.md` (nonuniform projection requires a face-adjoint gradient pair), `docs/wiki/theory/WIKI-T-131.md` (HFE is mandatory only when the solved pressure field has a jump). Updated `docs/wiki/INDEX.md`: total 288→291, Theory 128→131. [SOLID-X] docs/wiki/ledger only; no production code boundary changed, no tested code deleted, no FD/WENO/PPE fallback introduced. |
 | session_CHK | CHK-RA-PAPER-WIKI-001 ROUND-18 DONE 2026-05-04 — Same worktree/branch, no new worktree. Round 18 added individual DC/viscous/buoyancy cards: `docs/wiki/theory/WIKI-T-126.md` (DC accuracy lives in the high-order residual), `docs/wiki/theory/WIKI-T-127.md` (viscous DC low-order operator must share mu/rho/boundaries/bands), `docs/wiki/theory/WIKI-T-128.md` (balanced buoyancy removes hydrostatic work before prediction). Updated `docs/wiki/INDEX.md`: total 285→288, Theory 125→128. [SOLID-X] docs/wiki/ledger only; no production code boundary changed, no tested code deleted, no FD/WENO/PPE fallback introduced. |
 | session_CHK | CHK-RA-PAPER-WIKI-001 ROUND-17 DONE 2026-05-04 — Same worktree/branch, no new worktree. Round 17 added individual scheme/time-order cards: `docs/wiki/theory/WIKI-T-123.md` (term-specific discretization is a regularity contract), `docs/wiki/theory/WIKI-T-124.md` (TVD-RK3 label does not guarantee TVD for FCCD space operator), `docs/wiki/theory/WIKI-T-125.md` (IMEX-BDF2 predictor uses projected history, not star velocity). Updated `docs/wiki/INDEX.md`: total 282→285, Theory 122→125. [SOLID-X] docs/wiki/ledger only; no production code boundary changed, no tested code deleted, no FD/WENO/PPE fallback introduced. |

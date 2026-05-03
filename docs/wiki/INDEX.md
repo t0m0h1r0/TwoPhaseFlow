@@ -1,4 +1,4 @@
-# Wiki Index — 291 entries
+# Wiki Index — 294 entries
 
 ## Theory (131)
 
@@ -180,7 +180,7 @@
 | [WIKI-X-038](cross-domain/WIKI-X-038.md) | Theory-First CFL and Time-Integration Policy: SSPRK3 Scope, AB2 Risk, and IMEX-BDF2 Production Path |
 | [WIKI-X-039](cross-domain/WIKI-X-039.md) | Affine Jump Interface Stress: Oriented Young--Laplace Contract and ch14 Root Cause |
 
-## Experiment (43)
+## Experiment (46)
 
 | REF-ID | Title |
 |--------|-------|
@@ -228,6 +228,9 @@
 | [WIKI-E-041](experiment/WIKI-E-041.md) | V7 Coupled-Stack Slope Is Interface-Band Limited, Not BDF2 Failure |
 | [WIKI-E-042](experiment/WIKI-E-042.md) | V10 Splits Mass Success from Shape Hard Limits |
 | [WIKI-E-043](experiment/WIKI-E-043.md) | V9 Local-Epsilon Switch Is a No-Regression Stack Diagnostic |
+| [WIKI-E-044](experiment/WIKI-E-044.md) | U1 Is an Operator-Family Contract, Not a Single CCD Test |
+| [WIKI-E-045](experiment/WIKI-E-045.md) | U3 Separates Nonuniform Operator Order from Metric Guardrails |
+| [WIKI-E-046](experiment/WIKI-E-046.md) | U4 Distinguishes HJ Gradient Recovery from DGR Width Closure |
 
 ## Paper (14)
 
