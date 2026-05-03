@@ -235,7 +235,7 @@ def print_summary(results: dict) -> None:
     print("V6 (§14 stack density-ratio robustness):")
     for key in ("r2", "r10", "r100", "r833"):
         rows = results["sweeps"].get(key, [])
-        if not rows:
+        if len(rows) == 0:
             continue
         print(f"  rho_l/rho_g={int(rows[0]['ratio'])}:")
         for row in rows:

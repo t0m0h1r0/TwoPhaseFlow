@@ -1,0 +1,11 @@
+{
+  "branch": "ra-ch13-experiment-audit-20260503",
+  "branch_slug": "ra-ch13-experiment-audit-20260503",
+  "session_id": "E4EDA472-940C-4AE5-AABD-05ADADAC62CE",
+  "worktree_path": ".claude/worktrees/ra-ch13-experiment-audit-20260503",
+  "holder_agent": "ResearchArchitect",
+  "acquired_at": "2026-05-03T00:11:26Z",
+  "expires_at": "2026-05-04T00:11:26Z",
+  "meta_version": "5.1.0",
+  "id_prefix": "RA-CH13"
+}

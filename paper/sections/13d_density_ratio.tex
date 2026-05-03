@@ -1,6 +1,6 @@
 % paper/sections/13d_density_ratio.tex
 %
-% V6: 密度比 sweep convergence (rho_r in {2,10,100,833}, N in {32,64,128})
+% V6: 密度比 sweep convergence (rho_r in {2,10,100,833}, N in {24,32})
 % V7: IMEX-BDF2 二相時間精度 (Linf err vs dt)
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{密度比収束と IMEX-BDF2 時間精度}
@@ -34,23 +34,23 @@ $\rho_r \in \{2,10,100,833\}$, $N \in \{24,32\}$．
 \begin{table}[!ht]
 \caption{V6：§14 ベンチマーク設定による密度比掃引}
 \label{tab:V6_density_ratio}
-\PaperCaptionNote{全 8 ケースでブローアップなし． $|\Delta V_\psi|/V_{\psi,0}$ は全ケースで $O(10^{-10})$--$O(10^{-11})$， $u_\infty^{\mathrm{end}}$ は $N$ 増加および $\rho_r$ 増加で低下する． $|\Delta p_{\mathrm{corr}}|/(\sigma/r)$ は pressure-jump PPE の補正圧診断であり， Laplace 絶対圧誤差ではない．}
+\PaperCaptionNote{全 8 ケースでブローアップなし． $|\Delta V_\psi|/V_{\psi,0}$ は全ケースで round-off floor（$\le 6.4\times10^{-16}$）に留まり， $u_\infty^{\mathrm{end}}$ は $N$ 増加および $\rho_r$ 増加で低下する． $|\Delta p_{\mathrm{corr}}|/(\sigma/r)$ は pressure-jump PPE の補正圧診断であり， Laplace 絶対圧誤差ではない．}
 \centering\small
 \begin{tabular}{r r r r r}
 \toprule
 $\rho_r$ & $N$ & $u_\infty^{\mathrm{end}}$ & $|\Delta V_\psi|/V_{\psi,0}$ & $|\Delta p_{\mathrm{corr}}|/(\sigma/r)$ \\
 \midrule
-2    & 24 & $2.828\times 10^{-4}$ & $1.243\times 10^{-10}$ & $1.444\times 10^{-1}$ \\
-2    & 32 & $1.806\times 10^{-4}$ & $1.919\times 10^{-11}$ & $1.070\times 10^{-1}$ \\
+2    & 24 & $5.009\times 10^{-2}$ & $2.365\times 10^{-16}$ & $8.406\times 10^{-1}$ \\
+2    & 32 & $7.378\times 10^{-3}$ & $6.345\times 10^{-16}$ & $1.003$ \\
 \midrule
-10   & 24 & $1.820\times 10^{-4}$ & $1.973\times 10^{-10}$ & $1.443\times 10^{-1}$ \\
-10   & 32 & $1.159\times 10^{-4}$ & $2.473\times 10^{-11}$ & $1.068\times 10^{-1}$ \\
+10   & 24 & $2.405\times 10^{-2}$ & $1.183\times 10^{-16}$ & $7.780\times 10^{-1}$ \\
+10   & 32 & $3.655\times 10^{-3}$ & $0.000$ & $9.992\times 10^{-1}$ \\
 \midrule
-100  & 24 & $6.539\times 10^{-5}$ & $2.366\times 10^{-10}$ & $1.442\times 10^{-1}$ \\
-100  & 32 & $4.158\times 10^{-5}$ & $3.325\times 10^{-11}$ & $1.067\times 10^{-1}$ \\
+100  & 24 & $7.742\times 10^{-3}$ & $2.365\times 10^{-16}$ & $7.364\times 10^{-1}$ \\
+100  & 32 & $1.815\times 10^{-3}$ & $2.538\times 10^{-16}$ & $9.964\times 10^{-1}$ \\
 \midrule
-833  & 24 & $2.298\times 10^{-5}$ & $2.008\times 10^{-10}$ & $1.442\times 10^{-1}$ \\
-833  & 32 & $1.461\times 10^{-5}$ & $3.950\times 10^{-11}$ & $1.067\times 10^{-1}$ \\
+833  & 24 & $2.687\times 10^{-3}$ & $2.365\times 10^{-16}$ & $7.295\times 10^{-1}$ \\
+833  & 32 & $8.223\times 10^{-4}$ & $2.538\times 10^{-16}$ & $9.958\times 10^{-1}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -60,7 +60,7 @@ $\rho_r$ & $N$ & $u_\infty^{\mathrm{end}}$ & $|\Delta V_\psi|/V_{\psi,0}$ & $|\D
 \includegraphics[width=0.92\linewidth]{figures/ch13_v6_density_ratio.pdf}
 \caption{V6：密度比収束掃引}
 \label{fig:V6_density_ratio}
-\PaperCaptionNote{$u_\infty^{\mathrm{end}}$（左）は $N=24\!\to\!32$ で低下し， $\rho_r$ 増加でも抑制される．右は CLS 体積 drift であり， 全ケース $O(10^{-10})$--$O(10^{-11})$ に留まる．}
+\PaperCaptionNote{$u_\infty^{\mathrm{end}}$（左）は $N=24\!\to\!32$ で低下し， $\rho_r$ 増加でも抑制される．右は CLS 体積 drift であり， 全ケース round-off floor に留まる．}
 \end{figure}
 
 \begin{figure}[!ht]
@@ -68,17 +68,17 @@ $\rho_r$ & $N$ & $u_\infty^{\mathrm{end}}$ & $|\Delta V_\psi|/V_{\psi,0}$ & $|\D
 \includegraphics[width=0.98\linewidth]{figures/ch13_v6_density_ratio_fields.pdf}
 \caption{V6：密度比掃引の終端速度場}
 \label{fig:V6_density_ratio_fields}
-\PaperCaptionNote{$\rho_l/\rho_g \in \{2, 100, 833\}$，$N=32$，§14 stack（FCCD/UCCD6/HFE/pressure-jump/分相 PPE/DC）．白円は界面 $\psi = 0.5$．各パネルで個別 $v_{\max}$ を取り，$\|u\|_\infty$ が $\rho_r=2 \to 833$（水--空気）で $\sim 1.8\times 10^{-4} \to \sim 1.5\times 10^{-5}$ と 1 桁以上抑制される様子を直接可視化．高密度比でも界面リング構造が破綻せず，本 stack が密度比に対して頑健であることを示す．}
+\PaperCaptionNote{$\rho_l/\rho_g \in \{2, 100, 833\}$，$N=32$，§14 stack（FCCD/UCCD6/HFE/pressure-jump/分相 PPE/DC）．白円は界面 $\psi = 0.5$．各パネルで個別 $v_{\max}$ を取り，$\|u\|_\infty$ が $\rho_r=2 \to 833$（水--空気）で $7.38\times 10^{-3} \to 8.22\times 10^{-4}$ と約 1 桁抑制される様子を直接可視化．高密度比でも界面リング構造が破綻せず，本 stack が密度比に対して頑健であることを示す．}
 \end{figure}
 
 \paragraph{判定と制約条件．}
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item \textbf{主指標（合格条件）}：(a) 全 $8$ ケースで\textbf{ブローアップなし}
         （水--空気相当 $\rho_r=833$ を含む）\checkmark，
-        (b) $|\Delta V_\psi|/V_{\psi,0} \le 2.4\times10^{-10}$ で CLS 体積は実質保存\checkmark．
+        (b) $|\Delta V_\psi|/V_{\psi,0} \le 6.4\times10^{-16}$ で CLS 体積は実質保存\checkmark．
   \item \textbf{補助指標（scale 確認）}：$u_\infty^{\mathrm{end}}$ は $\rho_r$ 増加で抑制され，
         高密度比下では速度応答スケールが $\sigma/(\rho_l+\rho_g)$ に従い低下する．
-        $|\Delta p_{\mathrm{corr}}|/(\sigma/r) \sim 0.10$--$0.14$ は
+        $|\Delta p_{\mathrm{corr}}|/(\sigma/r) \sim 0.73$--$1.00$ は
         pressure-jump PPE の補正圧 diagnostic（§\ref{sec:verification}「圧力出力の取り扱い」参照；
         Laplace 絶対圧誤差ではない）であり，合格基準には含めない．
   \item 本 V6 は stack assertion により通常 CCD/FVM-PPE ではなく
@@ -111,17 +111,17 @@ ridge-eikonal reinitialization は全 step で有効化する．
 \begin{table}[!ht]
 \caption{V7：§14 ベンチマーク設定の二相時間精度診断}
 \label{tab:V7_imex_bdf2_time}
-\PaperCaptionNote{参照は $n_{\mathrm{ref}}=64$．粗い $\Delta t$ では interface/reinitialization/PPE 結合誤差が支配し，最終 halving で観測 slope $\mathbf{1.58}$ まで回復するが，純粋な 2 次には未達．連続比は誤差 $\|e\|_\infty$ の直前行に対する比（$e^{(i-1)} / e^{(i)}$）であり，全 halving が $\Delta t$ ratio $= 2$ のため slope $= \log_2(\text{連続比})$．}
+\PaperCaptionNote{参照は $n_{\mathrm{ref}}=64$．粗い $\Delta t$ では interface/reinitialization/PPE 結合誤差が支配し，最終 halving で観測 slope $\mathbf{1.04}$ となる．純粋な 2 次には未達だが，Lie 分割の 1 次下限と整合する．連続比は誤差 $\|e\|_\infty$ の直前行に対する比（$e^{(i-1)} / e^{(i)}$）であり，全 halving が $\Delta t$ ratio $= 2$ のため slope $= \log_2(\text{連続比})$．}
 \centering\small
 \begin{tabular}{r r r r}
 \toprule
 $n_{\mathrm{step}}$ & $\Delta t$ & $\|e\|_\infty$ & 連続比 \\
 \midrule
-8    & $2.50\times 10^{-3}$ & $6.201\times 10^{-4}$ & ---  \\
-16   & $1.25\times 10^{-3}$ & $5.751\times 10^{-4}$ & $1.08$ \\
-32   & $6.25\times 10^{-4}$ & $1.922\times 10^{-4}$ & $2.99$ \\
+8    & $2.50\times 10^{-3}$ & $1.398\times 10^{-1}$ & ---  \\
+16   & $1.25\times 10^{-3}$ & $9.572\times 10^{-2}$ & $1.46$ \\
+32   & $6.25\times 10^{-4}$ & $4.654\times 10^{-2}$ & $2.06$ \\
 \midrule
-\multicolumn{3}{r}{finest local slope} & $\mathbf{1.58}$ \\
+\multicolumn{3}{r}{finest local slope} & $\mathbf{1.04}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -131,15 +131,15 @@ $n_{\mathrm{step}}$ & $\Delta t$ & $\|e\|_\infty$ & 連続比 \\
 \includegraphics[width=0.92\linewidth]{figures/ch13_v7_imex_bdf2_time.pdf}
 \caption{V7：IMEX-BDF2 二相時間精度}
 \label{fig:V7_imex_bdf2_time}
-\PaperCaptionNote{§14 stack 全体での参照解差を log-log 表示する．最終 halving では slope $1.58$ まで回復するが， 粗い時間刻みでは界面輸送・再初期化・pressure-jump PPE の非線形結合誤差が支配する．}
+\PaperCaptionNote{§14 stack 全体での参照解差を log-log 表示する．最終 halving では slope $1.04$ となり，粗い時間刻みでは界面輸送・再初期化・pressure-jump PPE の非線形結合誤差が支配する．}
 \end{figure}
 
 \paragraph{判定と制約条件（多軸再評価）．}
 \begin{itemize}\setlength{\itemsep}{0pt}
-  \item 観測された最終局所 slope は $\mathbf{1.58}$．BDF2 単体の $2.00$ には届かないが，
-        旧 reduced proxy の slope $0.56$ より §14 stack では改善する．
+  \item 観測された最終局所 slope は $\mathbf{1.04}$．BDF2 単体の $2.00$ には届かないが，
+        旧 reduced proxy の slope $0.56$ より改善し，Lie 分割の 1 次下限と整合する．
   \item \textbf{劣化要因の理論分解（Lie splitting 下限と cadence pollution の合算）}：
-    観測 slope $1.58$ への寄与は，主因（dominant）が (2) Lie splitting 理論的下限
+    観測 slope $1.04$ への寄与は，主因（dominant）が (2) Lie splitting 理論的下限
     （asymptotic floor $\sim 1$）と (1) CLS 再初期化 cadence pollution（参照解と粗解で
     総再初期化回数が $n_{\mathrm{ref}}/n_{\mathrm{step}}$ 倍異なる），副因（subdominant）が
     (3) pressure-jump PPE の非線形結合と (4) BDF1 startup 起動誤差である．
@@ -158,24 +158,24 @@ $n_{\mathrm{step}}$ & $\Delta t$ & $\|e\|_\infty$ & 連続比 \\
             実効収束次数は，\textbf{Strang 1968 / Holden--Karlsen--Lie--Risebro 2010 splitting
             理論}~\cite{Strang1968,HoldenKarlsenLieRisebro2010} により
             $\min(\text{component orders}) - 1 = 2 - 1 = 1$ が理論的下限（Lie 分割 1 次誤差）．
-            観測 slope $1.58$ はこの Lie 下限 ($\sim 1$) を実質上回っており，
-            完全な BDF2 単体 ($2.00$) と Lie 下限 ($1$) の中間に位置する
-            \emph{near-optimal coupled-stack regime} と解釈される．
+            観測 slope $1.04$ はこの Lie 下限 ($\sim 1$) に到達しており，
+            完全な BDF2 単体 ($2.00$) ではなく
+            \emph{Lie-limited coupled-stack regime} と解釈される．
       \item \textbf{pressure-jump PPE の非線形結合 (Ax8)}：
             curvature/HFE と jump-decomposition PPE は界面位置と $\epsilon$ に
             非線形依存するため，粗い時間刻みでは $u$ の差が単純な $\Delta t^2$ で
-            減衰しない（連続比 $1.08, 2.99$ の非単調性は startup 域から asymptotic 域への
+            減衰しない（連続比 $1.46, 2.06$ の非単調性は startup 域から asymptotic 域への
             遷移を反映している）．
       \item \textbf{BDF1 startup 起動誤差 (Ax1)}：BDF2 self-starting には初期 1 step が
             BDF1 で計算され $O(\Delta t^2)$ startup 誤差を残す．$T=0.02$, $n=8$ では
             startup 比率 $1/8 = 12.5\%$ で trajectory 全体を $O(\Delta t)$ に
             pollute する余地がある（cf. V1-b H3）．
     \end{enumerate}
-  \item \textbf{Type-D 合格 ($\triangle$, near-optimal)} —
+  \item \textbf{Type-D 合格 ($\triangle$, Lie-limited)} —
         本稿では V7 を「BDF2 単体の純粋次数」ではなく「Lie split 下の coupled-stack
         実効次数」として測定する diagnostic と再定義する．
-        Lie 1 次分割漸近 slope $\sim 1$ を実質上回る $1.58$ は，cadence pollution と
-        TVD--RK3/BDF2 mismatch を含む実装縮約下では \emph{near-optimal} であり，
+        Lie 1 次分割漸近 slope $\sim 1$ と整合する $1.04$ は，cadence pollution と
+        TVD--RK3/BDF2 mismatch を含む実装縮約下では \emph{Lie-limited} であり，
         Strang 化や cadence-time scaling などの構造改良なしには $2.0$ への合格化は
         理論上望めない．これは Type-D（理論的 hard limit; §\ref{sec:verification} の
         Type 分類および表~\ref{tab:V_verdict_types} 参照）として記録する．

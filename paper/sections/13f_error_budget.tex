@@ -32,9 +32,9 @@ V5 は CCD 寄生流れ絶対値 $u_\infty^{\mathrm{end}}$ の $\sigma/\mathrm{R
 V10-a 質量保存軸 / V10-b 質量保存軸は \textbf{Type-B}：
 Olsson--Kreiss mass correction~\cite{OlssonKreiss2005} を 10 step ごとに適用する
 構造的アルゴリズム修正による合格化．
-V7（Lie 1 次分割漸近 slope $\sim 1$ 実質上回り），V10-a 形状軸（slot/h$=6.4$ under-resolution），
+V7（Lie 1 次分割漸近 slope $\sim 1$ と整合），V10-a 形状軸（slot/h$=6.4$ under-resolution），
 V10-b 形状軸（filament 厚 $<h$ Eulerian 固定格子）は \textbf{Type-D}：
-連続方程式・離散構造に由来する theoretical hard limit 上の near-optimal として
+連続方程式・離散構造に由来する theoretical hard limit と整合するものとして
 条件付き合格 ($\triangle$)．これらは格子増強だけで合格化するのではなく，
 仮説除去型の追加検証（norm 切替，項別誤差分解，dt/h 独立 sweep，時系列解析）を
 future verification gate として扱う．
@@ -44,7 +44,7 @@ future verification gate として扱う．
 \begin{table}[!ht]
 \caption{V1--V10：統合精度まとめ}
 \label{tab:v_accuracy_summary}
-\PaperCaptionNote{slope は log-log fitting (3 点以上)；単一値はその設定での代表値． 括弧内は主な誤差源．\textbf{主要指標欄の集約方針}：単軸サブテスト（V1-a/V1-b/V2/V4/V5/V6/V7/V8）は判定キー指標 1 種を集約；複数指標を併記する V3 は default 合格 (paper §13b) のため本表で代表 1 種＋補助メモ；多軸サブテスト V9 は §14 stack の C/A・C/B を併記，V10-a/V10-b は質量保存軸 (Type-B) と形状軸 (Type-D) に分離した独立行とする（計 14 行）．補助観測指標および全観測指標の網羅的列挙は表~\ref{tab:V_summary} を参照．\textbf{Type ラベル不在行}（V3, V6, V8）は当初の設計基準（design criterion）をそのまま満たした合格であり，表~\ref{tab:V_verdict_types} の Type-A/B/D 再分類経路を経ない default 合格を示す． V9 は §14 stack（FCCD/HFE/pressure-jump PPE）との同時採用を条件とする conditional \checkmark であり，design criterion default 合格・Type-A/B/D 再分類のいずれとも独立した第四カテゴリ（§14 stack 条件付き合格）に属する（本節の判定論理は§\ref{sec:error_budget} 末尾「§14 stack 条件付き合格」項目を参照）．}
+\PaperCaptionNote{slope は log-log fitting (3 点以上)；単一値はその設定での代表値． 括弧内は主な誤差源．\textbf{主要指標欄の集約方針}：単軸サブテスト（V1-a/V1-b/V2/V4/V5/V6/V7/V8）は判定キー指標 1 種を集約；複数指標を併記する V3 は default 合格 (paper §13b) のため本表で代表 1 種＋補助メモ；多軸サブテスト V9 は §14 stack の nominal/local switch と体積 drift を併記，V10-a/V10-b は質量保存軸 (Type-B) と形状軸 (Type-D) に分離した独立行とする（計 14 行）．補助観測指標および全観測指標の網羅的列挙は表~\ref{tab:V_summary} を参照．\textbf{Type ラベル不在行}（V3, V6, V8）は当初の設計基準（design criterion）をそのまま満たした合格であり，表~\ref{tab:V_verdict_types} の Type-A/B/D 再分類経路を経ない default 合格を示す． V9 は §14 stack（FCCD/HFE/pressure-jump PPE）との同時使用を条件とする switch 診断 \checkmark であり，design criterion default 合格・Type-A/B/D 再分類のいずれとも独立した第四カテゴリ（§14 stack 条件付き診断）に属する（本節の判定論理は§\ref{sec:error_budget} 末尾「§14 stack 条件付き診断」項目を参照）．}
 \centering
 \PaperTableDenseSetup
 \begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.09\linewidth}>{\raggedright\arraybackslash}p{0.19\linewidth}>{\raggedright\arraybackslash}p{0.22\linewidth}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{0.14\linewidth}@{}}
@@ -56,15 +56,15 @@ V1-b & 単相 TGV 時間 (standard PPE) & slope($E_{\mathrm{rel}}, \Delta t$) & 
 V2 & Kovasznay CCD 空間残差 & slope($\|R\|_\infty, h$) & $\mathbf{3.95}$ \checkmark (Type-A) & wall residual $O(h^4)$ \\
 V3   & 静止液滴 long-term ($n=200$) & $|\Delta p_{\mathrm{rel}}|$ at $N=128$; $u_\infty^{\max}$ 定性スケール確認 & $0.97\%$ \checkmark & — \\
 V4   & Galilean offset 残差 & $\|\Delta u\|_\infty^{\max}/\|\bm U\|$ & $2.63$ \checkmark (Type-A; 運用上限 $<3$) & $O(1)$ 正規化残差 \\
-V5   & 寄生流れ 200 step (CCD 主) & CCD $u_\infty^{\mathrm{end}}$ at $\rho_r=1, N=32$ & $1.76\!\times\!10^{-2}$ \checkmark (Type-A; FD 比 $1/5.85$ 補助) & — \\
-V6   & 密度比 sweep ($\rho_r{=}2..833$) & ブローアップなし; $|\Delta V_\psi|/V_{\psi,0}$ & 全 8 ケース安定; $\le 2.4\!\times\!10^{-10}$ \checkmark（補助: $|\Delta p_{\mathrm{corr}}|/(\sigma/r){=}1.07\!\times\!10^{-1}$） & — \\
-V7   & IMEX-BDF2 二相時間 (§14) & slope($\|e\|_\infty, \Delta t$) & $\mathbf{1.58}$ ($\triangle$ Type-D; Lie 1 次分割漸近 slope $\sim 1$ 実質上回り) & $O(\Delta t^2)$ \\
-V8   & 非一様 NS 静止 ($\alpha=2$) & $|\Delta p_{\mathrm{rel}}|$ at $N=96$ & $2.75\%$ \checkmark & — \\
-V9   & local $\varepsilon$ (§14) & C/A, C/B at $N=32$ & C/A=$0.11$, C/B=$0.15$ ($\checkmark$) & — \\
-V10-a-mass & Zalesak ($\alpha=1$) 質量保存軸 & mass drift at $N=128$ (Olsson--Kreiss corr.) & $6.13\!\times\!10^{-4}\%$ \checkmark (Type-B) & — \\
-V10-a-shape & Zalesak ($\alpha=1$) 形状軸 & centroid err / shape $L^1$ at $N=128$ & $4.911\!\times\!10^{-3}$ / $8.345\!\times\!10^{-3}$ ($\triangle$ Type-D, slot/h$=6.4$) & — \\
-V10-b-mass & 単一渦 reversal ($\alpha=1, N=128, T=8$) 質量保存軸 & mass drift (Olsson--Kreiss corr.) & $0.0936\%$ \checkmark (Type-B) & — \\
-V10-b-shape & 単一渦 reversal ($\alpha=1, N=128, T=8$) 形状軸 & $L^1$ reversal error & $2.690\times10^{-2}$ ($\triangle$ Type-D, filament$<h$) & — \\
+V5   & 寄生流れ 200 step (CCD 主) & CCD $u_\infty^{\mathrm{end}}$ at $\rho_r=1, N=32$ & $1.93\!\times\!10^{-2}$ \checkmark (Type-A; FD 比 $1/5.44$ 補助) & — \\
+V6   & 密度比 sweep ($\rho_r{=}2..833$) & ブローアップなし; $|\Delta V_\psi|/V_{\psi,0}$ & 全 8 ケース安定; $\le 6.4\!\times\!10^{-16}$ \checkmark（補助: $|\Delta p_{\mathrm{corr}}|/(\sigma/r){=}0.73$--$1.00$） & — \\
+V7   & IMEX-BDF2 二相時間 (§14) & slope($\|e\|_\infty, \Delta t$) & $\mathbf{1.04}$ ($\triangle$ Type-D; Lie 1 次分割漸近 slope $\sim 1$ と整合) & BDF2単体 $O(\Delta t^2)$ \\
+V8   & 非一様 NS 静止 ($\alpha=2$) & $|\Delta p_{\mathrm{rel}}|$ at $N=96$ & $2.86\%$ \checkmark & — \\
+V9   & nominal/local $\varepsilon$ (§14) & B/C, $|\Delta V|/V_0$ at $N=32$ & B/C=$1.00$, C/A=$2.36$; $\le 9.16\!\times\!10^{-8}$ ($\checkmark$) & — \\
+V10-a-mass & Zalesak ($\alpha=1$) 質量保存軸 & mass drift at $N=128$ (Olsson--Kreiss corr.) & $4.70\!\times\!10^{-4}\%$ \checkmark (Type-B) & — \\
+V10-a-shape & Zalesak ($\alpha=1$) 形状軸 & centroid err / shape $L^1$ at $N=128$ & $4.911\!\times\!10^{-3}$ / $8.307\!\times\!10^{-3}$ ($\triangle$ Type-D, slot/h$=6.4$) & — \\
+V10-b-mass & 単一渦 reversal ($\alpha=1, N=128, T=8$) 質量保存軸 & mass drift (Olsson--Kreiss corr.) & $0.0428\%$ \checkmark (Type-B) & — \\
+V10-b-shape & 単一渦 reversal ($\alpha=1, N=128, T=8$) 形状軸 & $L^1$ reversal error & $2.248\times10^{-2}$ ($\triangle$ Type-D, filament$<h$) & — \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -76,22 +76,24 @@ V10-b-shape & 単一渦 reversal ($\alpha=1, N=128, T=8$) 形状軸 & $L^1$ reve
         revised criterion $O(h^4)$ を満たす．TGV では時間誤差床下に到達するため空間 slope は飽和．
   \item \textbf{時間離散誤差}．単相 NS の AB2 predictor は単体 $O(\Delta t^2)$ 設計だが，
         V1-b script は standard projection 結合を測るため，合格基準は $O(\Delta t)$ trend である．
-        二相結合では界面再初期化 + 曲率の陽的遅れ評価で coupled-stack 実効 $O(\Delta t^{1.58})$
-        （V7; \autoref{sec:imex_bdf2_twophase_time}）まで回復するが，純粋 BDF2 2 次には未達．
-  \item \textbf{界面表現誤差}．Heaviside--$\delta$ の local $\varepsilon$ は
-        FCCD/HFE/pressure-jump PPE と同時に使う条件で有効（V9）；
+        二相結合では界面輸送・再初期化・pressure-jump PPE の Lie 分割で coupled-stack 実効
+        slope $1.04$（V7; \autoref{sec:imex_bdf2_twophase_time}）となり，
+        純粋 BDF2 2 次ではなく splitting 下限と整合する．
+  \item \textbf{界面表現誤差}．Heaviside--$\delta$ の nominal/local $\varepsilon$ switch は
+        FCCD/HFE/pressure-jump PPE と同時に使う条件で短時間安定（V9）；
+        ただし現行 direct-$\psi$/HFE probe では B/C が同一で，local mode を改善 lever とは主張しない．
         旧 CCD/CSF 経路の結果は §14 stack の根拠から除外する．
   \item \textbf{曲率推定誤差}．V5 では CSF $\kappa$ + CCD 勾配の
-        $u_\infty^{\mathrm{end}}$ 絶対値が全表ケースで $\sigma/\mathrm{Re}_c$ 寄生流れスケール
-        $\sim 10^{-2}$ を上回らず，参照として FD 値を全条件で下回る．
+        $u_\infty^{\mathrm{end}}$ 絶対値が全表ケースで $2\times10^{-2}$ 以下に保たれ，
+        参照として FD 値を全条件で下回る．
         粗格子・低密度比ほど CCD/FD の差は大きい．
   \item \textbf{CLS 形状追跡誤差（質量保存軸 vs 形状精度軸の分離）}．V10 の Zalesak は
         $\alpha=1$ の一様格子診断に固定する．Olsson--Kreiss mass correction~\cite{OlssonKreiss2005}
-        を 10 step ごとに適用した結果，$N=128$ で mass drift $6.13\times 10^{-4}\%$（合格基準
+        を 10 step ごとに適用した結果，$N=128$ で mass drift $4.70\times 10^{-4}\%$（合格基準
         $0.5\%$ を 3 桁下回り \checkmark）に到達する一方，centroid err $4.911\times 10^{-3}$,
-        shape $L^1$ $8.345\times 10^{-3}$, centroid order $\approx 1.18$ は slot/h $=6.4$ の
+        shape $L^1$ $8.307\times 10^{-3}$, centroid order $\approx 1.22$ は slot/h $=6.4$ の
         sharp-corner under-resolution に律速される．単一渦 (V10-b) も同質量修正下で
-        mass drift $0.0936\%$ \checkmark / $L^1$ reversal $2.690\times10^{-2}$ ($T=8$ filament
+        mass drift $0.0428\%$ \checkmark / $L^1$ reversal $2.248\times10^{-2}$ ($T=8$ filament
         厚 $<h$ の Eulerian 固定一様格子における理論的下限~\cite{EnrightFedkiwFerzigerMitchell2002}) と
         同じく\textbf{保存軸 \checkmark / 形状軸 $\triangle$} の二軸構造を取る．
   \item \textbf{判定軸の分離}．V7/V10 系は単一の設計次数だけで判定せず，
@@ -103,29 +105,29 @@ V10-b-shape & 単一渦 reversal ($\alpha=1, N=128, T=8$) 形状軸 & $L^1$ reve
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item \checkmark \textbf{合格（design criterion）}:
         V3 (BF 平衡，$|\Delta p_{\mathrm{rel}}|=0.97\%$ at $N=128$)，
-        V6 (密度比ロバスト, $\rho_r=833$ までブローアップなし; $|\Delta V_\psi|/V_{\psi,0} \le 2.4\!\times\!10^{-10}$)，
-        V8 (非一様静止, $\alpha=2,N=96$ で $|\Delta p_{\mathrm{rel}}|=2.75\%$).
+        V6 (密度比ロバスト, $\rho_r=833$ までブローアップなし; $|\Delta V_\psi|/V_{\psi,0} \le 6.4\!\times\!10^{-16}$)，
+        V8 (非一様静止, $\alpha=2,N=96$ で $|\Delta p_{\mathrm{rel}}|=2.86\%$).
   \item \checkmark \textbf{Type-A revised criterion 合格}:
         V1-a (TGV 空間 FVM PPE $O(h^2)$ trend, finest local slope $2.00$；補助: $E_{\mathrm{rel}}=1.583\!\times\!10^{-7}$ at $N=64$)，
         V1-b (standard projection 結合 $O(\Delta t)$ trend, slope $1.00$)，
         V2 (Kovasznay wall residual $O(h^4)$ trend, slope $3.95$)，
         V4 (fixed-wall offset $O(\|\bm U\|)$ bounded residual, $\|\Delta u\|_\infty^{\max}/\|\bm U\| = 2.63$)，
-        V5 (CCD 寄生流れ絶対値 $\le 1.76\!\times\!10^{-2}$ at $\rho_r=1, N=32$).
+        V5 (CCD 寄生流れ絶対値 $1.93\!\times\!10^{-2}$ at $\rho_r=1, N=32$).
   \item \checkmark \textbf{Type-B 構造修正 合格}:
-        V10-a 質量保存軸 (Olsson--Kreiss mass correction; $N=128$ mass drift $6.13\!\times\!10^{-4}\%$)，
-        V10-b 質量保存軸 (同; $0.0936\%$).
-  \item $\triangle$ \textbf{Type-D 理論的下限上 near-optimal}:
-        V7 (二相 coupled-stack 実効 slope $1.58$ — TVD--RK3 / IMEX-BDF2 の Lie 1 次分割
-        漸近 slope $\sim 1$~\cite{Strang1968,HoldenKarlsenLieRisebro2010} を実質上回る near-optimal;
-        旧 reduced proxy slope $0.56$ より大幅改善),
+        V10-a 質量保存軸 (Olsson--Kreiss mass correction; $N=128$ mass drift $4.70\!\times\!10^{-4}\%$)，
+        V10-b 質量保存軸 (同; $0.0428\%$).
+  \item $\triangle$ \textbf{Type-D 理論的下限との整合}:
+        V7 (二相 coupled-stack 実効 slope $1.04$ — TVD--RK3 / IMEX-BDF2 の Lie 1 次分割
+        漸近 slope $\sim 1$~\cite{Strang1968,HoldenKarlsenLieRisebro2010} と整合),
         V10-a 形状軸 ($\alpha=1$ Zalesak centroid err $4.911\times 10^{-3}$,
-        shape $L^1$ $8.345\times 10^{-3}$ — slot/h $=6.4$ sharp-corner under-resolution 律速),
-        V10-b 形状軸 ($T=8$ 単一渦 reversal $L^1=2.690\times10^{-2}$
+        shape $L^1$ $8.307\times 10^{-3}$ — slot/h $=6.4$ sharp-corner under-resolution 律速),
+        V10-b 形状軸 ($T=8$ 単一渦 reversal $L^1=2.248\times10^{-2}$
         — filament 厚 $<h$ の Eulerian 固定格子原理的下限~\cite{EnrightFedkiwFerzigerMitchell2002}).
   \item $\times$ \textbf{要改善 / 推奨せず}: 該当なし（V7 は §14 stack 化により $\times$ 区分から $\triangle$ Type-D 区分へ移動済）.
-  \item \checkmark \textbf{§14 stack 条件付き合格}: V9
-        (local $\varepsilon$ は $N=32$ で C/A=$0.11$，C/B=$0.15$；
-        HFE curvature + pressure-jump PPE と同時採用する).
+  \item \checkmark \textbf{§14 stack 条件付き診断}: V9
+        (nominal/local $\varepsilon$ switch は $N=32$ で B/C=$1.00$，C/A=$2.36$；
+        HFE curvature + pressure-jump PPE と同時採用しても短時間静止液滴を破綻させないが，
+        local mode の改善効果はこの縮約 probe では主張しない).
 \end{itemize}
 
 \paragraph{設計指針 (PR-5 Algorithm Fidelity)．}
@@ -136,13 +138,14 @@ V10-b-shape & 単一渦 reversal ($\alpha=1, N=128, T=8$) 形状軸 & $L^1$ reve
   \item 二相 NS：分相 PPE + DC + HFE 構成が密度比 $\le 833$ でロバスト（V6）．
         ただし時間方向の実効次数は界面処理に律速されるため，
         \textbf{$\Delta t$ を $h_{\min}$ より小さく取る安全ファクタ}（CFL $\le 0.4$）が推奨．
-  \item 非一様格子：$\alpha>1$ の NS 静止問題と local $\varepsilon$ は V8/V9 で検証し，
+  \item 非一様格子：$\alpha>1$ の NS 静止問題と nominal/local $\varepsilon$ switch は V8/V9 で検証し，
         Zalesak slot と単一渦 reversal は $\alpha=1$ の一様格子 CLS 移流診断に固定する．
-        local $\varepsilon$ は §14 stack と同時に採用し，2D snapshot 診断で hot spot を確認する．
+        local mode を改善根拠として採用するには，移動界面または reinitialization が local thickness を
+        実際に経由する追加 gate を要求する．
   \item 寄生流れ抑制：CCD の $u_\infty^{\mathrm{end}}$ 絶対値は V5 全表ケースで
-        $\sigma/\mathrm{Re}_c$ 寄生流れスケール $\sim 10^{-2}$ を超えず，代表的には
-        $\rho_r=1,N=32$ で $1.76\!\times\!10^{-2}$，$\rho_r=1,N=128$ で $6.27\!\times\!10^{-4}$．
-        参照として FD 値を全条件で下回り（$\rho_r=1,N=32$ で $1/5.85$，
+        $O(10^{-2})$ 以下に保たれ，代表的には
+        $\rho_r=1,N=32$ で $1.93\!\times\!10^{-2}$，$\rho_r=1,N=128$ で $6.28\!\times\!10^{-4}$．
+        参照として FD 値を全条件で下回り（$\rho_r=1,N=32$ で $1/5.44$，
         $\rho_r=100,N=64$ で $1/2.5$），高解像度・高密度比では CCD/FD 差が縮小する．
 \end{itemize}
 \paragraph{検証対応の統合．}
@@ -163,8 +166,8 @@ V10-b-shape & 単一渦 reversal ($\alpha=1, N=128, T=8$) 形状軸 & $L^1$ reve
         DC + HFE に対する密度比安定性と二相時間精度．
   \item V8 (\autoref{sec:nonuniform_ns_static}) — 非一様 NS に対する静止液滴
         $\Delta p_{\mathrm{rel}}$ 維持．
-  \item V9 (\autoref{sec:local_eps_validation}) — local $\varepsilon$ に対する
-        寄生流れ抑制と体積分率 drift．
+  \item V9 (\autoref{sec:local_eps_validation}) — nominal/local $\varepsilon$ switch に対する
+        寄生流れ，体積分率 drift，および B/C 同一性．
   \item V10-a (\autoref{sec:zalesak_cls_advection}) — Zalesak CLS 移流に対する
         mass drift と centroid 追跡精度（質量保存軸 / 形状軸の二軸構造）．
   \item V10-b (\autoref{sec:single_vortex_reversal}) — 単一渦 deformation
