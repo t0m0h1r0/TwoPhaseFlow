@@ -38,7 +38,7 @@ parent `.venv` plus `PYTHONPATH=src`.
 - V6 remains stable for all 8 density-ratio cases. The updated pressure-corrector diagnostic is `1.49--2.01`; the finest water-air case gives `u_final=2.421e-04`, and CLS volume drift remains at round-off floor (`<=6.4e-16`).
 - V7 finest local slope changed from `1.04` to `1.48`. The paper now records this as a splitting/cadence-limited coupled-stack regime: above the Lie first-order lower bound but still below standalone BDF2 order `2.0`.
 - V9 remains a no-regression switch diagnostic. B/C are still identical; at `N=32`, A/B/C are effectively equal (`C/A=1.00`, `C/B=1.00`), and max volume drift is now `3.79e-08`.
-- Conclusion cross-references for V10-b were also synchronized to the already-current Chapter 13 table values: mass drift `0.0428%`, reversal `L^1=2.248e-02`.
+- Conclusion cross-references were also synchronized to the already-current Chapter 13 table values for V5/V6/V8/V9/V10-a/V10-b, including V10-b mass drift `0.0428%` and reversal `L^1=2.248e-02`.
 
 ## Paper/Figure Updates
 
