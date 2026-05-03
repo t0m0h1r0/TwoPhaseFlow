@@ -1,6 +1,6 @@
-# Wiki Index — 276 entries
+# Wiki Index — 279 entries
 
-## Theory (116)
+## Theory (119)
 
 | REF-ID | Title |
 |--------|-------|
@@ -120,6 +120,9 @@
 | [WIKI-T-114](theory/WIKI-T-114.md) | Reinitialization Mass Conservation Changes Measure on Nonuniform Grids |
 | [WIKI-T-115](theory/WIKI-T-115.md) | M(tau) Is a Reinit Call Gate, Not an Error Norm |
 | [WIKI-T-116](theory/WIKI-T-116.md) | Iterative Eikonal Stopping Rules Do Not Apply to One-Shot Ridge-Eikonal |
+| [WIKI-T-117](theory/WIKI-T-117.md) | CCD Sixth Order Comes from Coupling f-prime and f-double-prime Unknowns |
+| [WIKI-T-118](theory/WIKI-T-118.md) | CCD Local Truncation and Spectral Error Coefficients Are Different Objects |
+| [WIKI-T-119](theory/WIKI-T-119.md) | UCCD6 Hyperviscosity Exponent 7 Is the Minimal Order-Preserving Choice |
 
 ## Cross-Domain (39)
 
