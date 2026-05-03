@@ -63,8 +63,11 @@ future scan does not misclassify valid RCA evidence as a stale primary result.
   `界面追跡なし`, `TVD--RK3`, `IMEX--BDF2`, `EXT2--AB2`, `AB2+IPC`, raw
   `\bm{x}` / `\bm x` / `\bm{u}` / `\bm u` / `\bm U`, and `\epsilon`.
 - `make -C paper` PASS; output `paper/main.pdf`, 244 pages.
-- Remaining log notes observed: pre-existing underfull hbox in
-  `sections/09f_pressure_summary.tex:57` and Chapter 12 float-only page warning.
+- Follow-up warning cleanup PASS: `sections/09f_pressure_summary.tex:57`
+  underfull hbox removed by ragged-right table cells; Chapter 12 U1
+  float-only page warning removed by changing U1 floats to `[htbp]`.
+- Final `main.log` scan PASS: no `Underfull \hbox`, `Overfull \hbox`,
+  `Text page`, or `LaTeX Warning`.
 
 ## SOLID-X
 
