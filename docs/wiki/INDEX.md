@@ -1,6 +1,6 @@
-# Wiki Index — 264 entries
+# Wiki Index — 267 entries
 
-## Theory (104)
+## Theory (107)
 
 | REF-ID | Title |
 |--------|-------|
@@ -108,6 +108,9 @@
 | [WIKI-T-102](theory/WIKI-T-102.md) | Viscous Helmholtz DC Shares Coefficients, Boundaries, and Interface Bands |
 | [WIKI-T-103](theory/WIKI-T-103.md) | Time-Step Limits Are Per-Term: Capillary Is Physical, PPE Is Projective |
 | [WIKI-T-104](theory/WIKI-T-104.md) | One-Step Algorithm Freezes Geometry and Material State Before Projection |
+| [WIKI-T-105](theory/WIKI-T-105.md) | Failure Modes Are Coupled Symptoms, Not Module Labels |
+| [WIKI-T-106](theory/WIKI-T-106.md) | Diffuse Interface Width Has Operational Bands |
+| [WIKI-T-107](theory/WIKI-T-107.md) | One-Fluid CSF Absorbs the Stress Jump as a Weak-Form Body Force |
 
 ## Cross-Domain (39)
 
