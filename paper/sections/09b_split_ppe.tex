@@ -311,6 +311,25 @@ $\Phi_g\bnabla\rho'$ を面残差として評価する場合も，
 したがって「同じメトリック」だけでは不十分であり，
 \textbf{同じ面係数・同じ面勾配・同じ面発散}まで含めて投影閉包と呼ぶ．
 
+同じ理由により，射影後の界面移流も節点速度に戻してから再度 face flux を
+作ってはならない．式~\eqref{eq:same_face_projection_closure} で得た
+発散零の正準面速度 $\bu_f^{n+1}$ を，CLS の保存形更新に直接渡す：
+\begin{equation}
+  \psi^{n+1}
+  = \mathrm{RK3}\!\left[
+      \psi^n;\,
+      -D_f\!\left((P_f\psi)\,\bu_f^{n+1}\right)
+    \right].
+  \label{eq:projection_native_psi_transport}
+\end{equation}
+ここで $P_f$ は FCCD face value 演算子であり，
+$D_f$ は PPE/projection と同じ face divergence である．
+節点再構成 $\bu_i=\mathcal{R}(\bu_f)$ は可視化や節点場の物性評価には用いてよいが，
+界面保存則のフラックス源ではない．この区別を失うと，
+$D_f\bu_f^{n+1}=0$ を満たす速度場から，離散的に非同一な
+$D_f(P_f\psi\,P_f\mathcal{R}\bu_f)$ を再生成することになり，
+静止 Young--Laplace 界面に人工的な $\psi$ 摂動を注入する．
+
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{GFM ゴーストジェットによる相間接続}
 \label{sec:gfm_ghost_jet_connection}
