@@ -1,6 +1,6 @@
-# Wiki Index — 247 entries
+# Wiki Index — 251 entries
 
-## Theory (96)
+## Theory (100)
 
 | REF-ID | Title |
 |--------|-------|
@@ -100,6 +100,10 @@
 | [WIKI-T-094](theory/WIKI-T-094.md) | Non-Uniform Metrics Need a Single Geometric Source of Truth |
 | [WIKI-T-095](theory/WIKI-T-095.md) | Non-Uniform FCCD Order Has a Face-Centrality Gate |
 | [WIKI-T-096](theory/WIKI-T-096.md) | Regridding Requires Conservative Remap, History Reset, and Face Rebuild |
+| [WIKI-T-097](theory/WIKI-T-097.md) | Pressure Jump Must Match the Solved Unknown |
+| [WIKI-T-098](theory/WIKI-T-098.md) | Jump-Corrected Face Gradients Have One Global Gauge |
+| [WIKI-T-099](theory/WIKI-T-099.md) | HFE Extends Smooth One-Sided Fields, Not Pressure-History Contracts |
+| [WIKI-T-100](theory/WIKI-T-100.md) | Pressure-Jump Closure Solves Jump Absorption, Not Every Capillary Limit |
 
 ## Cross-Domain (39)
 
