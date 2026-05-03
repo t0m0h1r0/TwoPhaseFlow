@@ -1,6 +1,6 @@
-# Wiki Index — 265 entries
+# Wiki Index — 295 entries
 
-## Theory (104)
+## Theory (131)
 
 | REF-ID | Title |
 |--------|-------|
@@ -108,6 +108,33 @@
 | [WIKI-T-102](theory/WIKI-T-102.md) | Viscous Helmholtz DC Shares Coefficients, Boundaries, and Interface Bands |
 | [WIKI-T-103](theory/WIKI-T-103.md) | Time-Step Limits Are Per-Term: Capillary Is Physical, PPE Is Projective |
 | [WIKI-T-104](theory/WIKI-T-104.md) | One-Step Algorithm Freezes Geometry and Material State Before Projection |
+| [WIKI-T-105](theory/WIKI-T-105.md) | Failure Modes Are Coupled Symptoms, Not Module Labels |
+| [WIKI-T-106](theory/WIKI-T-106.md) | Diffuse Interface Width Has Operational Bands |
+| [WIKI-T-107](theory/WIKI-T-107.md) | One-Fluid CSF Absorbs the Stress Jump as a Weak-Form Body Force |
+| [WIKI-T-108](theory/WIKI-T-108.md) | Logit Inversion Is a Diagnostic Bridge, Not a Curvature Prerequisite |
+| [WIKI-T-109](theory/WIKI-T-109.md) | Direct psi Curvature Is Interface-Band Only |
+| [WIKI-T-110](theory/WIKI-T-110.md) | epsilon_eff Is a Profile-Quality Sensor, Not a New Width Parameter |
+| [WIKI-T-111](theory/WIKI-T-111.md) | xi_ridge Intentionally Violates Eikonal to Carry Topology |
+| [WIKI-T-112](theory/WIKI-T-112.md) | Ridge Seeds Cannot Be Promoted by Proximity Alone |
+| [WIKI-T-113](theory/WIKI-T-113.md) | Ridge-Eikonal Admissibility Is Four Conditions, Not Just FMM |
+| [WIKI-T-114](theory/WIKI-T-114.md) | Reinitialization Mass Conservation Changes Measure on Nonuniform Grids |
+| [WIKI-T-115](theory/WIKI-T-115.md) | M(tau) Is a Reinit Call Gate, Not an Error Norm |
+| [WIKI-T-116](theory/WIKI-T-116.md) | Iterative Eikonal Stopping Rules Do Not Apply to One-Shot Ridge-Eikonal |
+| [WIKI-T-117](theory/WIKI-T-117.md) | CCD Sixth Order Comes from Coupling f-prime and f-double-prime Unknowns |
+| [WIKI-T-118](theory/WIKI-T-118.md) | CCD Local Truncation and Spectral Error Coefficients Are Different Objects |
+| [WIKI-T-119](theory/WIKI-T-119.md) | UCCD6 Hyperviscosity Exponent 7 Is the Minimal Order-Preserving Choice |
+| [WIKI-T-120](theory/WIKI-T-120.md) | Face Jet Has Mixed Accuracy by Design |
+| [WIKI-T-121](theory/WIKI-T-121.md) | Face Jet Is a Public Contract, Not a Current Implementation Detail |
+| [WIKI-T-122](theory/WIKI-T-122.md) | FCCD Balanced-Force Fourth Order Requires a Smooth Constructive Relation |
+| [WIKI-T-123](theory/WIKI-T-123.md) | Term-Specific Discretization Is a Regularity Contract |
+| [WIKI-T-124](theory/WIKI-T-124.md) | TVD-RK3 Label Does Not Guarantee TVD for the FCCD Space Operator |
+| [WIKI-T-125](theory/WIKI-T-125.md) | IMEX-BDF2 Predictor Uses Projected History, Not Star Velocity |
+| [WIKI-T-126](theory/WIKI-T-126.md) | Defect Correction Accuracy Lives in the High-Order Residual |
+| [WIKI-T-127](theory/WIKI-T-127.md) | Viscous DC Low-Order Operator Must Share mu, rho, Boundaries, and Bands |
+| [WIKI-T-128](theory/WIKI-T-128.md) | Balanced Buoyancy Removes Hydrostatic Work Before Prediction |
+| [WIKI-T-129](theory/WIKI-T-129.md) | Variable-Density PPE Is a Pressure-Increment Equation in IPC |
+| [WIKI-T-130](theory/WIKI-T-130.md) | Nonuniform Projection Requires a Face-Adjoint Gradient Pair |
+| [WIKI-T-131](theory/WIKI-T-131.md) | HFE Is Mandatory Only When the Solved Pressure Field Has a Jump |
 
 ## Cross-Domain (40)
 
@@ -154,7 +181,7 @@
 | [WIKI-X-039](cross-domain/WIKI-X-039.md) | Affine Jump Interface Stress: Oriented Young--Laplace Contract and ch14 Root Cause |
 | [WIKI-X-040](cross-domain/WIKI-X-040.md) | Recent Research Insight Digest: 2026-04-24 to 2026-05-03 |
 
-## Experiment (43)
+## Experiment (46)
 
 | REF-ID | Title |
 |--------|-------|
@@ -202,6 +229,9 @@
 | [WIKI-E-041](experiment/WIKI-E-041.md) | V7 Coupled-Stack Slope Is Interface-Band Limited, Not BDF2 Failure |
 | [WIKI-E-042](experiment/WIKI-E-042.md) | V10 Splits Mass Success from Shape Hard Limits |
 | [WIKI-E-043](experiment/WIKI-E-043.md) | V9 Local-Epsilon Switch Is a No-Regression Stack Diagnostic |
+| [WIKI-E-044](experiment/WIKI-E-044.md) | U1 Is an Operator-Family Contract, Not a Single CCD Test |
+| [WIKI-E-045](experiment/WIKI-E-045.md) | U3 Separates Nonuniform Operator Order from Metric Guardrails |
+| [WIKI-E-046](experiment/WIKI-E-046.md) | U4 Distinguishes HJ Gradient Recovery from DGR Width Closure |
 
 ## Paper (14)
 
