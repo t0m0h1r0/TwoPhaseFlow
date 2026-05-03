@@ -65,6 +65,10 @@ def _reinit_every(variant: str, n_steps: int) -> int:
         return 0
     if variant == "static_interface":
         return 0
+    if variant == "static_no_capillary":
+        return 0
+    if variant == "uniform_static_no_capillary":
+        return 0
     raise ValueError(f"unknown variant {variant!r}")
 
 
@@ -73,22 +77,36 @@ def _reinit_count(n_steps: int, every: int) -> int:
 
 
 def _case_config(n_steps: int, variant: str):
+    rho_l = RHO_L
+    rho_g = RHO_G
+    mu_l = MU_L
+    mu_g = MU_G
+    sigma = SIGMA
+    if variant in {"static_no_capillary", "uniform_static_no_capillary"}:
+        sigma = 0.0
+    if variant == "uniform_static_no_capillary":
+        rho_l = rho_g = 1.0
+        mu_l = mu_g = MU_L
     cfg = ch14_circle_config(
         N=N_GRID,
         out_dir=OUT,
         radius=R,
         center=CENTER,
-        rho_l=RHO_L,
-        rho_g=RHO_G,
-        mu_l=MU_L,
-        mu_g=MU_G,
-        sigma=SIGMA,
+        rho_l=rho_l,
+        rho_g=rho_g,
+        mu_l=mu_l,
+        mu_g=mu_g,
+        sigma=sigma,
         max_steps=n_steps,
         final_time=T_FINAL,
         dt=T_FINAL / n_steps,
         reinit_every=_reinit_every(variant, n_steps),
     )
-    if variant == "static_interface":
+    if variant in {
+        "static_interface",
+        "static_no_capillary",
+        "uniform_static_no_capillary",
+    }:
         cfg.run.interface_tracking_enabled = False
         cfg.run.interface_tracking_method = "none"
     return cfg
@@ -169,7 +187,14 @@ def _variant_rows(runs: list[dict]) -> list[dict]:
 
 
 def run_all() -> dict:
-    variants = ("each_step", "fixed_reinit_count", "no_reinit", "static_interface")
+    variants = (
+        "each_step",
+        "fixed_reinit_count",
+        "no_reinit",
+        "static_interface",
+        "static_no_capillary",
+        "uniform_static_no_capillary",
+    )
     all_runs: dict[str, list[dict]] = {}
     all_rows: dict[str, list[dict]] = {}
     for variant in variants:
