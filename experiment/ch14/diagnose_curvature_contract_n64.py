@@ -131,9 +131,15 @@ def _record_curvature(rows: list[dict[str, float]]):
     def wrapped_surface_stage(state, **kwargs):
         state = original_surface(state, **kwargs)
         backend = kwargs["backend"]
+        ccd = kwargs["ccd"]
         grid = kwargs["grid"]
         psi = _host(backend, state.psi)
         kappa = _host(backend, state.kappa)
+        grad_components = []
+        for axis in range(psi.ndim):
+            grad_axis, _ = ccd.differentiate(state.psi, axis)
+            grad_components.append(_host(backend, grad_axis))
+        grad_norm = np.sqrt(sum(component * component for component in grad_components))
         coords = (
             np.asarray(grid.coords[0], dtype=float),
             np.asarray(grid.coords[1], dtype=float),
@@ -144,6 +150,7 @@ def _record_curvature(rows: list[dict[str, float]]):
         band_kappa = kappa[band]
         kappa_error = band_kappa - EXPECTED_KAPPA
         face_kappa, face_radius, face_angle = _cut_face_geometry(psi, kappa, coords)
+        face_grad_norm, _, _ = _cut_face_geometry(psi, grad_norm, coords)
         face_error = face_kappa - EXPECTED_KAPPA
         row = {
             "step": float(state.step_index),
@@ -170,6 +177,10 @@ def _record_curvature(rows: list[dict[str, float]]):
             "cut_face_radius_mean": float(np.mean(face_radius)),
             "cut_face_radius_std": float(np.std(face_radius)),
             "cut_face_radius_error_max": float(np.max(np.abs(face_radius - 0.25))),
+            "cut_face_grad_norm_mean": float(np.mean(face_grad_norm)),
+            "cut_face_grad_norm_std": float(np.std(face_grad_norm)),
+            "cut_face_grad_norm_min": float(np.min(face_grad_norm)),
+            "cut_face_grad_norm_max": float(np.max(face_grad_norm)),
         }
         for mode in ANGULAR_MODES:
             row[f"radius_m{mode}_amplitude"] = _radius_mode_amplitude(
@@ -221,7 +232,7 @@ def main() -> None:
                 "step={:.0f}, kappa_mean={:.6e}, kappa_std={:.6e}, "
                 "kappa_error_rms={:.6e}, jump_std={:.6e}, "
                 "cut_face_kappa_mean={:.6e}, cut_face_kappa_std={:.6e}, "
-                "r_std={:.6e}, r_m16={:.6e}".format(
+                "r_std={:.6e}, r_m16={:.6e}, grad_min={:.6e}".format(
                     data["step"][index],
                     data["kappa_mean"][index],
                     data["kappa_std"][index],
@@ -231,6 +242,7 @@ def main() -> None:
                     data["cut_face_kappa_std"][index],
                     data["cut_face_radius_std"][index],
                     data["radius_m16_amplitude"][index],
+                    data["cut_face_grad_norm_min"][index],
                 )
             )
         return
@@ -247,7 +259,7 @@ def main() -> None:
         "initial kappa_mean={:.6e}, std={:.6e}, jump_std={:.6e}; "
         "final kappa_mean={:.6e}, std={:.6e}, jump_std={:.6e}; "
         "final cut_face_mean={:.6e}, cut_face_std={:.6e}; "
-        "final r_std={:.6e}, r_m16={:.6e}".format(
+        "final r_std={:.6e}, r_m16={:.6e}, grad_min={:.6e}".format(
             first["kappa_mean"],
             first["kappa_std"],
             first["jump_std"],
@@ -258,6 +270,7 @@ def main() -> None:
             final["cut_face_kappa_std"],
             final["cut_face_radius_std"],
             final["radius_m16_amplitude"],
+            final["cut_face_grad_norm_min"],
         )
     )
 
