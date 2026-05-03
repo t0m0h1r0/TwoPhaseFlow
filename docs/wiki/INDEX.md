@@ -1,6 +1,6 @@
-# Wiki Index — 288 entries
+# Wiki Index — 291 entries
 
-## Theory (128)
+## Theory (131)
 
 | REF-ID | Title |
 |--------|-------|
@@ -132,6 +132,9 @@
 | [WIKI-T-126](theory/WIKI-T-126.md) | Defect Correction Accuracy Lives in the High-Order Residual |
 | [WIKI-T-127](theory/WIKI-T-127.md) | Viscous DC Low-Order Operator Must Share mu, rho, Boundaries, and Bands |
 | [WIKI-T-128](theory/WIKI-T-128.md) | Balanced Buoyancy Removes Hydrostatic Work Before Prediction |
+| [WIKI-T-129](theory/WIKI-T-129.md) | Variable-Density PPE Is a Pressure-Increment Equation in IPC |
+| [WIKI-T-130](theory/WIKI-T-130.md) | Nonuniform Projection Requires a Face-Adjoint Gradient Pair |
+| [WIKI-T-131](theory/WIKI-T-131.md) | HFE Is Mandatory Only When the Solved Pressure Field Has a Jump |
 
 ## Cross-Domain (39)
 

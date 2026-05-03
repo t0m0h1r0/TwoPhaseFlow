@@ -1,14 +1,15 @@
 # 02_ACTIVE_LEDGER — Phase, Branch, CHK Register, Assumptions & Lessons
 # LIVE document — append-only for CHK/ASM/KL entries; phase/branch updated each session.
-# Last updated: 2026-05-04 (CHK-RA-PAPER-WIKI-001 ROUND-18 DONE — DC/viscous/buoyancy cards stored.)
+# Last updated: 2026-05-04 (CHK-RA-PAPER-WIKI-001 ROUND-19 DONE — projection/PPE/HFE cards stored.)
 
 ────────────────────────────────────────────────────────
 # § ACTIVE STATE
 
 | Key | Value |
 |---|---|
-| phase | CHK-RA-PAPER-WIKI-001 ROUND-18 DONE |
+| phase | CHK-RA-PAPER-WIKI-001 ROUND-19 DONE |
 | branch | `ra-paper-wiki-insights-r11-20-20260504` |
+| session_CHK | CHK-RA-PAPER-WIKI-001 ROUND-19 DONE 2026-05-04 — Same worktree/branch, no new worktree. Round 19 added individual projection/PPE/HFE cards: `docs/wiki/theory/WIKI-T-129.md` (variable-density PPE is a pressure-increment equation in IPC), `docs/wiki/theory/WIKI-T-130.md` (nonuniform projection requires a face-adjoint gradient pair), `docs/wiki/theory/WIKI-T-131.md` (HFE is mandatory only when the solved pressure field has a jump). Updated `docs/wiki/INDEX.md`: total 288→291, Theory 128→131. [SOLID-X] docs/wiki/ledger only; no production code boundary changed, no tested code deleted, no FD/WENO/PPE fallback introduced. |
 | session_CHK | CHK-RA-PAPER-WIKI-001 ROUND-18 DONE 2026-05-04 — Same worktree/branch, no new worktree. Round 18 added individual DC/viscous/buoyancy cards: `docs/wiki/theory/WIKI-T-126.md` (DC accuracy lives in the high-order residual), `docs/wiki/theory/WIKI-T-127.md` (viscous DC low-order operator must share mu/rho/boundaries/bands), `docs/wiki/theory/WIKI-T-128.md` (balanced buoyancy removes hydrostatic work before prediction). Updated `docs/wiki/INDEX.md`: total 285→288, Theory 125→128. [SOLID-X] docs/wiki/ledger only; no production code boundary changed, no tested code deleted, no FD/WENO/PPE fallback introduced. |
 | session_CHK | CHK-RA-PAPER-WIKI-001 ROUND-17 DONE 2026-05-04 — Same worktree/branch, no new worktree. Round 17 added individual scheme/time-order cards: `docs/wiki/theory/WIKI-T-123.md` (term-specific discretization is a regularity contract), `docs/wiki/theory/WIKI-T-124.md` (TVD-RK3 label does not guarantee TVD for FCCD space operator), `docs/wiki/theory/WIKI-T-125.md` (IMEX-BDF2 predictor uses projected history, not star velocity). Updated `docs/wiki/INDEX.md`: total 282→285, Theory 122→125. [SOLID-X] docs/wiki/ledger only; no production code boundary changed, no tested code deleted, no FD/WENO/PPE fallback introduced. |
 | session_CHK | CHK-RA-PAPER-WIKI-001 ROUND-16 DONE 2026-05-04 — Same worktree/branch, no new worktree. Round 16 added individual FaceJet/FCCD contract cards: `docs/wiki/theory/WIKI-T-120.md` (FaceJet has mixed accuracy by design), `docs/wiki/theory/WIKI-T-121.md` (FaceJet is a public contract, not current implementation detail), `docs/wiki/theory/WIKI-T-122.md` (FCCD BF fourth order requires a smooth constructive relation). Updated `docs/wiki/INDEX.md`: total 279→282, Theory 119→122. [SOLID-X] docs/wiki/ledger only; no production code boundary changed, no tested code deleted, no FD/WENO/PPE fallback introduced. |
