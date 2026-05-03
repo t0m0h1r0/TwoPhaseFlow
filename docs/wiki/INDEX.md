@@ -1,4 +1,4 @@
-# Wiki Index — 264 entries
+# Wiki Index — 265 entries
 
 ## Theory (104)
 
@@ -109,7 +109,7 @@
 | [WIKI-T-103](theory/WIKI-T-103.md) | Time-Step Limits Are Per-Term: Capillary Is Physical, PPE Is Projective |
 | [WIKI-T-104](theory/WIKI-T-104.md) | One-Step Algorithm Freezes Geometry and Material State Before Projection |
 
-## Cross-Domain (39)
+## Cross-Domain (40)
 
 | REF-ID | Title |
 |--------|-------|
@@ -152,6 +152,7 @@
 | [WIKI-X-037](cross-domain/WIKI-X-037.md) | ResearchArchitect Wiki Knowledge Atlas: Retrieval Map, Invariants, and Open Fronts |
 | [WIKI-X-038](cross-domain/WIKI-X-038.md) | Theory-First CFL and Time-Integration Policy: SSPRK3 Scope, AB2 Risk, and IMEX-BDF2 Production Path |
 | [WIKI-X-039](cross-domain/WIKI-X-039.md) | Affine Jump Interface Stress: Oriented Young--Laplace Contract and ch14 Root Cause |
+| [WIKI-X-040](cross-domain/WIKI-X-040.md) | Recent Research Insight Digest: 2026-04-24 to 2026-05-03 |
 
 ## Experiment (43)
 
