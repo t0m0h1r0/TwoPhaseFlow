@@ -40,6 +40,7 @@ def _build_config(
     *,
     static_grid: bool,
     filter_C: float | None,
+    freeze_interface: bool,
 ) -> ExperimentConfig:
     config_path = STATIC_GRID_CONFIG if static_grid else BASE_CONFIG
     with open(config_path) as file:
@@ -51,6 +52,8 @@ def _build_config(
     if reinit_every is not None:
         suffix = f"{suffix}_reinit{reinit_every}"
     suffix = f"{suffix}{_filter_suffix(filter_C)}"
+    if freeze_interface:
+        suffix = f"{suffix}_frozen_iface"
     raw["output"]["dir"] = f"results/ch14_curvature_contract_n64/{suffix}"
     raw["output"]["snapshots"]["interval"] = TARGET_FINAL
     raw["output"]["figures"] = []
@@ -58,6 +61,11 @@ def _build_config(
         raw["interface"]["reinitialization"]["schedule"]["every_steps"] = int(
             reinit_every
         )
+    if freeze_interface:
+        raw["numerics"]["interface"]["tracking"] = {
+            "primary": "none",
+            "enabled": False,
+        }
     return ExperimentConfig.from_dict(raw)
 
 
@@ -367,6 +375,11 @@ def main() -> None:
         default=None,
         help="Diagnostic override for InterfaceLimitedFilter coefficient.",
     )
+    parser.add_argument(
+        "--freeze-interface",
+        action="store_true",
+        help="Disable interface transport to isolate pressure/curvature feedback.",
+    )
     args = parser.parse_args()
     output_name = "ch14_curvature_contract_n64"
     if args.static_grid:
@@ -374,6 +387,8 @@ def main() -> None:
     if args.reinit_every is not None:
         output_name = f"{output_name}_reinit{args.reinit_every}"
     output_name = f"{output_name}{_filter_suffix(args.filter_C)}"
+    if args.freeze_interface:
+        output_name = f"{output_name}_frozen_iface"
     outdir = experiment_dir(__file__, output_name)
     npz_path = outdir / "data.npz"
     if args.plot_only:
@@ -408,6 +423,7 @@ def main() -> None:
                 args.reinit_every,
                 static_grid=args.static_grid,
                 filter_C=args.filter_C,
+                freeze_interface=args.freeze_interface,
             )
         )
     save_results(npz_path, _pack(rows))
