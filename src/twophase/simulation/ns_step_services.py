@@ -35,6 +35,54 @@ def _apply_solver_interface_jump(ppe_solver, base_pressure):
     return base_pressure
 
 
+def _previous_pressure_acceleration_nodes(
+    state: NSStepState,
+    *,
+    xp,
+    div_op,
+    pressure_grad_op,
+    ppe_solver_name: str | None,
+    ppe_coefficient_scheme: str,
+    ppe_interface_coupling_scheme: str,
+):
+    """Return ``rho^{-1} G(p^n)`` using the PPE pressure-jump contract."""
+    if (
+        str(ppe_interface_coupling_scheme).strip().lower() == "affine_jump"
+        and str(ppe_coefficient_scheme).strip().lower() == "phase_separated"
+        and div_op is not None
+        and hasattr(div_op, "pressure_fluxes")
+        and hasattr(div_op, "reconstruct_nodes")
+        and state.psi is not None
+        and state.kappa is not None
+        and float(state.sigma) != 0.0
+    ):
+        pressure_gradient = (
+            "fccd" if str(ppe_solver_name).strip().lower() == "fccd_iterative" else "fvm"
+        )
+        context = build_young_laplace_interface_stress_context(
+            xp=xp,
+            psi=state.psi,
+            kappa_lg=state.kappa,
+            sigma=state.sigma,
+        )
+        pressure_faces = div_op.pressure_fluxes(
+            state.previous_pressure,
+            state.rho,
+            pressure_gradient=pressure_gradient,
+            coefficient_scheme="phase_separated",
+            interface_coupling_scheme="affine_jump",
+            interface_stress_context=context,
+        )
+        return div_op.reconstruct_nodes(pressure_faces)
+
+    if pressure_grad_op is None:
+        raise RuntimeError("IPC predictor requires pressure_grad_op for ∇p^n")
+    return [
+        pressure_grad_op.gradient(state.previous_pressure, 0) / state.rho,
+        pressure_grad_op.gradient(state.previous_pressure, 1) / state.rho,
+    ]
+
+
 def build_pressure_robust_buoyancy_residual_accel_faces(
     *,
     buoyancy_force_components: list,
@@ -252,6 +300,8 @@ def compute_ns_predictor_stage(
     Y=None,
     coords=None,
     ppe_coefficient_scheme: str = "phase_separated",
+    ppe_interface_coupling_scheme: str = "none",
+    ppe_solver_name: str | None = None,
 ) -> tuple[NSStepState, bool, tuple | None, bool, tuple | None]:
     """Advance the momentum predictor stage."""
     xp = backend.xp
@@ -301,12 +351,17 @@ def compute_ns_predictor_stage(
         conv_step_v = conv_v
 
     if state.previous_pressure is not None:
-        if pressure_grad_op is None:
-            raise RuntimeError("IPC predictor requires pressure_grad_op for ∇p^n")
-        dpn_dx = pressure_grad_op.gradient(state.previous_pressure, 0)
-        dpn_dy = pressure_grad_op.gradient(state.previous_pressure, 1)
-        conv_step_u = conv_step_u - dpn_dx / state.rho
-        conv_step_v = conv_step_v - dpn_dy / state.rho
+        previous_pressure_accel = _previous_pressure_acceleration_nodes(
+            state,
+            xp=xp,
+            div_op=div_op,
+            pressure_grad_op=pressure_grad_op,
+            ppe_solver_name=ppe_solver_name,
+            ppe_coefficient_scheme=ppe_coefficient_scheme,
+            ppe_interface_coupling_scheme=ppe_interface_coupling_scheme,
+        )
+        conv_step_u = conv_step_u - previous_pressure_accel[0]
+        conv_step_v = conv_step_v - previous_pressure_accel[1]
 
     predictor_kwargs = {}
     face_residual_buoyancy_state = None
