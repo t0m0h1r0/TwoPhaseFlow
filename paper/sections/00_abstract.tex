@@ -22,7 +22,7 @@
               & smoothed Heaviside 一括 PPE は低密度比・縮約検証経路として扱い，標準 headline は分相 pressure-jump 経路\\[4pt]
 \hline\\[-6pt]
 \multicolumn{2}{@{}l}{\textbf{精度律速（設計上の注意）}}\\[2pt]
-時間方向律速： & 単体では TVD-RK3 $\Ord{\Delta t^{3.04}}$，EXT2/AB2 $\Ord{\Delta t^{2.05}}$，implicit-BDF2 $\Ord{\Delta t^{2.01}}$；二相 coupled stack は V7 slope $1.04$（Type-D）\\
+時間方向律速： & 単体では TVD-RK3 $\Ord{\Delta t^{3.04}}$，EXT2/AB2 $\Ord{\Delta t^{2.05}}$，implicit-BDF2 $\Ord{\Delta t^{2.01}}$；二相 coupled stack は V7 slope $1.48$（Type-D）\\
 空間精度律速： & U1/U6 で CCD $\Ord{h^{6.0}}$，FCCD $\Ord{h^{4.0}}$，UCCD6 $\Ord{h^{7.0}}$，HFE 1D $\Ord{h^{5.91}}$ を実測\\[2pt]
 \multicolumn{2}{@{}l}{\footnotesize CCD の $\Ord{h^6}$ は\textbf{内点点別誤差}を指す；境界閉包により大域 $L^2$ ノルムは $\Ord{h^{5/2}}$ に律速（§~\ref{sec:accuracy_summary}）}\\[2pt]
 \multicolumn{2}{@{}l}{\footnotesize V6 は $\rho_l/\rho_g\le833$ のロバスト性を確認；第~\ref{sec:validation}章の気泡上昇・Rayleigh--Taylor は査読時点の未完了検証ゲート．}\\
@@ -58,7 +58,7 @@ UCCD6 $\Ord{h^{7.00}}$，HFE 1D $\Ord{h^{5.91}}$，implicit-BDF2 $\Ord{\Delta t^
 寄生流れの CCD/FD 比 $1/2.5$--$1/5.85$（代表ケース），
 密度比 $\rho_l/\rho_g\le833$ での pressure-jump 分相 PPE + DC + HFE のロバスト性，
 および Zalesak / 単一渦 CLS-only 強変形移流の質量・重心診断を示した．
-一方，二相 coupled stack の時間精度は V7 で最終 slope $1.04$ に留まり，
+一方，二相 coupled stack の時間精度は V7 で最終 slope $1.48$ に留まり，
 Lie 分割・再初期化 cadence・pressure-jump PPE 結合による Type-D 条件付き合格として扱う．
 また，非一様 moving-interface CLS，長時間・完全連成 NS 移動界面，
 Prosperetti 級の毛管波分散照合，Hysing 級の終端速度比較，
