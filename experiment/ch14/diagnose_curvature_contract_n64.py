@@ -29,7 +29,18 @@ SURFACE_TENSION = 0.072
 ANGULAR_MODES = (4, 8, 16, 32)
 
 
-def _build_config(reinit_every: int | None, *, static_grid: bool) -> ExperimentConfig:
+def _filter_suffix(filter_C: float | None) -> str:
+    if filter_C is None:
+        return ""
+    return f"_filterC{str(float(filter_C)).replace('.', 'p')}"
+
+
+def _build_config(
+    reinit_every: int | None,
+    *,
+    static_grid: bool,
+    filter_C: float | None,
+) -> ExperimentConfig:
     config_path = STATIC_GRID_CONFIG if static_grid else BASE_CONFIG
     with open(config_path) as file:
         raw = yaml.safe_load(file)
@@ -39,6 +50,7 @@ def _build_config(reinit_every: int | None, *, static_grid: bool) -> ExperimentC
     suffix = "static_grid" if static_grid else "baseline"
     if reinit_every is not None:
         suffix = f"{suffix}_reinit{reinit_every}"
+    suffix = f"{suffix}{_filter_suffix(filter_C)}"
     raw["output"]["dir"] = f"results/ch14_curvature_contract_n64/{suffix}"
     raw["output"]["snapshots"]["interval"] = TARGET_FINAL
     raw["output"]["figures"] = []
@@ -116,6 +128,99 @@ def _cut_face_geometry(
     )
 
 
+def _direct_cut_face_curvature(
+    psi: np.ndarray,
+    psi_x: np.ndarray,
+    psi_y: np.ndarray,
+    psi_xx: np.ndarray,
+    psi_yy: np.ndarray,
+    psi_xy: np.ndarray,
+    coords: tuple[np.ndarray, np.ndarray],
+) -> np.ndarray:
+    face_psi_x, _, _ = _cut_face_geometry(psi, psi_x, coords)
+    face_psi_y, _, _ = _cut_face_geometry(psi, psi_y, coords)
+    face_psi_xx, _, _ = _cut_face_geometry(psi, psi_xx, coords)
+    face_psi_yy, _, _ = _cut_face_geometry(psi, psi_yy, coords)
+    face_psi_xy, _, _ = _cut_face_geometry(psi, psi_xy, coords)
+    grad_sq = face_psi_x * face_psi_x + face_psi_y * face_psi_y
+    grad_cube = (grad_sq + 1.0e-30) ** 1.5
+    numerator = (
+        face_psi_y * face_psi_y * face_psi_xx
+        - 2.0 * face_psi_x * face_psi_y * face_psi_xy
+        + face_psi_x * face_psi_x * face_psi_yy
+    )
+    return -numerator / grad_cube
+
+
+def _cut_face_points(
+    psi: np.ndarray,
+    coords: tuple[np.ndarray, np.ndarray],
+) -> tuple[np.ndarray, np.ndarray]:
+    points = []
+    ndim = psi.ndim
+    for axis in range(ndim):
+        n_cells = psi.shape[axis] - 1
+
+        def sl(start: int, stop: int):
+            slices = [slice(None)] * ndim
+            slices[axis] = slice(start, stop)
+            return tuple(slices)
+
+        psi_lo = psi[sl(0, n_cells)]
+        psi_hi = psi[sl(1, n_cells + 1)]
+        cut_face = (psi_lo < 0.5) != (psi_hi < 0.5)
+        if not np.any(cut_face):
+            continue
+        dpsi = psi_hi - psi_lo
+        safe_dpsi = np.where(np.abs(dpsi) > 1.0e-30, dpsi, 1.0)
+        theta = np.clip((0.5 - psi_lo) / safe_dpsi, 0.0, 1.0)
+        other_axis = 1 - axis
+        axis_shape = [1] * ndim
+        axis_shape[axis] = psi.shape[axis]
+        axis_coord = coords[axis].reshape(axis_shape)
+        face_coord = (1.0 - theta) * np.broadcast_to(
+            axis_coord[sl(0, n_cells)],
+            psi_lo.shape,
+        ) + theta * np.broadcast_to(axis_coord[sl(1, n_cells + 1)], psi_lo.shape)
+        other_shape = [1] * ndim
+        other_shape[other_axis] = psi.shape[other_axis]
+        other_coord = np.broadcast_to(
+            coords[other_axis].reshape(other_shape),
+            psi_lo.shape,
+        )
+        if axis == 0:
+            point_x = face_coord
+            point_y = other_coord
+        else:
+            point_x = other_coord
+            point_y = face_coord
+        points.append(np.column_stack((point_x[cut_face], point_y[cut_face])))
+    if not points:
+        empty_points = np.empty((0, 2), dtype=float)
+        return empty_points, np.asarray([], dtype=float)
+    all_points = np.concatenate(points, axis=0)
+    center = np.mean(all_points, axis=0)
+    angle = np.arctan2(all_points[:, 1] - center[1], all_points[:, 0] - center[0])
+    order = np.argsort(angle)
+    return all_points[order], angle[order]
+
+
+def _geometric_interface_curvature(points: np.ndarray) -> np.ndarray:
+    if points.shape[0] < 3:
+        return np.asarray([], dtype=float)
+    prev_points = np.roll(points, 1, axis=0)
+    next_points = np.roll(points, -1, axis=0)
+    chord_prev = points - prev_points
+    chord_next = next_points - points
+    chord_span = next_points - prev_points
+    length_prev = np.linalg.norm(chord_prev, axis=1)
+    length_next = np.linalg.norm(chord_next, axis=1)
+    length_span = np.linalg.norm(chord_span, axis=1)
+    cross = chord_prev[:, 0] * chord_next[:, 1] - chord_prev[:, 1] * chord_next[:, 0]
+    denom = np.maximum(length_prev * length_next * length_span, 1.0e-300)
+    return 2.0 * np.abs(cross) / denom
+
+
 def _radius_mode_amplitude(radius: np.ndarray, angle: np.ndarray, mode: int) -> float:
     if radius.size == 0:
         return float("nan")
@@ -125,10 +230,12 @@ def _radius_mode_amplitude(radius: np.ndarray, angle: np.ndarray, mode: int) -> 
 
 
 @contextmanager
-def _record_curvature(rows: list[dict[str, float]]):
+def _record_curvature(rows: list[dict[str, float]], *, filter_C: float | None):
     original_surface = ns_pipeline.compute_ns_surface_tension_stage
 
     def wrapped_surface_stage(state, **kwargs):
+        if filter_C is not None:
+            kwargs["curvature_filter"].C = float(filter_C)
         state = original_surface(state, **kwargs)
         backend = kwargs["backend"]
         ccd = kwargs["ccd"]
@@ -136,9 +243,13 @@ def _record_curvature(rows: list[dict[str, float]]):
         psi = _host(backend, state.psi)
         kappa = _host(backend, state.kappa)
         grad_components = []
+        second_components = []
         for axis in range(psi.ndim):
-            grad_axis, _ = ccd.differentiate(state.psi, axis)
+            grad_axis, second_axis = ccd.differentiate(state.psi, axis)
             grad_components.append(_host(backend, grad_axis))
+            second_components.append(_host(backend, second_axis))
+        mixed_xy_dev, _ = ccd.differentiate(ccd.differentiate(state.psi, 0)[0], 1)
+        mixed_xy = _host(backend, mixed_xy_dev)
         grad_norm = np.sqrt(sum(component * component for component in grad_components))
         coords = (
             np.asarray(grid.coords[0], dtype=float),
@@ -151,7 +262,20 @@ def _record_curvature(rows: list[dict[str, float]]):
         kappa_error = band_kappa - EXPECTED_KAPPA
         face_kappa, face_radius, face_angle = _cut_face_geometry(psi, kappa, coords)
         face_grad_norm, _, _ = _cut_face_geometry(psi, grad_norm, coords)
+        direct_face_kappa = _direct_cut_face_curvature(
+            psi,
+            grad_components[0],
+            grad_components[1],
+            second_components[0],
+            second_components[1],
+            mixed_xy,
+            coords,
+        )
+        cut_points, _ = _cut_face_points(psi, coords)
+        geometric_kappa = _geometric_interface_curvature(cut_points)
         face_error = face_kappa - EXPECTED_KAPPA
+        direct_face_error = direct_face_kappa - EXPECTED_KAPPA
+        geometric_error = geometric_kappa - EXPECTED_KAPPA
         row = {
             "step": float(state.step_index),
             "time": float(getattr(state, "t", 0.0) or 0.0),
@@ -181,6 +305,26 @@ def _record_curvature(rows: list[dict[str, float]]):
             "cut_face_grad_norm_std": float(np.std(face_grad_norm)),
             "cut_face_grad_norm_min": float(np.min(face_grad_norm)),
             "cut_face_grad_norm_max": float(np.max(face_grad_norm)),
+            "direct_cut_face_kappa_mean": float(np.mean(direct_face_kappa)),
+            "direct_cut_face_kappa_std": float(np.std(direct_face_kappa)),
+            "direct_cut_face_kappa_min": float(np.min(direct_face_kappa)),
+            "direct_cut_face_kappa_max": float(np.max(direct_face_kappa)),
+            "direct_cut_face_kappa_error_rms": float(
+                np.sqrt(np.mean(direct_face_error * direct_face_error))
+            ),
+            "direct_cut_face_jump_std": float(
+                SURFACE_TENSION * np.std(direct_face_kappa)
+            ),
+            "geometric_cut_face_kappa_mean": float(np.mean(geometric_kappa)),
+            "geometric_cut_face_kappa_std": float(np.std(geometric_kappa)),
+            "geometric_cut_face_kappa_min": float(np.min(geometric_kappa)),
+            "geometric_cut_face_kappa_max": float(np.max(geometric_kappa)),
+            "geometric_cut_face_kappa_error_rms": float(
+                np.sqrt(np.mean(geometric_error * geometric_error))
+            ),
+            "geometric_cut_face_jump_std": float(
+                SURFACE_TENSION * np.std(geometric_kappa)
+            ),
         }
         for mode in ANGULAR_MODES:
             row[f"radius_m{mode}_amplitude"] = _radius_mode_amplitude(
@@ -217,12 +361,19 @@ def main() -> None:
         action="store_true",
         help="Use the alpha-2 static-grid pressure-control config.",
     )
+    parser.add_argument(
+        "--filter-C",
+        type=float,
+        default=None,
+        help="Diagnostic override for InterfaceLimitedFilter coefficient.",
+    )
     args = parser.parse_args()
     output_name = "ch14_curvature_contract_n64"
     if args.static_grid:
         output_name = f"{output_name}_static_grid"
     if args.reinit_every is not None:
         output_name = f"{output_name}_reinit{args.reinit_every}"
+    output_name = f"{output_name}{_filter_suffix(args.filter_C)}"
     outdir = experiment_dir(__file__, output_name)
     npz_path = outdir / "data.npz"
     if args.plot_only:
@@ -232,6 +383,7 @@ def main() -> None:
                 "step={:.0f}, kappa_mean={:.6e}, kappa_std={:.6e}, "
                 "kappa_error_rms={:.6e}, jump_std={:.6e}, "
                 "cut_face_kappa_mean={:.6e}, cut_face_kappa_std={:.6e}, "
+                "direct_std={:.6e}, geom_std={:.6e}, "
                 "r_std={:.6e}, r_m16={:.6e}, grad_min={:.6e}".format(
                     data["step"][index],
                     data["kappa_mean"][index],
@@ -240,6 +392,8 @@ def main() -> None:
                     data["jump_std"][index],
                     data["cut_face_kappa_mean"][index],
                     data["cut_face_kappa_std"][index],
+                    data["direct_cut_face_kappa_std"][index],
+                    data["geometric_cut_face_kappa_std"][index],
                     data["cut_face_radius_std"][index],
                     data["radius_m16_amplitude"][index],
                     data["cut_face_grad_norm_min"][index],
@@ -248,9 +402,13 @@ def main() -> None:
         return
 
     rows: list[dict[str, float]] = []
-    with _record_curvature(rows):
+    with _record_curvature(rows, filter_C=args.filter_C):
         ns_pipeline.run_simulation(
-            _build_config(args.reinit_every, static_grid=args.static_grid)
+            _build_config(
+                args.reinit_every,
+                static_grid=args.static_grid,
+                filter_C=args.filter_C,
+            )
         )
     save_results(npz_path, _pack(rows))
     first = rows[0]
@@ -259,6 +417,7 @@ def main() -> None:
         "initial kappa_mean={:.6e}, std={:.6e}, jump_std={:.6e}; "
         "final kappa_mean={:.6e}, std={:.6e}, jump_std={:.6e}; "
         "final cut_face_mean={:.6e}, cut_face_std={:.6e}; "
+        "direct_std={:.6e}; geom_std={:.6e}; "
         "final r_std={:.6e}, r_m16={:.6e}, grad_min={:.6e}".format(
             first["kappa_mean"],
             first["kappa_std"],
@@ -268,6 +427,8 @@ def main() -> None:
             final["jump_std"],
             final["cut_face_kappa_mean"],
             final["cut_face_kappa_std"],
+            final["direct_cut_face_kappa_std"],
+            final["geometric_cut_face_kappa_std"],
             final["cut_face_radius_std"],
             final["radius_m16_amplitude"],
             final["cut_face_grad_norm_min"],
