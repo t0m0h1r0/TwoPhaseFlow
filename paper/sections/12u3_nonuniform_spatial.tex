@@ -14,11 +14,11 @@
 （§\ref{sec:ridge_eikonal_nu_grid}）の単体精度を確認する．
 
 格子は界面近傍に集中する gauss 密度
-$\rho_d(\xi) = 1 + (\alpha-1)\exp\!\bigl(-(\psi/\eps)^2\bigr)$
+$\rho_d(\xi) = 1 + (\alpha-1)\exp\!\bigl(-(\psi/\varepsilon)^2\bigr)$
 （式~\eqref{eq:grid_delta}）に従う．
 $\alpha = 1$ で一様格子（密度恒等的に 1），$\alpha = 2$ で
 対角界面 $x + y = 1$（領域中央を通る $45^\circ$ 直線）の周りに
-両軸が同時に集中する設計．これは Heaviside 場 $\psi = H_{\eps}((x-0.5)+(y-0.5))$ を経由して
+両軸が同時に集中する設計．これは Heaviside 場 $\psi = H_{\varepsilon}((x-0.5)+(y-0.5))$ を経由して
 \texttt{update\_from\_levelset} に与える経路で実現する（実装:
 \texttt{experiment/ch12/exp\_U3\_nonuniform\_spatial\_suite.py:104}）．
 

@@ -8,7 +8,7 @@
 % ═══════════════════════════════════════════════════════════════════════════════
 
 7 Tier (I--VII) で構成される 9 単体テスト (U1--U9) が完了した．
-表~\ref{tab:verification_summary} に各テストの目的・期待精度・実測精度・判定を総括する．
+表~\ref{tab:verification_summary} に各テストの目的・期待/判定基準・実測/観測値・判定を総括する．
 9 件の単体テストで Part 2 (§\ref{sec:ccd_def}--§\ref{sec:grid}) の
 30 数値コンポーネントのうち 22 件を直接網羅し，
 4 件 (face-jet $J_f$, CLS A→F 6-stage, 運動量対流, IPC projection) は
@@ -18,10 +18,11 @@
 \centering
 \caption{単体テスト U1--U9 の検証結果総括}
 \label{tab:verification_summary}
+\PaperCaptionNote{本表は表~\ref{tab:U_summary} と同一サブテスト集合を Tier 順に並べ直した総括表であり，表~\ref{tab:v_accuracy_summary} と同じ「ID / テスト / 期待・判定基準 / 実測・観測値 / 判定」文法で読む．}
 \PaperTableExtraDenseSetup
 \begin{tabular}{l>{\raggedright\arraybackslash}p{0.20\linewidth}>{\raggedright\arraybackslash}p{0.18\linewidth}>{\raggedright\arraybackslash}p{0.22\linewidth}c}
 \toprule
-ID & テスト & 期待精度 & 実測精度 & 判定 \\
+ID & テスト & \shortstack{期待・判定\\基準} & \shortstack{実測・観測\\値} & 判定 \\
 \midrule
 \multicolumn{5}{l}{\textbf{Tier I：空間離散・一様格子}} \\
 \midrule
@@ -41,9 +42,9 @@ U3-c & Ridge--Eikonal D1--D4 metric & 一様極限 $\to 0$，$\alpha>1$ で $D_4
 \multicolumn{5}{l}{\textbf{Tier III：界面処理 primitives}} \\
 \midrule
 U4-a & Godunov Eikonal reinit $|\nabla\phi|=1$ 復元 & band 残差 $\sim h$ & $n_\tau=20$: $2.19\times10^{-2}$, $100$: $9.16\times10^{-3}$ & \checkmark \\
-U4-b & DGR バンド厚補正 & $\eps_{\eff}/\eps^\star \to 1$ & $2.0 \to 1.0000033$ & \checkmark \\
-U5-a & $\delta_\varepsilon$ 0/1 次モーメント & 0 次 $=1$ / 1 次 $=x_\mathrm{int}$（$\eps=1.5h$ Richardson 残差 saturation；0 次 $\sim 1.6\!\times\!10^{-11}$，1 次 $\sim 8.2\!\times\!10^{-12}$） & 0 次 $1.64\!\times\!10^{-11}$ / 1 次 $8.19\!\times\!10^{-12}$（$N\!\ge\!128$ で saturation 到達） & \checkmark \\
-U5-b & $\delta_\varepsilon$ vs $h$ scaling（$c=\eps/h$ 最適性）& $c \in [1.5, 2]$ で $M_0$ 誤差最小化 & $c=2$, $N=128$ で $M_0 = 1.83\!\times\!10^{-14}$（double-precision floor 近傍） & \checkmark \\
+U4-b & DGR バンド厚補正 & $\varepsilon_{\eff}/\varepsilon^\star \to 1$ & $2.0 \to 1.0000033$ & \checkmark \\
+U5-a & $\delta_\varepsilon$ 0/1 次モーメント & 0 次 $=1$ / 1 次 $=x_\mathrm{int}$（$\varepsilon=1.5h$ Richardson 残差 saturation；0 次 $\sim 1.6\!\times\!10^{-11}$，1 次 $\sim 8.2\!\times\!10^{-12}$） & 0 次 $1.64\!\times\!10^{-11}$ / 1 次 $8.19\!\times\!10^{-12}$（$N\!\ge\!128$ で saturation 到達） & \checkmark \\
+U5-b & $\delta_\varepsilon$ vs $h$ scaling（$c=\varepsilon/h$ 最適性）& $c \in [1.5, 2]$ で $M_0$ 誤差最小化 & $c=2$, $N=128$ で $M_0 = 1.83\!\times\!10^{-14}$（double-precision floor 近傍） & \checkmark \\
 \midrule
 \multicolumn{5}{l}{\textbf{Tier IV：圧力ソルバ}} \\
 \midrule
@@ -92,8 +93,8 @@ $\times$（不合格）は本章では該当なし．主要結果：
         $\alpha\!=\!1.5$ で $4.5\!\times\!10^{-11}$（最大），$\alpha\!=\!2$ で $2.9\!\times\!10^{-11}$．
   \item \textbf{界面：}Godunov Eikonal reinit は band 残差を
         $n_\tau=20$ で $2.19\times10^{-2}$，$n_\tau=100$ で $9.16\times10^{-3}$ へ減衰し，
-        DGR は $\eps_{\eff}/\eps^\star = 2.0 \to 1.0000033$ を達成．
-        $\delta_\varepsilon$ は 0 次・1 次モーメントとも $\eps=1.5h$ 配置で
+        DGR は $\varepsilon_{\eff}/\varepsilon^\star = 2.0 \to 1.0000033$ を達成．
+        $\delta_\varepsilon$ は 0 次・1 次モーメントとも $\varepsilon=1.5h$ 配置で
         $N\!\le\!64$ 域で $h^{11}$ 相当の超収束を示し，$N\!\ge\!128$ で
         Richardson 残差床 $\Ord{10^{-11}}$ へ saturation
         （$M_1 = M_0/2$ の比例関係；U5-b の $c=2$ では $1.83\!\times\!10^{-14}$ に到達）．
