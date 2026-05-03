@@ -8,9 +8,9 @@ Theory target:
     of a Young--Laplace jump field is not a physical bulk acceleration.
 
 This script is diagnostic only.  It compares the normal alpha-2 static route
-against a monkey-patched route that removes the previous-pressure predictor
-gradient.  The latter is not proposed as a fix; it tests whether the pressure
-history gradient is a dominant injection path.
+against monkey-patched routes that remove or affine-correct the previous-pressure
+predictor gradient.  Removing the gradient is not proposed as a fix; it tests
+whether the pressure history gradient is a dominant injection path.
 """
 
 from __future__ import annotations
@@ -30,6 +30,10 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
 import twophase.simulation.ns_pipeline as ns_pipeline  # noqa: E402
+from twophase.coupling.interface_stress_closure import (  # noqa: E402
+    build_young_laplace_interface_stress_context,
+    signed_pressure_jump_gradient,
+)
 from twophase.simulation.config_models import ExperimentConfig  # noqa: E402
 from twophase.tools.experiment import (  # noqa: E402
     experiment_argparser,
@@ -51,6 +55,7 @@ class ProbeCase:
     constant_kappa: float | None = None
     corrector_uses_base_increment: bool = False
     history_uses_base_pressure: bool = False
+    jump_aware_history_gradient: bool = False
 
 
 def _cases() -> tuple[ProbeCase, ...]:
@@ -74,6 +79,14 @@ def _cases() -> tuple[ProbeCase, ...]:
                 "if residual pressure drops, curvature noise is the source"
             ),
             constant_kappa=4.0,
+        ),
+        ProbeCase(
+            label="jump_aware_history_gradient",
+            hypothesis=(
+                "diagnostic: differentiate previous pressure with the same affine "
+                "G_Gamma(p;j)=G(p)-B_Gamma(j) contract used by the PPE/projection"
+            ),
+            jump_aware_history_gradient=True,
         ),
         ProbeCase(
             label="base_corrector",
@@ -120,6 +133,7 @@ def _patch_solver_stages(case: ProbeCase):
         and case.constant_kappa is None
         and not case.corrector_uses_base_increment
         and not case.history_uses_base_pressure
+        and not case.jump_aware_history_gradient
     ):
         yield
         return
@@ -135,6 +149,39 @@ def _patch_solver_stages(case: ProbeCase):
     def with_base_pressure_history(state, **kwargs):
         if state.previous_base_pressure is not None:
             state.previous_pressure = state.previous_base_pressure
+        return original_predictor(state, **kwargs)
+
+    def with_jump_aware_history_gradient(state, **kwargs):
+        pressure_grad_op = kwargs.get("pressure_grad_op")
+        div_op = kwargs.get("div_op")
+        if state.previous_pressure is None or pressure_grad_op is None or div_op is None:
+            return original_predictor(state, **kwargs)
+        if not hasattr(div_op, "reconstruct_nodes") or not hasattr(div_op, "_fccd"):
+            return original_predictor(state, **kwargs)
+        xp = kwargs["backend"].xp
+        grid = div_op._fccd.grid
+        context = build_young_laplace_interface_stress_context(
+            xp=xp,
+            psi=state.psi,
+            kappa_lg=state.kappa,
+            sigma=state.sigma,
+        )
+        jump_faces = [
+            signed_pressure_jump_gradient(
+                xp=xp,
+                grid=grid,
+                context=context,
+                axis=axis,
+            )
+            for axis in range(grid.ndim)
+        ]
+        jump_nodes = div_op.reconstruct_nodes(jump_faces)
+
+        class JumpAwarePressureGradient:
+            def gradient(self, pressure, axis):
+                return pressure_grad_op.gradient(pressure, axis) - jump_nodes[axis]
+
+        kwargs["pressure_grad_op"] = JumpAwarePressureGradient()
         return original_predictor(state, **kwargs)
 
     def with_constant_curvature(state, **kwargs):
@@ -158,6 +205,8 @@ def _patch_solver_stages(case: ProbeCase):
         ns_pipeline.compute_ns_predictor_stage = without_previous_pressure_gradient
     if case.history_uses_base_pressure:
         ns_pipeline.compute_ns_predictor_stage = with_base_pressure_history
+    if case.jump_aware_history_gradient:
+        ns_pipeline.compute_ns_predictor_stage = with_jump_aware_history_gradient
     if case.constant_kappa is not None:
         ns_pipeline.compute_ns_surface_tension_stage = with_constant_curvature
     if case.corrector_uses_base_increment:
