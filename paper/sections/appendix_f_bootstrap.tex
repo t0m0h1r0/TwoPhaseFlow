@@ -1,11 +1,11 @@
-% paper/sections/appendix_bootstrap.tex
+% paper/sections/appendix_f_bootstrap.tex
 % 付録F: ブートストラップ初期化シーケンス（§10 から移動）
 
 \section{ブートストラップ処理：初期化シーケンス}
 \label{app:bootstrap}
 
 シミュレーション開始前に，以下の初期化シーケンス（ブートストラップ処理）を一度だけ実行する．
-格子生成には Level Set 場 $\phi^{(0)}$ が必要だが，$\phi^{(0)}$ の評価には格子が必要という
+格子生成には符号付距離場 $\phi^{(0)}$ が必要だが，$\phi^{(0)}$ の評価には格子が必要という
 循環参照を，一様格子による仮評価で解消する．
 
 \begin{tcolorbox}[algbox, title={ブートストラップ処理：初期化シーケンス（6 段階）}]
@@ -19,8 +19,9 @@
         $\psi^0_{i,j} = \tfrac{1}{2}(1+\tanh(\phi^{(0)}_{i,j}/\varepsilon_c))$ を設定
         （$\varepsilon_c$ は CLS 厚さ，§~\ref{sec:cls_compression}）．
   \item \textbf{Step 3（CCD 演算子構築）：} 非一様格子重みから
-        $D^{(1)}, D^{(2)}, M_{\mathrm{CCD}}, L_L, L_H$ の疎行列構造を一度だけ構築
-        （格子更新 Mode 1 では以降不変）．
+        $D^{(1)}, D^{(2)}, M_{\mathrm{CCD}}, L_L, L_H$ の疎行列構造を構築する．
+        固定格子比較経路では以降不変であり，標準の追従格子経路では
+        格子再生成ごとに同じ契約で再構築する．
   \item \textbf{Step 3.5（非一様格子上 SDF 再初期化）：}
         Step 0 の $\phi^{(0)}$ は一様格子幾何解析由来であり，
         Step 1 で生成した非一様格子 $\{x_i\},\{y_j\}$ 上では
@@ -49,7 +50,7 @@
         $p^0 = p_\infty + \sigma\kappa^0 H(\phi^{(0)}_\text{sdf})$（smoothed）で初期圧力場を設定し，
         Step 0 で測定した $\mathbf{u}^0=\mathbf{0}$ と整合させる．
 \end{enumerate}
-6 段階実行後，時刻ループ Step 1 から本稿 7-step フローの通常アルゴリズムが動作する．
+6 段階実行後，時刻ループでは本稿の統合更新手順が動作する．
 格子の時間更新モード（Mode 1: 固定格子，Mode 2: 再生成）は §~\ref{sec:grid_ale} を参照されたい．
 
 \textbf{出力：}

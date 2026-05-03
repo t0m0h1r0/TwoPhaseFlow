@@ -189,7 +189,8 @@ FD 中心差分 $D^{(2)}_{\mathrm{FD}}$（同一格子） & $4.00$ \\
 \end{center}
 Fourier 理論値 $9.6/h^2$ は有限格子でも維持される（FD 中心差分の 2.4 倍）．
 明示的粘性 CFL 安定限界は $\nu\Delta t/h^2 < 1/(2 \times 9.6) \approx 0.052$ であり，
-CN 粘性スキーム（§~\ref{sec:verify_cn_viscous}）によりこの制約は回避される．
+implicit--BDF2 粘性 Helmholtz 系（§~\ref{sec:time_viscous}；U8-c/U8-d は
+§~\ref{sec:U8_time_integration}）によりこの制約は回避される．
 \end{tcolorbox}
 
 % ═══════════════════════════════════════════════════════════════════════════════

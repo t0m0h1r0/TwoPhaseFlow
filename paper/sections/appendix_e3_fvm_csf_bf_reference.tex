@@ -14,16 +14,14 @@ PPE 演算子 $\bnabla\cdot(a\bnabla p)$（$a \equiv 1/\rho$）を FVM で離散
   a_f = \frac{2}{\rho_L + \rho_R}
   \label{eq:af_exact}
 \end{equation}
-よくある実装ミス：$\rho$ の調和平均の逆数 $(\rho_L+\rho_R)/(2\rho_L\rho_R) \neq 2/(\rho_L+\rho_R)$．
-\textbf{本稿の標準 PPE 実装}は FVM ではなく CCD product-rule 展開（式~\eqref{eq:varrho_product_rule}，§\ref{sec:ccd_poisson_matrix}）である．
-滑らかな係数場の検証条件では高次 CCD 設計精度を評価対象にできるが，界面帯・高密度比での実効精度は
-HFE，正則化厚み，外側残差に律速されるため，実験結果で判定する．
-式~\eqref{eq:af_exact} は FVM における界面越し面係数の標準形であり，
-CCD product-rule 展開（式~\eqref{eq:varrho_product_rule}）の低次極限に対応する．
-
-Rhie--Chow 補正済み発散の完全な定義および旧 Balanced-Force 定式化は
-付録~\ref{app:rhie_chow_full} を参照．本稿は DCCD 散逸 + HFE（§\ref{sec:field_extension}）により
-Rhie--Chow 補正を代替する．
+よくある係数取り違えとして，$\rho$ の調和平均の逆数
+$(\rho_L+\rho_R)/(2\rho_L\rho_R)$ は式~\eqref{eq:af_exact} ではない．
+式~\eqref{eq:af_exact} は，低次 FVM 基準離散化，周期境界の参照行列，
+および §~\ref{sec:fvm_ccd_corrector} の面フラックス整合を説明するための
+面係数である．本稿の高密度比・低 Weber 数経路では，smoothed-Heaviside
+一括 PPE にこの係数だけを入れて閉じるのではなく，
+分相 PPE + 圧力ジャンプ条件 + HFE（§~\ref{sec:split_ppe_framework},
+§~\ref{sec:field_extension}）へ切り替える．
 
 \subsubsection{FVM 積分論理}
 
@@ -45,7 +43,7 @@ $a(x)$ が区分的定数（$a_L = 1/\rho_L$，$a_R = 1/\rho_R$）のとき：
 
 壁面（ノイマン）BC に対する FVM 離散化（式~\eqref{eq:af_exact}）は，
 周期境界を持つ計算領域ではそのまま適用できない．
-本稿の実装では以下の3点を変更して周期 FVM 行列を組み立てる．
+低次 FVM 基準離散化では以下の3点を変更して周期 FVM 行列を組み立てる．
 
 \paragraph{（1）折り返しフェイスの追加}
 周期 BC では内部フェイスに加え，ノード $N_x-1$ とノード $0$ を結ぶ
@@ -72,7 +70,7 @@ $a(x)$ が区分的定数（$a_L = 1/\rho_L$，$a_R = 1/\rho_R$）のとき：
 \end{equation}
 コーナー節点は最初の軸の拘束のみを採用する（重複適用を避けるため）．
 
-この同一性拘束は PPE だけの実装都合ではなく，
+この同一性拘束は PPE だけの数値線形代数上の都合ではなく，
 周期領域を離散商空間として扱う幾何条件である．
 任意の節点場 $q_h$（圧力，速度，$\psi$，曲率補助場）は
 式~\eqref{eq:periodic_quotient_space} の $\mathcal{Q}_P$ 上で評価し，
@@ -97,11 +95,11 @@ $a(x)$ が区分的定数（$a_L = 1/\rho_L$，$a_R = 1/\rho_R$）のとき：
 式~\eqref{eq:periodic_face_to_node_reconstruction} を適用し，
 wall 軸にのみ片側壁閉包と no-slip/no-penetration 条件を適用する．
 
-\begin{tcolorbox}[warnbox, title={周期 FVM 行列と前処理：ILU の充填不足に注意}]
+\begin{tcolorbox}[warnbox, title={周期 FVM 行列のゲージと比較用途}]
   式~\eqref{eq:ghost_identity} の同一性拘束行と FVM 行が混在した疎行列に対して，
-  ILU(0)（\texttt{fill\_factor=1}）を前処理に使用すると BiCGSTAB~\cite{VanderVorst1992} の収束が著しく遅延する．
-  実装では \texttt{fill\_factor=10} で安定収束を確認した．
-  直接法（\texttt{spsolve}）は収束診断に有効である．
+  Krylov 前処理の性能を本稿の検証契約に含めない．低次 FVM 基準値は
+  ゲージ固定後の直接法（\texttt{spsolve}）で取得し，反復前処理の
+  収束性は主張範囲から外す．
 \end{tcolorbox}
 
 % ══════════════════════════════════════════════════════════════════════════════
@@ -175,158 +173,6 @@ $\bnabla p = \sigma\kappa_{lg}\bnabla\psi$ が成立する．
 \end{equation}
 
 % ══════════════════════════════════════════════════════════════════════════════
-\subsubsection{Rhie--Chow 補正の参照定式化}
-\label{app:rhie_chow_full}
-% ══════════════════════════════════════════════════════════════════════════════
-
-\subsubsection{補正された界面速度の定義}
-本稿では，Chung~\cite{Chung2002} に基づく変密度場に対応した形式を用いる．
-東側フェイス $e$ における $x$ 方向速度 $u_e$ は，隣接するセル中心 $P$ と $E$ の値を用いて以下のように定義される．
-\begin{equation}
- u_e = \overline{u_e} - d_e \left[ \left(\pd{p}{x}\right)_e - \overline{\left(\pd{p}{x}\right)_e} \right]
- \label{eq:rc-concept-app}
-\end{equation}
-ここで，
-\begin{itemize}
-    \item $\overline{u_e}$: セル中心 $P, E$ の速度を線形補間した速度．$\overline{u_e} = (u_P+u_E)/2$．
-    \item $(\partial p/\partial x)_e$: フェイス $e$ での圧力勾配．単純な中心差分 $\frac{p_E-p_P}{\Delta x}$ で計算．
-    \item $\overline{(\partial p/\partial x)_e}$: セル中心 $P, E$ で評価された圧力勾配を線形補間したもの．
-    $\overline{(\partial p/\partial x)_e} = \frac{1}{2}\left[ \left(\frac{\partial p}{\partial x}\right)_P + \left(\frac{\partial p}{\partial x}\right)_E \right]$
-    \item $d_e$: 補間係数．運動量方程式から導かれ，時間刻み幅 $\Delta t$ と密度 $\rho$ に依存する．
-    $d_e = (\Delta t / \rho)_e$（式~\eqref{eq:rc-face} 参照）．
-\end{itemize}
-
-Rhie--Chow 式 \eqref{eq:rc-concept-app} に2種類の補間が現れる：
-\begin{itemize}
-  \item \textbf{$\bar{u}_f$（速度）→ 算術平均}：
-    速度は気液界面をまたいでも物理的に連続であるため，単純な線形補間が適切である．
-  \item \textbf{$d_f = \Delta t (1/\rho)_f^{\mathrm{harm}}$（密度係数）→ $1/\rho$ の調和平均}：
-    密度 $\rho$ は界面で不連続であり，フラックスの連続性（直列抵抗則）から
-    $a \equiv 1/\rho$ の調和平均
-    $(1/\rho)_f^{\mathrm{harm}} = 2a_La_R/(a_L+a_R) = 2/(\rho_L+\rho_R)$
-    が自然に導かれる（第\ref{sec:pressure}章；
-    §\ref{app:fvm_face_coeff} の FVM 積分論理を参照）．
-    これは $\rho$ の算術平均 $(\rho_L+\rho_R)/2$ の逆数に等しい．
-    注：$\rho$ の調和平均の逆数 $(\rho_L+\rho_R)/(2\rho_L\rho_R)$ とは異なる
-    （§\ref{app:fvm_face_coeff} の「よくある実装ミス」を参照）．
-\end{itemize}
-
-\paragraph{補正項の働き}
-式 \eqref{eq:rc-concept-app} の第2項が Rhie--Chow 補正の核心である．
-チェッカーボード圧力場では，フェイスでの勾配 $(p_E-p_P)/\Delta x$ は大きな値を持つが，
-セル中心勾配の平均はゼロに近くなるため，この差が非物理的な振動を効果的に減衰させる．
-
-\subsubsection{Rhie--Chow 経路における離散化形式}
-\label{sec:rc_implementation}
-Rhie--Chow 経路を採る場合，圧力 Poisson 方程式の右辺とフェイス速度を同じ離散発散で閉じるため，
-以下の離散化形式を用いる．
-\begin{equation}
- u_f = \bar{u}_f - \Delta t\left( \frac{1}{\rho^{n+1}} \right)^{\mathrm{harm}}_f \left[ (\bnabla p^n)_f - \overline{(\bnabla p^n)}_f \right]
- \label{eq:rc-face}
-\end{equation}
-ここで，$(\nabla p^n)_f$ はフェイスにおける前時刻圧力 $p^n$ の勾配（陽的評価），
-$\overline{(\nabla p^n)}_f$ はセル中心における前時刻圧力勾配の補間値である．
-係数 $(1/\rho^{n+1})_f^\mathrm{harm} = 2/(\rho^{n+1}_P + \rho^{n+1}_E)$ には現時刻の $1/\rho$ の調和平均（$= \rho$ の算術平均の逆数）を用いる．
-
-\paragraph{補間方式の根拠}
-$1/\rho$ の算術平均と調和平均の差は密度比が大きいほど顕著になる：
-\begin{center}
-\PaperTableSetup
-\begin{tabular}{lccc}
-\hline
-流体系 & $\rho_l/\rho_g$ & $(1/\rho)^{\mathrm{arith}}_f \cdot \rho_g$ & $(1/\rho)^{\mathrm{harm}}_f \cdot \rho_g$ \\
-\hline
-水・水蒸気 & $10$ & $0.55$ & $0.18$ \\
-水・空気（常温） & $1000$ & $\approx 0.500$ & $\approx 0.002$ \\
-\hline
-\end{tabular}
-\end{center}
-
-\subsubsection{Rhie--Chow 補正済み発散の定義}
-\label{sec:rc_divergence}
-
-Rhie--Chow 補正済みフェイス速度を用いた\textbf{フェイス速度の発散}：
-\begin{equation}
-  \bigl(\bnabla_h^{\mathrm{RC}}\!\cdot\bu^*\bigr)_{i,j}
-  \equiv
-  \frac{(u_f)_{i+1/2,j} - (u_f)_{i-1/2,j}}{\Delta x}
-  + \frac{(v_f)_{i,j+1/2} - (v_f)_{i,j-1/2}}{\Delta y}
-  \label{eq:rc_divergence}
-\end{equation}
-ここで $(u_f)_{i+1/2,j}$ は式~\eqref{eq:rc-concept-app} の Rhie--Chow 補正済みフェイス速度．
-$p^n$ は前時刻圧力（陽的補正），$(1/\rho)^{\mathrm{harm}}_{i+1/2,j} = 2/(\rho^{n+1}_{i,j}+\rho^{n+1}_{i+1,j})$
-は時刻 $n+1$ の密度値から評価する．
-
-\noindent\textbf{【RC 経路での注意】PPE 右辺での Rhie--Chow 発散：}
-Rhie--Chow 経路を用いる場合，PPE 右辺の発散計算にはこのフェイス速度の発散 $\nabla_h^{\mathrm{RC}}\cdot\bu^*$
-を使用する
-（セル中心発散の代用はチェッカーボードの逆流を招く）．
-
-\noindent\textbf{注：本稿（CSF + HFE + Balanced-Force/FCCD 定式化）では}
-Balanced-Force 演算子整合と FCCD 面ジェット sub-system（§\ref{sec:checkerboard_solution}）が
-PPE 右辺のチェッカーボード対策を担い，
-HFE（§\ref{sec:field_extension}）が界面越し圧力延長を行う．
-CSF 体積力は Predictor に保持される（§\ref{sec:ccd_balanced_force}）．
-
-\subsubsection{Rhie--Chow 経路での表面張力項拡張：フェイス速度への Balanced-Force 反映}
-\label{app:rc_balanced_force}
-\label{app:csf_balanced_force}
-
-Rhie--Chow 経路で Balanced-Force の論理をフェイス速度の計算にも同じ離散レベルで反映させるためには，
-表面張力体積力の差分項を加えた拡張形式が必要である：
-\begin{equation}
-  u_f = \bar{u}_f
-    - \Delta t\left(\frac{1}{\rho^{n+1}}\right)_f^{\mathrm{harm}}
-    \Biggl[
-      \Bigl((\bnabla p^n)_f - \overline{(\bnabla p^n)}_f\Bigr)
-      - \Bigl((\bm{f}_\sigma^{n+1})_f - \overline{(\bm{f}_\sigma^{n+1})}_f\Bigr)
-    \Biggr]
-  \label{eq:rc-face-balanced-app}
-\end{equation}
-
-ここで各量の定義は以下の通りである：
-\begin{itemize}
-  \item $(\bm{f}_\sigma^{n+1})_f = (\kappa_f^{n+1}/We)\cdot(\psi_E^{n+1}-\psi_P^{n+1})/h$：
-        フェイス $f$ での表面張力体積力．
-  \item $\overline{(\bm{f}_\sigma^{n+1})}_f = \tfrac{1}{2}[(\bm{f}_\sigma^{n+1})_P + (\bm{f}_\sigma^{n+1})_E]$：
-        セル中心値の算術平均補間値．\textbf{RC 拡張を使う場合の条件：} セル中心値には CCD 演算子を使用する
-        （Balanced-Force 整合性条件，§\ref{sec:balanced_force}）．
-\end{itemize}
-
-平衡状態では，フェイス直接差分レベルで $(\bnabla p^n)_f \approx (\bm{f}_\sigma^{n+1})_f$
-がキャンセルし，セル中心平均で同一の CCD 演算子を使うことで
-$\overline{(\bnabla p^n)}_f - \overline{(\bm{f}_\sigma^{n+1})}_f \to 0$ となる
-（詳細は §\ref{app:balanced_force_taylor}）．
-
-% ══════════════════════════════════════════════════════════════════════════════
-%% 旧 appendix_numerics_schemes_s5.tex の内容を統合
-% ══════════════════════════════════════════════════════════════════════════════
-
-\subsubsection{Rhie--Chow 補正と CCD 高次精度の整合性}
-\label{app:rc_precision}
-
-RC 検出項のテイラー展開（式~\eqref{eq:rc_face_taylor}--\eqref{eq:rc_detection_taylor}）と
-$\Ord{h^2}$ ブラケットの物理的解釈は付録~\ref{app:rhie_chow_full} に収録した．
-本節では，表面張力 Balanced-Force 拡張（式~\eqref{eq:rc-face-balanced-app}）の補正項が
-CCD の $\Ord{h^6}$ 精度を律速しないことを補足する．
-
-\textbf{表面張力 RC 補正の誤差（式~\eqref{eq:rc-face-balanced-app} の $(\bm{f}_\sigma)_f - \overline{(\bm{f}_\sigma)}_f$）：}
-拡張 Rhie--Chow 式~\eqref{eq:rc-face-balanced-app} では，圧力補正項に加えて表面張力検出項
-$(\bm{f}_\sigma^{n+1})_f - \overline{(\bm{f}_\sigma^{n+1})}_f$ が加わる．
-フェイス直接差分 $(\bm{f}_\sigma)_f = (\kappa_f/We)(\psi_E-\psi_P)/h$ はテイラー展開から：
-\[
-  (\bm{f}_\sigma)_f = (\kappa/We)\nabla\psi(x_f) + \Ord{h^2}
-\]
-セル中心 CCD 平均 $\overline{(\bm{f}_\sigma)}_f$ も式~\eqref{eq:rc_avg_taylor} と同じ構造で：
-\[
-  \overline{(\bm{f}_\sigma)}_f = (\kappa/We)\nabla\psi(x_f) + \Ord{h^2}
-\]
-差は $(\bm{f}_\sigma)_f - \overline{(\bm{f}_\sigma)}_f = \Ord{h^2}$，補正量は $\Ord{\Delta t \cdot h^2}$．
-したがって表面張力補正項も CCD の $\Ord{h^6}$ 精度を律速しない．
-
-Balanced-Force 条件（§\ref{sec:balanced_force}）への影響はない：Rhie--Chow 補正はフェイス速度の安定化補助項であり，主方程式の CCD 演算子とは独立の役割を担う．
-
-% ════════════════════════════════════════════════════════════════════════════
 \subsubsection{Balanced-Force 条件：離散化演算子不一致の誤差解析}
 \label{app:balanced_force_taylor}
 % ═════════════════════════════════════════════════════════════════════════════

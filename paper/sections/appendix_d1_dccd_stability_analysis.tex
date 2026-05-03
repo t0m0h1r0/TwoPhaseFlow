@@ -1,4 +1,4 @@
-% paper/sections/appendix_stability_analysis.tex
+% paper/sections/appendix_d1_dccd_stability_analysis.tex
 %
 % TVD-RK3 + Dissipative CCD のフォン・ノイマン安定性解析（§5 本文から移動）
 
@@ -32,11 +32,10 @@ $|g_{\mathrm{RK3}}|^2 = 1 - \omega^4/12 + \omega^6/36$
 式~\eqref{eq:rk3_stability_condition} から
 $\sigma \leq \sqrt{3}/\max_\xi\bigl\{H(\xi;\varepsilon_d^{\mathrm{adv}})\,\hat{k}^*(\xi)\bigr\}$ となる．
 無次元修正波数 $\hat{k}^*(\xi)$ は特性方程式（式~\eqref{eq:CCD_I} の Fourier 解析）から求まり，
-本実装 ch13 既定の dissipative フィルタ強度 $\varepsilon_d^{\mathrm{adv}} = 0.05$
+§~\ref{sec:verification} 既定の dissipative フィルタ強度 $\varepsilon_d^{\mathrm{adv}} = 0.05$
 （CCD 移流再構成の散逸係数；式~\eqref{eq:dccd_adv_filter} で定義）のとき
 $\max_\xi\{H(\xi)\,\hat{k}^*(\xi)\} \approx 1.9$
-（$\xi \approx 0.8\pi$ 付近，再現スクリプト：
-\texttt{scripts/dispersion\_dccd.py}；分散曲線図は別 CHK で添付予定）であるから：
+（$\xi \approx 0.8\pi$ 付近の数値最大化）であるから：
 \[
   \sigma_{\max} = \frac{\sqrt{3}}{1.9} \approx 0.91
 \]

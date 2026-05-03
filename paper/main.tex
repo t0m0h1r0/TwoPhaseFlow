@@ -78,8 +78,8 @@
 \input{sections/10c_fccd_nonuniform}  %% §10.4 非一様 FCCD
 \input{sections/10d_ridge_eikonal_nonuniform} %% §10.5 Ridge--Eikonal 非一様
 %% ※ appendix_ppe_verification_stub（CCD-Poisson 単体検証スタブ）→ §11.3.3 に移行済み
-%% ※ appendix_fvm_note（FVM 調和平均・RC 発散定義）→ 付録 E.3 に統合
-%% ※ appendix_ppe_pseudotime（疑似時間ソルバーアルゴリズム詳細）は付録 E.2
+%% ※ appendix_fvm_note（FVM 調和平均・周期 FVM 基準離散化）→ 付録 E.3 に統合
+%% ※ appendix_e2_ppe_pseudotime（疑似時間ソルバーアルゴリズム詳細）は付録 E.2
 
 %% §11: Part II capstone — Navier--Stokes ソルバ統合アルゴリズム
 \clearpage
@@ -112,24 +112,24 @@
 \part{付録}
 
 %% 付録A: 無次元化の項別導出（§2 対応）
-\input{sections/appendix_nondim_details}        %% A.1 項別無次元化, A.2 曲率2D導出
+\input{sections/appendix_a_nondim_details}      %% A.1 項別無次元化, A.2 曲率2D導出
 
 %% 付録B: 界面数学・CLS 証明（§2-3 対応）
-\input{sections/appendix_interface}             %% B.1–B.4
+\input{sections/appendix_b_interface}           %% B.1–B.4
 
 %% 付録C: CCD 法の係数導出と実装（§4 対応）
-\input{sections/appendix_ccd}                   %% C.1 係数導出, C.2 境界代替, C.3 精度・楕円型
+\input{sections/appendix_c_ccd}                 %% C.1 係数導出, C.2 境界代替, C.3 精度・楕円型
 
 %% 付録D: 移流スキームと安定性制約（§7 対応）
-\input{sections/appendix_advection}             %% D.1 安定性解析, D.2 安定性制約
+\input{sections/appendix_d_advection_stability} %% D.1 安定性解析, D.2 安定性制約
 
 %% 付録E: 圧力ソルバーと連成解析（§8-9 対応）
-\input{sections/appendix_pressure}              %% E.1 欠陥補正, E.2 仮想時間, E.3 FVM, E.4 C/RC, E.5 実装補足
+\input{sections/appendix_e_pressure_coupling}   %% E.1 欠陥補正, E.2 仮想時間, E.3 FVM/CSF/BF, E.4 圧力ステップ補足
 
 %% 付録F: ブートストラップ初期化シーケンス（§10-11 対応）
-\input{sections/appendix_bootstrap}             %% F.1 初期化5段階
+\input{sections/appendix_f_bootstrap}           %% F.1 初期化6段階
 
 %% 付録G: 検証の補足解析（§12--13 対応）
-\input{sections/appendix_verification_details}  %% G.1 PPE離散化選択, G.2 HFE適合性, G.3 V7 RCA
+\input{sections/appendix_g_verification_details} %% G.1 PPE離散化選択, G.2 HFE適合性, G.3 V7 RCA
 
 \end{document}

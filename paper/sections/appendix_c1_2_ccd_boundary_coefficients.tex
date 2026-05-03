@@ -117,10 +117,9 @@ $p=2$: $(0{-}154{+}856{-}1404{+}976{-}250)/12 = 24/12 = 2$，
 $p=3$: $0/12 = 0$，$p=4$: $0/12 = 0$（いずれも機械精度で確認済み），
 $p=5$: $0/12 = 0$，$p=6$: $-6576/12 = -548 \ne 0$．したがって $\Ord{h^4}$ 精度が確認される．
 
-\paragraph{実装}
+\paragraph{離散化契約}
 
-\texttt{ccd/ccd\_solver.py} の \texttt{\_boundary\_coeffs\_left(h, n\_pts)} において，
-$n_\mathrm{pts} \ge 6$ を paper-exact 実装条件として式~\eqref{eq:bcII_left_h4} を用いる．
+$n_\mathrm{pts} \ge 6$ を paper-exact 条件として式~\eqref{eq:bcII_left_h4} を用いる．
 $n_\mathrm{pts} < 6$ は 6 点 $\Ord{h^4}$ 境界閉包を構成できないため明示的に拒否し，
 低次公式への暗黙フォールバックは行わない．右境界では
 $f_0 \to f_N,\, f_1 \to f_{N-1},\ldots$ の鏡像公式を適用する．
@@ -129,4 +128,4 @@ $f_0 \to f_N,\, f_1 \to f_{N-1},\ldots$ の鏡像公式を適用する．
 
 昇格により d2 の全域 $L^\infty$ 収束が境界寄与によって制限されず，
 内点スキームの $\Ord{h^6}$ 精度に近い収束率が得られる．
-数値実験（\texttt{test\_ccd.py} Test~2）では平均スロープ ${\approx}4.8$ を確認した．\qed
+境界を含む係数検証では平均スロープ ${\approx}4.8$ を確認した．\qed

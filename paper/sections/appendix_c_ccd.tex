@@ -1,4 +1,4 @@
-% paper/sections/appendix_ccd.tex
+% paper/sections/appendix_c_ccd.tex
 %
 % 付録C: CCD 法の係数導出と実装（旧付録B+C を統合）
 %   — §4/§8 対応
@@ -9,17 +9,17 @@
 %% C.1 CCD 係数の Taylor 展開導出（内点＋境界）
 \subsection{CCD 係数の Taylor 展開導出}
 \label{app:ccd_coef_all}
-\input{sections/appendix_ccd_coef_s1}    %% C.1.1 内点係数
-\input{sections/appendix_ccd_coef_s2}    %% C.1.2 境界スキーム係数
+\input{sections/appendix_c1_1_ccd_interior_coefficients} %% C.1.1 内点係数
+\input{sections/appendix_c1_2_ccd_boundary_coefficients} %% C.1.2 境界スキーム係数
 
 %% C.2 境界処理の代替実装（ゴーストセル法＋周期BC）
 \subsection{境界処理の代替実装}
 \label{app:ccd_boundary_alt}
-\input{sections/appendix_ccd_impl_s1}    %% C.2.1 ゴーストセル法
-\input{sections/appendix_ccd_impl_s4}    %% C.2.2 周期境界条件
+\input{sections/appendix_c2_1_ccd_ghost_cells} %% C.2.1 ゴーストセル法
+\input{sections/appendix_c2_2_ccd_periodic_bc} %% C.2.2 周期境界条件
 
 %% C.3 精度解析と楕円型ソルバー（混合微分精度＋PPEソルバー構造＋Kronecker積）
 \subsection{精度解析と楕円型ソルバー}
 \label{app:ccd_analysis}
-\input{sections/appendix_ccd_impl_s2}    %% C.3.1 混合微分精度解析
-\input{sections/appendix_ccd_impl_s3}    %% C.3.2 楕円型ソルバー・Kronecker積・Neumann BC
+\input{sections/appendix_c3_1_ccd_mixed_derivative} %% C.3.1 混合微分精度解析
+\input{sections/appendix_c3_2_ccd_elliptic_solver}  %% C.3.2 楕円型ソルバー・Kronecker積・Neumann BC
