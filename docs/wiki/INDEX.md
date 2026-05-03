@@ -1,6 +1,6 @@
-# Wiki Index — 238 entries
+# Wiki Index — 241 entries
 
-## Theory (87)
+## Theory (90)
 
 | REF-ID | Title |
 |--------|-------|
@@ -91,6 +91,9 @@
 | [WIKI-T-085](theory/WIKI-T-085.md) | CLS A--F Staging: Three Responsibilities, Six Gates |
 | [WIKI-T-086](theory/WIKI-T-086.md) | Mass Closure Has Two Spaces: psi-Localized Before, phi-Uniform After |
 | [WIKI-T-087](theory/WIKI-T-087.md) | Reinitialization Trigger and DGR Applicability Are Context-Sensitive |
+| [WIKI-T-088](theory/WIKI-T-088.md) | FCCD Telescoping Conservation: Shared Face Flux Before Clamp |
+| [WIKI-T-089](theory/WIKI-T-089.md) | Dissipation Channel Taxonomy: None, Post-Filter, Internal, and Face-Locus |
+| [WIKI-T-090](theory/WIKI-T-090.md) | Boundary Closure Honesty: Interior Order Is Not Whole-Domain Order |
 
 ## Cross-Domain (39)
 
