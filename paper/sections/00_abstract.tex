@@ -3,30 +3,29 @@
 \begin{center}
 \vspace*{12mm}
 {\color{navy}\rule{\linewidth}{2pt}}\\[8pt]
-{\LARGE\bfseries 気液二相流の高精度数値シミュレーション}\\[6pt]
-{\large\bfseries —— CCD 法による寄生流れ抑制と保存形界面追跡の統合設計 ——}\\[4pt]
+{\LARGE\bfseries 高次コンパクト差分に基づく気液二相流数値法}\\[6pt]
+{\large\bfseries —— 保存形界面追跡・Balanced-Force・圧力ジャンプ分相 PPE の統合設計 ——}\\[4pt]
 {\color{navy}\rule{\linewidth}{2pt}}\\[10pt]
 {\large
-\textbf{High-Order Numerical Simulation of Gas--Liquid Two-Phase Flows}\\[4pt]
-\textit{Spurious-Current Suppression via CCD $\cdot$ Conservative Level Set $\cdot$ Dissipative CCD $\cdot$ Projection Method}
+\textbf{High-Order Compact Schemes for Gas--Liquid Two-Phase Flow Simulation}\\[4pt]
+\textit{Conservative Level Set $\cdot$ Balanced Force $\cdot$ Pressure-Jump Phase-Separated PPE}
 }
 \vspace{14mm}
-\begin{tcolorbox}[mybox, width=0.88\textwidth]
-\small\centering
-\begin{tabular}{@{}r>{\raggedright\arraybackslash}p{0.68\linewidth}@{}}
-界面追跡： & Conservative Level Set 法（$\psi\equiv H_\varepsilon(-\phi)$，液相 $1$／気相 $0$）\\
-空間離散： & CCD（内点 $\Ord{h^6}$；微分），Dissipative CCD（移流・速度/圧力），非一様格子\\
-格子構造： & コロケート格子 + DCCD 散逸（$\varepsilon_d=1/4$；チェッカーボード除去）\\
-時間積分： & TVD-RK3（移流・CLS），Crank--Nicolson（粘性）\\
-圧力解法： & IPC 法~\cite{vanKan1986}（本稿で変密度に拡張）+ CCD-PPE（$\Ord{h^6}$）+ 欠陥補正法\\
-              & \textbf{低密度比}（$\rho_l/\rho_g \leq 5$）：smoothed Heaviside 一括解法（FD 直接法 + CCD $\Ord{h^6}$ 勾配；必要に応じ DC）\\
-              & \textbf{高密度比}（$\rho_l/\rho_g > 5$）：分相 PPE + HFE（必要に応じ DC，§~\ref{sec:split_ppe_recovery}）\\[4pt]
+\begin{tcolorbox}[mybox, width=0.92\textwidth]
+\footnotesize\centering
+\begin{tabular}{@{}r>{\raggedright\arraybackslash}p{0.64\linewidth}@{}}
+界面追跡： & FCCD 保存形 CLS（$\psi\equiv H_\varepsilon(-\phi)$，液相 $1$／気相 $0$）+ Ridge--Eikonal 再初期化\\
+空間離散： & CCD（内点 $\Ord{h^6}$），FCCD（面演算子 $\Ord{h^4}$），UCCD6，DCCD（移流安定化；圧力適用は禁止），非一様格子\\
+格子構造： & コロケート格子 + Balanced-Force 七原則 + FCCD 面ジェット sub-system\\
+時間積分： & TVD-RK3（CLS），IMEX-BDF2/EXT2（NS 対流），implicit-BDF2 + DC（粘性），IPC 圧力増分\\
+圧力閉包： & pressure-jump 型 分相 FCCD-PPE + HFE + DC $k=3$（§~\ref{sec:split_ppe_recovery}）\\
+              & smoothed Heaviside 一括 PPE は低密度比・縮約検証経路として扱い，標準 headline は分相 pressure-jump 経路\\[4pt]
 \hline\\[-6pt]
 \multicolumn{2}{@{}l}{\textbf{精度律速（設計上の注意）}}\\[2pt]
-時間方向律速： & AB2+IPC $\Rightarrow$ 全体時間精度 $\Ord{\Delta t^2}$（§~\ref{sec:time_accuracy_table}）${}^{\ast}$\\
-空間精度律速： & 分相 PPE + HFE で界面 Gibbs 振動を除去；界面近傍の圧力勾配精度 $\Ord{h^6}$ を維持\\[2pt]
-\multicolumn{2}{@{}l}{\footnotesize CCD の $\Ord{h^6}$ 空間精度は\textbf{内点点別誤差}を指す；境界閉包により大域 $L^2$ ノルムは $\Ord{h^{5/2}}$ に律速（§~\ref{sec:accuracy_summary}）}\\[2pt]
-\multicolumn{2}{@{}l}{\footnotesize ${}^{\ast}$界面近傍で $\mu_l/\mu_g \gg 1$ の場合，補間誤差により実効精度が $\Ord{\Delta t}$ に低下しうる（§~\ref{sec:time_accuracy_table} 参照）．}\\
+時間方向律速： & 単体では TVD-RK3 $\Ord{\Delta t^{3.04}}$，EXT2/AB2 $\Ord{\Delta t^{2.05}}$，implicit-BDF2 $\Ord{\Delta t^{2.01}}$；二相 coupled stack は V7 slope $1.04$（Type-D）\\
+空間精度律速： & U1/U6 で CCD $\Ord{h^{6.0}}$，FCCD $\Ord{h^{4.0}}$，UCCD6 $\Ord{h^{7.0}}$，HFE 1D $\Ord{h^{5.91}}$ を実測\\[2pt]
+\multicolumn{2}{@{}l}{\footnotesize CCD の $\Ord{h^6}$ は\textbf{内点点別誤差}を指す；境界閉包により大域 $L^2$ ノルムは $\Ord{h^{5/2}}$ に律速（§~\ref{sec:accuracy_summary}）}\\[2pt]
+\multicolumn{2}{@{}l}{\footnotesize V6 は $\rho_l/\rho_g\le833$ のロバスト性を確認；第~\ref{sec:validation}章の気泡上昇・Rayleigh--Taylor は査読時点の未完了検証ゲート．}\\
 \end{tabular}
 \end{tcolorbox}
 \end{center}
@@ -37,29 +36,31 @@
 
 % ─────────────────────────────────────────────────────────────────────────────
 \begin{abstract}
-気液二相流数値シミュレーションにおける最大の数値的障害は，
-静止液滴界面に生じる人工的渦流れ——\textbf{寄生流れ（spurious currents）}——である．
-その根本原因は，圧力勾配項と表面張力項に異なる差分演算子を用いることによる離散化の不整合であり，
-格子を細分化しても下限が消えない誤差体積力を生む．
-本稿は，この問題を結合コンパクト差分法（CCD，内点 $\Ord{h^6}$），
-Hermite 場延長法（HFE；\cite{Aslam2004} の Extension PDE に基づく），および Dissipative CCD 散逸機構の組み合わせにより，
-寄生流れを CSF モデル誤差律速の水準まで根本的に抑制する設計を提案する．
-その理論的基盤・実装詳細・検証手順を体系的に解説する．
-界面追跡には Conservative Level Set（CLS）法と CCD スキームを採用して質量保存性と
-数値拡散の抑制を同時に達成し，変密度圧力 Poisson 方程式は低密度比（$\rho_l/\rho_g \leq 5$）では
-smoothed Heaviside 一括解法（FD 直接法 + CCD $\Ord{h^6}$ 勾配；必要に応じ欠陥補正法）で求解し，
-高密度比では分相 PPE + HFE 解法（各相で定数密度の Poisson を独立化；必要に応じ欠陥補正法 DC）により求解する．
-HFE が CCD ステンシルの界面 Gibbs 振動を除去し，
-Balanced-Force 演算子整合と FCCD 面ジェット sub-system の協働により，
-Rhie--Chow 補間に頼らずコロケート格子のチェッカーボード不安定を抑制する．
-全手法は7ステップのタイムループとして統合される．
-検証は三段構成で実施した：
-数値要素の単体検証（CCD/FCCD/UCCD6，PPE 境界条件，非一様格子，HFE/分相 PPE 等），
-NS パイプライン統合検証（静止液滴の Laplace 圧力誤差 $0.97\%$，
-寄生流れは CCD が全表ケースで FD 以下，代表ケースで約 $2.5$--$5.9$ 倍抑制，密度比 $833$ までの分相 PPE + DC + HFE ロバスト性，
-Zalesak / 単一渦 CLS 移流の 2D 可視化と体積・重心診断），
-および物理ベンチマーク（毛細管波，気泡上昇，Rayleigh--Taylor 予備設定）．
-一方，二相 IMEX--BDF2 の実効時間次数低下，local $\varepsilon$ の寄生流れ増加，
-および $\alpha=2$ Zalesak の slot 重心追跡低次化は制約条件として明示した．
-Hysing 級の terminal-velocity 比較や Prosperetti 級の dispersion 関係定量検証は今後の課題として位置づける．
+気液二相流数値シミュレーションにおける主要な数値的障害は，
+静止すべき界面に生じる人工的渦流れ——\textbf{寄生流れ（spurious currents）}——である．
+本稿は，その離散化起因成分を構造的に抑えるため，
+結合コンパクト差分法（CCD，内点 $\Ord{h^6}$），FCCD 面ジェット，UCCD6，
+Conservative Level Set（CLS）法，Hermite 場延長法（HFE；\cite{Aslam2004} の Extension PDE に基づく），
+および Balanced-Force 七原則を一つの pressure-jump 型分相 PPE スタックへ統合する．
+標準経路では，界面を FCCD 保存形 CLS と Ridge--Eikonal 再初期化で更新し，
+表面張力は CSF 体積力ではなく $j_{gl}=p_g-p_l=-\sigma\kappa_{lg}$ の圧力ジャンプとして
+分相 FCCD-PPE + HFE + 欠陥補正（DC $k=3$）へ組み込む．
+この構成により，コロケート格子でも Rhie--Chow 補間に依存せず，
+圧力勾配・表面張力・HFE 上流点・GFM ジャンプが同じ face footprint を共有する
+Balanced-Force sub-system として閉じる．
+時間発展は TVD-RK3（CLS），IMEX-BDF2/EXT2（運動量対流），
+implicit-BDF2 + DC（粘性），IPC 圧力増分を組み合わせた 7 ステップ手順として整理する．
+
+検証は，単体検証 U1--U9，統合検証 V1--V10，物理ベンチマーク第~\ref{sec:validation}章の
+三層で構成した．単体検証では CCD $\Ord{h^{6.0}}$，FCCD $\Ord{h^{4.00}}$，
+UCCD6 $\Ord{h^{7.00}}$，HFE 1D $\Ord{h^{5.91}}$，implicit-BDF2 $\Ord{\Delta t^{2.01}}$ などを確認し，
+統合検証では静止液滴 Laplace 圧力誤差 $0.97\%$，
+寄生流れの CCD/FD 比 $1/2.5$--$1/5.85$（代表ケース），
+密度比 $\rho_l/\rho_g\le833$ での pressure-jump 分相 PPE + DC + HFE のロバスト性，
+および Zalesak / 単一渦 CLS-only 強変形移流の質量・重心診断を示した．
+一方，二相 coupled stack の時間精度は V7 で最終 slope $1.04$ に留まり，
+Lie 分割・再初期化 cadence・pressure-jump PPE 結合による Type-D 条件付き合格として扱う．
+また，非一様 moving-interface CLS，長時間・完全連成 NS 移動界面，
+Prosperetti 級の毛管波分散照合，Hysing 級の終端速度比較，
+および Rayleigh--Taylor 線形成長率検証は今後の検証 gate として明示する．
 \end{abstract}
