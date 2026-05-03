@@ -1,6 +1,6 @@
-# Wiki Index — 282 entries
+# Wiki Index — 285 entries
 
-## Theory (122)
+## Theory (125)
 
 | REF-ID | Title |
 |--------|-------|
@@ -126,6 +126,9 @@
 | [WIKI-T-120](theory/WIKI-T-120.md) | Face Jet Has Mixed Accuracy by Design |
 | [WIKI-T-121](theory/WIKI-T-121.md) | Face Jet Is a Public Contract, Not a Current Implementation Detail |
 | [WIKI-T-122](theory/WIKI-T-122.md) | FCCD Balanced-Force Fourth Order Requires a Smooth Constructive Relation |
+| [WIKI-T-123](theory/WIKI-T-123.md) | Term-Specific Discretization Is a Regularity Contract |
+| [WIKI-T-124](theory/WIKI-T-124.md) | TVD-RK3 Label Does Not Guarantee TVD for the FCCD Space Operator |
+| [WIKI-T-125](theory/WIKI-T-125.md) | IMEX-BDF2 Predictor Uses Projected History, Not Star Velocity |
 
 ## Cross-Domain (39)
 
