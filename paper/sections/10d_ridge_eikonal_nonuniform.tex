@@ -82,7 +82,7 @@ $\sigma_\text{eff}\sim 3h$ の範囲で評価されるため，
   \item\textbf{評価式 B（低次の確認評価）}——
 物理空間二階差分で $H_{xx},H_{xy},H_{yy}$ を近似し，
         符号判定 $\lambda_{\min}(H)<0$ または
-        $\hat{\bm{n}}^{\!\top}H\hat{\bm{n}}<0$ を
+        $\hat{\bm n}^{\!\top}H\hat{\bm n}<0$ を
         $H^{(2)}$ で行う．これは 2 次精度の確認評価に限り，
         Morse 非退化点でも固有値の符号余裕が小さい場合は評価式 A を用いる．
 \end{enumerate}
@@ -256,7 +256,7 @@ $\partial_x^2 = \mathsf{X}_\xi^{-2}\,\partial_\xi^2
 リッジ判定は §~\ref{sec:ridge_eikonal} の定義と同じく
 $\lambda_{\min}(\mathbf{H}_{\xiridge}^{\text{nu}})<0$ を用い，
 法線曲率形式で確認する場合も
-$\hat{\bm{n}}^{\!\top}H\hat{\bm{n}}
+$\hat{\bm n}^{\!\top}H\hat{\bm n}
 = n_x^2H_{xx}+2n_xn_yH_{xy}+n_y^2H_{yy}$ として
 混合項を保持する．
 
@@ -270,7 +270,7 @@ $\hat{\bm{n}}^{\!\top}H\hat{\bm{n}}
 \]
 は 2 次精度に留まるが，Morse 非退化リッジ\textbf{かつ曲率半径 $R \gg h_\text{min}$}では
 符号判定に影響しない（小曲率半径の薄いリッジでは $\Ord{h^2}$ 誤差が
-$\hat{\bm{n}}^{\!\top}H\hat{\bm{n}}$ の符号を反転させうるため評価式 A を採用する）．
+$\hat{\bm n}^{\!\top}H\hat{\bm n}$ の符号を反転させうるため評価式 A を採用する）．
 混合成分 $H_{xy}$ は §~\ref{sec:ccd_mixed} と同じ 2 段適用で評価し，
 対角成分だけに落とさない．
 したがって二階差分経路は確認計算に限る．
@@ -366,7 +366,7 @@ D1--D4 の効果が次のように簡素化される：
 \begin{itemize}
   \item \textbf{D1 $\sigma_\text{eff}$}：界面帯では $h(\bm{x}) \approx h_\text{min}$ 一定．
         リッジ検出は等価密度帯内で評価されるため実効 $\sigma_\text{eff}$ は一様．
-  \item \textbf{D2 ヘッセ行列}：界面法線 $\hat{\bm{n}}$ は密度勾配方向と
+  \item \textbf{D2 ヘッセ行列}：界面法線 $\hat{\bm n}$ は密度勾配方向と
         ほぼ平行になる単純帯では対角寄与が支配的になりやすいが，
         離散化では $H_{xy}$ も保持して
         斜め界面・曲率帯での符号反転を避ける．

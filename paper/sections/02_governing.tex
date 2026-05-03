@@ -20,8 +20,8 @@
 \end{equation}
 Eikonal 条件 $|\bnabla\phi|=1$ が成り立ち，法線ベクトルと曲率を以下で定義する（§~\ref{sec:curvature}）：
 \begin{equation}
-  \hat{\bm{n}}_{lg} = \frac{\bnabla\phi}{|\bnabla\phi|} = \bnabla\phi, \qquad
-  \kappa_{lg} = \bnabla\cdot\hat{\bm{n}}_{lg}, \qquad \kappa \equiv \kappa_{lg}
+  \hat{\bm n}_{lg} = \frac{\bnabla\phi}{|\bnabla\phi|} = \bnabla\phi, \qquad
+  \kappa_{lg} = \bnabla\cdot\hat{\bm n}_{lg}, \qquad \kappa \equiv \kappa_{lg}
   \label{eq:kappa_def}
 \end{equation}
 
@@ -51,11 +51,11 @@ Eikonal 由来の距離精度を保つ設計である．
 \textbf{符号規約の定義（全章共通）：}
 \begin{itemize}
   \item $\phi < 0$：液相内部，$\phi > 0$：気相（式~\eqref{eq:phi_def}，§~\ref{sec:notation}）．
-  \item $\hat{\bm{n}}_{lg} = \bnabla\phi/|\bnabla\phi|$：
+  \item $\hat{\bm n}_{lg} = \bnabla\phi/|\bnabla\phi|$：
         液相内部では $\phi < 0$ → $\phi$ が増加する方向（液相→気相）を向くため，
-        $\hat{\bm{n}}_{lg}$ は\textbf{液相から気相への外向き}法線である
+        $\hat{\bm n}_{lg}$ は\textbf{液相から気相への外向き}法線である
         （添字 $lg$ は ``liquid$\to$gas'' を表し，本稿全章で固定）．
-  \item $\kappa_{lg}=\bnabla\cdot\hat{\bm{n}}_{lg}$，本稿で単に $\kappa$ と書く場合は
+  \item $\kappa_{lg}=\bnabla\cdot\hat{\bm n}_{lg}$，本稿で単に $\kappa$ と書く場合は
         $\kappa_{lg}$ を指す（曲率の定義，式~\eqref{eq:kappa_def}）．
 \end{itemize}
 
@@ -67,12 +67,12 @@ $\phi(\bm{x}) = |\bm{x}| - R$（液相は $|\bm{x}| < R$ で $\phi < 0$，界面
 \[
   \bnabla\phi = \frac{\bm{x}}{|\bm{x}|} \equiv \hat{\bm{r}}, \qquad
   |\bnabla\phi| = 1, \qquad
-  \hat{\bm{n}}_{lg} = \hat{\bm{r}} \quad \text{（球面外向き = 液相→気相 $\checkmark$）}
+  \hat{\bm n}_{lg} = \hat{\bm{r}} \quad \text{（球面外向き = 液相→気相 $\checkmark$）}
 \]
 
 2次元円（$\bnabla\cdot\hat{\bm{r}} = 1/r$）では $r = R$ で：
 \[
-  \kappa_{lg} = \bnabla\cdot\hat{\bm{n}}_{lg} = \frac{1}{R} > 0
+  \kappa_{lg} = \bnabla\cdot\hat{\bm n}_{lg} = \frac{1}{R} > 0
 \]
 
 \medskip
