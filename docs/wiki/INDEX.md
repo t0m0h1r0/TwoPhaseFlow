@@ -1,6 +1,6 @@
-# Wiki Index — 285 entries
+# Wiki Index — 288 entries
 
-## Theory (125)
+## Theory (128)
 
 | REF-ID | Title |
 |--------|-------|
@@ -129,6 +129,9 @@
 | [WIKI-T-123](theory/WIKI-T-123.md) | Term-Specific Discretization Is a Regularity Contract |
 | [WIKI-T-124](theory/WIKI-T-124.md) | TVD-RK3 Label Does Not Guarantee TVD for the FCCD Space Operator |
 | [WIKI-T-125](theory/WIKI-T-125.md) | IMEX-BDF2 Predictor Uses Projected History, Not Star Velocity |
+| [WIKI-T-126](theory/WIKI-T-126.md) | Defect Correction Accuracy Lives in the High-Order Residual |
+| [WIKI-T-127](theory/WIKI-T-127.md) | Viscous DC Low-Order Operator Must Share mu, rho, Boundaries, and Bands |
+| [WIKI-T-128](theory/WIKI-T-128.md) | Balanced Buoyancy Removes Hydrostatic Work Before Prediction |
 
 ## Cross-Domain (39)
 
