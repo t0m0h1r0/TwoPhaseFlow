@@ -1,6 +1,6 @@
-# Wiki Index — 251 entries
+# Wiki Index — 255 entries
 
-## Theory (100)
+## Theory (104)
 
 | REF-ID | Title |
 |--------|-------|
@@ -104,6 +104,10 @@
 | [WIKI-T-098](theory/WIKI-T-098.md) | Jump-Corrected Face Gradients Have One Global Gauge |
 | [WIKI-T-099](theory/WIKI-T-099.md) | HFE Extends Smooth One-Sided Fields, Not Pressure-History Contracts |
 | [WIKI-T-100](theory/WIKI-T-100.md) | Pressure-Jump Closure Solves Jump Absorption, Not Every Capillary Limit |
+| [WIKI-T-101](theory/WIKI-T-101.md) | CLS Transport Uses Projected Velocity, Never Predictor Velocity |
+| [WIKI-T-102](theory/WIKI-T-102.md) | Viscous Helmholtz DC Shares Coefficients, Boundaries, and Interface Bands |
+| [WIKI-T-103](theory/WIKI-T-103.md) | Time-Step Limits Are Per-Term: Capillary Is Physical, PPE Is Projective |
+| [WIKI-T-104](theory/WIKI-T-104.md) | One-Step Algorithm Freezes Geometry and Material State Before Projection |
 
 ## Cross-Domain (39)
 
