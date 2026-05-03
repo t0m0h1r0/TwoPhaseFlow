@@ -26,7 +26,7 @@ V1-a, V1-b, V2, V4, V5 は \textbf{Type-A revised criterion}：
 V1-a は単相 TGV 空間の FVM PPE 結合 stack に対する $O(h^2)$ trend，
 V1-b は非増分 standard PPE 射影の $O(\Delta t)$ trend，
 V2 は wall one-sided Kovasznay 統合残差の $O(h^4)$ trend，
-V4 は固定壁 offset diagnostic の $O(\|\bm U\|)$ bounded residual，
+V4 は固定壁 offset diagnostic の $O(\|\bU\|)$ bounded residual，
 V5 は CCD 寄生流れ絶対値 $u_\infty^{\mathrm{end}}$ の $\sigma/\mathrm{Re}_c$ スケール基準
 を合格基準とする．
 V10-a 質量保存軸 / V10-b 質量保存軸は \textbf{Type-B}：
@@ -58,7 +58,7 @@ V1-a & 単相 TGV 空間 & FVM PPE 結合 stack の $O(h^2)$ trend & slope($E_{\
 V1-b & 単相 TGV 時間 & standard PPE の $O(\Delta t)$ trend & slope($E_{\mathrm{rel}}, \Delta t$) $=\mathbf{1.00}$ & \checkmark Type-A \\
 V2 & Kovasznay 空間残差 & wall one-sided residual $O(h^4)$ & slope($\|R\|_\infty, h$) $=\mathbf{3.95}$ & \checkmark Type-A \\
 V3 & 静止液滴 long-term & BF 平衡 default criterion & $|\Delta p_{\mathrm{rel}}|=0.97\%$ at $N=128$；$u_\infty^{\max}$ は定性スケール確認 & \checkmark \\
-V4 & Galilean offset 残差 & $O(\|\bm U\|)$ bounded residual，運用上限 $<3$ & $\|\Delta u\|_\infty^{\max}/\|\bm U\|=2.63$ & \checkmark Type-A \\
+V4 & Galilean offset 残差 & $O(\|\bU\|)$ bounded residual，運用上限 $<3$ & $\|\Delta u\|_\infty^{\max}/\|\bU\|=2.63$ & \checkmark Type-A \\
 V5 & 寄生流れ 200 step & CCD $u_\infty^{\mathrm{end}}$ の $\sigma/\mathrm{Re}_c$ スケール基準 & $1.93\!\times\!10^{-2}$ at $\rho_r=1,N=32$；FD 比 $1/5.44$ 補助 & \checkmark Type-A \\
 V6 & 密度比 sweep & ブローアップなし；CLS 体積 drift round-off floor & 全 8 ケース安定；$|\Delta V_\psi|/V_{\psi,0}\le6.4\!\times\!10^{-16}$ & \checkmark \\
 V7 & IMEX-BDF2 二相時間 & capillary pressure-jump/projection 界面帯制約下の coupled-stack 実効 slope & slope($\|e\|_\infty,\Delta t$) $=\mathbf{1.48}$ & $\triangle$ Type-D \\
@@ -123,7 +123,7 @@ V10-b-shape & 単一渦 reversal 形状軸 & grid-scale folded filament の Eule
         V1-a (TGV 空間 FVM PPE $O(h^2)$ trend, finest local slope $2.00$；補助: $E_{\mathrm{rel}}=1.583\!\times\!10^{-7}$ at $N=64$)，
         V1-b (standard projection 結合 $O(\Delta t)$ trend, slope $1.00$)，
         V2 (Kovasznay wall residual $O(h^4)$ trend, slope $3.95$)，
-        V4 (fixed-wall offset $O(\|\bm U\|)$ bounded residual, $\|\Delta u\|_\infty^{\max}/\|\bm U\| = 2.63$)，
+        V4 (fixed-wall offset $O(\|\bU\|)$ bounded residual, $\|\Delta u\|_\infty^{\max}/\|\bU\| = 2.63$)，
         V5 (CCD 寄生流れ絶対値 $1.93\!\times\!10^{-2}$ at $\rho_r=1, N=32$).
   \item \checkmark \textbf{Type-B 構造修正 合格}:
         V10-a 質量保存軸 (Olsson--Kreiss mass correction; $N=128$ mass drift $4.70\!\times\!10^{-4}\%$)，
@@ -174,7 +174,7 @@ V10-b-shape & 単一渦 reversal 形状軸 & grid-scale folded filament の Eule
         — BF 力学的バランス \eqref{eq:bf_fccd_unification} + CSF
         \eqref{eq:csf_final} に対する Laplace 圧維持と寄生流れ．
   \item V4 (\autoref{sec:galilean_offset}) —
-        固定壁系の Galilean offset residual に対する $O(\|\bm U\|)$ boundedness．
+        固定壁系の Galilean offset residual に対する $O(\|\bU\|)$ boundedness．
   \item V6, V7 (\autoref{sec:density_ratio_sweep},
         \autoref{sec:imex_bdf2_twophase_time}) — 分相 PPE \eqref{eq:split_ppe} +
         DC + HFE に対する密度比安定性と二相時間精度．
