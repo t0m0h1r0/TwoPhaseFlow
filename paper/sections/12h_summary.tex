@@ -49,8 +49,8 @@ U5-b & $\delta_\varepsilon$ vs $h$ scaling（$c=\varepsilon/h$ 最適性）& $c 
 \multicolumn{5}{l}{\textbf{Tier IV：圧力ソルバ}} \\
 \midrule
 U6-a & DC $\omega$--収束（$\rho_l \in \{1,100,1000\}$, $k\in\{2,3\}$, $\omega \in \{0.2..0.9\}$） & $\rho_l=1$ clean，$\rho_l\!\ge\!100$ stall, $\omega$ 増大で残差減 & $\rho_l=1$: $5.19\!\times\!10^{-5}$, $\rho_l=1000$ best at $\omega=0.9, k=3$: $7.0\!\times\!10^{-6}$ converge        & \checkmark \\
-U6-c & HFE 1D step extension  & $\Ord{h^6}$              & $\Ord{h^{5.91}}$（1D）   & \checkmark \\
-U6-c & HFE 2D band 診断       & 幾何込み条件付き & effective slope max $11.35$ / med $8.72$ & \checkmark \\
+U6-b & HFE 1D step extension  & $\Ord{h^6}$              & $\Ord{h^{5.91}}$（1D）   & \checkmark \\
+U6-b & HFE 2D band 診断       & 幾何込み条件付き & effective slope max $11.35$ / med $8.72$ & \checkmark \\
 \midrule
 \multicolumn{5}{l}{\textbf{Tier V：時間積分}} \\
 \midrule
@@ -72,7 +72,7 @@ U7-b & face $\mu$ 補間 3 種 & $\Ord{h^2}$ 安定    & $1.91/1.81/1.91$       
 \multicolumn{5}{p{0.95\linewidth}}{\footnotesize
 $\triangle$ の類型——
 \checkmark: 設計精度達成，$\bullet$: negation 成立（規則違反量が予測通り発散；合格扱い），$\times$: 未達（本章では該当なし）．
-本表は Tier 順で配置する（24 サブテスト；U6-c は 1D / 2D で 2 行に分割；U7-a も match / mismatch で 2 行に分割）．
+本表は Tier 順で配置する（24 サブテスト；U6-b は 1D / 2D で 2 行に分割；U7-a も match / mismatch で 2 行に分割）．
 U6 の一括 PPE 高密度比 sweep は採用 primitive ではないため本成果表から除外し，U6 本文の設計経路説明に退避した．
 }
 \end{tabularx}
