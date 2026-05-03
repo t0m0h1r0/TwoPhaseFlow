@@ -312,6 +312,46 @@ def test_psi_direct_transport_reinitializes_after_initial_step_only():
     assert np.allclose(transport.advance(psi, velocity, 0.1, step_index=2), psi + 1.0)
 
 
+def test_psi_direct_transport_uses_projection_native_face_velocity():
+    class FaceAdvection:
+        def __init__(self):
+            self.face_velocity_components = None
+            self.dt = None
+
+        def advance(self, psi, velocity, dt):
+            raise AssertionError("nodal velocity path must not be used")
+
+        def advance_with_face_velocity(self, psi, face_velocity_components, dt):
+            self.face_velocity_components = face_velocity_components
+            self.dt = dt
+            return psi + 0.25
+
+    class IdentityReinitializer:
+        def reinitialize(self, psi):
+            return psi
+
+    advection = FaceAdvection()
+    transport = PsiDirectTransport(
+        Backend(use_gpu=False),
+        advection,
+        IdentityReinitializer(),
+        reinit_every=0,
+    )
+    psi = np.zeros((3, 3))
+    face_velocity_components = [np.ones((2, 3)), np.ones((3, 2))]
+
+    psi_new = transport.advance_with_face_velocity(
+        psi,
+        face_velocity_components,
+        0.1,
+        step_index=1,
+    )
+
+    assert advection.face_velocity_components is face_velocity_components
+    assert advection.dt == pytest.approx(0.1)
+    np.testing.assert_allclose(psi_new, psi + 0.25)
+
+
 def test_psi_direct_transport_adaptive_reinitializes_on_volume_monitor():
     class SequenceAdvection:
         def __init__(self):
@@ -385,6 +425,65 @@ def test_psi_direct_transport_applies_ch6_mass_correction():
     mass_after = np.sum(psi_new * grid.cell_volumes())
 
     assert mass_after == pytest.approx(mass_before, rel=1.0e-12, abs=1.0e-12)
+
+
+def test_ns_pipeline_advances_interface_with_projected_face_velocity():
+    from types import SimpleNamespace
+    from twophase.simulation.ns_step_state import NSStepState
+
+    class RecordingTransport:
+        def __init__(self):
+            self.face_velocity_components = None
+            self.nodal_advance_called = False
+
+        def advance(self, psi, velocity, dt, step_index=0):
+            self.nodal_advance_called = True
+            return psi - 1.0
+
+        def advance_with_face_velocity(
+            self,
+            psi,
+            face_velocity_components,
+            dt,
+            step_index=0,
+        ):
+            self.face_velocity_components = face_velocity_components
+            self.dt = dt
+            self.step_index = step_index
+            return psi + 1.0
+
+    solver = object.__new__(TwoPhaseNSSolver)
+    solver._transport = RecordingTransport()
+    solver._alpha_grid = 1.0
+    solver._interface_runtime = SimpleNamespace(rebuild_freq=0)
+
+    psi = np.zeros((3, 3))
+    face_velocity_components = [np.ones((2, 3)), np.ones((3, 2))]
+    state = NSStepState(
+        psi=psi,
+        u=np.full_like(psi, 7.0),
+        v=np.full_like(psi, -3.0),
+        dt=0.2,
+        rho_l=2.0,
+        rho_g=1.0,
+        sigma=0.0,
+        mu=0.0,
+        g_acc=0.0,
+        rho_ref=1.5,
+        mu_l=None,
+        mu_g=None,
+        bc_hook=None,
+        step_index=4,
+        face_velocity_components=face_velocity_components,
+    )
+
+    solver._advance_interface_stage(state)
+
+    assert solver._transport.face_velocity_components is face_velocity_components
+    assert solver._transport.dt == pytest.approx(0.2)
+    assert solver._transport.step_index == 4
+    assert not solver._transport.nodal_advance_called
+    np.testing.assert_allclose(state.psi, psi + 1.0)
 
 
 @pytest.mark.parametrize(
@@ -1037,6 +1136,94 @@ def test_affine_jump_corrector_forwards_interface_context():
     context = projection.kwargs["interface_stress_context"]
     assert context.sigma == pytest.approx(2.0)
     np.testing.assert_allclose(context.pressure_jump_gas_minus_liquid, -6.0)
+
+
+def test_affine_jump_pressure_stage_stores_history_faces():
+    """IPC history must store the pressure acceleration in affine face space."""
+    from twophase.simulation.ns_step_services import solve_ns_pressure_stage
+    from twophase.simulation.ns_step_state import NSStepState
+
+    shape = (3, 3)
+    arr = np.zeros(shape)
+
+    class AffineFluxRecorder:
+        def divergence(self, components):
+            return np.zeros(shape)
+
+        def pressure_fluxes(self, pressure, rho, **kwargs):
+            self.pressure = np.array(pressure, copy=True)
+            self.kwargs = kwargs
+            return [np.full(shape, 2.0), np.full(shape, -3.0)]
+
+        def reconstruct_nodes(self, face_components):
+            return face_components
+
+    class JumpPressureSolver:
+        def solve(self, rhs, rho, dt=0.0, p_init=None):
+            self.last_base_pressure = np.full_like(rhs, 4.0)
+            return np.full_like(rhs, 9.0)
+
+        def apply_interface_jump(self, base_pressure):
+            return base_pressure + 10.0
+
+    state = NSStepState(
+        psi=np.array([[1.0, 1.0, 1.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]),
+        u=arr,
+        v=arr,
+        dt=1.0e-3,
+        rho_l=1000.0,
+        rho_g=1.0,
+        sigma=2.0,
+        mu=0.0,
+        g_acc=0.0,
+        rho_ref=500.5,
+        mu_l=None,
+        mu_g=None,
+        bc_hook=None,
+        step_index=0,
+        rho=np.ones(shape),
+        kappa=np.full(shape, 3.0),
+        f_x=np.zeros(shape),
+        f_y=np.zeros(shape),
+        u_star=np.zeros(shape),
+        v_star=np.zeros(shape),
+    )
+    backend = type(
+        "BackendStub",
+        (),
+        {"xp": np, "is_gpu": lambda self: False, "to_host": lambda self, arr: arr},
+    )()
+    ppe_runtime = type(
+        "PPERuntime",
+        (),
+        {
+            "ppe_solver_name": "fccd_iterative",
+            "ppe_coefficient_scheme": "phase_separated",
+            "ppe_interface_coupling_scheme": "affine_jump",
+        },
+    )()
+    div_op = AffineFluxRecorder()
+
+    state, _, _ = solve_ns_pressure_stage(
+        state,
+        backend=backend,
+        div_op=div_op,
+        ppe_solver=JumpPressureSolver(),
+        p_prev_dev=None,
+        surface_tension_scheme="pressure_jump",
+        face_native_predictor_state=True,
+        ppe_runtime=ppe_runtime,
+    )
+
+    np.testing.assert_allclose(div_op.pressure, 14.0)
+    assert div_op.kwargs["pressure_gradient"] == "fccd"
+    assert div_op.kwargs["coefficient_scheme"] == "phase_separated"
+    assert div_op.kwargs["interface_coupling_scheme"] == "affine_jump"
+    context = div_op.kwargs["interface_stress_context"]
+    assert context.sigma == pytest.approx(2.0)
+    np.testing.assert_allclose(context.pressure_jump_gas_minus_liquid, -6.0)
+    np.testing.assert_allclose(state.pressure_accel_face_components[0], 2.0)
+    np.testing.assert_allclose(state.pressure_accel_face_components[1], -3.0)
 
 
 def test_phase_separated_pressure_jump_stack_one_step_no_nan():

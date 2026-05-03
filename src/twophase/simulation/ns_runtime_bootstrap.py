@@ -115,6 +115,7 @@ def bind_ns_runtime_bootstrap(solver, artifacts: NSRuntimeBootstrapArtifacts) ->
     solver._p_prev = None
     solver._p_prev_dev = None
     solver._p_base_prev_dev = None
+    solver._p_prev_accel_face_components = None
     solver._reproj_iim = artifacts.reproj_iim
     solver._reinit = artifacts.reinit
     solver._cn_viscous = artifacts.cn_viscous

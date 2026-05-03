@@ -35,6 +35,46 @@ def _apply_solver_interface_jump(ppe_solver, base_pressure):
     return base_pressure
 
 
+def _pressure_face_flux_kwargs(
+    *,
+    xp,
+    state: NSStepState,
+    ppe_runtime,
+    interface_sigma: float | None = None,
+) -> dict:
+    """Return face-pressure kwargs for the projection-native pressure law.
+
+    A3 mapping:
+      Equation: ``G_Γ(p;j)=G_f(p)-B_Γ(j)``.
+      Discretization: face-normal pressure acceleration uses the same
+      coefficient, gradient, and affine jump context as PPE projection.
+      Code: ``div_op.pressure_fluxes(p, rho, **kwargs)``.
+    """
+    if ppe_runtime is None:
+        return {}
+    kwargs = {
+        "pressure_gradient": (
+            "fccd"
+            if getattr(ppe_runtime, "ppe_solver_name", None) == "fccd_iterative"
+            else "fvm"
+        )
+    }
+    if getattr(ppe_runtime, "ppe_coefficient_scheme", None) == "phase_separated":
+        kwargs["coefficient_scheme"] = "phase_separated"
+    if getattr(ppe_runtime, "ppe_interface_coupling_scheme", "none") == "affine_jump":
+        sigma = state.sigma if interface_sigma is None else float(interface_sigma)
+        kwargs["interface_coupling_scheme"] = "affine_jump"
+        kwargs["interface_stress_context"] = (
+            build_young_laplace_interface_stress_context(
+                xp=xp,
+                psi=state.psi,
+                kappa_lg=state.kappa,
+                sigma=sigma,
+            )
+        )
+    return kwargs
+
+
 def build_pressure_robust_buoyancy_residual_accel_faces(
     *,
     buoyancy_force_components: list,
@@ -300,7 +340,26 @@ def compute_ns_predictor_stage(
         conv_step_u = conv_u
         conv_step_v = conv_v
 
-    if state.previous_pressure is not None:
+    previous_pressure_accel_faces = None
+    previous_pressure_accel_nodes = None
+    can_use_pressure_history_faces = (
+        face_native_predictor_state
+        and state.previous_pressure_accel_face_components is not None
+        and div_op is not None
+        and hasattr(div_op, "face_fluxes")
+        and hasattr(div_op, "reconstruct_nodes")
+    )
+    if can_use_pressure_history_faces:
+        previous_pressure_accel_faces = [
+            xp.asarray(component)
+            for component in state.previous_pressure_accel_face_components
+        ]
+        previous_pressure_accel_nodes = div_op.reconstruct_nodes(
+            previous_pressure_accel_faces
+        )
+        conv_step_u = conv_step_u - previous_pressure_accel_nodes[0]
+        conv_step_v = conv_step_v - previous_pressure_accel_nodes[1]
+    elif state.previous_pressure is not None:
         if pressure_grad_op is None:
             raise RuntimeError("IPC predictor requires pressure_grad_op for ∇p^n")
         dpn_dx = pressure_grad_op.gradient(state.previous_pressure, 0)
@@ -515,6 +574,25 @@ def compute_ns_predictor_stage(
                         residual_node_faces,
                     )
                 ]
+            if (
+                previous_pressure_accel_faces is not None
+                and previous_pressure_accel_nodes is not None
+            ):
+                pressure_node_faces = div_op.face_fluxes(previous_pressure_accel_nodes)
+                pressure_history_dt = (
+                    state.projection_dt
+                    if state.projection_dt is not None
+                    else state.dt
+                )
+                predictor_delta_faces = [
+                    delta_face
+                    - pressure_history_dt * (pressure_face - node_face)
+                    for delta_face, pressure_face, node_face in zip(
+                        predictor_delta_faces,
+                        previous_pressure_accel_faces,
+                        pressure_node_faces,
+                    )
+                ]
             state.predictor_face_components = [
                 xp.asarray(face_velocity) + delta_face
                 for face_velocity, delta_face in zip(
@@ -562,6 +640,7 @@ def solve_ns_pressure_stage(
     face_native_predictor_state: bool = False,
     bc_type: str = "wall",
     face_no_slip_boundary_state: bool = False,
+    ppe_runtime=None,
 ) -> tuple[NSStepState, object, np.ndarray]:
     """Solve IPC PPE for δp and accumulate pⁿ⁺¹ = pⁿ + δp."""
     xp = backend.xp
@@ -615,6 +694,25 @@ def solve_ns_pressure_stage(
         previous_base = xp.zeros_like(base_increment)
     state.pressure_base = xp.asarray(previous_base) + xp.asarray(base_increment)
     state.pressure = _apply_solver_interface_jump(ppe_solver, state.pressure_base)
+    state.pressure_accel_face_components = None
+    if (
+        face_native_predictor_state
+        and getattr(ppe_runtime, "ppe_interface_coupling_scheme", "none")
+        == "affine_jump"
+        and hasattr(div_op, "pressure_fluxes")
+        and hasattr(div_op, "reconstruct_nodes")
+    ):
+        jump_sigma = state.sigma if surface_tension_scheme == "pressure_jump" else 0.0
+        state.pressure_accel_face_components = div_op.pressure_fluxes(
+            state.pressure,
+            state.rho,
+            **_pressure_face_flux_kwargs(
+                xp=xp,
+                state=state,
+                ppe_runtime=ppe_runtime,
+                interface_sigma=jump_sigma,
+            ),
+        )
     next_p_prev_dev = xp.copy(state.pressure)
     next_p_prev = (
         None
@@ -659,24 +757,11 @@ def correct_ns_velocity_stage(
     if face_flux_projection:
         proj_op = fccd_div_op if fccd_div_op is not None else div_op
         if proj_op is fccd_div_op:
-            project_kwargs["pressure_gradient"] = (
-                "fccd" if ppe_runtime.ppe_solver_name == "fccd_iterative" else "fvm"
+            project_kwargs = _pressure_face_flux_kwargs(
+                xp=xp,
+                state=state,
+                ppe_runtime=ppe_runtime,
             )
-            if ppe_runtime.ppe_coefficient_scheme == "phase_separated":
-                project_kwargs["coefficient_scheme"] = "phase_separated"
-            if (
-                getattr(ppe_runtime, "ppe_interface_coupling_scheme", "none")
-                == "affine_jump"
-            ):
-                project_kwargs["interface_coupling_scheme"] = "affine_jump"
-                project_kwargs["interface_stress_context"] = (
-                    build_young_laplace_interface_stress_context(
-                        xp=xp,
-                        psi=state.psi,
-                        kappa_lg=state.kappa,
-                        sigma=state.sigma,
-                    )
-                )
     if correction_is_zero and (
         not face_flux_projection
         or getattr(proj_op, "supports_zero_projection_shortcut", False)

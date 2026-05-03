@@ -535,6 +535,7 @@ class TwoPhaseNSSolver:
         self._p_prev = None
         self._p_prev_dev = None
         self._p_base_prev_dev = None
+        self._p_prev_accel_face_components = None
         self._conv_prev = None
         self._conv_ab2_ready = False
         self._velocity_prev = None
@@ -710,6 +711,11 @@ class TwoPhaseNSSolver:
             state.previous_base_pressure = self._backend.xp.asarray(
                 self._p_base_prev_dev
             )
+        if self._p_prev_accel_face_components is not None:
+            state.previous_pressure_accel_face_components = [
+                self._backend.xp.asarray(component)
+                for component in self._p_prev_accel_face_components
+            ]
         if (
             (self._canonical_face_state or self._preserve_projected_faces)
             and self._projected_face_components is not None
@@ -727,9 +733,18 @@ class TwoPhaseNSSolver:
         state: NSStepState,
     ) -> NSStepState:
         """Advance the interface transport and optional grid rebuild."""
-        state.psi = self._transport.advance(
-            state.psi, [state.u, state.v], state.dt, step_index=state.step_index
-        )
+        advance_face = getattr(self._transport, "advance_with_face_velocity", None)
+        if state.face_velocity_components is not None and callable(advance_face):
+            state.psi = advance_face(
+                state.psi,
+                state.face_velocity_components,
+                state.dt,
+                step_index=state.step_index,
+            )
+        else:
+            state.psi = self._transport.advance(
+                state.psi, [state.u, state.v], state.dt, step_index=state.step_index
+            )
         if (
             self._alpha_grid > 1.0
             and self._interface_runtime.rebuild_freq > 0
@@ -879,8 +894,10 @@ class TwoPhaseNSSolver:
             face_native_predictor_state=self._face_native_predictor_state,
             bc_type=self.bc_type,
             face_no_slip_boundary_state=self._face_no_slip_boundary_state,
+            ppe_runtime=self._ppe_runtime,
         )
         self._p_base_prev_dev = state.pressure_base
+        self._p_prev_accel_face_components = state.pressure_accel_face_components
         return state
 
     def _correct_velocity_stage(

@@ -1,0 +1,12 @@
+{
+  "branch": "ra-oscillating-droplet-n64-20260503",
+  "branch_slug": "ra-oscillating-droplet-n64-20260503",
+  "session_id": "E55FE6AD-B1E6-4555-8C2F-CB9B8603F3F3",
+  "worktree_path": ".claude/worktrees/ra-oscillating-droplet-n64-20260503",
+  "holder_agent": "ResearchArchitect",
+  "id_prefix": "RA-OSC-N64",
+  "acquired_at": "2026-05-02T18:12:28Z",
+  "expires_at": "2026-05-03T18:12:28Z",
+  "meta_version": "7.1.0",
+  "scope": "oscillating droplet benchmark at N=64"
+}
