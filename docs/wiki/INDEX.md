@@ -1,6 +1,6 @@
-# Wiki Index — 235 entries
+# Wiki Index — 238 entries
 
-## Theory (84)
+## Theory (87)
 
 | REF-ID | Title |
 |--------|-------|
@@ -88,6 +88,9 @@
 | [WIKI-T-082](theory/WIKI-T-082.md) | Defect Correction Scope: High-Order Residual, Not Interface-Band Cure |
 | [WIKI-T-083](theory/WIKI-T-083.md) | Same-Time Capillary Jump Closure in the PPE |
 | [WIKI-T-084](theory/WIKI-T-084.md) | Non-Uniform Ridge--Eikonal Metric Guardrails |
+| [WIKI-T-085](theory/WIKI-T-085.md) | CLS A--F Staging: Three Responsibilities, Six Gates |
+| [WIKI-T-086](theory/WIKI-T-086.md) | Mass Closure Has Two Spaces: psi-Localized Before, phi-Uniform After |
+| [WIKI-T-087](theory/WIKI-T-087.md) | Reinitialization Trigger and DGR Applicability Are Context-Sensitive |
 
 ## Cross-Domain (39)
 
