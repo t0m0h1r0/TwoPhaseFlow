@@ -1,0 +1,38 @@
+{
+  "report_id": "CHK-RA-META-V8-002",
+  "generated_at": "2026-05-03",
+  "target": "codex",
+  "bootstrapper_spec": "prompts/meta/kernel-deploy.md",
+  "status": "PASS",
+  "inputs": [
+    "prompts/meta/kernel-constitution.md",
+    "prompts/meta/kernel-roles.md",
+    "prompts/meta/kernel-ops.md",
+    "prompts/meta/kernel-domains.md",
+    "prompts/meta/kernel-workflow.md",
+    "prompts/meta/kernel-antipatterns.md",
+    "prompts/meta/kernel-project.md",
+    "prompts/meta/kernel-deploy.md",
+    "prompts/agents-codex/_base.yaml"
+  ],
+  "outputs": [
+    "prompts/agents-codex/",
+    "prompts/README.md",
+    "schema_resolution_report.json",
+    "token_telemetry_report.json"
+  ],
+  "resolved_refs": {
+    "schema_in_code": "prompts/meta/kernel-roles.md",
+    "hand_schema_v710": "prompts/meta/kernel-roles.md §SCHEMA EXTENSIONS v7.1.0",
+    "hand_schema_v800": "prompts/meta/kernel-roles.md §SCHEMA EXTENSIONS v8.0.0-candidate",
+    "metric_01": "prompts/meta/kernel-ops.md §METRIC-01",
+    "tool_trust_01": "prompts/meta/kernel-ops.md §TOOL-TRUST-01",
+    "skill_capsules": "prompts/skills/"
+  },
+  "counts": {
+    "codex_agent_prompts": 23,
+    "anti_patterns": 15,
+    "skill_capsules": 5
+  },
+  "dangling_refs": []
+}

@@ -1,5 +1,5 @@
-# kernel-constitution.md — System Foundation v7.0.0
-# GENERATED v7.0.0 from meta-core.md (condensed) + immutable zones byte-preserved.
+# kernel-constitution.md — System Foundation v8.0.0-candidate
+# GENERATED v8.0.0-candidate from meta-core.md (condensed) + immutable zones byte-preserved.
 # Replaces: meta-core.md, portions of meta-persona.md (LA/MH sections).
 # Read this file FIRST. Every other kernel file is a specialization of what is defined here.
 # Agent character (WHO/roles): kernel-roles.md | Operations (HOW): kernel-ops.md
@@ -36,7 +36,7 @@ cross-domain consistency. Finding a contradiction = high-value success, not fail
 Default when uncertain: one level higher.
 
 ────────────────────────────────────────────────────────
-# § SYSTEM STRUCTURE (v7.0.0 — 8-file Lean Kernel)
+# § SYSTEM STRUCTURE (v8.0.0-candidate — 8-file Lean Kernel + derived prompt artifacts)
 
 **3-Layer Architecture (one-way dependency — lower layers MUST NOT reference upper):**
 
@@ -57,7 +57,12 @@ Layer P — Project Profile (swappable per project)
   kernel-project.md     — PR-1..PR-6 project-specific rules
 
 Layer S — Safety
-  kernel-antipatterns.md — AP-01..AP-12 compact catalogue
+  kernel-antipatterns.md — AP-01..AP-15 compact catalogue
+
+Derived Prompt Artifacts
+  prompts/agents-{env}/ — executable role prompts
+  prompts/skills/       — JIT Skill Capsules
+  AGENTS.md             — external coding-agent repo instructions
 ```
 
 **Interface Contract flow (T-L-E-A, mandatory ordering):**
@@ -332,7 +337,7 @@ Wiki entries are compiled from VALIDATED artifacts; internal reasoning is unveri
 Default when uncertain: classify one level higher (φ5 Bounded Autonomy).
 
 ────────────────────────────────────────────────────────
-# § LLM APTITUDE PRINCIPLES (LA-1..LA-5)
+# § LLM APTITUDE PRINCIPLES (LA-1..LA-6)
 
 ## LA-1: Task Aptitude Matrix
 
@@ -377,6 +382,22 @@ RULE_MANIFEST:
 ```
 
 Token savings: ~30-40% vs static embedding. Trade-off (one extra file read at execution) is acceptable.
+
+## LA-6: Experience Compression Ladder (v8.0.0-candidate)
+
+Agent knowledge is promoted only when it becomes more reusable and compressible:
+
+```
+raw trace → episodic memory → procedural Skill Capsule → declarative rule
+```
+
+Promotion path:
+1. execution experience is recorded in artifact / LEDGER
+2. reusable behavior becomes a Skill Capsule candidate
+3. repeated Skill Capsule success becomes a compressed rule candidate
+4. PromptAuditor evaluates token cost, safety boundary, and rule-bloat risk before kernel inclusion
+
+Rules stay declarative; skills become procedural; context becomes compressible.
 
 ────────────────────────────────────────────────────────
 # § OPERATIONAL PHILOSOPHY: Mechanical Harmonization
