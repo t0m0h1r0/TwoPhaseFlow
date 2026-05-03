@@ -1,6 +1,6 @@
-# Wiki Index — 225 entries
+# Wiki Index — 235 entries
 
-## Theory (77)
+## Theory (84)
 
 | REF-ID | Title |
 |--------|-------|
@@ -81,6 +81,13 @@
 | [WIKI-T-075](theory/WIKI-T-075.md) | Discrete Operator Contract for the Stage-Split Buoyancy Predictor |
 | [WIKI-T-076](theory/WIKI-T-076.md) | Projection-Closure Theorem for Phase-Separated FCCD |
 | [WIKI-T-077](theory/WIKI-T-077.md) | Capillary Energy Stability: Variational Geometry and Projection-Native Surface Tension |
+| [WIKI-T-078](theory/WIKI-T-078.md) | Interface Role Separation: psi Transport, phi Metric, and Oriented Stress Jump |
+| [WIKI-T-079](theory/WIKI-T-079.md) | Operator Eligibility by Field Regularity: Smoothness Before Formal Order |
+| [WIKI-T-080](theory/WIKI-T-080.md) | Shared Face Locus Invariant: The Paper's Strongest Discrete Contract |
+| [WIKI-T-081](theory/WIKI-T-081.md) | Wall Contact Topology Invariant for CLS Transport |
+| [WIKI-T-082](theory/WIKI-T-082.md) | Defect Correction Scope: High-Order Residual, Not Interface-Band Cure |
+| [WIKI-T-083](theory/WIKI-T-083.md) | Same-Time Capillary Jump Closure in the PPE |
+| [WIKI-T-084](theory/WIKI-T-084.md) | Non-Uniform Ridge--Eikonal Metric Guardrails |
 
 ## Cross-Domain (39)
 
@@ -126,7 +133,7 @@
 | [WIKI-X-038](cross-domain/WIKI-X-038.md) | Theory-First CFL and Time-Integration Policy: SSPRK3 Scope, AB2 Risk, and IMEX-BDF2 Production Path |
 | [WIKI-X-039](cross-domain/WIKI-X-039.md) | Affine Jump Interface Stress: Oriented Young--Laplace Contract and ch14 Root Cause |
 
-## Experiment (32)
+## Experiment (34)
 
 | REF-ID | Title |
 |--------|-------|
@@ -163,8 +170,10 @@
 | [WIKI-E-030](experiment/WIKI-E-030.md) | G^adj 後期ブローアップ: α=1.5 壁面BC 気泡 t≈12.6 の未解明不安定性 [OPEN] |
 | [WIKI-E-031](experiment/WIKI-E-031.md) | ch13 Static α=2 Rising-Bubble Diagnosis: Hypothesis Matrix and Verdicts (RESOLVED) |
 | [WIKI-E-032](experiment/WIKI-E-032.md) | ch13 Projection-Closure Trial Synthesis: Failed Hypotheses, Accepted Cause, Clean-Main Validation |
+| [WIKI-E-033](experiment/WIKI-E-033.md) | Negative Knowledge Guards in Chapters 12--13 |
+| [WIKI-E-034](experiment/WIKI-E-034.md) | Pressure Output Semantics in V-Series Verification |
 
-## Paper (13)
+## Paper (14)
 
 | REF-ID | Title |
 |--------|-------|
@@ -181,6 +190,7 @@
 | [WIKI-P-011](paper/WIKI-P-011.md) | Optimizing Multi-Agent Kernel Prompts with Visible Extended Thinking |
 | [WIKI-P-012](paper/WIKI-P-012.md) | 07b_reinitialization: ξ-SDF, FMM, and ε-Widening Sections (CHK-137..139) |
 | [WIKI-P-013](paper/WIKI-P-013.md) | SP-Core Paper Rewrite (§2–§10) — Phase Dashboard for CHK-182..190 |
+| [WIKI-P-014](paper/WIKI-P-014.md) | Verification Grammar: U-Series Certificates, V-Series Identity Tests, and Type-A/B/D |
 
 ## Meta (29)
 
