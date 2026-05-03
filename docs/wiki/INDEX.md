@@ -1,6 +1,6 @@
-# Wiki Index — 300 entries
+# Wiki Index — 305 entries
 
-## Theory (136)
+## Theory (141)
 
 | REF-ID | Title |
 |--------|-------|
@@ -140,6 +140,11 @@
 | [WIKI-T-134](theory/WIKI-T-134.md) | HFE Extension Normal Is an SDF Transport Direction, Not the Stress-Jump Normal |
 | [WIKI-T-135](theory/WIKI-T-135.md) | Nonuniform Geometry Data Is a Shared Source, Not Per-Operator Metadata |
 | [WIKI-T-136](theory/WIKI-T-136.md) | DCCD and UCCD6 Filtering Occur in Computational Space Before Metrics |
+| [WIKI-T-137](theory/WIKI-T-137.md) | Nonuniform FCCD Fourth Order Is a Central-Face Contract |
+| [WIKI-T-138](theory/WIKI-T-138.md) | Jump-Corrected Nonuniform Faces Must Share H_f |
+| [WIKI-T-139](theory/WIKI-T-139.md) | CLS Reinitialization Pseudo-Time CFL Is Not Physical Delta t |
+| [WIKI-T-140](theory/WIKI-T-140.md) | CLS Third-Order Time Is for Geometry Robustness, Not Global Third Order |
+| [WIKI-T-141](theory/WIKI-T-141.md) | Delta t_disc Covers Residual Explicit Spectra, Not Projection or Viscous CFL |
 
 ## Cross-Domain (40)
 
