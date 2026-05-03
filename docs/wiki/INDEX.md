@@ -1,6 +1,6 @@
-# Wiki Index — 273 entries
+# Wiki Index — 276 entries
 
-## Theory (113)
+## Theory (116)
 
 | REF-ID | Title |
 |--------|-------|
@@ -117,6 +117,9 @@
 | [WIKI-T-111](theory/WIKI-T-111.md) | xi_ridge Intentionally Violates Eikonal to Carry Topology |
 | [WIKI-T-112](theory/WIKI-T-112.md) | Ridge Seeds Cannot Be Promoted by Proximity Alone |
 | [WIKI-T-113](theory/WIKI-T-113.md) | Ridge-Eikonal Admissibility Is Four Conditions, Not Just FMM |
+| [WIKI-T-114](theory/WIKI-T-114.md) | Reinitialization Mass Conservation Changes Measure on Nonuniform Grids |
+| [WIKI-T-115](theory/WIKI-T-115.md) | M(tau) Is a Reinit Call Gate, Not an Error Norm |
+| [WIKI-T-116](theory/WIKI-T-116.md) | Iterative Eikonal Stopping Rules Do Not Apply to One-Shot Ridge-Eikonal |
 
 ## Cross-Domain (39)
 

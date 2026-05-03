@@ -1,14 +1,15 @@
 # 02_ACTIVE_LEDGER — Phase, Branch, CHK Register, Assumptions & Lessons
 # LIVE document — append-only for CHK/ASM/KL entries; phase/branch updated each session.
-# Last updated: 2026-05-04 (CHK-RA-PAPER-WIKI-001 ROUND-13 DONE — Ridge-Eikonal topology/admissibility cards stored.)
+# Last updated: 2026-05-04 (CHK-RA-PAPER-WIKI-001 ROUND-14 DONE — reinitialization operation cards stored.)
 
 ────────────────────────────────────────────────────────
 # § ACTIVE STATE
 
 | Key | Value |
 |---|---|
-| phase | CHK-RA-PAPER-WIKI-001 ROUND-13 DONE |
+| phase | CHK-RA-PAPER-WIKI-001 ROUND-14 DONE |
 | branch | `ra-paper-wiki-insights-r11-20-20260504` |
+| session_CHK | CHK-RA-PAPER-WIKI-001 ROUND-14 DONE 2026-05-04 — Same worktree/branch, no new worktree. Round 14 added individual reinitialization-operation cards: `docs/wiki/theory/WIKI-T-114.md` (mass conservation changes measure on nonuniform grids), `docs/wiki/theory/WIKI-T-115.md` (`M(tau)` is a reinit call gate, not an error norm), `docs/wiki/theory/WIKI-T-116.md` (iterative Eikonal stopping rules do not apply to one-shot Ridge--Eikonal). Updated `docs/wiki/INDEX.md`: total 273→276, Theory 113→116. [SOLID-X] docs/wiki/ledger only; no production code boundary changed, no tested code deleted, no FD/WENO/PPE fallback introduced. |
 | session_CHK | CHK-RA-PAPER-WIKI-001 ROUND-13 DONE 2026-05-04 — Same worktree/branch, no new worktree. Round 13 added individual Ridge--Eikonal knowledge cards: `docs/wiki/theory/WIKI-T-111.md` (`xi_ridge` intentionally violates Eikonal to carry topology), `docs/wiki/theory/WIKI-T-112.md` (ridge seeds cannot be promoted by proximity alone), `docs/wiki/theory/WIKI-T-113.md` (Ridge--Eikonal admissibility is four conditions, not just FMM). Updated `docs/wiki/INDEX.md`: total 270→273, Theory 110→113. [SOLID-X] docs/wiki/ledger only; no production code boundary changed, no tested code deleted, no FD/WENO/PPE fallback introduced. |
 | session_CHK | CHK-RA-PAPER-WIKI-001 ROUND-12 DONE 2026-05-04 — Same worktree/branch, no new worktree. Round 12 added individual knowledge cards from §3 psi/phi mapping: `docs/wiki/theory/WIKI-T-108.md` (logit inversion is a diagnostic bridge, not curvature prerequisite), `docs/wiki/theory/WIKI-T-109.md` (direct psi curvature is interface-band only), `docs/wiki/theory/WIKI-T-110.md` (`epsilon_eff` is a profile-quality sensor, not a new width parameter). Updated `docs/wiki/INDEX.md`: total 267→270, Theory 107→110. [SOLID-X] docs/wiki/ledger only; no production code boundary changed, no tested code deleted, no FD/WENO/PPE fallback introduced. |
 | session_CHK | CHK-RA-PAPER-WIKI-001 ROUND-11 DONE 2026-05-04 — After correcting prior direct-main mistake, continued in same worktree on branch `ra-paper-wiki-insights-r11-20-20260504` (no new worktree). Round 11 added individual knowledge cards from Introduction/Chapter 2: `docs/wiki/theory/WIKI-T-105.md` (failure modes are coupled symptoms, not module labels), `docs/wiki/theory/WIKI-T-106.md` (diffuse interface width has operational bands), `docs/wiki/theory/WIKI-T-107.md` (One-Fluid CSF absorbs stress jump as weak-form body force). Updated `docs/wiki/INDEX.md`: total 264→267, Theory 104→107. [SOLID-X] docs/wiki/ledger only; no production code boundary changed, no tested code deleted, no FD/WENO/PPE fallback introduced. |
