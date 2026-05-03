@@ -1,0 +1,46 @@
+{
+  "report_id": "CHK-RA-META-V8-001",
+  "generated_at": "2026-05-03",
+  "scope": "v8.0.0-candidate meta-kernel update",
+  "status": "bootstrap_not_run",
+  "method": "manual_static_gate_with_wc_word_proxy",
+  "notes": [
+    "EnvMetaBootstrapper now requires exact tokenizer counts during full regeneration.",
+    "This report records the initial Skill Capsule footprint and Q3 gate expectations for the meta-kernel change."
+  ],
+  "q3_static_gates": {
+    "anti_pattern_count": 15,
+    "skill_capsule_count": 5,
+    "requires_skill_capsule_schema": true,
+    "requires_duplicate_operation_body_scan": true,
+    "requires_effective_context_reserved_minimum": 0.4
+  },
+  "skill_capsules": {
+    "SKILL-CONDENSE-V2": {
+      "word_count_proxy": 105,
+      "token_target": 170
+    },
+    "SKILL-GIT-WORKTREE": {
+      "word_count_proxy": 113,
+      "token_target": 150
+    },
+    "SKILL-HANDOFF-AUDIT": {
+      "word_count_proxy": 84,
+      "token_target": 140
+    },
+    "SKILL-PROMPT-AUDIT": {
+      "word_count_proxy": 94,
+      "token_target": 160
+    },
+    "SKILL-TOOL-TRUST": {
+      "word_count_proxy": 109,
+      "token_target": 160
+    }
+  },
+  "fail_conditions_introduced": [
+    "tier target exceeded by more than 10 percent",
+    "effective_context_reserved below 40 percent",
+    "full operation text embedded where JIT reference suffices",
+    "duplicate rule text appears in more than 3 generated prompts"
+  ]
+}
