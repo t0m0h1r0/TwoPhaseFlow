@@ -1,6 +1,6 @@
-# Wiki Index — 295 entries
+# Wiki Index — 300 entries
 
-## Theory (131)
+## Theory (136)
 
 | REF-ID | Title |
 |--------|-------|
@@ -135,6 +135,11 @@
 | [WIKI-T-129](theory/WIKI-T-129.md) | Variable-Density PPE Is a Pressure-Increment Equation in IPC |
 | [WIKI-T-130](theory/WIKI-T-130.md) | Nonuniform Projection Requires a Face-Adjoint Gradient Pair |
 | [WIKI-T-131](theory/WIKI-T-131.md) | HFE Is Mandatory Only When the Solved Pressure Field Has a Jump |
+| [WIKI-T-132](theory/WIKI-T-132.md) | Balanced-Force Mismatch Is a Positive Feedback Loop |
+| [WIKI-T-133](theory/WIKI-T-133.md) | The Adjoint PPE Pair Solves F-2 and F-3 Together |
+| [WIKI-T-134](theory/WIKI-T-134.md) | HFE Extension Normal Is an SDF Transport Direction, Not the Stress-Jump Normal |
+| [WIKI-T-135](theory/WIKI-T-135.md) | Nonuniform Geometry Data Is a Shared Source, Not Per-Operator Metadata |
+| [WIKI-T-136](theory/WIKI-T-136.md) | DCCD and UCCD6 Filtering Occur in Computational Space Before Metrics |
 
 ## Cross-Domain (40)
 
