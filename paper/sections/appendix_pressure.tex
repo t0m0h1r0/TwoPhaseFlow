@@ -19,93 +19,21 @@
 %% E.2 末尾 (archived): CCD仮想時間精度検証 → _archived/appD8_ccd_pseudotime_verification.tex
 %%   理由: 本文から参照ゼロ (app:ccd_pseudotime, app:ccd_case1/2/3 すべて未参照)
 
-%% E.3 FVM 基準手法の定式化と精度解析（面係数・CSF・RC + 旧 RC/BF 精度解析を統合）
-\input{sections/appendix_numerics_solver_s4}   %% FVM + CSF + RC + BF精度解析
+%% E.3 FVM 基準手法の定式化と精度解析（面係数・CSF・BF 精度解析）
+\input{sections/appendix_numerics_solver_s4}   %% FVM + CSF + BF 精度解析
 
-%% E.4 C/RC 補正のテイラー展開証明（§7.4b から移動）
-\subsection{C/RC 補正のテイラー展開証明}
-\label{app:crc_taylor}
-
-本節では C/RC（CCD-enhanced Rhie--Chow Correction）の精度改善（参考：付録~\ref{app:rhie_chow_full}）を，
-テイラー展開によって厳密に導出する（本稿のプロダクション設計では Rhie--Chow 経路を採用しないため，
-本節は historical reference として収録）．
-
-\paragraph{Rhie--Chow 補正項のテイラー展開}
-
-フェイス $f$（$x_P$ と $x_E$ の中点，$x_f = (x_P+x_E)/2$，$x_E - x_P = h$）での各勾配評価：
-
-\noindent\textbf{(1) 直接フェイス差分：}
-$x_P = x_f - h/2$，$x_E = x_f + h/2$ として
-$p(x_f \pm h/2) = p(x_f) \pm p'(x_f)\tfrac{h}{2} + p''(x_f)\tfrac{h^2}{8} \pm p'''(x_f)\tfrac{h^3}{48} + \Ord{h^4}$
-より $p_E - p_P = p'(x_f)h + p'''(x_f)\tfrac{h^3}{24} + \Ord{h^5}$，したがって
-\begin{equation}
-  (\nabla p)_f \equiv \frac{p_E - p_P}{h} = p'(x_f) + \frac{h^2}{24}p'''(x_f) + \Ord{h^4}
-  \label{eq:rc_face_taylor}
-\end{equation}
-
-\noindent\textbf{(2) CCD 勾配の算術平均：}
-CCD は各セル中心で $\Ord{h^6}$ 精度の1階微分を返す：
-$(D^{(1)}_\mathrm{CCD}\,p)_P = p'(x_P) + \Ord{h^6}$，
-$(D^{(1)}_\mathrm{CCD}\,p)_E = p'(x_E) + \Ord{h^6}$．
-算術平均のテイラー展開：
-\begin{equation}
-  \overline{(\nabla p)}_f \equiv \frac{1}{2}\bigl[(D^{(1)}_\mathrm{CCD}\,p)_P + (D^{(1)}_\mathrm{CCD}\,p)_E\bigr]
-    = p'(x_f) + \frac{h^2}{8}p'''(x_f) + \Ord{h^4}
-  \label{eq:rc_avg_taylor}
-\end{equation}
-$p'(x_P), p'(x_E)$ の偶数次項（$p''$ を含む）が相殺し，主誤差項は $(h^2/8)p'''$ である．
-セル中心の CCD 精度は $\Ord{h^6}$ だが，算術平均のフェイス補間精度は $\Ord{h^2}$ に低下する点に注意する．
-
-\noindent\textbf{(3) Rhie--Chow 検出項（差）：}
-\begin{equation}
-  (\nabla p)_f - \overline{(\nabla p)}_f
-  = \left(\frac{1}{24} - \frac{1}{8}\right)h^2 p'''(x_f) + \Ord{h^4}
-  = -\frac{h^2}{12}p'''(x_f) + \Ord{h^4}
-  \label{eq:rc_detection_taylor}
-\end{equation}
-補正量は $\Ord{\Delta t \cdot h^2}$ である．
-滑らかな圧力場に対しては CSF モデル誤差 $\Ord{\varepsilon^2} \approx \Ord{h^2}$ と同程度であり，
-CCD の $\Ord{h^6}$ を律速する新たな誤差源とはならない．
-一方，チェッカーボード場（波長 $2h$）では補正量が $\Ord{1}$ となり非物理振動を除去する
-（\textbf{スペクトル選択的フィルタ}特性）．
-
-\paragraph{$p'''$ 係数の不整合と CCD $p''$ による相殺}
-
-式~\eqref{eq:rc_detection_taylor} の $\Ord{h^2}$ 誤差の根本原因は，
-フェイス差分の $p'''$ 係数 $1/24$ とセル中心平均の係数 $1/8$ の\textbf{不一致}にある．
-$p'''$ を陽的に計算して引き去る（Richardson 型補正）のではなく，
-セル中心平均の有効係数を $1/8$ から $1/24$ に\textbf{調整}すれば，
-$1/24 - 1/24 = 0$ として $p'''$ が自然に消去される．
-
-CCD は $p' = D^{(1)}_\mathrm{CCD}\,p$ と $p'' = D^{(2)}_\mathrm{CCD}\,p$ を同時に返す．
-$p''$ のフェイス差分は：
-\begin{equation}
-  \frac{p''_E - p''_P}{h} = p'''(x_f) + \frac{h^2}{24}p^{(5)}(x_f) + \Ord{h^4}
-  \label{eq:d2_face_diff}
-\end{equation}
-これを用いた補正済みセル中心平均では，
-$p'''$ 係数が $1/24$ に揃い，検出項は：
-\begin{equation}
-  (\nabla p)_f - \overline{(\nabla p)}_f^{\,*}
-  = \left(\frac{1}{24} - \frac{1}{24}\right)h^2 p'''
-  + \frac{h^4}{720}p^{(5)}(x_f) + \Ord{h^6}
-  = \Ord{h^4}
-  \label{eq:rc_crc_bracket}
-\end{equation}
-となる．RC 補正量が $\Ord{\Delta t \cdot h^2}$ から $\Ord{\Delta t \cdot h^4}$ に改善される証明である．
-
-%% E.5 圧力ステップの実装補足
-\subsection{圧力ステップの実装補足}
+%% E.4 圧力ステップの補足
+\subsection{圧力ステップの補足}
 \label{app:pressure_step_details}
 
-本節では，本文の 7-step フローで過度に詳細となる
-Predictor ADI 分裂と DC-PPE 反復アルゴリズムのみを補足する．
+本節では，本文の統合更新手順で過度に詳細となる
+IMEX--BDF2 予測子と DC-PPE 反復アルゴリズムのみを補足する．
 HFE 場延長の格子収束検証は，本文 U6-c
 （§~\ref{sec:U6_split_ppe_dc_hfe}，表~\ref{tab:U6_hfe}，図~\ref{fig:ch12_u6_hfe_field}）
 に集約し，本付録では重複掲載しない．
 
-%% Predictor ADI 分裂の実装詳細（§10 から移動）
-\input{sections/appD_predictor_adi}
+%% IMEX--BDF2 予測子の補足
+\input{sections/appD_predictor_imex_bdf2}
 
-%% DC-PPE ソルバーの反復アルゴリズム（§10 から移動）
+%% DC-PPE ソルバーの反復アルゴリズム
 \input{sections/appD_dc_ppe_iteration}

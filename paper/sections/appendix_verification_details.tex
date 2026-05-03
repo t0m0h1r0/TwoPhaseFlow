@@ -2,7 +2,7 @@
 %
 % 付録 G: 検証の補足解析
 %   G.1 PPE 離散化の選択（§12.5 から移動）
-%   G.2 HFE の smoothed Heaviside 圧力場への適合性（§12.4 から移動）
+%   G.2 HFE の smoothed-Heaviside 圧力場への適合性（§12.4 から移動）
 %   G.3 V7 IMEX-BDF2 二相時間精度 RCA（§13.4 補足）
 % ═══════════════════════════════════════════════════════════════════════════════
 \section{検証の補足解析}
@@ -13,7 +13,7 @@
 \label{sec:ppe_discretization_choice}
 % ─────────────────────────────────────────────────────────────────────────────
 
-§~\ref{sec:interface_crossing} で smoothed Heaviside 一括解法の密度比依存性を分析したが，
+§~\ref{sec:interface_crossing} で smoothed-Heaviside 一括解法の密度比依存性を分析したが，
 CCD PPE の欠陥補正（DC）にはさらに\textbf{本質的制約}がある：
 CCD 高次演算子 $L_H$ と低次前処理 $L_L$（2 次精度 FD）の
 \textbf{スペクトル不整合}により，界面型密度場に限らず定常反復が発散する．
@@ -98,13 +98,13 @@ DC 早期停止 + CCD $\bnabla p$ & $5.1 \times 10^{-3}$ & 1.1\% & 残差蓄積 
 \end{table}
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsection{HFE の smoothed Heaviside 圧力場への適合性}
+\subsection{HFE の smoothed-Heaviside 圧力場への適合性}
 \label{sec:hfe_smoothed_scope}
 % ─────────────────────────────────────────────────────────────────────────────
 
 §~\ref{sec:field_extension} で導入した HFE（Hermite 場延長法）は
 IPC における $\bnabla p^n$ の界面ジャンプ処理のために設計されたが，
-smoothed Heaviside 解法では圧力場が $\varepsilon$-正則化により
+smoothed-Heaviside 解法では圧力場が $\varepsilon$-正則化により
 \textbf{既に滑らか}であるため，HFE は逆効果となる．
 
 静止液滴テスト（$R=0.25$，$\mathit{We} = 10$，非増分投影法，200 ステップ）で
@@ -115,7 +115,7 @@ Laplace 圧精度が完全に破綻した．
 
 HFE の適用範囲は以下のように明確に規定される：
 \begin{enumerate}[noitemsep]
-  \item \textbf{smoothed Heaviside + 非増分投影}：
+  \item \textbf{smoothed-Heaviside + 非増分投影}：
         HFE は不要（有害）．圧力場は $\varepsilon$-正則化で滑らか．
   \item \textbf{増分投影法（IPC）}：
         $p^n$ は Young--Laplace ジャンプ $j_{gl}=p_g-p_l=-\sigma\kappa_{lg}$ を持つため，
@@ -135,7 +135,7 @@ HFE の適用範囲は以下のように明確に規定される：
 IMEX-BDF2 単体の係数誤りではなく，
 \textbf{capillary pressure-jump / affine FCCD projection が界面帯で作る低正則性・分裂誤差}
 に支配される，というものである．
-したがって V7 は BDF2 単体次数の試験ではなく，§14 と同じ
+したがって V7 は BDF2 単体次数の試験ではなく，§~\ref{sec:validation} と同じ
 capillary coupled stack の実効時間精度診断として読む．
 BDF2 単体の設計次数は U8（§~\ref{sec:U8_time_integration}）で独立に検証済みである．
 
@@ -147,7 +147,7 @@ $n_{\mathrm{ref}}=128$ を参照解に用いた．
 元の V7 と同じ各 step 再初期化に加え，再初期化回数固定，再初期化なし，
 界面静止，表面張力除去，一様係数化を分離して，低次数の必要条件を反証した．
 
-\begin{table}[!ht]
+\begin{table}[htbp]
 \centering\scriptsize
 \caption{V7 RCA：対照実験による支配因子の切り分け}
 \label{tab:v7_rca_controls}
@@ -180,7 +180,7 @@ $\rho,\mu$ を一様化しても $\sigma=1$ なら大誤差が残り，密度・
 該当メカニズムが完全にゼロであることではなく，V7 の観測次数低下を説明する
 一次支配因子ではないことを意味する．
 
-\begin{table}[!ht]
+\begin{table}[htbp]
 \centering\scriptsize
 \caption{V7 RCA：仮説監査}
 \label{tab:v7_rca_hypotheses}
@@ -209,7 +209,7 @@ bulk error は interface-band error より数桁小さい．\\
 H10 & IMEX-BDF2 係数実装が誤り & 反証 &
 U8 は BDF2 単体を通し，$\sigma=0$ 対照は near-zero error となる．\\
 H11 & 旧 nodal pressure-history bug が残存 & 反証 &
-現行実装は projection-native face acceleration を使い，残差は capillary band に局在する．\\
+現行離散化は projection-native face acceleration を使い，残差は capillary band に局在する．\\
 H12 & BDF1 startup が主因 & 非支持 &
 全対照で指数は近く，capillary 有無だけが振幅を桁で変える．\\
 H13 & 空間格子 $N=24$ だけが問題 & 副次因子 &
