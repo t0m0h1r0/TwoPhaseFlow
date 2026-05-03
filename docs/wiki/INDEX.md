@@ -1,4 +1,4 @@
-# Wiki Index — 310 entries
+# Wiki Index — 315 entries
 
 ## Theory (143)
 
@@ -193,7 +193,7 @@
 | [WIKI-X-039](cross-domain/WIKI-X-039.md) | Affine Jump Interface Stress: Oriented Young--Laplace Contract and ch14 Root Cause |
 | [WIKI-X-040](cross-domain/WIKI-X-040.md) | Recent Research Insight Digest: 2026-04-24 to 2026-05-03 |
 
-## Experiment (49)
+## Experiment (54)
 
 | REF-ID | Title |
 |--------|-------|
@@ -247,6 +247,11 @@
 | [WIKI-E-047](experiment/WIKI-E-047.md) | U5 Delta Moments Certify Surface-Force Measure Support |
 | [WIKI-E-048](experiment/WIKI-E-048.md) | U6 Omega Sweep Is a Relaxation Guard Before Split PPE |
 | [WIKI-E-049](experiment/WIKI-E-049.md) | U9 DCCD Pressure Violation Is an Asymptotic Order-Gap Test |
+| [WIKI-E-050](experiment/WIKI-E-050.md) | V1 Measures the Implemented CCD/PPE Path, Not the Old FFT Proxy |
+| [WIKI-E-051](experiment/WIKI-E-051.md) | V3 Separates Pressure Accuracy from Spurious-Flow Monotonicity |
+| [WIKI-E-052](experiment/WIKI-E-052.md) | V6 Pressure-Correction Ratio Is Auxiliary, Not Laplace Error |
+| [WIKI-E-053](experiment/WIKI-E-053.md) | V7 RCA Localizes the Time-Order Limit to the Capillary Jump Band |
+| [WIKI-E-054](experiment/WIKI-E-054.md) | V8/V9/V10 Preserve Future Gates by Design |
 
 ## Paper (14)
 
