@@ -74,6 +74,14 @@ $1.66\times10^{-2}$ であったため，主要な failure mode は
 表現不一致であった．この結果は CFL や smoothing の調整ではなく，
 face-space 契約の履行として扱う．
 
+さらに同じ静止円形液滴では，interface transport 修正後にも
+長時間 $T=1.5$ で parasitic kinetic energy が残った．原因は
+IPC predictor が不連続な履歴圧力 $p^n$ を節点勾配として微分していたことであり，
+式~\eqref{eq:affine_pressure_history_faces} の面加速度として保存・再利用すると，
+$T=1.5$ の final kinetic energy は $1.69\times10^{-2}$ から
+$6.99\times10^{-5}$ へ低下し，圧力コントラストは
+$2.68\times10^{1}$ から $5.03\times10^{-1}$ へ抑制された．
+
 % ═══════════════════════════════════════════════════════════════════
 \subsection{毛管波：向き付き affine jump の符号検証}
 \label{sec:val_capillary}

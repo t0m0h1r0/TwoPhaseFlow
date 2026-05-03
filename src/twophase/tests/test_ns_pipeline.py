@@ -447,6 +447,93 @@ def test_predictor_includes_ipc_previous_pressure_gradient():
     np.testing.assert_allclose(state.v_star, xp.full(shape, -0.75))
 
 
+def test_face_native_predictor_uses_stored_pressure_history_faces():
+    """Affine IPC history must use stored face pressure acceleration."""
+    from twophase.backend import Backend
+    from twophase.simulation.ns_step_services import compute_ns_predictor_stage
+    from twophase.simulation.ns_step_state import NSStepInputs, NSStepState
+
+    backend = Backend(use_gpu=False)
+    xp = backend.xp
+    shape = (2, 2)
+
+    class ZeroConvection:
+        def compute(self, ctx):
+            return xp.zeros_like(ctx.velocity[0]), xp.zeros_like(ctx.velocity[1])
+
+    class RecordingPredictor:
+        def predict(
+            self,
+            u,
+            v,
+            conv_u,
+            conv_v,
+            mu,
+            rho,
+            dt,
+            ccd,
+            buoy_v=None,
+            psi=None,
+            **kwargs,
+        ):
+            self.conv_u = xp.copy(conv_u)
+            self.conv_v = xp.copy(conv_v)
+            return u + dt * conv_u, v + dt * conv_v
+
+    class FaceContract:
+        def reconstruct_nodes(self, face_components):
+            return [0.25 * face_components[0], 0.25 * face_components[1]]
+
+        def face_fluxes(self, components):
+            return [2.0 * components[0], 2.0 * components[1]]
+
+    class ForbiddenGradient:
+        def gradient(self, pressure, axis):
+            raise AssertionError("face-native pressure history must not use nodal ∇p")
+
+    predictor = RecordingPredictor()
+    inputs = NSStepInputs(
+        psi=xp.ones(shape),
+        u=xp.zeros(shape),
+        v=xp.zeros(shape),
+        dt=0.1,
+        rho_l=1.0,
+        rho_g=1.0,
+        sigma=0.0,
+        mu=1.0,
+    )
+    state = NSStepState.from_inputs(inputs, backend=backend)
+    state.rho = xp.ones(shape)
+    state.mu_field = xp.ones(shape)
+    state.previous_pressure = xp.ones(shape)
+    state.previous_pressure_accel_face_components = [
+        xp.full(shape, 7.0),
+        xp.full(shape, -5.0),
+    ]
+    state.face_velocity_components = [xp.full(shape, 11.0), xp.full(shape, 13.0)]
+
+    state, *_ = compute_ns_predictor_stage(
+        state,
+        backend=backend,
+        ccd=None,
+        conv_term=ZeroConvection(),
+        viscous_predictor=predictor,
+        scheme_runtime=SimpleNamespace(convection_time_scheme="euler"),
+        conv_ab2_ready=False,
+        conv_prev=None,
+        projection_consistent_buoyancy=True,
+        face_native_predictor_state=True,
+        div_op=FaceContract(),
+        bc_type="periodic",
+        pressure_grad_op=ForbiddenGradient(),
+    )
+
+    np.testing.assert_allclose(predictor.conv_u, xp.full(shape, -1.75))
+    np.testing.assert_allclose(predictor.conv_v, xp.full(shape, 1.25))
+    np.testing.assert_allclose(state.predictor_face_components[0], xp.full(shape, 10.3))
+    np.testing.assert_allclose(state.predictor_face_components[1], xp.full(shape, 13.5))
+
+
 def test_implicit_bdf2_viscous_predictor_zero_operator_matches_formula():
     """With V=0, the matrix-free solve reduces exactly to the BDF2 affine RHS."""
     from twophase.backend import Backend

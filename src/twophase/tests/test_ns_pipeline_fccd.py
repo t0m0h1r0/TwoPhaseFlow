@@ -1138,6 +1138,94 @@ def test_affine_jump_corrector_forwards_interface_context():
     np.testing.assert_allclose(context.pressure_jump_gas_minus_liquid, -6.0)
 
 
+def test_affine_jump_pressure_stage_stores_history_faces():
+    """IPC history must store the pressure acceleration in affine face space."""
+    from twophase.simulation.ns_step_services import solve_ns_pressure_stage
+    from twophase.simulation.ns_step_state import NSStepState
+
+    shape = (3, 3)
+    arr = np.zeros(shape)
+
+    class AffineFluxRecorder:
+        def divergence(self, components):
+            return np.zeros(shape)
+
+        def pressure_fluxes(self, pressure, rho, **kwargs):
+            self.pressure = np.array(pressure, copy=True)
+            self.kwargs = kwargs
+            return [np.full(shape, 2.0), np.full(shape, -3.0)]
+
+        def reconstruct_nodes(self, face_components):
+            return face_components
+
+    class JumpPressureSolver:
+        def solve(self, rhs, rho, dt=0.0, p_init=None):
+            self.last_base_pressure = np.full_like(rhs, 4.0)
+            return np.full_like(rhs, 9.0)
+
+        def apply_interface_jump(self, base_pressure):
+            return base_pressure + 10.0
+
+    state = NSStepState(
+        psi=np.array([[1.0, 1.0, 1.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]),
+        u=arr,
+        v=arr,
+        dt=1.0e-3,
+        rho_l=1000.0,
+        rho_g=1.0,
+        sigma=2.0,
+        mu=0.0,
+        g_acc=0.0,
+        rho_ref=500.5,
+        mu_l=None,
+        mu_g=None,
+        bc_hook=None,
+        step_index=0,
+        rho=np.ones(shape),
+        kappa=np.full(shape, 3.0),
+        f_x=np.zeros(shape),
+        f_y=np.zeros(shape),
+        u_star=np.zeros(shape),
+        v_star=np.zeros(shape),
+    )
+    backend = type(
+        "BackendStub",
+        (),
+        {"xp": np, "is_gpu": lambda self: False, "to_host": lambda self, arr: arr},
+    )()
+    ppe_runtime = type(
+        "PPERuntime",
+        (),
+        {
+            "ppe_solver_name": "fccd_iterative",
+            "ppe_coefficient_scheme": "phase_separated",
+            "ppe_interface_coupling_scheme": "affine_jump",
+        },
+    )()
+    div_op = AffineFluxRecorder()
+
+    state, _, _ = solve_ns_pressure_stage(
+        state,
+        backend=backend,
+        div_op=div_op,
+        ppe_solver=JumpPressureSolver(),
+        p_prev_dev=None,
+        surface_tension_scheme="pressure_jump",
+        face_native_predictor_state=True,
+        ppe_runtime=ppe_runtime,
+    )
+
+    np.testing.assert_allclose(div_op.pressure, 14.0)
+    assert div_op.kwargs["pressure_gradient"] == "fccd"
+    assert div_op.kwargs["coefficient_scheme"] == "phase_separated"
+    assert div_op.kwargs["interface_coupling_scheme"] == "affine_jump"
+    context = div_op.kwargs["interface_stress_context"]
+    assert context.sigma == pytest.approx(2.0)
+    np.testing.assert_allclose(context.pressure_jump_gas_minus_liquid, -6.0)
+    np.testing.assert_allclose(state.pressure_accel_face_components[0], 2.0)
+    np.testing.assert_allclose(state.pressure_accel_face_components[1], -3.0)
+
+
 def test_phase_separated_pressure_jump_stack_one_step_no_nan():
     """Executable SP-M smoke: phase-separated FCCD PPE + pressure_jump."""
     solver = TwoPhaseNSSolver(
