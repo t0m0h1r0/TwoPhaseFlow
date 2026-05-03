@@ -1,0 +1,168 @@
+# N=64 static-droplet alpha-2 control for the resized oscillating-droplet route.
+# This keeps the same physics, capillary CFL, pressure-jump PPE, and
+# viscous/convection stack as ch14_static_droplet_n64_like_oscillating.yaml,
+# but weakens the fitted-grid interface monitor from alpha=4 to alpha=2.
+
+experiment:
+  type: circle
+
+grid:
+  cells: [64, 64]
+  domain:
+    size: [1.0, 1.0]
+    boundary: periodic
+  distribution:
+    schedule: 1
+    axes:
+      x:
+        type: nonuniform
+        monitors:
+          interface:
+            alpha: 2.0
+      y:
+        type: nonuniform
+        monitors:
+          interface:
+            alpha: 2.0
+
+interface:
+  thickness:
+    mode: local
+    base_factor: 1.5
+  geometry:
+    curvature:
+      method: psi_direct_filtered
+      cap: 40.0
+  reinitialization:
+    algorithm: ridge_eikonal
+    schedule:
+      every_steps: 0
+    profile:
+      eps_scale: 1.4
+      ridge_sigma_0: 3.0
+
+physics:
+  phases:
+    liquid:
+      rho: 1000.0
+      mu: 1.0e-3
+    gas:
+      rho: 1.2
+      mu: 1.8e-5
+  surface_tension: 0.072
+  gravity: 0.0
+
+run:
+  time:
+    final: 1.5
+    cfl: 0.2
+    print_every: 200
+  debug:
+    step_diagnostics: false
+
+numerics:
+  time:
+    algorithm: fractional_step
+  interface:
+    transport:
+      variable: psi
+      spatial: fccd
+      time_integrator: tvd_rk3
+  momentum:
+    predictor:
+      assembly: balanced_buoyancy
+    terms:
+      convection:
+        spatial: uccd6
+        time_integrator: imex_bdf2
+      pressure:
+        gradient: fccd
+      viscosity:
+        spatial: ccd
+        time_integrator: implicit_bdf2
+        solver:
+          kind: defect_correction
+          tolerance: 1.0e-8
+          corrections:
+            max_iterations: 3
+            relaxation: 0.8
+      surface_tension:
+        formulation: pressure_jump
+  projection:
+    face_flux_projection: true
+    canonical_face_state: true
+    face_native_predictor_state: true
+    poisson:
+      operator:
+        discretization: fccd
+        coefficient: phase_separated
+        interface_coupling: affine_jump
+      solver:
+        kind: defect_correction
+        corrections:
+          max_iterations: 3
+          tolerance: 1.0e-8
+          relaxation: 0.7
+        base_solver:
+          discretization: fd
+          kind: direct
+
+output:
+  dir: results/ch14_static_droplet_n64_alpha2_like_oscillating
+  save_npz: true
+  snapshots:
+    interval: 0.05
+  figures:
+    - type: time_series
+      title: "Water-air static droplet N64 alpha-2 control: deformation"
+      x: times
+      y: [deformation]
+      labels: ["D(t)"]
+      xlabel: "$t$"
+      ylabel: "$D = (L-B)/(L+B)$"
+      file: deformation.pdf
+
+    - type: time_series
+      title: "Water-air static droplet N64 alpha-2 control: volume drift"
+      x: times
+      y: [volume_conservation]
+      labels: ["$|\\Delta V|/V_0$"]
+      xlabel: "$t$"
+      ylabel: "$|\\Delta V|/V_0$"
+      yscale: log
+      file: volume_drift.pdf
+
+    - type: time_series
+      title: "Water-air static droplet N64 alpha-2 control: kinetic energy"
+      x: times
+      y: [kinetic_energy]
+      labels: ["KE"]
+      xlabel: "$t$"
+      ylabel: "$E_k$"
+      yscale: log
+      file: kinetic_energy.pdf
+
+    - type: snapshot_series
+      field: psi
+      file_prefix: psi_t
+
+    - type: snapshot_series
+      field: velocity
+      file_prefix: velocity_t
+
+    - type: snapshot_series
+      field: pressure
+      file_prefix: pressure_t
+
+diagnostics: [volume_conservation, kinetic_energy, deformation]
+
+initial_condition:
+  background_phase: gas
+  objects:
+    - type: circle
+      center: [0.5, 0.5]
+      radius: 0.25
+      interior_phase: liquid
+
+initial_velocity: null
+boundary_condition: null
