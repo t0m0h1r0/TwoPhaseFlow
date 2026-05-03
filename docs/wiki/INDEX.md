@@ -1,6 +1,6 @@
-# Wiki Index — 267 entries
+# Wiki Index — 270 entries
 
-## Theory (107)
+## Theory (110)
 
 | REF-ID | Title |
 |--------|-------|
@@ -111,6 +111,9 @@
 | [WIKI-T-105](theory/WIKI-T-105.md) | Failure Modes Are Coupled Symptoms, Not Module Labels |
 | [WIKI-T-106](theory/WIKI-T-106.md) | Diffuse Interface Width Has Operational Bands |
 | [WIKI-T-107](theory/WIKI-T-107.md) | One-Fluid CSF Absorbs the Stress Jump as a Weak-Form Body Force |
+| [WIKI-T-108](theory/WIKI-T-108.md) | Logit Inversion Is a Diagnostic Bridge, Not a Curvature Prerequisite |
+| [WIKI-T-109](theory/WIKI-T-109.md) | Direct psi Curvature Is Interface-Band Only |
+| [WIKI-T-110](theory/WIKI-T-110.md) | epsilon_eff Is a Profile-Quality Sensor, Not a New Width Parameter |
 
 ## Cross-Domain (39)
 
