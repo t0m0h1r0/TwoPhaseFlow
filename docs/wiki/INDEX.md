@@ -1,6 +1,6 @@
-# Wiki Index — 279 entries
+# Wiki Index — 282 entries
 
-## Theory (119)
+## Theory (122)
 
 | REF-ID | Title |
 |--------|-------|
@@ -123,6 +123,9 @@
 | [WIKI-T-117](theory/WIKI-T-117.md) | CCD Sixth Order Comes from Coupling f-prime and f-double-prime Unknowns |
 | [WIKI-T-118](theory/WIKI-T-118.md) | CCD Local Truncation and Spectral Error Coefficients Are Different Objects |
 | [WIKI-T-119](theory/WIKI-T-119.md) | UCCD6 Hyperviscosity Exponent 7 Is the Minimal Order-Preserving Choice |
+| [WIKI-T-120](theory/WIKI-T-120.md) | Face Jet Has Mixed Accuracy by Design |
+| [WIKI-T-121](theory/WIKI-T-121.md) | Face Jet Is a Public Contract, Not a Current Implementation Detail |
+| [WIKI-T-122](theory/WIKI-T-122.md) | FCCD Balanced-Force Fourth Order Requires a Smooth Constructive Relation |
 
 ## Cross-Domain (39)
 

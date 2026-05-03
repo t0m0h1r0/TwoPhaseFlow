@@ -1,14 +1,15 @@
 # 02_ACTIVE_LEDGER — Phase, Branch, CHK Register, Assumptions & Lessons
 # LIVE document — append-only for CHK/ASM/KL entries; phase/branch updated each session.
-# Last updated: 2026-05-04 (CHK-RA-PAPER-WIKI-001 ROUND-15 DONE — CCD/UCCD6 mechanism cards stored.)
+# Last updated: 2026-05-04 (CHK-RA-PAPER-WIKI-001 ROUND-16 DONE — FaceJet/FCCD contract cards stored.)
 
 ────────────────────────────────────────────────────────
 # § ACTIVE STATE
 
 | Key | Value |
 |---|---|
-| phase | CHK-RA-PAPER-WIKI-001 ROUND-15 DONE |
+| phase | CHK-RA-PAPER-WIKI-001 ROUND-16 DONE |
 | branch | `ra-paper-wiki-insights-r11-20-20260504` |
+| session_CHK | CHK-RA-PAPER-WIKI-001 ROUND-16 DONE 2026-05-04 — Same worktree/branch, no new worktree. Round 16 added individual FaceJet/FCCD contract cards: `docs/wiki/theory/WIKI-T-120.md` (FaceJet has mixed accuracy by design), `docs/wiki/theory/WIKI-T-121.md` (FaceJet is a public contract, not current implementation detail), `docs/wiki/theory/WIKI-T-122.md` (FCCD BF fourth order requires a smooth constructive relation). Updated `docs/wiki/INDEX.md`: total 279→282, Theory 119→122. [SOLID-X] docs/wiki/ledger only; no production code boundary changed, no tested code deleted, no FD/WENO/PPE fallback introduced. |
 | session_CHK | CHK-RA-PAPER-WIKI-001 ROUND-15 DONE 2026-05-04 — Same worktree/branch, no new worktree. Round 15 added individual CCD/UCCD6 mechanism cards: `docs/wiki/theory/WIKI-T-117.md` (CCD sixth order comes from coupling f-prime and f-double-prime unknowns), `docs/wiki/theory/WIKI-T-118.md` (CCD local truncation and spectral error coefficients are different objects), `docs/wiki/theory/WIKI-T-119.md` (UCCD6 hyperviscosity exponent 7 is the minimal order-preserving choice). Updated `docs/wiki/INDEX.md`: total 276→279, Theory 116→119. [SOLID-X] docs/wiki/ledger only; no production code boundary changed, no tested code deleted, no FD/WENO/PPE fallback introduced. |
 | session_CHK | CHK-RA-PAPER-WIKI-001 ROUND-14 DONE 2026-05-04 — Same worktree/branch, no new worktree. Round 14 added individual reinitialization-operation cards: `docs/wiki/theory/WIKI-T-114.md` (mass conservation changes measure on nonuniform grids), `docs/wiki/theory/WIKI-T-115.md` (`M(tau)` is a reinit call gate, not an error norm), `docs/wiki/theory/WIKI-T-116.md` (iterative Eikonal stopping rules do not apply to one-shot Ridge--Eikonal). Updated `docs/wiki/INDEX.md`: total 273→276, Theory 113→116. [SOLID-X] docs/wiki/ledger only; no production code boundary changed, no tested code deleted, no FD/WENO/PPE fallback introduced. |
 | session_CHK | CHK-RA-PAPER-WIKI-001 ROUND-13 DONE 2026-05-04 — Same worktree/branch, no new worktree. Round 13 added individual Ridge--Eikonal knowledge cards: `docs/wiki/theory/WIKI-T-111.md` (`xi_ridge` intentionally violates Eikonal to carry topology), `docs/wiki/theory/WIKI-T-112.md` (ridge seeds cannot be promoted by proximity alone), `docs/wiki/theory/WIKI-T-113.md` (Ridge--Eikonal admissibility is four conditions, not just FMM). Updated `docs/wiki/INDEX.md`: total 270→273, Theory 110→113. [SOLID-X] docs/wiki/ledger only; no production code boundary changed, no tested code deleted, no FD/WENO/PPE fallback introduced. |
