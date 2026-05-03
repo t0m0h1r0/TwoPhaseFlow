@@ -1,0 +1,11 @@
+{
+  "branch": "ra-ch13-v10-shape-rca-20260503",
+  "branch_slug": "ra-ch13-v10-shape-rca-20260503",
+  "session_id": "CHK-RA-CH13-V10-SHAPE-001",
+  "worktree_path": ".claude/worktrees/ra-ch13-v10-shape-rca-20260503",
+  "holder_agent": "ResearchArchitect",
+  "acquired_at": "2026-05-03T10:03:32Z",
+  "expires_at": "2026-05-04T10:03:32Z",
+  "meta_version": "5.1.0",
+  "id_prefix": "RA-CH13-V10-SHAPE"
+}
