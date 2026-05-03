@@ -48,6 +48,7 @@ class ProbeCase:
     label: str
     hypothesis: str
     disable_previous_pressure_gradient: bool = False
+    constant_kappa: float | None = None
 
 
 def _cases() -> tuple[ProbeCase, ...]:
@@ -64,6 +65,14 @@ def _cases() -> tuple[ProbeCase, ...]:
             ),
             disable_previous_pressure_gradient=True,
         ),
+        ProbeCase(
+            label="constant_curvature",
+            hypothesis=(
+                "diagnostic: replace computed curvature by exact circular kappa=1/R; "
+                "if residual pressure drops, curvature noise is the source"
+            ),
+            constant_kappa=4.0,
+        ),
     )
 
 
@@ -78,22 +87,36 @@ def _build_config(raw_base: dict, label: str) -> ExperimentConfig:
 
 
 @contextmanager
-def _pressure_history_patch(disabled: bool):
-    if not disabled:
+def _patch_solver_stages(case: ProbeCase):
+    if not case.disable_previous_pressure_gradient and case.constant_kappa is None:
         yield
         return
 
-    original = ns_pipeline.compute_ns_predictor_stage
+    original_predictor = ns_pipeline.compute_ns_predictor_stage
+    original_surface = ns_pipeline.compute_ns_surface_tension_stage
 
     def without_previous_pressure_gradient(state, **kwargs):
         state.previous_pressure = None
-        return original(state, **kwargs)
+        return original_predictor(state, **kwargs)
 
-    ns_pipeline.compute_ns_predictor_stage = without_previous_pressure_gradient
+    def with_constant_curvature(state, **kwargs):
+        state = original_surface(state, **kwargs)
+        if case.constant_kappa is not None:
+            xp = kwargs["backend"].xp
+            state.kappa = xp.zeros_like(state.kappa) + float(case.constant_kappa)
+            state.f_x = xp.zeros_like(state.f_x)
+            state.f_y = xp.zeros_like(state.f_y)
+        return state
+
+    if case.disable_previous_pressure_gradient:
+        ns_pipeline.compute_ns_predictor_stage = without_previous_pressure_gradient
+    if case.constant_kappa is not None:
+        ns_pipeline.compute_ns_surface_tension_stage = with_constant_curvature
     try:
         yield
     finally:
-        ns_pipeline.compute_ns_predictor_stage = original
+        ns_pipeline.compute_ns_predictor_stage = original_predictor
+        ns_pipeline.compute_ns_surface_tension_stage = original_surface
 
 
 def _phase_fraction(density: np.ndarray) -> np.ndarray:
@@ -179,6 +202,17 @@ def _load_summary(path: pathlib.Path) -> list[dict[str, float | str]]:
     return summaries
 
 
+def _merge_rows(
+    previous: list[dict[str, float | str]],
+    current: list[dict[str, float | str]],
+) -> list[dict[str, float | str]]:
+    rows = {str(row["label"]): row for row in previous}
+    for row in current:
+        rows[str(row["label"])] = row
+    ordered = [case.label for case in _cases() if case.label in rows]
+    return [rows[label] for label in ordered]
+
+
 def _print_summary(rows: list[dict[str, float | str]]) -> None:
     print(
         "label,status,final_t,max_ke,max_volume,jump,jump_error,"
@@ -197,6 +231,12 @@ def _print_summary(rows: list[dict[str, float | str]]) -> None:
 
 def main() -> None:
     parser = experiment_argparser(__doc__)
+    parser.add_argument(
+        "--case",
+        action="append",
+        default=None,
+        help="Run only the named case. May be repeated.",
+    )
     args = parser.parse_args()
 
     outdir = experiment_dir(__file__, "ch14_pressure_history_gradient_n64")
@@ -208,18 +248,25 @@ def main() -> None:
     with open(BASE_CONFIG) as file:
         raw_base = yaml.safe_load(file)
 
+    selected = set(args.case or [])
+    cases = [case for case in _cases() if not selected or case.label in selected]
+    if not cases:
+        raise ValueError(f"No selected case in {sorted(case.label for case in _cases())}")
+
     rows: list[dict[str, float | str]] = []
-    for case in _cases():
+    for case in cases:
         print(f"\n=== {case.label}: {case.hypothesis} ===")
         cfg = _build_config(raw_base, case.label)
         start = time.perf_counter()
-        with _pressure_history_patch(case.disable_previous_pressure_gradient):
+        with _patch_solver_stages(case):
             results = ns_pipeline.run_simulation(cfg)
         elapsed = time.perf_counter() - start
         rows.append(_summarize(case, results, elapsed))
-        save_results(npz_path, _pack(rows))
+        merged = _merge_rows(_load_summary(npz_path) if npz_path.exists() else [], rows)
+        save_results(npz_path, _pack(merged))
 
-    _print_summary(rows)
+    merged = _merge_rows(_load_summary(npz_path) if npz_path.exists() else [], rows)
+    _print_summary(merged)
 
 
 if __name__ == "__main__":
