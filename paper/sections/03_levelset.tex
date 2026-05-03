@@ -17,7 +17,7 @@
         界面幅パラメータ $\varepsilon$ の設定指針を述べる．
   \item \textbf{§~\ref{sec:levelset_mapping}（$\psi$--$\phi$ 対応）：}
         ロジット解析逆変換（$\psi \to \phi$）の実装と，
-        Extension PDE で必要な法線計算 $\hat{\bm{n}}_{lg} = \bnabla\phi/|\bnabla\phi|$ への応用を示す．
+        Extension PDE で必要な法線計算 $\hat{\bm n}_{lg} = \bnabla\phi/|\bnabla\phi|$ への応用を示す．
   \item \textbf{§~\ref{sec:curvature_direct_psi_cls}（曲率の直接計算）：}
         ロジット逆変換を省略して $\psi$ 微分から曲率を直接求める高効率手法と
         その数値安定性を述べる．
@@ -210,7 +210,7 @@ $\phi$ の代わりに，滑らかな\textbf{ヘヴィサイド関数} $\psi = H
 $\psi$ の移流方程式は\textbf{保存形（発散形）}で記述される（式~\eqref{eq:cls_advection}，§~\ref{sec:cls_advection} で詳述）．
 本稿の符号規約では $\psi$ は液相側で 1 に近づく指標であるため，
 連続レベルで $\int\psi\,dV =$ const が成立すれば，閉じた領域では液相体積が保存される．
-離散計算でも保存形フラックスと境界処理（周期/壁面で $\bu\cdot\hat{\bm{n}}_{\partial\Omega}=0$，ここで $\hat{\bm{n}}_{\partial\Omega}$ は計算領域境界 $\partial\Omega$ の外向き法線；§~\ref{sec:notation} で定義した界面法線 $\hat{\bm{n}}_{lg}$ とは別の幾何対象）および値域クランプ $\psi\in[0,1]$ により液相体積のドリフトを $\Ord{h^5\Delta t}$ 水準まで抑えられる（§~\ref{sec:cls_advection}）．
+離散計算でも保存形フラックスと境界処理（周期/壁面で $\bu\cdot\hat{\bm n}_{\partial\Omega}=0$，ここで $\hat{\bm n}_{\partial\Omega}$ は計算領域境界 $\partial\Omega$ の外向き法線；§~\ref{sec:notation} で定義した界面法線 $\hat{\bm n}_{lg}$ とは別の幾何対象）および値域クランプ $\psi\in[0,1]$ により液相体積のドリフトを $\Ord{h^5\Delta t}$ 水準まで抑えられる（§~\ref{sec:cls_advection}）．
 
 \begin{table}[htbp]
 \caption{標準 LS 法 vs CLS 法：選択の根拠}

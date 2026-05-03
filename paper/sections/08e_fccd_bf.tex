@@ -52,7 +52,7 @@ PPE は FVM セル積分で
 \begin{equation}
   F^p_{i+1/2} - F^p_{i-1/2}
     = \int_{x_{i-1/2}}^{x_{i+1/2}}\! S\,dx,
-  \qquad S = \frac{1}{\Delta t_{\mathrm{proj}}}\,D_h^\text{bf}\,\bm{u}^*,
+  \qquad S = \frac{1}{\Delta t_{\mathrm{proj}}}\,D_h^\text{bf}\,\bu^*,
   \label{eq:fccd_bf_cell_balance}
 \end{equation}
 として組み立て，速度補正は
@@ -93,7 +93,7 @@ FCCD 関係 $M_f\mathbf{g} = R_f\mathbf{p} + c_\Gamma^\text{IIM}$ により
 % -------------------------------------------------------------------------------
 
 \noindent\textbf{検証問題}：重力 $\mathbf{g}=-g\hat{\mathbf{z}}$ 下の静止 2 層流体．
-解析解は $p_\text{stat}(z) = -\rho(\phi(z))\,g\,z$，$\bm{u}=\bm{0}$．
+解析解は $p_\text{stat}(z) = -\rho(\phi(z))\,g\,z$，$\bu=\bm{0}$．
 
 \noindent\textbf{BF 残差測定}：
 重力加速度を $\bm{a}^g_f$，静水圧の面勾配を
@@ -109,7 +109,7 @@ $(G_h^\text{bf}p_\text{stat})_f$ として，
        \Bigr|.
   \label{eq:fccd_bf_hydrostatic_metric}
 \end{equation}
-これは $\bm{u}^*=\bm{0}$ から開始し，重力加速度と
+これは $\bu^*=\bm{0}$ から開始し，重力加速度と
 圧力補正を同じ面スロットで同時に適用した
 1 ステップ釣合確認後の $\max_f|u_f^{n+1}|$ と同値である
 （§\ref{sec:time_buoyancy} の
