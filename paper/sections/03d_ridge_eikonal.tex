@@ -46,10 +46,10 @@ CCD/FCCD の離散演算子，非一様格子実装，感度較正の詳細は
 \subsubsection{Gaussian 補助場 $\xiridge$ の定義（D0）}
 \label{sec:ridge_aux_field}
 
-各界面成分 $\Gamma_k$ との符号付き距離を $d_k(\bm{x},t)$ としたうえで，
+各界面成分 $\Gamma_k$ との符号付き距離を $d_k(\bx,t)$ としたうえで，
 \textbf{補助スカラー場} $\xiridge$ を以下で定義する：
 \begin{equation}
-  \xiridge(\bm{x},t) = \sum_k \exp\!\left(-\frac{d_k(\bm{x},t)^2}{\sigma^2}\right),
+  \xiridge(\bx,t) = \sum_k \exp\!\left(-\frac{d_k(\bx,t)^2}{\sigma^2}\right),
 \end{equation}
 ここで $\sigma$ は相互作用スケール．$\xiridge$ は\textbf{距離関数ではなく}
 Eikonal 条件を満たさない；
@@ -57,16 +57,16 @@ Eikonal 条件を満たさない；
 Morse 指数~\cite{Milnor1963} の連続変化としてトポロジー変化を表現する道具となる．
 
 \paragraph{ブートストラップ初期化（$t=0$）．}
-$d_k(\bm{x},0)$ は本スキームが時間発展中に計算する量と同じであるため，
+$d_k(\bx,0)$ は本スキームが時間発展中に計算する量と同じであるため，
 $t=0$ では別経路で初期化する．具体的には以下の 2 つの方法のいずれかを採用する：
 \begin{enumerate}[leftmargin=1.5em, itemsep=0pt, topsep=2pt]
   \item \textbf{幾何プリミティブ直接指定．}
         初期界面が解析形状（球・平面・楕円体等）で与えられる場合，
-        各 $\Gamma_k$ の符号付き距離 $d_k(\bm{x},0)$ を解析式で直接評価する．
+        各 $\Gamma_k$ の符号付き距離 $d_k(\bx,0)$ を解析式で直接評価する．
   \item \textbf{初期 $\psi$ からの FMM 再初期化．}
-        初期 $\psi_0(\bm{x})$ が与えられる場合，
+        初期 $\psi_0(\bx)$ が与えられる場合，
         §~\ref{sec:ridge_fmm_reconstruction} の FMM を
-        零等値面 $\{\psi_0 = 0.5\}$ から起動し，$d_k(\bm{x},0)$ を構成する．
+        零等値面 $\{\psi_0 = 0.5\}$ から起動し，$d_k(\bx,0)$ を構成する．
 \end{enumerate}
 いずれの場合も $\sigma$ は初期最小格子幅 $h_\text{min}(0)$ に対し
 $\sigma \sim 3\,h_\text{min}(0)$ 程度に設定する．
@@ -95,17 +95,17 @@ $\xiridge$ は意図的に Eikonal を破る．
 
 界面 $\Gamma$ を $\xiridge$ の\textbf{リッジ集合}として定義する：
 \begin{equation}
-  \Gamma = \bigl\{\bm{x} \,\big|\, \bnabla\xiridge(\bm{x}) = 0,\;\;
-  \lambda_{\min}\bigl(\bnabla^2\xiridge(\bm{x})\bigr) < 0 \bigr\},
+  \Gamma = \bigl\{\bx \,\big|\, \bnabla\xiridge(\bx) = 0,\;\;
+  \lambda_{\min}\bigl(\bnabla^2\xiridge(\bx)\bigr) < 0 \bigr\},
   \label{eq:ridge_set_def}
 \end{equation}
 ここで $\lambda_{\min}(\cdot)$ は Hessian の最小固有値である．
 リッジ上の法線方向は $\lambda_{\min}$ に対応する単位固有ベクトル $\hat{\bm{v}}_{\min}$ で与え，
 \begin{equation}
-  \hat{\bm n}(\bm{x}) =
+  \hat{\bm n}(\bx) =
   \begin{cases}
-    \bnabla\xiridge(\bm{x})/|\bnabla\xiridge(\bm{x})|, & \bm{x} \notin \Gamma, \\
-    \hat{\bm{v}}_{\min}\bigl(\bnabla^2\xiridge(\bm{x})\bigr), & \bm{x} \in \Gamma,
+    \bnabla\xiridge(\bx)/|\bnabla\xiridge(\bx)|, & \bx \notin \Gamma, \\
+    \hat{\bm{v}}_{\min}\bigl(\bnabla^2\xiridge(\bx)\bigr), & \bx \in \Gamma,
   \end{cases}
 \end{equation}
 と定める．$\Gamma$ の近傍で $\bnabla\xiridge\to 0$ のとき，Morse 函数の正準形により両定義は極限で一致する．
@@ -189,15 +189,15 @@ Ridge 集合の連続変形は時間積分の中で自然に追跡される．
   \phi = 0 \text{ on } \Gamma,
 \end{equation}
 には，CLS 規約（気相側で正・液相側で負；§~\ref{sec:notation}）に従う
-唯一の符号付き粘性解 $\phi(\bm{x}) = s(\bm{x})\,d(\bm{x}, \Gamma)$ が存在する．
-ここで $s(\bm{x})\in\{+1,-1\}$ は相ラベルで定まる符号である．
+唯一の符号付き粘性解 $\phi(\bx) = s(\bx)\,d(\bx, \Gamma)$ が存在する．
+ここで $s(\bx)\in\{+1,-1\}$ は相ラベルで定まる符号である．
 \end{theorem}
 
 \begin{proof}[\upshape 証明スケッチ（Crandall--Lions 1983~\cite{CrandallLions1983}）]
 以下，符号付き距離（気相側で正）を $\phi=s\,d(\bx,\Gamma)$ と書く．
-(i)~\textbf{存在．} $\Gamma$ が閉集合なら $d(\bm{x},\Gamma)$ は Lipschitz 連続である．
-(ii)~\textbf{局所微分可能性．} 最近接射影 $\pi : \bm{x}\mapsto \Gamma$ が一意な領域で
-$\phi$ は微分可能で $\bnabla\phi(\bm{x}) = \hat{\bm n}_\Gamma(\pi(\bm{x}))$．
+(i)~\textbf{存在．} $\Gamma$ が閉集合なら $d(\bx,\Gamma)$ は Lipschitz 連続である．
+(ii)~\textbf{局所微分可能性．} 最近接射影 $\pi : \bx\mapsto \Gamma$ が一意な領域で
+$\phi$ は微分可能で $\bnabla\phi(\bx) = \hat{\bm n}_\Gamma(\pi(\bx))$．
 (iii)~\textbf{Eikonal 成立．} したがって $|\bnabla\phi|=1$ がほぼ至るところで成立．
 (iv)~\textbf{一意性．} 粘性解の比較原理~\cite{CrandallLions1983} により
 $\phi$ は $\Gamma$ を境界条件として一意．

@@ -94,7 +94,7 @@ $\rho_r$ & $N$ & $u_\infty^{\mathrm{end}}$ & $|\Delta V_\psi|/V_{\psi,0}$ & $|\D
 \paragraph{検証対象．}
 密度比 $\rho_r > 1$ の二相 NS において，IMEX-BDF2 時間離散~\cite{AscherRuuthSpiteri1997,HairerWanner1996}
 （\autoref{ch:time_integration}）を含む §14 と同じ
-FCCD interface transport + TVD--RK3，UCCD6 convection + IMEX-BDF2，
+FCCD interface transport + TVD-RK3，UCCD6 convection + IMEX-BDF2，
 HFE curvature，ridge-eikonal reinitialization，pressure-jump phase-separated
 FCCD PPE + defect correction を同時に使ったときの実効時間精度を，
 参照解との差で評価する．これは BDF2 単体の次数検証ではなく，
@@ -153,7 +153,7 @@ $n_{\mathrm{step}}$ & $\Delta t$ & $\|e\|_\infty$ & 連続比 \\
             が \texttt{every\_steps} = step-cadence integer として定義されているため）．
             これは Richardson 解析の前提条件
             \emph{単一誤差源と漸近 regime}~\cite{Roy2003}\ に違反する．
-      \item \textbf{interface (TVD--RK3 3 次) と momentum (IMEX-BDF2 2 次) の Lie splitting
+      \item \textbf{interface (TVD-RK3 3 次) と momentum (IMEX-BDF2 2 次) の Lie splitting
             理論的下限 (Ax1, Ax2)}：両演算子を Lie 分割で交互適用する coupled-stack の
             実効収束次数は，\textbf{Strang 1968 / Holden--Karlsen--Lie--Risebro 2010 splitting
             理論}~\cite{Strang1968,HoldenKarlsenLieRisebro2010} により
@@ -175,7 +175,7 @@ $n_{\mathrm{step}}$ & $\Delta t$ & $\|e\|_\infty$ & 連続比 \\
         本稿では V7 を「BDF2 単体の純粋次数」ではなく「Lie split 下の coupled-stack
         実効次数」として測定する diagnostic と再定義する．
         Lie 1 次分割漸近 slope $\sim 1$ と整合する $1.04$ は，cadence pollution と
-        TVD--RK3/BDF2 mismatch を含む実装縮約下では \emph{Lie-limited} であり，
+        TVD-RK3/BDF2 mismatch を含む実装縮約下では \emph{Lie-limited} であり，
         Strang 化や cadence-time scaling などの構造改良なしには $2.0$ への合格化は
         理論上望めない．これは Type-D（理論的 hard limit; §\ref{sec:verification} の
         Type 分類および表~\ref{tab:V_verdict_types} 参照）として記録する．

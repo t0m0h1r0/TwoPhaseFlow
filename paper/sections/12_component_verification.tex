@@ -66,12 +66,12 @@ Part 2 の手法を依存関係の下流方向にトポロジカル整列し，
   \item[Tier IV（圧力結合系）]
         U6 = 分相 PPE+HFE へ渡す DC/HFE primitive
         （§\ref{sec:split_ppe_framework}, §\ref{sec:hfe}）．
-  \item[Tier V（時間積分）]
-        U8 = TVD--RK3 / EXT2 / implicit-BDF2 3 種積分子（§\ref{sec:time_int}）．
-  \item[Tier VI（否定検証）]
-        U9 = DCCD on pressure 禁止規則の根拠（§\ref{sec:bf_p2_adjoint}）．
-  \item[Tier VII（界面--圧力結合の単発実験）]
+  \item[Tier V（界面--圧力結合の単発実験）]
         U7 = BF 静止液滴 1-step + face $\mu$ 補間（§\ref{sec:balanced_force}）．
+  \item[Tier VI（時間積分）]
+        U8 = TVD-RK3 / EXT2 / implicit-BDF2 3 種積分子（§\ref{sec:time_int}）．
+  \item[Tier VII（否定検証）]
+        U9 = DCCD on pressure 禁止規則の根拠（§\ref{sec:bf_p2_adjoint}）．
 \end{description}
 
 各 U-test は独立した単体実験として実施し，表と図には再生成した数値のみを記載する．
@@ -109,7 +109,7 @@ U4 & III & Godunov Eikonal reinit と DGR バンド厚補正． & V10 の reinit
 U5 & III & $H_\varepsilon$ / $\delta_\varepsilon$ のモーメント精度と $\varepsilon=ch$ 感度． & V3/V5/V8/V9/V10 の界面厚み・体積診断． \\
 U6 & IV & DC 緩和 guard と HFE 1D/2D 場延長精度．一括 PPE の高密度比劣化は採用 primitive ではなく，§9/§11 の分相 PPE+HFE へ切り替える設計根拠として本文で扱う． & V6/V7/V9 の pressure-jump 分相 PPE+HFE stack． \\
 U7 & V & BF 静止液滴 1-step と face $\mu$ 補間． & V3/V5/V8 の静止液滴・寄生流れ． \\
-U8 & VI & TVD--RK3 / EXT2 / implicit-BDF2 / 3-layer BDF2 の単体時間精度． & V1-b/V7/V10 の時間軸診断． \\
+U8 & VI & TVD-RK3 / EXT2 / implicit-BDF2 / 3-layer BDF2 の単体時間精度． & V1-b/V7/V10 の時間軸診断． \\
 U9 & VII & DCCD-on-pressure 禁止の否定検証． & V1--V10 全体の圧力勾配 operator policy． \\
 \bottomrule
 \end{tabularx}

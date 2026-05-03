@@ -21,12 +21,14 @@
 Balanced--Force 条件の離散化整合性（本稿で系統化する 7 原則 P-1..P-7；§~\ref{sec:bf_seven_principles}）を
 高精度に維持し，
 平滑領域の数値離散化誤差成分を CSF モデル誤差 $\Ord{\varepsilon^2}$ が律速する水準まで低減する設計とした
-（具体的検証範囲は §~\ref{sec:density_ratio_sweep}〔V6 静止液滴 8-step 安定性，密度比 $\rho_r\le 833$〕に限定し，
-NS パイプライン完全結合および長時間移動界面下の収束性検証は §~\ref{sec:future_work} の残置課題に整理する）．
+（具体的検証範囲は §~\ref{sec:density_ratio_sweep}〔V6 静止液滴 8-step 安定性，密度比 $\rho_r\le 833$〕，
+§~\ref{sec:imex_bdf2_twophase_time}〔V7 coupled-stack 時間精度〕，
+§~\ref{sec:zalesak_cls_advection}/§~\ref{sec:single_vortex_reversal}〔V10-a/b 一様格子 CLS-only 強変形移流〕までとし，
+非一様 moving-interface CLS および長時間・完全連成 NS 移動界面の収束性検証は §~\ref{sec:future_work} の future verification gate に整理する）．
 ただし CCD の $\Ord{h^6}$ は内点ステンシルの設計次数であり，
 境界 BC の打ち切り精度の影響により大域 $L^2$ 漸近では $\Ord{h^{5/2}}$ に低下する点を §~\ref{sec:CCD}章で詳述する．
 また二相結合では界面再初期化頻度差と曲率の陽的遅れ評価により実効時間精度は設計の $O(\Delta t^2)$ に届かず，
-§~\ref{sec:imex_bdf2_twophase_time}（V7）で観測 slope $1.58$ までの回復に留まることを caveat として明記する．
+§~\ref{sec:imex_bdf2_twophase_time}（V7）で観測 slope $1.04$ までの回復に留まることを caveat として明記する．
 本稿で新たに定式化する中核演算子族（FCCD・UCCD6・HFE）と支持技術要素（CLS・分相 PPE・非一様格子）の
 詳細仕様は，第~\ref{sec:CCD}章末尾
 §~\ref{sec:ccd_summary}（章末まとめ：CCD スキーム族の数値特性と略語）に
@@ -217,8 +219,9 @@ CCD 法による滑らかな領域での高精度な $\kappa$ 計算と
 Balanced--Force 条件（$\bnabla p$ と $\kappa\bnabla\psi$ に同一の面中心演算子族を使用）により
 寄生流れを CSF モデル誤差の水準まで抑制する
 （付録~\ref{sec:ppe_discretization_choice}；
-密度比 $\rho_r\le 833$ までの結合 stack 静止液滴 8-step 安定性は §~\ref{sec:density_ratio_sweep}〔V6〕で確認；
-NS パイプラインへの完全結合および長時間移動界面下の収束性検証は §~\ref{sec:future_work} の最優先課題として残置する）．
+密度比 $\rho_r\le 833$ までの結合 stack 静止液滴 8-step 安定性は §~\ref{sec:density_ratio_sweep}〔V6〕で確認し，
+一様格子 CLS-only 強変形移流は §~\ref{sec:zalesak_cls_advection}/§~\ref{sec:single_vortex_reversal}〔V10-a/b〕で確認；
+非一様 moving-interface CLS および長時間・完全連成 NS 移動界面は §~\ref{sec:future_work} の future verification gate として残置する）．
 
 \paragraph{失敗例 2：質量損失（Mass Loss）}
 \subparagraph{症状．}時間が経つにつれて液滴が小さくなり，最終的に消える．
