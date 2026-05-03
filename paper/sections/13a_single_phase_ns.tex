@@ -18,7 +18,7 @@ PPE 圧力射影 (\autoref{sec:ppe_solve}) で解いた際，閉形 $E(t) = E_0 
 現 V1 は project CCD 微分と FVM PPEBuilder 射影を直接用いる．
 ただし V1-b の時間 sweep は production IPC/rotational projection ではなく，
 非増分 standard projection~\cite{Chorin1968,BrownCortezMinion2001,Guermond2006} を測る
-縮約実験であるため，判定基準は AB2 単体の 2 次ではなく
+縮約実験であるため，判定基準は EXT2/AB2 単体の 2 次ではなく
 結合 stack の $O(\Delta t)$ trend とする．
 
 \paragraph{設定．}
@@ -88,7 +88,7 @@ $1.000\times 10^{-3}$ & $1.583\times 10^{-7}$ & $2.267\times 10^{-6}$ & $2.00$ \
         revised criterion $O(h^2)$ trend に対して合格
         （V1-a：Type-A revised criterion；表~\ref{tab:V_verdict_types}）．
   \item 観測時間 slope は $\mathbf{1.00}$．本 script は old pressure を predictor に入れない
-        standard projection であり，AB2+IPC 単体検証ではない．
+        standard projection であり，EXT2/AB2 + IPC 単体検証ではない．
         したがって revised criterion は $O(\Delta t)$ trend であり，V1-b は合格
         （Type-A revised criterion；表~\ref{tab:V_verdict_types}）とする．
   \item 非圧縮残差は $N=64$ で $6.4\times10^{-6}$．機械精度ではないが，
@@ -153,7 +153,7 @@ $N$ & $h$ & $\|R\|_\infty$ & $\|\nabla\!\cdot u\|_\infty$ \\
 \includegraphics[width=0.98\linewidth]{figures/ch13_v2_kovasznay_field.pdf}
 \caption{V2：Kovasznay 流の 2D 場}
 \label{fig:V2_kovasznay_field}
-\PaperCaptionNote{$\Re=40$，$N=256$．(a) 解析速度 $\bm{u}(x,y)$ の streamlines を $|\bm{u}| = \sqrt{u^2 + v^2}$ で着色（$|\bm{u}|\in[0.1,\,1.6]$）．流入側左端の境界層から outflow に向かう特徴的な 1 周期 cosine perturbation が直接観察できる．(b) $\log_{10}\|R\|$．$R = \bm{u}\!\cdot\!\bnabla\bm{u} + \bnabla p - \nu\Delta\bm{u}$ の CCD 演算子による評価値．左側 wall 近傍で one-sided CCD の境界 stencil 寄与でやや大きく，bulk では $10^{-9}$--$10^{-10}$ 台まで sink する．(c) $\log_{10}|\bnabla\!\cdot\bm{u}|$．wall 4 点を含めた full divergence で $10^{-11}$--$10^{-13}$ 台まで低下し，CCD 微分が真の解析非圧縮性を高精度に保つことを示す．いずれの panel も interior は機械精度に近づくため log スケールで表示している．}
+\PaperCaptionNote{$\Re=40$，$N=256$．(a) 解析速度 $\bu(x,y)$ の streamlines を $|\bu| = \sqrt{u^2 + v^2}$ で着色（$|\bu|\in[0.1,\,1.6]$）．流入側左端の境界層から outflow に向かう特徴的な 1 周期 cosine perturbation が直接観察できる．(b) $\log_{10}\|R\|$．$R = \bu\!\cdot\!\bnabla\bu + \bnabla p - \nu\Delta\bu$ の CCD 演算子による評価値．左側 wall 近傍で one-sided CCD の境界 stencil 寄与でやや大きく，bulk では $10^{-9}$--$10^{-10}$ 台まで sink する．(c) $\log_{10}|\bnabla\!\cdot\bu|$．wall 4 点を含めた full divergence で $10^{-11}$--$10^{-13}$ 台まで低下し，CCD 微分が真の解析非圧縮性を高精度に保つことを示す．いずれの panel も interior は機械精度に近づくため log スケールで表示している．}
 \end{figure}
 
 \paragraph{判定と制約条件．}

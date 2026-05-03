@@ -52,22 +52,22 @@ U6-a & DC $\omega$--収束（$\rho_l \in \{1,100,1000\}$, $k\in\{2,3\}$, $\omega
 U6-b & HFE 1D step extension  & $\Ord{h^6}$              & $\Ord{h^{5.91}}$（1D）   & \checkmark \\
 U6-b & HFE 2D band 診断       & 幾何込み条件付き & effective slope max $11.35$ / med $8.72$ & \checkmark \\
 \midrule
-\multicolumn{5}{l}{\textbf{Tier V：時間積分}} \\
+\multicolumn{5}{l}{\textbf{Tier V：界面--圧力結合}} \\
+\midrule
+U7-a & BF 整合：$j_{gl}=-\sigma\kappa_{lg}$ vs 計算値 & $N\ge64$ で ${<}3\%$ & $0.61\%$（$N=128$） & \checkmark \\
+U7-a & BF mismatch one-step 指標 & match と同精度域 & FD2 mismatch でも $N\ge64$ で ${<}3\%$ & \checkmark \\
+U7-b & face $\mu$ 補間 3 種 & $\Ord{h^2}$ 安定    & $1.91/1.81/1.91$       & \checkmark \\
+\midrule
+\multicolumn{5}{l}{\textbf{Tier VI：時間積分}} \\
 \midrule
 U8-a & TVD--RK3 ODE             & $\Ord{\Delta t^3}$        & $\Ord{\Delta t^{3.04}}$ & \checkmark \\
 U8-b & EXT2/AB2 ODE             & $\Ord{\Delta t^2}$        & $\Ord{\Delta t^{2.05}}$  & \checkmark \\
 U8-c & implicit-BDF2 拡散 MMS   & $\Ord{\Delta t^2}$ + A-stable damping & $\Ord{\Delta t^{2.01}}$ + CFL$_\nu=10$ 安定 & \checkmark \\
 U8-d & 粘性 3-layer full-operator BDF2（$\mu_l/\mu_g=100$） & $\Ord{\Delta t^2}$ & $\Ord{\Delta t^{2.02}}$--$\Ord{\Delta t^{2.03}}$ & \checkmark \\
 \midrule
-\multicolumn{5}{l}{\textbf{Tier VI：制約・否定テスト}} \\
+\multicolumn{5}{l}{\textbf{Tier VII：制約・否定テスト}} \\
 \midrule
 U9   & DCCD-on-pressure 違反   & 差分誤差 $\Ord{h^2}$    & $L_\infty^{\mathrm{diff}}=\Ord{h^2}$, ratio $10^5 \to 3\!\times\!10^8$ & $\bullet$ \\
-\midrule
-\multicolumn{5}{l}{\textbf{Tier VII：coupling primitive}} \\
-\midrule
-U7-a & BF 整合：$j_{gl}=-\sigma\kappa_{lg}$ vs 計算値 & $N\ge64$ で ${<}3\%$ & $0.61\%$（$N=128$） & \checkmark \\
-U7-a & BF mismatch one-step 指標 & match と同精度域 & FD2 mismatch でも $N\ge64$ で ${<}3\%$ & \checkmark \\
-U7-b & face $\mu$ 補間 3 種 & $\Ord{h^2}$ 安定    & $1.91/1.81/1.91$       & \checkmark \\
 \bottomrule
 \multicolumn{5}{p{0.95\linewidth}}{\footnotesize
 $\triangle$ の類型——
