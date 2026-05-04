@@ -206,6 +206,7 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         face_curvature_method: str = "nodal_cut_face",
         transport_variational_nodal_covector=None,
         transport_variational_psi=None,
+        transport_variational_previous_surface_energy=None,
     ) -> None:
         """Store legacy and affine pressure-jump data.
 
@@ -230,6 +231,9 @@ class PPESolverFCCDMatrixFree(IPPESolver):
                 transport_variational_nodal_covector
             ),
             transport_variational_psi=transport_variational_psi,
+            transport_variational_previous_surface_energy=(
+                transport_variational_previous_surface_energy
+            ),
         )
         self._interface_stress_context = context
 

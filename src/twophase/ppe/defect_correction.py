@@ -105,6 +105,7 @@ class PPESolverDefectCorrection(IPPESolver):
         face_curvature_method: str = "nodal_cut_face",
         transport_variational_nodal_covector=None,
         transport_variational_psi=None,
+        transport_variational_previous_surface_energy=None,
     ) -> None:
         """Forward SP-M pressure-jump context to wrapped PPE components."""
         for solver in (self.base_solver, self.operator):
@@ -119,6 +120,9 @@ class PPESolverDefectCorrection(IPPESolver):
                         transport_variational_nodal_covector
                     ),
                     transport_variational_psi=transport_variational_psi,
+                    transport_variational_previous_surface_energy=(
+                        transport_variational_previous_surface_energy
+                    ),
                 )
 
     def clear_interface_jump_context(self) -> None:

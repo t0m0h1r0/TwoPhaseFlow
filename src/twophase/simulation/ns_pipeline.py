@@ -16,6 +16,7 @@ import numpy as np
 
 from ..ccd.fccd import FCCDSolver
 from ..core.grid_remap import build_grid_remapper
+from ..coupling.transport_variational_capillary import p2_trace_surface_energy_2d
 from ..levelset.reinitialize import Reinitializer
 from ..levelset.wall_contact import WallContactSet
 from .ns_step_state import NSStepInputs, NSStepRequest, NSStepState
@@ -750,6 +751,18 @@ class TwoPhaseNSSolver:
         )
         if will_rebuild:
             rebuild_old_coords = [coords.copy() for coords in self._grid.coords]
+            if (
+                self._curvature_method
+                == "transport_variational_p2_ale_discrete_gradient"
+            ):
+                state.transport_variational_previous_surface_energy = (
+                    p2_trace_surface_energy_2d(
+                        xp=xp,
+                        grid=self._grid,
+                        psi=psi_previous,
+                        sigma=state.sigma,
+                    )
+                )
         advance_face = getattr(self._transport, "advance_with_face_velocity", None)
         if state.face_velocity_components is not None and callable(advance_face):
             state.psi = advance_face(

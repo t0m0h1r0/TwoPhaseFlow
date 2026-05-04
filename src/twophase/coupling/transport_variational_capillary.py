@@ -717,6 +717,73 @@ def p2_trace_surface_energy_discrete_gradient_2d(
     return midpoint_gradient + correction_scale * direction
 
 
+def p2_trace_surface_energy_ale_discrete_gradient_2d(
+    *,
+    xp,
+    grid,
+    psi_previous,
+    psi,
+    sigma: float,
+    previous_surface_energy=None,
+    phase_threshold: float = 0.5,
+):
+    """Return the reduced-ALE P2 finite-step surface-energy covector.
+
+    Symbol mapping:
+      ``S_h(ψ,X)`` -> ``p2_trace_surface_energy_2d``;
+      ``ψ^-`` -> ``psi_previous`` remapped to the active grid;
+      ``Ḡ_ALE`` -> returned nodal covector.
+
+    A3 chain:
+      Equation: ``S_h(ψ^{n+1},X^{n+1})-S_h(ψ^n,X^n)
+      = Ḡ_ALE[ψ^{n+1}-ψ^-]`` for the reduced fitted-grid state.
+      Discretization: use the current-grid midpoint P2 covector plus a
+      Gonzalez finite-step correction; when a rebuild happened,
+      ``previous_surface_energy`` supplies the pre-remap energy.
+      Code: the returned covector is consumed by the existing FCCD
+      transport-adjoint pressure-jump work map.
+    """
+    current = xp.asarray(psi)
+    previous = xp.asarray(psi_previous)
+    half = xp.asarray(0.5, dtype=current.dtype)
+    midpoint = half * (previous + current)
+    midpoint_gradient = p2_trace_surface_energy_gradient_2d(
+        xp=xp,
+        grid=grid,
+        psi=midpoint,
+        sigma=sigma,
+        phase_threshold=phase_threshold,
+    )
+    direction = current - previous
+    current_energy = p2_trace_surface_energy_2d(
+        xp=xp,
+        grid=grid,
+        psi=current,
+        sigma=sigma,
+        phase_threshold=phase_threshold,
+    )
+    if previous_surface_energy is None:
+        previous_energy = p2_trace_surface_energy_2d(
+            xp=xp,
+            grid=grid,
+            psi=previous,
+            sigma=sigma,
+            phase_threshold=phase_threshold,
+        )
+    else:
+        previous_energy = xp.asarray(previous_surface_energy, dtype=current.dtype)
+    energy_delta = current_energy - previous_energy
+    midpoint_work = xp.sum(midpoint_gradient * direction)
+    direction_norm_sq = xp.sum(direction * direction)
+    zero = xp.asarray(0.0, dtype=current.dtype)
+    correction_scale = xp.where(
+        direction_norm_sq > zero,
+        (energy_delta - midpoint_work) / direction_norm_sq,
+        zero,
+    )
+    return midpoint_gradient + correction_scale * direction
+
+
 def _negative_face_divergence_adjoint(*, xp, fccd, nodal_covector, axis: int):
     """Return ``(-D_f)^T`` for ``FCCDSolver.face_divergence``."""
     covector = xp.moveaxis(xp.asarray(nodal_covector), axis, 0)
@@ -758,6 +825,7 @@ def transport_variational_pressure_jump_gradient(
     psi_previous=None,
     nodal_covector=None,
     transport_psi=None,
+    previous_surface_energy=None,
 ):
     """Return a face-gradient jump whose work is transport-adjoint capillarity."""
     if fccd is None:
@@ -780,6 +848,23 @@ def transport_variational_pressure_jump_gradient(
             psi_previous=previous,
             psi=psi,
             sigma=float(sigma),
+            phase_threshold=float(phase_threshold),
+        )
+    elif trace_space == "p2_ale_discrete_gradient":
+        if psi_previous is None:
+            raise ValueError(
+                "transport_variational_p2_ale_discrete_gradient requires psi_previous"
+            )
+        previous = xp.asarray(psi_previous)
+        half = xp.asarray(0.5, dtype=psi.dtype)
+        work_psi = half * (previous + psi)
+        energy_gradient = p2_trace_surface_energy_ale_discrete_gradient_2d(
+            xp=xp,
+            grid=grid,
+            psi_previous=previous,
+            psi=psi,
+            sigma=float(sigma),
+            previous_surface_energy=previous_surface_energy,
             phase_threshold=float(phase_threshold),
         )
     elif trace_space == "p2":

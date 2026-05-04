@@ -32,10 +32,10 @@ interface:
     base_factor: 1.5
   geometry:
     curvature:
-      # P2 isoparametric variational surface energy route:
-      # discrete-gradient pressure jump satisfies the finite-step
-      # transport-adjoint capillary energy identity.
-      method: transport_variational_p2_discrete_gradient
+      # P2 reduced-ALE variational surface energy route:
+      # pressure-jump work uses a finite-step discrete gradient that can
+      # account for the pre-remap fitted-grid surface energy.
+      method: transport_variational_p2_ale_discrete_gradient
   reinitialization:
     algorithm: ridge_eikonal
     schedule:

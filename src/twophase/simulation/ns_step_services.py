@@ -15,6 +15,7 @@ from .ns_predictor_assembly import (
 from ..coupling.interface_stress_closure import build_young_laplace_interface_stress_context
 from ..coupling.capillary_geometry import apply_wall_compatible_curvature
 from ..coupling.transport_variational_capillary import (
+    p2_trace_surface_energy_ale_discrete_gradient_2d,
     p2_trace_surface_energy_discrete_gradient_2d,
     p2_trace_surface_energy_gradient_2d,
 )
@@ -27,6 +28,7 @@ _JUMP_CURVATURE_METHODS = {
     "transport_variational_p2",
     "transport_variational_p2_midpoint",
     "transport_variational_p2_discrete_gradient",
+    "transport_variational_p2_ale_discrete_gradient",
 }
 
 
@@ -70,7 +72,10 @@ def _capillary_interface_psi_previous(
     *, state: NSStepState, curvature_method: str
 ):
     """Return the previous interface state needed by discrete-gradient routes."""
-    if curvature_method == "transport_variational_p2_discrete_gradient":
+    if curvature_method in {
+        "transport_variational_p2_discrete_gradient",
+        "transport_variational_p2_ale_discrete_gradient",
+    }:
         return state.psi_previous
     return None
 
@@ -92,6 +97,7 @@ def _capillary_transport_variational_temporaries(
         "transport_variational_p2",
         "transport_variational_p2_midpoint",
         "transport_variational_p2_discrete_gradient",
+        "transport_variational_p2_ale_discrete_gradient",
     }:
         return {}
     interface_psi = _capillary_interface_psi(
@@ -99,7 +105,10 @@ def _capillary_transport_variational_temporaries(
         state=state,
         curvature_method=curvature_method,
     )
-    if curvature_method == "transport_variational_p2_discrete_gradient":
+    if curvature_method in {
+        "transport_variational_p2_discrete_gradient",
+        "transport_variational_p2_ale_discrete_gradient",
+    }:
         previous = _capillary_interface_psi_previous(
             state=state,
             curvature_method=curvature_method,
@@ -109,16 +118,31 @@ def _capillary_transport_variational_temporaries(
         current = xp.asarray(interface_psi)
         previous = xp.asarray(previous)
         transport_psi = xp.asarray(0.5, dtype=current.dtype) * (previous + current)
-        covector = p2_trace_surface_energy_discrete_gradient_2d(
-            xp=xp,
-            grid=grid,
-            psi_previous=previous,
-            psi=current,
-            sigma=float(sigma),
-        )
+        if curvature_method == "transport_variational_p2_ale_discrete_gradient":
+            covector = p2_trace_surface_energy_ale_discrete_gradient_2d(
+                xp=xp,
+                grid=grid,
+                psi_previous=previous,
+                psi=current,
+                sigma=float(sigma),
+                previous_surface_energy=(
+                    state.transport_variational_previous_surface_energy
+                ),
+            )
+        else:
+            covector = p2_trace_surface_energy_discrete_gradient_2d(
+                xp=xp,
+                grid=grid,
+                psi_previous=previous,
+                psi=current,
+                sigma=float(sigma),
+            )
         return {
             "transport_variational_nodal_covector": covector,
             "transport_variational_psi": transport_psi,
+            "transport_variational_previous_surface_energy": (
+                state.transport_variational_previous_surface_energy
+            ),
         }
     covector = p2_trace_surface_energy_gradient_2d(
         xp=xp,
@@ -935,6 +959,9 @@ def correct_ns_velocity_stage(
                         state.transport_variational_nodal_covector
                     ),
                     "transport_variational_psi": state.transport_variational_psi,
+                    "transport_variational_previous_surface_energy": (
+                        state.transport_variational_previous_surface_energy
+                    ),
                 }
                 if state.transport_variational_nodal_covector is not None
                 else _capillary_transport_variational_temporaries(

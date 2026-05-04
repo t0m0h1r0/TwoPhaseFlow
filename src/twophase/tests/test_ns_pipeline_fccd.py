@@ -597,15 +597,26 @@ def test_p2_midpoint_capillary_interface_uses_temporal_midpoint():
         state=state,
         curvature_method="transport_variational_p2_discrete_gradient",
     )
+    ale_current = _capillary_interface_psi(
+        xp=np,
+        state=state,
+        curvature_method="transport_variational_p2_ale_discrete_gradient",
+    )
     discrete_previous = _capillary_interface_psi_previous(
         state=state,
         curvature_method="transport_variational_p2_discrete_gradient",
+    )
+    ale_previous = _capillary_interface_psi_previous(
+        state=state,
+        curvature_method="transport_variational_p2_ale_discrete_gradient",
     )
 
     np.testing.assert_allclose(midpoint, 0.5 * (psi_previous + psi_current))
     np.testing.assert_allclose(current, psi_current)
     np.testing.assert_allclose(discrete_current, psi_current)
+    np.testing.assert_allclose(ale_current, psi_current)
     np.testing.assert_allclose(discrete_previous, psi_previous)
+    np.testing.assert_allclose(ale_previous, psi_previous)
 
 
 @pytest.mark.parametrize(

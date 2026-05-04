@@ -50,6 +50,7 @@ class InterfaceStressContext:
     face_curvature_method: str = "nodal_cut_face"
     transport_variational_nodal_covector: Any | None = None
     transport_variational_psi: Any | None = None
+    transport_variational_previous_surface_energy: Any | None = None
 
     def is_active(self) -> bool:
         """Return whether a non-zero pressure jump should be applied."""
@@ -80,6 +81,7 @@ def build_interface_stress_context(
     face_curvature_method: str = "nodal_cut_face",
     transport_variational_nodal_covector=None,
     transport_variational_psi=None,
+    transport_variational_previous_surface_energy=None,
 ) -> InterfaceStressContext:
     """Build the backend-native interface-stress context.
 
@@ -113,6 +115,11 @@ def build_interface_stress_context(
             if transport_variational_psi is None
             else xp.asarray(transport_variational_psi)
         ),
+        transport_variational_previous_surface_energy=(
+            None
+            if transport_variational_previous_surface_energy is None
+            else xp.asarray(transport_variational_previous_surface_energy)
+        ),
     )
 
 
@@ -127,6 +134,7 @@ def build_young_laplace_interface_stress_context(
     face_curvature_method: str = "nodal_cut_face",
     transport_variational_nodal_covector=None,
     transport_variational_psi=None,
+    transport_variational_previous_surface_energy=None,
 ) -> InterfaceStressContext:
     """Build ``j_gl = p_gas - p_liquid = -σ κ_lg`` for capillarity."""
     if face_curvature_method == "face_implicit":
@@ -149,6 +157,11 @@ def build_young_laplace_interface_stress_context(
                 if transport_variational_psi is None
                 else xp.asarray(transport_variational_psi)
             ),
+            transport_variational_previous_surface_energy=(
+                None
+                if transport_variational_previous_surface_energy is None
+                else xp.asarray(transport_variational_previous_surface_energy)
+            ),
         )
     context = build_interface_stress_context(
         xp=xp,
@@ -161,6 +174,9 @@ def build_young_laplace_interface_stress_context(
         face_curvature_method=face_curvature_method,
         transport_variational_nodal_covector=transport_variational_nodal_covector,
         transport_variational_psi=transport_variational_psi,
+        transport_variational_previous_surface_energy=(
+            transport_variational_previous_surface_energy
+        ),
     )
     return InterfaceStressContext(
         psi=context.psi,
@@ -175,6 +191,9 @@ def build_young_laplace_interface_stress_context(
             context.transport_variational_nodal_covector
         ),
         transport_variational_psi=context.transport_variational_psi,
+        transport_variational_previous_surface_energy=(
+            context.transport_variational_previous_surface_energy
+        ),
     )
 
 
@@ -312,6 +331,7 @@ def signed_pressure_jump_gradient(
             "transport_variational_p2",
             "transport_variational_p2_midpoint",
             "transport_variational_p2_discrete_gradient",
+            "transport_variational_p2_ale_discrete_gradient",
         }
     ):
         return transport_variational_pressure_jump_gradient(
@@ -327,6 +347,10 @@ def signed_pressure_jump_gradient(
                 if context.face_curvature_method
                 == "transport_variational_p2_discrete_gradient"
                 else
+                "p2_ale_discrete_gradient"
+                if context.face_curvature_method
+                == "transport_variational_p2_ale_discrete_gradient"
+                else
                 "p2"
                 if context.face_curvature_method
                 in {"transport_variational_p2", "transport_variational_p2_midpoint"}
@@ -335,6 +359,9 @@ def signed_pressure_jump_gradient(
             psi_previous=context.psi_previous,
             nodal_covector=context.transport_variational_nodal_covector,
             transport_psi=context.transport_variational_psi,
+            previous_surface_energy=(
+                context.transport_variational_previous_surface_energy
+            ),
         )
     elif context.cut_face_quadrature and context.kappa_lg is not None:
         kappa_lg = xp.asarray(context.kappa_lg)

@@ -88,6 +88,7 @@ _CURVATURE_SCHEMES = (
     "transport_variational_p2",
     "transport_variational_p2_midpoint",
     "transport_variational_p2_discrete_gradient",
+    "transport_variational_p2_ale_discrete_gradient",
 )
 _CURVATURE_SCHEME_ALIASES = {
     "psi_direct": "psi_direct_filtered",

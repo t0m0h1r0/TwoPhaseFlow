@@ -330,6 +330,7 @@ def _variational_transport_power(solver, psi, face_velocity_components, *, sigma
         "transport_variational_p2",
         "transport_variational_p2_midpoint",
         "transport_variational_p2_discrete_gradient",
+        "transport_variational_p2_ale_discrete_gradient",
     }:
         gradient = p2_trace_surface_energy_gradient_2d(
             xp=xp,
@@ -373,7 +374,10 @@ def _jump_power_from_faces(
         context_psi = xp.asarray(0.5, dtype=context_psi.dtype) * (
             previous + context_psi
         )
-    elif method == "transport_variational_p2_discrete_gradient":
+    elif method in {
+        "transport_variational_p2_discrete_gradient",
+        "transport_variational_p2_ale_discrete_gradient",
+    }:
         if psi_previous is None:
             return None
         context_psi_previous = xp.asarray(psi_previous)
