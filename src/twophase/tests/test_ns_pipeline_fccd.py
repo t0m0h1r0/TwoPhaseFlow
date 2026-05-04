@@ -28,6 +28,7 @@ from twophase.simulation.ns_pipeline import TwoPhaseNSSolver
 from twophase.simulation.ns_step_state import NSStepState
 from twophase.simulation.ns_step_services import (
     _capillary_interface_psi,
+    _capillary_interface_psi_previous,
     _interface_supported_curvature,
 )
 from twophase.levelset.curvature_psi import CurvatureCalculatorPsi
@@ -591,9 +592,20 @@ def test_p2_midpoint_capillary_interface_uses_temporal_midpoint():
         state=state,
         curvature_method="transport_variational_p2",
     )
+    discrete_current = _capillary_interface_psi(
+        xp=np,
+        state=state,
+        curvature_method="transport_variational_p2_discrete_gradient",
+    )
+    discrete_previous = _capillary_interface_psi_previous(
+        state=state,
+        curvature_method="transport_variational_p2_discrete_gradient",
+    )
 
     np.testing.assert_allclose(midpoint, 0.5 * (psi_previous + psi_current))
     np.testing.assert_allclose(current, psi_current)
+    np.testing.assert_allclose(discrete_current, psi_current)
+    np.testing.assert_allclose(discrete_previous, psi_previous)
 
 
 @pytest.mark.parametrize(

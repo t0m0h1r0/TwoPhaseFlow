@@ -28,6 +28,7 @@ from twophase.coupling.interface_stress_closure import (
 )
 from twophase.coupling.transport_variational_capillary import (
     marching_squares_surface_energy_gradient_2d,
+    p2_trace_surface_energy_discrete_gradient_2d,
     p2_trace_surface_energy_2d,
     p2_trace_surface_energy_gradient_2d,
     p2_trace_surface_energy_hessian_product_2d,
@@ -183,6 +184,52 @@ def test_transport_variational_p2_gradient_matches_discrete_energy_derivative():
     )
 
 
+def test_transport_variational_p2_discrete_gradient_matches_energy_delta():
+    """Discrete-gradient route must satisfy the finite-step chain rule."""
+    backend = Backend(use_gpu=False)
+    grid = Grid(GridConfig(ndim=2, N=(24, 24), L=(1.0, 1.0)), backend)
+    x_coord, y_coord = np.meshgrid(grid.coords[0], grid.coords[1], indexing="ij")
+    phi_previous = (
+        ((x_coord - 0.51) / 0.25) ** 2
+        + ((y_coord - 0.48) / 0.18) ** 2
+        - 1.0
+    )
+    phi_current = (
+        ((x_coord - 0.512) / 0.247) ** 2
+        + ((y_coord - 0.481) / 0.183) ** 2
+        - 1.0
+    )
+    psi_previous = 1.0 / (1.0 + np.exp(phi_previous / 0.035))
+    psi_current = 1.0 / (1.0 + np.exp(phi_current / 0.035))
+    sigma = 0.072
+
+    discrete_gradient = p2_trace_surface_energy_discrete_gradient_2d(
+        xp=np,
+        grid=grid,
+        psi_previous=psi_previous,
+        psi=psi_current,
+        sigma=sigma,
+    )
+    energy_delta = p2_trace_surface_energy_2d(
+        xp=np,
+        grid=grid,
+        psi=psi_current,
+        sigma=sigma,
+    ) - p2_trace_surface_energy_2d(
+        xp=np,
+        grid=grid,
+        psi=psi_previous,
+        sigma=sigma,
+    )
+
+    np.testing.assert_allclose(
+        np.sum(discrete_gradient * (psi_current - psi_previous)),
+        energy_delta,
+        rtol=1.0e-12,
+        atol=1.0e-14,
+    )
+
+
 def test_transport_variational_p2_jump_is_transport_adjoint_work():
     """P2 jump route must preserve exact discrete transport work adjointness."""
     backend = Backend(use_gpu=False)
@@ -210,6 +257,74 @@ def test_transport_variational_p2_jump_is_transport_adjoint_work():
     )
     for axis in range(grid.ndim):
         face_value = fccd.face_value(psi, axis)
+        face_velocity = 0.01 * np.ones_like(face_value)
+        if axis == 1:
+            face_velocity = -0.015 * np.ones_like(face_value)
+        transport_rhs -= fccd.face_divergence(face_value * face_velocity, axis)
+        jump_gradient = signed_pressure_jump_gradient(
+            xp=np,
+            grid=grid,
+            context=context,
+            axis=axis,
+            fccd=fccd,
+        )
+        d_face = grid.coords[axis][1:] - grid.coords[axis][:-1]
+        d_shape = [1] * grid.ndim
+        d_shape[axis] = -1
+        face_area = grid.h[1 - axis]
+        area_shape = [1] * grid.ndim
+        area_shape[1 - axis] = -1
+        jump_power += np.sum(
+            face_velocity
+            * jump_gradient
+            * d_face.reshape(d_shape)
+            * face_area.reshape(area_shape)
+        )
+
+    surface_rate = np.sum(surface_gradient * transport_rhs)
+    np.testing.assert_allclose(jump_power, -surface_rate, rtol=1.0e-12, atol=1.0e-14)
+
+
+def test_transport_variational_p2_discrete_gradient_jump_is_adjoint_work():
+    """Discrete-gradient jump must be adjoint to midpoint face transport."""
+    backend = Backend(use_gpu=False)
+    grid = Grid(GridConfig(ndim=2, N=(16, 16), L=(1.0, 1.0)), backend)
+    ccd = CCDSolver(grid, backend, bc_type="periodic")
+    fccd = FCCDSolver(grid, backend, bc_type="periodic", ccd_solver=ccd)
+    x_coord, y_coord = np.meshgrid(grid.coords[0], grid.coords[1], indexing="ij")
+    phi_previous = (
+        ((x_coord - 0.52) / 0.24) ** 2
+        + ((y_coord - 0.47) / 0.19) ** 2
+        - 1.0
+    )
+    phi_current = (
+        ((x_coord - 0.522) / 0.237) ** 2
+        + ((y_coord - 0.471) / 0.193) ** 2
+        - 1.0
+    )
+    psi_previous = 1.0 / (1.0 + np.exp(phi_previous / 0.04))
+    psi_current = 1.0 / (1.0 + np.exp(phi_current / 0.04))
+    psi_midpoint = 0.5 * (psi_previous + psi_current)
+    sigma = 0.072
+    surface_gradient = p2_trace_surface_energy_discrete_gradient_2d(
+        xp=np,
+        grid=grid,
+        psi_previous=psi_previous,
+        psi=psi_current,
+        sigma=sigma,
+    )
+    transport_rhs = np.zeros_like(psi_current)
+    jump_power = 0.0
+    context = build_young_laplace_interface_stress_context(
+        xp=np,
+        psi=psi_current,
+        psi_previous=psi_previous,
+        kappa_lg=np.zeros_like(psi_current),
+        sigma=sigma,
+        face_curvature_method="transport_variational_p2_discrete_gradient",
+    )
+    for axis in range(grid.ndim):
+        face_value = fccd.face_value(psi_midpoint, axis)
         face_velocity = 0.01 * np.ones_like(face_value)
         if axis == 1:
             face_velocity = -0.015 * np.ones_like(face_value)

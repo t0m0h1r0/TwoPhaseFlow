@@ -14,6 +14,10 @@ from .ns_predictor_assembly import (
 )
 from ..coupling.interface_stress_closure import build_young_laplace_interface_stress_context
 from ..coupling.capillary_geometry import apply_wall_compatible_curvature
+from ..coupling.transport_variational_capillary import (
+    p2_trace_surface_energy_discrete_gradient_2d,
+    p2_trace_surface_energy_gradient_2d,
+)
 from .ns_step_state import NSStepState
 
 IMEX_BDF2_PROJECTION_FACTOR = 2.0 / 3.0
@@ -22,6 +26,7 @@ _JUMP_CURVATURE_METHODS = {
     "transport_variational",
     "transport_variational_p2",
     "transport_variational_p2_midpoint",
+    "transport_variational_p2_discrete_gradient",
 }
 
 
@@ -61,6 +66,72 @@ def _capillary_interface_psi(*, xp, state: NSStepState, curvature_method: str):
     return state.psi
 
 
+def _capillary_interface_psi_previous(
+    *, state: NSStepState, curvature_method: str
+):
+    """Return the previous interface state needed by discrete-gradient routes."""
+    if curvature_method == "transport_variational_p2_discrete_gradient":
+        return state.psi_previous
+    return None
+
+
+def _capillary_transport_variational_temporaries(
+    *,
+    xp,
+    state: NSStepState,
+    curvature_method: str,
+    grid,
+    sigma: float,
+) -> dict:
+    """Build operation-local P2 covectors once for GPU pressure-jump work.
+
+    These arrays are step temporaries attached to the jump context; they are
+    not reused after the pressure/corrector operation that requested them.
+    """
+    if grid is None or curvature_method not in {
+        "transport_variational_p2",
+        "transport_variational_p2_midpoint",
+        "transport_variational_p2_discrete_gradient",
+    }:
+        return {}
+    interface_psi = _capillary_interface_psi(
+        xp=xp,
+        state=state,
+        curvature_method=curvature_method,
+    )
+    if curvature_method == "transport_variational_p2_discrete_gradient":
+        previous = _capillary_interface_psi_previous(
+            state=state,
+            curvature_method=curvature_method,
+        )
+        if previous is None:
+            return {}
+        current = xp.asarray(interface_psi)
+        previous = xp.asarray(previous)
+        transport_psi = xp.asarray(0.5, dtype=current.dtype) * (previous + current)
+        covector = p2_trace_surface_energy_discrete_gradient_2d(
+            xp=xp,
+            grid=grid,
+            psi_previous=previous,
+            psi=current,
+            sigma=float(sigma),
+        )
+        return {
+            "transport_variational_nodal_covector": covector,
+            "transport_variational_psi": transport_psi,
+        }
+    covector = p2_trace_surface_energy_gradient_2d(
+        xp=xp,
+        grid=grid,
+        psi=interface_psi,
+        sigma=float(sigma),
+    )
+    return {
+        "transport_variational_nodal_covector": covector,
+        "transport_variational_psi": interface_psi,
+    }
+
+
 def _pressure_face_flux_kwargs(
     *,
     xp,
@@ -69,6 +140,8 @@ def _pressure_face_flux_kwargs(
     interface_sigma: float | None = None,
     curvature_method: str = "psi_direct_filtered",
     interface_psi=None,
+    interface_psi_previous=None,
+    transport_variational_temporaries=None,
 ) -> dict:
     """Return face-pressure kwargs for the projection-native pressure law.
 
@@ -98,6 +171,8 @@ def _pressure_face_flux_kwargs(
                 psi=state.psi if interface_psi is None else interface_psi,
                 kappa_lg=state.kappa,
                 sigma=sigma,
+                psi_previous=interface_psi_previous,
+                **(transport_variational_temporaries or {}),
                 face_curvature_method=(
                     curvature_method
                     if curvature_method in _JUMP_CURVATURE_METHODS
@@ -709,10 +784,38 @@ def solve_ns_pressure_stage(
             state=state,
             curvature_method=curvature_method,
         )
+        interface_psi_previous = _capillary_interface_psi_previous(
+            state=state,
+            curvature_method=curvature_method,
+        )
+        jump_grid = getattr(ppe_solver, "grid", None)
+        if jump_grid is None:
+            jump_grid = getattr(getattr(ppe_solver, "operator", None), "grid", None)
+        if jump_grid is None:
+            jump_grid = getattr(getattr(div_op, "_fccd", None), "grid", None)
+        transport_variational_temporaries = (
+            _capillary_transport_variational_temporaries(
+                xp=xp,
+                state=state,
+                curvature_method=curvature_method,
+                grid=jump_grid,
+                sigma=jump_sigma,
+            )
+        )
+        state.transport_variational_nodal_covector = (
+            transport_variational_temporaries.get(
+                "transport_variational_nodal_covector"
+            )
+        )
+        state.transport_variational_psi = transport_variational_temporaries.get(
+            "transport_variational_psi"
+        )
         ppe_solver.set_interface_jump_context(
             psi=interface_psi,
             kappa=state.kappa,
             sigma=jump_sigma,
+            psi_previous=interface_psi_previous,
+            **transport_variational_temporaries,
             face_curvature_method=(
                 curvature_method
                 if curvature_method in _JUMP_CURVATURE_METHODS
@@ -752,6 +855,10 @@ def solve_ns_pressure_stage(
             state=state,
             curvature_method=curvature_method,
         )
+        interface_psi_previous = _capillary_interface_psi_previous(
+            state=state,
+            curvature_method=curvature_method,
+        )
         state.pressure_accel_face_components = div_op.pressure_fluxes(
             state.pressure,
             state.rho,
@@ -762,6 +869,10 @@ def solve_ns_pressure_stage(
                 interface_sigma=jump_sigma,
                 curvature_method=curvature_method,
                 interface_psi=interface_psi,
+                interface_psi_previous=interface_psi_previous,
+                transport_variational_temporaries=(
+                    transport_variational_temporaries
+                ),
             ),
         )
     next_p_prev_dev = xp.copy(state.pressure)
@@ -809,11 +920,41 @@ def correct_ns_velocity_stage(
     if face_flux_projection:
         proj_op = fccd_div_op if fccd_div_op is not None else div_op
         if proj_op is fccd_div_op:
+            interface_psi = _capillary_interface_psi(
+                xp=xp,
+                state=state,
+                curvature_method=curvature_method,
+            )
+            interface_psi_previous = _capillary_interface_psi_previous(
+                state=state,
+                curvature_method=curvature_method,
+            )
+            transport_variational_temporaries = (
+                {
+                    "transport_variational_nodal_covector": (
+                        state.transport_variational_nodal_covector
+                    ),
+                    "transport_variational_psi": state.transport_variational_psi,
+                }
+                if state.transport_variational_nodal_covector is not None
+                else _capillary_transport_variational_temporaries(
+                    xp=xp,
+                    state=state,
+                    curvature_method=curvature_method,
+                    grid=getattr(getattr(proj_op, "_fccd", None), "grid", None),
+                    sigma=state.sigma,
+                )
+            )
             project_kwargs = _pressure_face_flux_kwargs(
                 xp=xp,
                 state=state,
                 ppe_runtime=ppe_runtime,
                 curvature_method=curvature_method,
+                interface_psi=interface_psi,
+                interface_psi_previous=interface_psi_previous,
+                transport_variational_temporaries=(
+                    transport_variational_temporaries
+                ),
             )
     if correction_is_zero and (
         not face_flux_projection

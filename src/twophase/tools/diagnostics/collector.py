@@ -194,6 +194,10 @@ class DiagnosticCollector:
         need_ke = "kinetic_energy" in self.metrics
         need_gas_mean = "mean_rise_velocity" in self.metrics
         need_gas_centroid = "bubble_centroid" in self.metrics
+        need_deformation = "deformation" in self.metrics and geometry is not None
+        need_signed_deformation = (
+            "signed_deformation" in self.metrics and geometry is not None
+        )
 
         scalar_names: list[str] = []
         scalar_values = []
@@ -212,6 +216,37 @@ class DiagnosticCollector:
                 xp.sum(xp.where(gas, X * dV, 0.0)),
                 xp.sum(xp.where(gas, Y * dV, 0.0)),
                 xp.sum(xp.where(gas, v * dV, 0.0)),
+            ])
+        if need_deformation:
+            mask = psi > 0.5
+            n_pts = xp.sum(mask)
+            n_safe = xp.where(n_pts > 0, n_pts, 1.0)
+            rows = geometry.rows
+            cols = geometry.cols
+            if rows is None or cols is None:
+                rows, cols = _deformation_axes(xp, tuple(psi.shape))
+            row_mean = xp.sum(xp.where(mask, rows, 0.0)) / n_safe
+            col_mean = xp.sum(xp.where(mask, cols, 0.0)) / n_safe
+            dy = xp.where(mask, rows - row_mean, 0.0)
+            dx = xp.where(mask, cols - col_mean, 0.0)
+            scalar_names.extend(["def_n", "def_ixx", "def_iyy", "def_ixy"])
+            scalar_values.extend([
+                n_pts,
+                xp.sum(dx * dx) / n_safe,
+                xp.sum(dy * dy) / n_safe,
+                xp.sum(dx * dy) / n_safe,
+            ])
+        if need_signed_deformation:
+            weight = psi * dV
+            volume = xp.sum(weight)
+            volume_safe = xp.where(volume > 0.0, volume, 1.0)
+            xc = xp.sum(X * weight) / volume_safe
+            yc = xp.sum(Y * weight) / volume_safe
+            scalar_names.extend(["signed_volume", "signed_mxx", "signed_myy"])
+            scalar_values.extend([
+                volume,
+                xp.sum((X - xc) ** 2 * weight) / volume_safe,
+                xp.sum((Y - yc) ** 2 * weight) / volume_safe,
             ])
         scalars = {
             name: float(value)
@@ -255,10 +290,30 @@ class DiagnosticCollector:
                 self._data["vc"].append(vc)
 
             elif m == "deformation":
-                self._data[m].append(_deformation(psi, geometry))
+                if "def_n" not in scalars or scalars["def_n"] < 1.0:
+                    self._data[m].append(0.0)
+                else:
+                    Ixx = scalars["def_ixx"]
+                    Iyy = scalars["def_iyy"]
+                    Ixy = scalars["def_ixy"]
+                    disc = max(0.0, 0.25 * (Ixx - Iyy) ** 2 + Ixy ** 2)
+                    eig1 = 0.5 * (Ixx + Iyy) + np.sqrt(disc)
+                    eig2 = 0.5 * (Ixx + Iyy) - np.sqrt(disc)
+                    L = np.sqrt(max(eig1, 1e-30))
+                    B = np.sqrt(max(eig2, 1e-30))
+                    self._data[m].append(
+                        float((L - B) / (L + B)) if (L + B) > 1e-12 else 0.0
+                    )
 
             elif m == "signed_deformation":
-                self._data[m].append(_signed_deformation(psi, dV, geometry))
+                if "signed_volume" not in scalars or scalars["signed_volume"] <= 0.0:
+                    self._data[m].append(0.0)
+                else:
+                    lx = np.sqrt(max(scalars["signed_mxx"], 1e-30))
+                    ly = np.sqrt(max(scalars["signed_myy"], 1e-30))
+                    self._data[m].append(
+                        float((lx - ly) / (lx + ly)) if (lx + ly) > 1e-12 else 0.0
+                    )
 
             elif m == "interface_amplitude":
                 self._data[m].append(

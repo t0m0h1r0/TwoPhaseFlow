@@ -42,11 +42,14 @@ class InterfaceStressContext:
 
     psi: Any
     pressure_jump_gas_minus_liquid: Any
+    psi_previous: Any | None = None
     phase_threshold: float = 0.5
     kappa_lg: Any | None = None
     sigma: float = 0.0
     cut_face_quadrature: bool = False
     face_curvature_method: str = "nodal_cut_face"
+    transport_variational_nodal_covector: Any | None = None
+    transport_variational_psi: Any | None = None
 
     def is_active(self) -> bool:
         """Return whether a non-zero pressure jump should be applied."""
@@ -69,11 +72,14 @@ def build_interface_stress_context(
     xp,
     psi,
     pressure_jump_gas_minus_liquid=None,
+    psi_previous=None,
     kappa=None,
     kappa_lg=None,
     sigma: float = 0.0,
     phase_threshold: float = 0.5,
     face_curvature_method: str = "nodal_cut_face",
+    transport_variational_nodal_covector=None,
+    transport_variational_psi=None,
 ) -> InterfaceStressContext:
     """Build the backend-native interface-stress context.
 
@@ -91,11 +97,22 @@ def build_interface_stress_context(
             if pressure_jump_gas_minus_liquid is None
             else xp.asarray(pressure_jump_gas_minus_liquid)
         ),
+        psi_previous=None if psi_previous is None else xp.asarray(psi_previous),
         kappa_lg=None if curvature is None else xp.asarray(curvature),
         sigma=float(sigma),
         phase_threshold=float(phase_threshold),
         cut_face_quadrature=False,
         face_curvature_method=str(face_curvature_method),
+        transport_variational_nodal_covector=(
+            None
+            if transport_variational_nodal_covector is None
+            else xp.asarray(transport_variational_nodal_covector)
+        ),
+        transport_variational_psi=(
+            None
+            if transport_variational_psi is None
+            else xp.asarray(transport_variational_psi)
+        ),
     )
 
 
@@ -105,37 +122,59 @@ def build_young_laplace_interface_stress_context(
     psi,
     kappa_lg,
     sigma: float,
+    psi_previous=None,
     phase_threshold: float = 0.5,
     face_curvature_method: str = "nodal_cut_face",
+    transport_variational_nodal_covector=None,
+    transport_variational_psi=None,
 ) -> InterfaceStressContext:
     """Build ``j_gl = p_gas - p_liquid = -σ κ_lg`` for capillarity."""
     if face_curvature_method == "face_implicit":
         return InterfaceStressContext(
             psi=xp.asarray(psi),
             pressure_jump_gas_minus_liquid=None,
+            psi_previous=None if psi_previous is None else xp.asarray(psi_previous),
             phase_threshold=float(phase_threshold),
             kappa_lg=xp.asarray(kappa_lg),
             sigma=float(sigma),
             cut_face_quadrature=True,
             face_curvature_method=face_curvature_method,
+            transport_variational_nodal_covector=(
+                None
+                if transport_variational_nodal_covector is None
+                else xp.asarray(transport_variational_nodal_covector)
+            ),
+            transport_variational_psi=(
+                None
+                if transport_variational_psi is None
+                else xp.asarray(transport_variational_psi)
+            ),
         )
     context = build_interface_stress_context(
         xp=xp,
         psi=psi,
         pressure_jump_gas_minus_liquid=-float(sigma) * xp.asarray(kappa_lg),
+        psi_previous=psi_previous,
         kappa_lg=kappa_lg,
         sigma=sigma,
         phase_threshold=phase_threshold,
         face_curvature_method=face_curvature_method,
+        transport_variational_nodal_covector=transport_variational_nodal_covector,
+        transport_variational_psi=transport_variational_psi,
     )
     return InterfaceStressContext(
         psi=context.psi,
         pressure_jump_gas_minus_liquid=context.pressure_jump_gas_minus_liquid,
+        psi_previous=context.psi_previous,
         phase_threshold=context.phase_threshold,
         kappa_lg=context.kappa_lg,
         sigma=context.sigma,
         cut_face_quadrature=True,
         face_curvature_method=context.face_curvature_method,
+        transport_variational_nodal_covector=(
+            context.transport_variational_nodal_covector
+        ),
+        transport_variational_psi=context.transport_variational_psi,
     )
 
 
@@ -272,6 +311,7 @@ def signed_pressure_jump_gradient(
             "transport_variational",
             "transport_variational_p2",
             "transport_variational_p2_midpoint",
+            "transport_variational_p2_discrete_gradient",
         }
     ):
         return transport_variational_pressure_jump_gradient(
@@ -283,11 +323,18 @@ def signed_pressure_jump_gradient(
             axis=axis,
             phase_threshold=context.phase_threshold,
             trace_space=(
+                "p2_discrete_gradient"
+                if context.face_curvature_method
+                == "transport_variational_p2_discrete_gradient"
+                else
                 "p2"
                 if context.face_curvature_method
                 in {"transport_variational_p2", "transport_variational_p2_midpoint"}
                 else "p1"
             ),
+            psi_previous=context.psi_previous,
+            nodal_covector=context.transport_variational_nodal_covector,
+            transport_psi=context.transport_variational_psi,
         )
     elif context.cut_face_quadrature and context.kappa_lg is not None:
         kappa_lg = xp.asarray(context.kappa_lg)

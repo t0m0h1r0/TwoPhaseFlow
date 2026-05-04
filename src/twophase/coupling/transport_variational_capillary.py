@@ -663,6 +663,60 @@ def p2_trace_surface_energy_hessian_product_2d(
     return (grad_plus - grad_minus) / (2.0 * step)
 
 
+def p2_trace_surface_energy_discrete_gradient_2d(
+    *,
+    xp,
+    grid,
+    psi_previous,
+    psi,
+    sigma: float,
+    phase_threshold: float = 0.5,
+):
+    """Return a P2 discrete gradient satisfying the finite-step chain rule.
+
+    The Gonzalez discrete-gradient correction enforces
+    ``<g_bar, ψⁿ⁺¹-ψⁿ> = E(ψⁿ⁺¹)-E(ψⁿ)`` exactly for the backend-native
+    P2 trace energy while reducing to the midpoint gradient for a zero step.
+    """
+    current = xp.asarray(psi)
+    previous = xp.asarray(psi_previous)
+    half = xp.asarray(0.5, dtype=current.dtype)
+    midpoint = half * (previous + current)
+    midpoint_gradient = p2_trace_surface_energy_gradient_2d(
+        xp=xp,
+        grid=grid,
+        psi=midpoint,
+        sigma=sigma,
+        phase_threshold=phase_threshold,
+    )
+    direction = current - previous
+    energy_delta = (
+        p2_trace_surface_energy_2d(
+            xp=xp,
+            grid=grid,
+            psi=current,
+            sigma=sigma,
+            phase_threshold=phase_threshold,
+        )
+        - p2_trace_surface_energy_2d(
+            xp=xp,
+            grid=grid,
+            psi=previous,
+            sigma=sigma,
+            phase_threshold=phase_threshold,
+        )
+    )
+    midpoint_work = xp.sum(midpoint_gradient * direction)
+    direction_norm_sq = xp.sum(direction * direction)
+    zero = xp.asarray(0.0, dtype=current.dtype)
+    correction_scale = xp.where(
+        direction_norm_sq > zero,
+        (energy_delta - midpoint_work) / direction_norm_sq,
+        zero,
+    )
+    return midpoint_gradient + correction_scale * direction
+
+
 def _negative_face_divergence_adjoint(*, xp, fccd, nodal_covector, axis: int):
     """Return ``(-D_f)^T`` for ``FCCDSolver.face_divergence``."""
     covector = xp.moveaxis(xp.asarray(nodal_covector), axis, 0)
@@ -701,12 +755,34 @@ def transport_variational_pressure_jump_gradient(
     axis: int,
     phase_threshold: float = 0.5,
     trace_space: str = "p1",
+    psi_previous=None,
+    nodal_covector=None,
+    transport_psi=None,
 ):
     """Return a face-gradient jump whose work is transport-adjoint capillarity."""
     if fccd is None:
         raise ValueError("transport_variational capillarity requires FCCD")
     psi = xp.asarray(psi)
-    if trace_space == "p2":
+    work_psi = xp.asarray(transport_psi) if transport_psi is not None else psi
+    if nodal_covector is not None:
+        energy_gradient = xp.asarray(nodal_covector)
+    elif trace_space == "p2_discrete_gradient":
+        if psi_previous is None:
+            raise ValueError(
+                "transport_variational_p2_discrete_gradient requires psi_previous"
+            )
+        previous = xp.asarray(psi_previous)
+        half = xp.asarray(0.5, dtype=psi.dtype)
+        work_psi = half * (previous + psi)
+        energy_gradient = p2_trace_surface_energy_discrete_gradient_2d(
+            xp=xp,
+            grid=grid,
+            psi_previous=previous,
+            psi=psi,
+            sigma=float(sigma),
+            phase_threshold=float(phase_threshold),
+        )
+    elif trace_space == "p2":
         energy_gradient = p2_trace_surface_energy_gradient_2d(
             xp=xp,
             grid=grid,
@@ -728,7 +804,7 @@ def transport_variational_pressure_jump_gradient(
         nodal_covector=energy_gradient,
         axis=axis,
     )
-    power_covector = -fccd.face_value(psi, axis) * adjoint
+    power_covector = -fccd.face_value(work_psi, axis) * adjoint
 
     d_face = xp.asarray(grid.coords[axis][1:] - grid.coords[axis][:-1])
     d_shape = [1] * grid.ndim

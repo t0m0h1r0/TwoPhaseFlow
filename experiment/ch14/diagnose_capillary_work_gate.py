@@ -326,7 +326,11 @@ def _negative_face_divergence_adjoint(solver, nodal_covector, axis: int):
 def _variational_transport_power(solver, psi, face_velocity_components, *, sigma: float):
     """Return ``-<δE/δψ, T'(ψ; u_f)>`` for the actual face transport RHS."""
     xp = solver.backend.xp
-    if getattr(solver, "_curvature_method", "") == "transport_variational_p2":
+    if getattr(solver, "_curvature_method", "") in {
+        "transport_variational_p2",
+        "transport_variational_p2_midpoint",
+        "transport_variational_p2_discrete_gradient",
+    }:
         gradient = p2_trace_surface_energy_gradient_2d(
             xp=xp,
             grid=solver._grid,
@@ -349,17 +353,37 @@ def _variational_transport_power(solver, psi, face_velocity_components, *, sigma
     return float(np.asarray(solver.backend.to_host(power)))
 
 
-def _jump_power_from_faces(solver, psi, face_velocity_components, *, sigma: float) -> float | None:
+def _jump_power_from_faces(
+    solver,
+    psi,
+    face_velocity_components,
+    *,
+    sigma: float,
+    psi_previous=None,
+) -> float | None:
     """Return the pressure-jump face work paired with projected face velocity."""
     if face_velocity_components is None or sigma <= 0.0:
         return None
     xp = solver.backend.xp
+    method = getattr(solver, "_curvature_method", "")
+    context_psi = xp.asarray(psi)
+    context_psi_previous = None
+    if psi_previous is not None and method == "transport_variational_p2_midpoint":
+        previous = xp.asarray(psi_previous)
+        context_psi = xp.asarray(0.5, dtype=context_psi.dtype) * (
+            previous + context_psi
+        )
+    elif method == "transport_variational_p2_discrete_gradient":
+        if psi_previous is None:
+            return None
+        context_psi_previous = xp.asarray(psi_previous)
     context = build_young_laplace_interface_stress_context(
         xp=xp,
-        psi=xp.asarray(psi),
-        kappa_lg=xp.zeros_like(xp.asarray(psi)),
+        psi=context_psi,
+        psi_previous=context_psi_previous,
+        kappa_lg=xp.zeros_like(context_psi),
         sigma=sigma,
-        face_curvature_method=solver._curvature_method,
+        face_curvature_method=method,
     )
     face_curvature_lg = evaluate_interface_face_curvature_lg(
         xp=xp,
@@ -569,12 +593,14 @@ def run_gate(
         if dt <= np.finfo(float).eps * max(abs(time), 1.0):
             break
 
+        psi_before = psi
+        transport_face_components = solver._projected_face_components
         transport_rates = None
-        if previous.jump_power is not None and solver._projected_face_components is not None:
+        if transport_face_components is not None:
             transport_rates = _transport_rates(
                 solver,
                 psi,
-                solver._projected_face_components,
+                transport_face_components,
                 dt,
                 sigma=ph.sigma,
                 step_index=step,
@@ -605,17 +631,24 @@ def run_gate(
         time += dt
         surface_energy = _surface_energy(solver, psi, sigma=ph.sigma)
         surface_rate = (surface_energy - previous.surface_energy) / dt
-        if previous.jump_power is not None:
-            residual_plus = surface_rate + previous.jump_power
-            residual_minus = surface_rate - previous.jump_power
-            scale = max(abs(surface_rate), abs(previous.jump_power), np.finfo(float).tiny)
+        jump_power = _jump_power_from_faces(
+            solver,
+            psi,
+            transport_face_components,
+            sigma=ph.sigma,
+            psi_previous=psi_before,
+        )
+        if jump_power is not None:
+            residual_plus = surface_rate + jump_power
+            residual_minus = surface_rate - jump_power
+            scale = max(abs(surface_rate), abs(jump_power), np.finfo(float).tiny)
             row = {
                 "step": float(step),
                 "time": float(time),
                 "dt": float(dt),
                 "surface_energy": float(surface_energy),
                 "surface_rate": float(surface_rate),
-                "jump_power": float(previous.jump_power),
+                "jump_power": float(jump_power),
                 "residual_plus": float(residual_plus),
                 "residual_minus": float(residual_minus),
                 "relative_plus": float(abs(residual_plus) / scale),
@@ -645,16 +678,10 @@ def run_gate(
                     }
                 )
             rows.append(row)
-        jump_power = _jump_power_from_faces(
-            solver,
-            psi,
-            solver._projected_face_components,
-            sigma=ph.sigma,
-        )
         previous = WorkState(
             time=time,
             surface_energy=surface_energy,
-            jump_power=jump_power,
+            jump_power=None,
         )
         if step < 2 or (step + 1) % max(1, cfg.run.print_every) == 0:
             print(

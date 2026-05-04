@@ -436,6 +436,43 @@ midpoint quadratureへ進める最小の理論的前進である。
 PPE jump contextとprojection face corrector contextは同一の
 backend-native temporaryを参照する。
 
+## 有限ステップ閉包: Gonzalez discrete gradient
+
+midpoint gradient は `E_{\Gamma,h}` が2次関数なら有限ステップの
+chain ruleを厳密に満たす。しかし表面積は非線形なので、一般には
+
+```text
+<∂E_{\Gamma,h}(ψ^{n+1/2}), ψ^{n+1}-ψ^n>
+  != E_{\Gamma,h}(ψ^{n+1}) - E_{\Gamma,h}(ψ^n)
+```
+
+である。したがって次の閉包は、Gonzalez discrete gradient
+`\bar g_\Gamma(ψ^n,ψ^{n+1})` を用い、
+
+```text
+<\bar g_\Gamma, ψ^{n+1}-ψ^n>
+  = E_{\Gamma,h}(ψ^{n+1}) - E_{\Gamma,h}(ψ^n)
+C_f = -(∂R_h(ψ^{n+1/2},u_f)/∂u_f)^T \bar g_\Gamma
+```
+
+を満たすようにする。実装では
+
+```text
+\bar g_\Gamma
+  = g_m
+    + [(ΔE - <g_m,Δψ>) / <Δψ,Δψ>] Δψ,
+g_m = ∂E_{\Gamma,h}((ψ^n+ψ^{n+1})/2),
+Δψ = ψ^{n+1}-ψ^n
+```
+
+を使う。`<Δψ,Δψ>=0` の場合は correction を0にし、midpoint gradientへ
+戻す。これは固定epsやクリップではなく、離散勾配法の退化ケースである。
+
+この段階でも完全な同時Newton解法ではない。残るずれは transport map が
+TVD-RK3/質量補正を含み、厳密な midpoint conservative residual
+`R_h(ψ^{n+1/2},u_f)` そのものではない点にある。したがって長時間本番の
+前には、有限ステップ work gate と短時間GPU runを必ず通す。
+
 ## 結論
 
 正しい次手は

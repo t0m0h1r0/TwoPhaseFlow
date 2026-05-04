@@ -101,7 +101,10 @@ class PPESolverDefectCorrection(IPPESolver):
         psi,
         kappa,
         sigma: float,
+        psi_previous=None,
         face_curvature_method: str = "nodal_cut_face",
+        transport_variational_nodal_covector=None,
+        transport_variational_psi=None,
     ) -> None:
         """Forward SP-M pressure-jump context to wrapped PPE components."""
         for solver in (self.base_solver, self.operator):
@@ -110,7 +113,12 @@ class PPESolverDefectCorrection(IPPESolver):
                     psi=psi,
                     kappa=kappa,
                     sigma=sigma,
+                    psi_previous=psi_previous,
                     face_curvature_method=face_curvature_method,
+                    transport_variational_nodal_covector=(
+                        transport_variational_nodal_covector
+                    ),
+                    transport_variational_psi=transport_variational_psi,
                 )
 
     def clear_interface_jump_context(self) -> None:
@@ -222,6 +230,40 @@ class PPESolverDefectCorrection(IPPESolver):
 
         self._pin_dofs = getattr(self.operator, "_pin_dofs", (self._pin_dof,))
         rhs_flat = rhs_dev.ravel()
+        if self.backend.is_gpu():
+            for _ in range(self.max_corrections):
+                residual = rhs_dev - self.operator.apply(pressure)
+                residual = self._enforce_rhs_compatibility(
+                    residual,
+                    record_stats=False,
+                )
+                correction = xp.asarray(
+                    self.base_solver.solve(residual, rho, dt=dt, p_init=None)
+                )
+                correction = self._enforce_pressure_gauge(correction)
+                pressure = pressure + self.relaxation * correction
+                pressure = self._enforce_pressure_gauge(pressure)
+            final_residual = rhs_dev - self.operator.apply(pressure)
+            final_residual = self._enforce_rhs_compatibility(
+                final_residual,
+                record_stats=False,
+            )
+            norm_pair = xp.stack([
+                xp.linalg.norm(rhs_flat),
+                xp.linalg.norm(final_residual.ravel()),
+            ])
+            rhs_norm, residual_norm = [
+                float(value) for value in self.backend.asnumpy(norm_pair)
+            ]
+            scale = max(rhs_norm, 1.0)
+            self.last_residual_history = [residual_norm]
+            self.last_stalled = residual_norm > self.tolerance * scale
+            self.last_base_pressure = xp.copy(pressure)
+            self.last_diagnostics = initial_diagnostics
+            if hasattr(self.operator, "apply_interface_jump"):
+                pressure = self.operator.apply_interface_jump(pressure)
+            return self._enforce_periodic_pressure(pressure)
+
         rhs_norm = float(self.backend.asnumpy(xp.linalg.norm(rhs_flat)))
         scale = max(rhs_norm, 1.0)
         history: list[float] = []
