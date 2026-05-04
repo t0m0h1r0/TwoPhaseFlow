@@ -75,6 +75,11 @@ def prepare_fccd_matrixfree_operator(solver, rho) -> None:
             coefficient_scheme=solver.coefficient_scheme,
             phase_threshold=solver._phase_threshold,
             interface_coupling_scheme=solver.interface_coupling_scheme,
+            interface_stress_context=getattr(
+                solver,
+                "_interface_stress_context",
+                None,
+            ),
         )
         for axis in range(solver.ndim)
     ]

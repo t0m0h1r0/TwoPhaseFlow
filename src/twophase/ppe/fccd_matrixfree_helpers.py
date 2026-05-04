@@ -7,6 +7,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from ..backend import fuse as _fuse
+from ..coupling.interface_stress_closure import affine_jump_face_inverse_density
 
 
 @dataclass(frozen=True)
@@ -213,6 +214,7 @@ def build_fccd_face_inverse_density(
     coefficient_scheme: str,
     phase_threshold: float | None,
     interface_coupling_scheme: str = "none",
+    interface_stress_context=None,
 ):
     rho_arr = xp.asarray(rho)
     n_axis = grid.N[axis]
@@ -225,6 +227,17 @@ def build_fccd_face_inverse_density(
     rho_lo = rho_arr[sl(0, n_axis)]
     rho_hi = rho_arr[sl(1, n_axis + 1)]
     coeff = 2.0 / (rho_lo + rho_hi)
+    if (
+        coefficient_scheme == "phase_separated"
+        and interface_coupling_scheme == "affine_jump"
+    ):
+        return affine_jump_face_inverse_density(
+            xp=xp,
+            grid=grid,
+            rho=rho_arr,
+            axis=axis,
+            context=interface_stress_context,
+        )
     if (
         coefficient_scheme != "phase_separated"
         or phase_threshold is None

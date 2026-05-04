@@ -30,7 +30,7 @@ from twophase.levelset.curvature_psi import CurvatureCalculatorPsi
 from twophase.levelset.fccd_advection import FCCDLevelSetAdvection
 from twophase.simulation.config_io import ExperimentConfig
 from twophase.simulation.face_projection import reconstruct_nodes_from_faces
-from twophase.levelset.transport_strategy import PsiDirectTransport
+from twophase.levelset.transport_strategy import PhiPrimaryTransport, PsiDirectTransport
 from twophase.simulation.velocity_reprojector import (
     ConsistentIIMReprojector,
     VariableDensityReprojector,
@@ -350,6 +350,74 @@ def test_psi_direct_transport_uses_projection_native_face_velocity():
     assert advection.face_velocity_components is face_velocity_components
     assert advection.dt == pytest.approx(0.1)
     np.testing.assert_allclose(psi_new, psi + 0.25)
+
+
+def test_phi_primary_transport_uses_projection_native_face_velocity():
+    class FaceAdvection:
+        def __init__(self):
+            self.face_velocity_components = None
+            self.dt = None
+
+        def advance(self, phi, velocity, dt, clip_bounds=None):
+            raise AssertionError("nodal velocity path must not be used")
+
+        def advance_with_face_velocity(
+            self,
+            phi,
+            face_velocity_components,
+            dt,
+            clip_bounds=None,
+        ):
+            self.face_velocity_components = face_velocity_components
+            self.dt = dt
+            self.clip_bounds = clip_bounds
+            return phi
+
+    class IdentityReconstruction:
+        def phi_from_psi(self, psi):
+            return psi
+
+        def clip_phi(self, phi):
+            return phi
+
+        def psi_from_phi(self, phi):
+            return phi
+
+    class IdentityReinitializer:
+        def reinitialize(self, psi):
+            return psi
+
+    backend = Backend(use_gpu=False)
+    grid = Grid(GridConfig(ndim=2, N=(2, 2), L=(1.0, 1.0)), backend)
+    advection = FaceAdvection()
+    transport = PhiPrimaryTransport(
+        backend,
+        {"redist_every": 100},
+        IdentityReconstruction(),
+        advection,
+        IdentityReinitializer(),
+        grid,
+    )
+    psi = np.asarray(
+        [
+            [0.0, 0.25, 0.0],
+            [0.25, 0.5, 0.25],
+            [0.0, 0.25, 0.0],
+        ]
+    )
+    face_velocity_components = [np.ones((2, 3)), np.ones((3, 2))]
+
+    psi_new = transport.advance_with_face_velocity(
+        psi,
+        face_velocity_components,
+        0.1,
+        step_index=1,
+    )
+
+    assert advection.face_velocity_components is face_velocity_components
+    assert advection.dt == pytest.approx(0.1)
+    assert advection.clip_bounds is None
+    np.testing.assert_allclose(psi_new, psi)
 
 
 def test_psi_direct_transport_adaptive_reinitializes_on_volume_monitor():

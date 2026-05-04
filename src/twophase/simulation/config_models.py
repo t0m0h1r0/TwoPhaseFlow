@@ -98,6 +98,7 @@ class RunCfg:
     ppe_coefficient_scheme: str = "phase_separated"
     ppe_interface_coupling_scheme: str = "affine_jump"
     surface_tension_scheme: str = "pressure_jump"
+    curvature_method: str = "psi_direct_filtered"
     convection_time_scheme: str = "imex_bdf2"
     viscous_spatial_scheme: str = "ccd_bulk"
     viscous_time_scheme: str = "implicit_bdf2"

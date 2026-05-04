@@ -56,5 +56,6 @@ def bind_ns_scheme_runtime(solver, state) -> None:
     solver._momentum_gradient_scheme = state.momentum_gradient_scheme
     solver._pressure_gradient_scheme = state.pressure_gradient_scheme
     solver._surface_tension_gradient_scheme = state.surface_tension_gradient_scheme
+    solver._curvature_method = state.curvature_method
     solver._advection_scheme = state.advection_scheme
     solver._convection_scheme = state.convection_scheme

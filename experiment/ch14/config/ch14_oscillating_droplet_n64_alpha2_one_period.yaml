@@ -32,8 +32,9 @@ interface:
     base_factor: 1.5
   geometry:
     curvature:
-      method: psi_direct_filtered
-      cap: 40.0
+      # P2 isoparametric variational surface energy route:
+      # the pressure-jump gradient is the transport adjoint of ∂E_Γ,h/∂ψ.
+      method: transport_variational_p2
   reinitialization:
     algorithm: ridge_eikonal
     schedule:

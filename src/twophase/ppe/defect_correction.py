@@ -95,11 +95,23 @@ class PPESolverDefectCorrection(IPPESolver):
             if callable(setter):
                 setter(enabled)
 
-    def set_interface_jump_context(self, *, psi, kappa, sigma: float) -> None:
+    def set_interface_jump_context(
+        self,
+        *,
+        psi,
+        kappa,
+        sigma: float,
+        face_curvature_method: str = "nodal_cut_face",
+    ) -> None:
         """Forward SP-M pressure-jump context to wrapped PPE components."""
         for solver in (self.base_solver, self.operator):
             if hasattr(solver, "set_interface_jump_context"):
-                solver.set_interface_jump_context(psi=psi, kappa=kappa, sigma=sigma)
+                solver.set_interface_jump_context(
+                    psi=psi,
+                    kappa=kappa,
+                    sigma=sigma,
+                    face_curvature_method=face_curvature_method,
+                )
 
     def clear_interface_jump_context(self) -> None:
         """Forward neutral-solve context clearing to wrapped PPE components."""

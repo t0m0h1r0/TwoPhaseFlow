@@ -33,6 +33,7 @@ from ..core.array_checks import all_arrays_exact_zero
 from ..core.boundary import is_periodic_axis
 from ..coupling.interface_stress_closure import (
     build_young_laplace_interface_stress_context,
+    evaluate_interface_face_curvature_lg,
     interface_stress_context_is_active,
     signed_pressure_jump_gradient,
 )
@@ -195,7 +196,14 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         if not enabled:
             self._prepared_rho_token = None
 
-    def set_interface_jump_context(self, *, psi, kappa, sigma: float) -> None:
+    def set_interface_jump_context(
+        self,
+        *,
+        psi,
+        kappa,
+        sigma: float,
+        face_curvature_method: str = "nodal_cut_face",
+    ) -> None:
         """Store legacy and affine pressure-jump data.
 
         Both legacy ``jump_decomposition`` and affine paths consume the
@@ -208,12 +216,14 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             kappa=kappa,
             sigma=sigma,
         )
-        self._interface_stress_context = build_young_laplace_interface_stress_context(
+        context = build_young_laplace_interface_stress_context(
             xp=self.xp,
             psi=psi,
             kappa_lg=kappa,
             sigma=sigma,
+            face_curvature_method=face_curvature_method,
         )
+        self._interface_stress_context = context
 
     def clear_interface_jump_context(self) -> None:
         """Clear pressure-jump data for PPE solves without interface forcing."""
@@ -346,6 +356,12 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             and interface_stress_context_is_active(self._interface_stress_context)
         ):
             return rhs_dev
+        face_curvature_lg = evaluate_interface_face_curvature_lg(
+            xp=self.xp,
+            grid=self.grid,
+            context=self._interface_stress_context,
+            fccd=self.fccd,
+        )
         affine_rhs = self.xp.zeros_like(rhs_dev)
         for axis in range(self.ndim):
             jump_gradient = signed_pressure_jump_gradient(
@@ -353,6 +369,8 @@ class PPESolverFCCDMatrixFree(IPPESolver):
                 grid=self.grid,
                 context=self._interface_stress_context,
                 axis=axis,
+                face_curvature_lg=face_curvature_lg,
+                fccd=self.fccd,
             )
             self._accumulate_weighted_face_gradient_divergence(
                 affine_rhs,

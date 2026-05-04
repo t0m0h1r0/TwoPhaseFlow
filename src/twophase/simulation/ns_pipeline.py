@@ -161,6 +161,7 @@ class TwoPhaseNSSolver:
         ppe_dc_tolerance: float = 1.0e-8,
         ppe_dc_relaxation: float = 0.8,
         surface_tension_scheme: str = "pressure_jump",
+        curvature_method: str = "psi_direct_filtered",
         convection_time_scheme: str = "imex_bdf2",
         pressure_gradient_scheme: str | None = "fccd_flux",
         surface_tension_gradient_scheme: str | None = "none",
@@ -265,6 +266,7 @@ class TwoPhaseNSSolver:
                 cn_viscous=cn_viscous,
                 Re=Re,
                 surface_tension_scheme=surface_tension_scheme,
+                curvature_method=curvature_method,
                 convection_time_scheme=convection_time_scheme,
                 advection_scheme=advection_scheme,
                 convection_scheme=convection_scheme,
@@ -895,6 +897,7 @@ class TwoPhaseNSSolver:
             bc_type=self.bc_type,
             face_no_slip_boundary_state=self._face_no_slip_boundary_state,
             ppe_runtime=self._ppe_runtime,
+            curvature_method=self._curvature_method,
         )
         self._p_base_prev_dev = state.pressure_base
         self._p_prev_accel_face_components = state.pressure_accel_face_components
@@ -919,6 +922,7 @@ class TwoPhaseNSSolver:
             ppe_runtime=self._ppe_runtime,
             bc_type=self.bc_type,
             apply_velocity_bc=_apply_bc,
+            curvature_method=self._curvature_method,
         )
 
     def _record_step_diagnostics(

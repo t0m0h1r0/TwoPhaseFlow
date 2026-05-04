@@ -41,6 +41,7 @@ def _pressure_face_flux_kwargs(
     state: NSStepState,
     ppe_runtime,
     interface_sigma: float | None = None,
+    curvature_method: str = "psi_direct_filtered",
 ) -> dict:
     """Return face-pressure kwargs for the projection-native pressure law.
 
@@ -70,6 +71,16 @@ def _pressure_face_flux_kwargs(
                 psi=state.psi,
                 kappa_lg=state.kappa,
                 sigma=sigma,
+                face_curvature_method=(
+                    curvature_method
+                    if curvature_method
+                    in {
+                        "face_implicit",
+                        "transport_variational",
+                        "transport_variational_p2",
+                    }
+                    else "nodal_cut_face"
+                ),
             )
         )
     return kwargs
@@ -641,6 +652,7 @@ def solve_ns_pressure_stage(
     bc_type: str = "wall",
     face_no_slip_boundary_state: bool = False,
     ppe_runtime=None,
+    curvature_method: str = "psi_direct_filtered",
 ) -> tuple[NSStepState, object, np.ndarray]:
     """Solve IPC PPE for δp and accumulate pⁿ⁺¹ = pⁿ + δp."""
     xp = backend.xp
@@ -674,6 +686,16 @@ def solve_ns_pressure_stage(
             psi=state.psi,
             kappa=state.kappa,
             sigma=jump_sigma,
+            face_curvature_method=(
+                curvature_method
+                if curvature_method
+                in {
+                    "face_implicit",
+                    "transport_variational",
+                    "transport_variational_p2",
+                }
+                else "nodal_cut_face"
+            ),
         )
 
     state.pressure_increment = ppe_solver.solve(
@@ -711,6 +733,7 @@ def solve_ns_pressure_stage(
                 state=state,
                 ppe_runtime=ppe_runtime,
                 interface_sigma=jump_sigma,
+                curvature_method=curvature_method,
             ),
         )
     next_p_prev_dev = xp.copy(state.pressure)
@@ -737,6 +760,7 @@ def correct_ns_velocity_stage(
     ppe_runtime,
     bc_type: str,
     apply_velocity_bc,
+    curvature_method: str = "psi_direct_filtered",
 ) -> NSStepState:
     """Apply pressure correction and optional face-flux projection."""
     xp = backend.xp
@@ -761,6 +785,7 @@ def correct_ns_velocity_stage(
                 xp=xp,
                 state=state,
                 ppe_runtime=ppe_runtime,
+                curvature_method=curvature_method,
             )
     if correction_is_zero and (
         not face_flux_projection

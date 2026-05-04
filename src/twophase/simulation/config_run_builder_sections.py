@@ -159,6 +159,7 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
         ppe_coefficient_scheme=options.operator_settings["poisson_coefficient"],
         ppe_interface_coupling_scheme=options.operator_settings["poisson_interface_coupling"],
         surface_tension_scheme=options.operator_settings["surface_tension_scheme"],
+        curvature_method=options.operator_settings["curvature_method"],
         convection_time_scheme=options.operator_settings["convection_time_scheme"],
         viscous_spatial_scheme=options.operator_settings["viscous_spatial_scheme"],
         viscous_time_scheme=options.operator_settings["viscous_time_scheme"],

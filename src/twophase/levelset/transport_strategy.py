@@ -153,6 +153,44 @@ class PhiPrimaryTransport(ILevelSetTransport):
 
         return psi
 
+    def advance_with_face_velocity(
+        self,
+        psi: np.ndarray,
+        face_velocity_components: List[np.ndarray],
+        dt: float,
+        step_index: int = 0,
+    ) -> np.ndarray:
+        """Phi-primary transport with projection-native face velocities."""
+        advance_face = getattr(self.advection, "advance_with_face_velocity", None)
+        if not callable(advance_face):
+            raise RuntimeError(
+                "projection-native φ transport requires "
+                "advection.advance_with_face_velocity"
+            )
+
+        xp = self.xp
+        dV_pre = self.grid.cell_volumes()
+        M_pre = xp.sum(xp.asarray(psi) * dV_pre)
+
+        phi = self.reconstruct.phi_from_psi(psi)
+        phi = xp.asarray(
+            advance_face(
+                phi,
+                face_velocity_components,
+                dt,
+                clip_bounds=None,
+            )
+        )
+        phi = self.reconstruct.clip_phi(phi)
+        psi = self.reconstruct.psi_from_phi(phi)
+
+        if step_index > 0 and (step_index % self.redist_every == 0):
+            psi = self.reinitializer.reinitialize(psi)
+            phi = self.reconstruct.phi_from_psi(psi)
+            psi = self.reconstruct.psi_from_phi(phi)
+
+        return apply_mass_correction(xp, psi, dV_pre, M_pre)
+
 
 class PsiDirectTransport(ILevelSetTransport):
     """Direct ψ advection: advect Heaviside directly + mass correction + optional reinit.
