@@ -15,6 +15,7 @@ from __future__ import annotations
 import numpy as np
 
 from ..ccd.fccd import FCCDSolver
+from ..core.grid_remap import build_grid_remapper
 from ..levelset.reinitialize import Reinitializer
 from ..levelset.wall_contact import WallContactSet
 from .ns_step_state import NSStepInputs, NSStepRequest, NSStepState
@@ -735,6 +736,20 @@ class TwoPhaseNSSolver:
         state: NSStepState,
     ) -> NSStepState:
         """Advance the interface transport and optional grid rebuild."""
+        backend = getattr(self, "_backend", None)
+        xp = getattr(backend, "xp", None)
+        if xp is None:
+            xp = np
+        psi_previous = xp.array(state.psi, copy=True)
+        rebuild_old_coords = None
+        will_rebuild = (
+            self._alpha_grid > 1.0
+            and self._interface_runtime.rebuild_freq > 0
+            and state.step_index > 0
+            and (state.step_index % self._interface_runtime.rebuild_freq == 0)
+        )
+        if will_rebuild:
+            rebuild_old_coords = [coords.copy() for coords in self._grid.coords]
         advance_face = getattr(self._transport, "advance_with_face_velocity", None)
         if state.face_velocity_components is not None and callable(advance_face):
             state.psi = advance_face(
@@ -747,12 +762,8 @@ class TwoPhaseNSSolver:
             state.psi = self._transport.advance(
                 state.psi, [state.u, state.v], state.dt, step_index=state.step_index
             )
-        if (
-            self._alpha_grid > 1.0
-            and self._interface_runtime.rebuild_freq > 0
-            and state.step_index > 0
-            and (state.step_index % self._interface_runtime.rebuild_freq == 0)
-        ):
+        state.psi_previous = psi_previous
+        if will_rebuild:
             try:
                 state.psi, state.u, state.v = self._rebuild_grid(
                     state.psi,
@@ -766,6 +777,17 @@ class TwoPhaseNSSolver:
                     state.psi,
                     state.u,
                     state.v,
+                )
+            if rebuild_old_coords is not None:
+                remapper = build_grid_remapper(
+                    backend,
+                    rebuild_old_coords,
+                    self._grid.coords,
+                )
+                state.psi_previous = xp.clip(
+                    xp.asarray(remapper.remap(psi_previous)),
+                    xp.asarray(0.0, dtype=state.psi.dtype),
+                    xp.asarray(1.0, dtype=state.psi.dtype),
                 )
             self._projected_face_components = None
         return state

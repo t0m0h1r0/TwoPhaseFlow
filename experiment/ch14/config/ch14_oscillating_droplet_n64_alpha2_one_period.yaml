@@ -34,7 +34,7 @@ interface:
     curvature:
       # P2 isoparametric variational surface energy route:
       # the pressure-jump gradient is the transport adjoint of ∂E_Γ,h/∂ψ.
-      method: transport_variational_p2
+      method: transport_variational_p2_midpoint
   reinitialization:
     algorithm: ridge_eikonal
     schedule:

@@ -63,6 +63,7 @@ class NSStepState:
     pressure_accel_face_components: list[Any] | None = None
     pressure_increment: Any = None
     p_corrector: Any = None
+    psi_previous: Any = None
     face_velocity_components: list[Any] | None = None
     projected_face_components: list[Any] | None = None
     projection_dt: float | None = None

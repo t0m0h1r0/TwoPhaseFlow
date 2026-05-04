@@ -415,6 +415,27 @@ G_Γ(p) = G_f(p) - B_f
    - high-mode ratio decreases or remains bounded.
    - volume drift remains comparable to existing good route.
 
+## 時間方向の最小閉包: P2 midpoint pressure-jump geometry
+
+P2 trace energyを空間方向で変分閉包しても、時間方向で常に
+`ψ^{n+1}` の幾何を陽的にPPEへ差し込むだけでは、capillary workの
+時間積分点がtransport updateとずれる。そこで最初の半陰的閉包として
+
+```text
+ψ^{n+1/2} = (ψ^n + ψ^{n+1}) / 2,
+g_Γ^{n+1/2} = ∂E_{Γ,h}(ψ^{n+1/2}),
+C_f^{n+1/2} = -(∂R_h/∂u_f)^T g_Γ^{n+1/2}
+```
+
+を使う。これは完全なNewton--Krylov同時解法ではないが、空間の
+transport-adjoint contractを壊さず、capillary jumpの評価点だけを
+midpoint quadratureへ進める最小の理論的前進である。
+
+`ψ^n` はキャッシュではなく1 stepの状態変数であり、fitted grid rebuildが
+入る場合は同じ現在gridへremapしてから `ψ^{n+1/2}` を構成する。これにより
+PPE jump contextとprojection face corrector contextは同一の
+backend-native temporaryを参照する。
+
 ## 結論
 
 正しい次手は

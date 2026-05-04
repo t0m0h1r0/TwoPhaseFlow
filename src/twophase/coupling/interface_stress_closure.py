@@ -268,7 +268,11 @@ def signed_pressure_jump_gradient(
     elif (
         context.cut_face_quadrature
         and context.face_curvature_method
-        in {"transport_variational", "transport_variational_p2"}
+        in {
+            "transport_variational",
+            "transport_variational_p2",
+            "transport_variational_p2_midpoint",
+        }
     ):
         return transport_variational_pressure_jump_gradient(
             xp=xp,
@@ -280,7 +284,8 @@ def signed_pressure_jump_gradient(
             phase_threshold=context.phase_threshold,
             trace_space=(
                 "p2"
-                if context.face_curvature_method == "transport_variational_p2"
+                if context.face_curvature_method
+                in {"transport_variational_p2", "transport_variational_p2_midpoint"}
                 else "p1"
             ),
         )

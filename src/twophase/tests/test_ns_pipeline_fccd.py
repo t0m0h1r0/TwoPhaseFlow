@@ -25,7 +25,11 @@ from twophase.ppe.defect_correction import PPESolverDefectCorrection
 from twophase.ppe.fccd_matrixfree import PPESolverFCCDMatrixFree
 from twophase.simulation.divergence_ops import FCCDDivergenceOperator
 from twophase.simulation.ns_pipeline import TwoPhaseNSSolver
-from twophase.simulation.ns_step_services import _interface_supported_curvature
+from twophase.simulation.ns_step_state import NSStepState
+from twophase.simulation.ns_step_services import (
+    _capillary_interface_psi,
+    _interface_supported_curvature,
+)
 from twophase.levelset.curvature_psi import CurvatureCalculatorPsi
 from twophase.levelset.fccd_advection import FCCDLevelSetAdvection
 from twophase.simulation.config_io import ExperimentConfig
@@ -552,6 +556,44 @@ def test_ns_pipeline_advances_interface_with_projected_face_velocity():
     assert solver._transport.step_index == 4
     assert not solver._transport.nodal_advance_called
     np.testing.assert_allclose(state.psi, psi + 1.0)
+    np.testing.assert_allclose(state.psi_previous, psi)
+
+
+def test_p2_midpoint_capillary_interface_uses_temporal_midpoint():
+    """Semi-implicit P2 route must evaluate capillary geometry at ψ^{n+1/2}."""
+    psi_previous = np.asarray([[0.0, 0.2], [0.4, 0.6]])
+    psi_current = np.asarray([[0.4, 0.6], [0.8, 1.0]])
+    state = NSStepState(
+        psi=psi_current,
+        u=np.zeros_like(psi_current),
+        v=np.zeros_like(psi_current),
+        dt=0.1,
+        rho_l=1000.0,
+        rho_g=1.0,
+        sigma=0.072,
+        mu=0.0,
+        g_acc=0.0,
+        rho_ref=500.5,
+        mu_l=None,
+        mu_g=None,
+        bc_hook=None,
+        step_index=1,
+        psi_previous=psi_previous,
+    )
+
+    midpoint = _capillary_interface_psi(
+        xp=np,
+        state=state,
+        curvature_method="transport_variational_p2_midpoint",
+    )
+    current = _capillary_interface_psi(
+        xp=np,
+        state=state,
+        curvature_method="transport_variational_p2",
+    )
+
+    np.testing.assert_allclose(midpoint, 0.5 * (psi_previous + psi_current))
+    np.testing.assert_allclose(current, psi_current)
 
 
 @pytest.mark.parametrize(

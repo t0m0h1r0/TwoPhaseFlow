@@ -17,6 +17,12 @@ from ..coupling.capillary_geometry import apply_wall_compatible_curvature
 from .ns_step_state import NSStepState
 
 IMEX_BDF2_PROJECTION_FACTOR = 2.0 / 3.0
+_JUMP_CURVATURE_METHODS = {
+    "face_implicit",
+    "transport_variational",
+    "transport_variational_p2",
+    "transport_variational_p2_midpoint",
+}
 
 
 def _backend_is_gpu(backend) -> bool:
@@ -35,6 +41,26 @@ def _apply_solver_interface_jump(ppe_solver, base_pressure):
     return base_pressure
 
 
+def _capillary_interface_psi(*, xp, state: NSStepState, curvature_method: str):
+    """Return the interface geometry used by the capillary jump operator.
+
+    A3 mapping:
+      Equation: ``g_Γ^{n+1/2}=∂E_{Γ,h}(ψ^{n+1/2})`` with
+      ``ψ^{n+1/2}=(ψ^n+ψ^{n+1})/2`` for the midpoint P2 route.
+      Discretization: ``ψ^n`` is the operation-local previous step state,
+      already remapped to the current grid when the fitted grid rebuilds.
+      Code: pressure-jump and face-corrector contexts receive the same
+      backend-native ``interface_psi`` temporary.
+    """
+    if (
+        curvature_method == "transport_variational_p2_midpoint"
+        and state.psi_previous is not None
+    ):
+        half = xp.asarray(0.5, dtype=xp.asarray(state.psi).dtype)
+        return half * (xp.asarray(state.psi_previous) + xp.asarray(state.psi))
+    return state.psi
+
+
 def _pressure_face_flux_kwargs(
     *,
     xp,
@@ -42,6 +68,7 @@ def _pressure_face_flux_kwargs(
     ppe_runtime,
     interface_sigma: float | None = None,
     curvature_method: str = "psi_direct_filtered",
+    interface_psi=None,
 ) -> dict:
     """Return face-pressure kwargs for the projection-native pressure law.
 
@@ -68,17 +95,12 @@ def _pressure_face_flux_kwargs(
         kwargs["interface_stress_context"] = (
             build_young_laplace_interface_stress_context(
                 xp=xp,
-                psi=state.psi,
+                psi=state.psi if interface_psi is None else interface_psi,
                 kappa_lg=state.kappa,
                 sigma=sigma,
                 face_curvature_method=(
                     curvature_method
-                    if curvature_method
-                    in {
-                        "face_implicit",
-                        "transport_variational",
-                        "transport_variational_p2",
-                    }
+                    if curvature_method in _JUMP_CURVATURE_METHODS
                     else "nodal_cut_face"
                 ),
             )
@@ -682,18 +704,18 @@ def solve_ns_pressure_stage(
         state.debug_scalars.append(xp.max(xp.abs(rhs)))
     if hasattr(ppe_solver, "set_interface_jump_context"):
         jump_sigma = state.sigma if surface_tension_scheme == "pressure_jump" else 0.0
+        interface_psi = _capillary_interface_psi(
+            xp=xp,
+            state=state,
+            curvature_method=curvature_method,
+        )
         ppe_solver.set_interface_jump_context(
-            psi=state.psi,
+            psi=interface_psi,
             kappa=state.kappa,
             sigma=jump_sigma,
             face_curvature_method=(
                 curvature_method
-                if curvature_method
-                in {
-                    "face_implicit",
-                    "transport_variational",
-                    "transport_variational_p2",
-                }
+                if curvature_method in _JUMP_CURVATURE_METHODS
                 else "nodal_cut_face"
             ),
         )
@@ -725,6 +747,11 @@ def solve_ns_pressure_stage(
         and hasattr(div_op, "reconstruct_nodes")
     ):
         jump_sigma = state.sigma if surface_tension_scheme == "pressure_jump" else 0.0
+        interface_psi = _capillary_interface_psi(
+            xp=xp,
+            state=state,
+            curvature_method=curvature_method,
+        )
         state.pressure_accel_face_components = div_op.pressure_fluxes(
             state.pressure,
             state.rho,
@@ -734,6 +761,7 @@ def solve_ns_pressure_stage(
                 ppe_runtime=ppe_runtime,
                 interface_sigma=jump_sigma,
                 curvature_method=curvature_method,
+                interface_psi=interface_psi,
             ),
         )
     next_p_prev_dev = xp.copy(state.pressure)

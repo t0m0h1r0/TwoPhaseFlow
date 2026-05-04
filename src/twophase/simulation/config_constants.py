@@ -86,6 +86,7 @@ _CURVATURE_SCHEMES = (
     "face_implicit",
     "transport_variational",
     "transport_variational_p2",
+    "transport_variational_p2_midpoint",
 )
 _CURVATURE_SCHEME_ALIASES = {
     "psi_direct": "psi_direct_filtered",
