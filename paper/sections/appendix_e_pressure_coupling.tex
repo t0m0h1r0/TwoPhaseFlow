@@ -1,0 +1,39 @@
+% paper/sections/appendix_e_pressure_coupling.tex
+%
+% 付録: 圧力ソルバーと連成解析（§8-9 対応）
+%   HFE 格子収束検証は本文 U6-c（§12.4）に集約済み。
+
+\section{圧力ソルバーと連成解析}
+\label{app:pressure_coupling}
+
+%% E.1 欠陥補正法の理論と係数導出
+\subsection{欠陥補正法の理論と係数導出}
+\label{app:dc_theory}
+\input{sections/appendix_e1_1_dc_thomas_coefficients}   %% E.1.1 Thomas 三重対角係数
+\input{sections/appendix_e1_2_dc_dtau_convergence}      %% E.1.2 収束率解析と最適 Δτ
+\input{sections/appendix_e1_3_dc_spectral_convergence}  %% E.1.3 収束理論（スペクトル解析）
+
+%% E.2 CCD 陰解法と仮想時間反復（アルゴリズム＋精度検証）
+\input{sections/appendix_e2_ppe_pseudotime}    %% E.2 本体（仮想時間ステップ反復）
+
+%% E.2 末尾 (archived): CCD仮想時間精度検証 → _archived/appD8_ccd_pseudotime_verification.tex
+%%   理由: 本文から参照ゼロ (app:ccd_pseudotime, app:ccd_case1/2/3 すべて未参照)
+
+%% E.3 FVM 基準手法の定式化と精度解析（面係数・CSF・BF 精度解析）
+\input{sections/appendix_e3_fvm_csf_bf_reference} %% E.3 FVM + CSF + BF 精度解析
+
+%% E.4 圧力ステップの補足
+\subsection{圧力ステップの補足}
+\label{app:pressure_step_details}
+
+本節では，本文の統合更新手順で過度に詳細となる
+IMEX--BDF2 予測子と DC-PPE 反復アルゴリズムのみを補足する．
+HFE 場延長の格子収束検証は，本文 U6-c
+（§~\ref{sec:U6_split_ppe_dc_hfe}，表~\ref{tab:U6_hfe}，図~\ref{fig:ch12_u6_hfe_field}）
+に集約し，本付録では重複掲載しない．
+
+%% IMEX--BDF2 予測子の補足
+\input{sections/appendix_e4_1_predictor_imex_bdf2}
+
+%% DC-PPE ソルバーの反復アルゴリズム
+\input{sections/appendix_e4_2_dc_ppe_iteration}

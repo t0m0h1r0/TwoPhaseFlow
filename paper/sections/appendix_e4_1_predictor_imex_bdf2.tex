@@ -1,0 +1,66 @@
+% paper/sections/appendix_e4_1_predictor_imex_bdf2.tex
+% 付録 E.4.1: IMEX--BDF2 予測子と圧力履歴延長の補足
+
+\subsubsection{IMEX--BDF2 予測子と粘性 Helmholtz DC の補足}
+\label{app:predictor_imex_bdf2_detail}
+
+本節は，統合更新手順の運動量予測段を
+§~\ref{sec:time_level1} と §~\ref{sec:time_viscous} の記法に合わせて補足する．
+旧稿の ADI 型予測子ではなく，現行経路は
+NS 対流を EXT2 外挿，粘性を implicit--BDF2 の全応力 Helmholtz 系で扱う
+IMEX--BDF2 予測子である．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{ベクトル形式と成分表示}
+\label{app:predictor_components}
+
+予測子のベクトル形式は §~\ref{sec:time_level1} の
+式~\eqref{eq:predictor_imex_bdf2} と同じである：
+\begin{align*}
+  \mathcal{C}^{\mathrm{EXT2}}
+    &= 2\mathcal{C}_{\mathrm{CCD}}(\bu^n,\bu^n)
+       - \mathcal{C}_{\mathrm{CCD}}(\bu^{n-1},\bu^{n-1}), \\
+  \frac{3\bu^* - 4\bu^n + \bu^{n-1}}{2\Delta t}
+    &= -\mathcal{C}^{\mathrm{EXT2}}
+       + \rho^{-1}\mathcal{D}_{\nu,H}(\mu^{n+1},\bu^*) \\
+    &\quad - \rho^{-1}\mathcal{G}_{\Gamma}p^n
+       + \bm{a}^{\,n+1}_{\mathrm{res}}
+       + \bm{a}^{\,n+1}_{\sigma,\mathrm{path}} .
+\end{align*}
+ここで $\mathcal{G}_{\Gamma}$ は経路別の圧力勾配演算子であり，
+一括 PPE 経路では $\mathcal{G}$，分相 PPE 経路では
+ジャンプ補正込みの $\mathcal{G}^{\mathrm{adj}}_{\Gamma}$ を表す．
+$y$ 成分は上式の第2成分を取ればよく，$D_x^{(1)}v$，
+$D_y^{(1)}v$ を含む対流項も EXT2 の同じ外挿で閉じる．
+
+\paragraph{粘性ブロックの閉じ方}
+全応力粘性は
+\[
+  A_H\bu^* = \mathcal{R}^{n,n-1},
+  \qquad
+  A_H = I-\gamma\Delta t\,\mathcal{L}_{\nu,H},
+  \qquad \gamma=\frac{2}{3}
+\]
+の Helmholtz 系として扱う．高次残差
+$r^{(m)}=\mathcal{R}^{n,n-1}-A_H\bu^{(m)}$ を評価し，
+同じ $\rho,\mu$，境界位相，界面帯を共有する低次 Helmholtz
+$A_L\delta\bu^{(m+1)}=r^{(m)}$ を解いて更新する．
+この DC は固定点 $A_H\bu=\mathcal{R}^{n,n-1}$ を変えないため，
+到達先の精度は高次全応力残差で判定する．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{HFE（圧力場延長）——分相 PPE 経路}
+\label{app:hfe_predictor}
+
+\noindent\textbf{CSF + smoothed-Heaviside 一括解法ではこのステップは省略する．}
+圧力場 $p$ が $\varepsilon$-regularized で既に滑らかなため，
+HFE は不要であり，むしろ有害である（§~\ref{sec:ppe_discretization_choice}）．
+
+分相 PPE 解法（§~\ref{sec:split_ppe_motivation}）では，
+圧力場が Young--Laplace ジャンプ $j_{gl}=p_g-p_l=-\sigma\kappa_{lg}$ を陽に持つため，
+PPE 求解前に $p^n$ を HFE で界面越しに延長する：
+\[
+  p^n_{\mathrm{ext}} = \text{HermiteExtension}(p^n,\; \phi^{n+1},\; \hat{\bm{n}}^{n+1})
+\]
+これにより CCD ステンシルが界面をまたいで参照する際の Gibbs 振動を除去し，
+$\bnabla p^n$ の $\Ord{h^6}$ 精度を保つ（§~\ref{sec:field_extension}）．

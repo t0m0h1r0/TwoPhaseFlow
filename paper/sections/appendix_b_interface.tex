@@ -1,0 +1,18 @@
+% paper/sections/appendix_b_interface.tex
+%
+% 付録（界面表現・物性補間・CSF モデル関連の補足証明）
+%   app:newton_quad_conv  — ψ→φ ニュートン法の二次収束
+%   app:onefluid_1d       — One-Fluid 化の 1 次元検証
+%   app:mu_interp_derivation — μ 算術平均の近似導出
+%   app:csf_delta_precision  — |∇ψ| ≈ δ_s の精度証明
+%   app:cls_fixed_point      — CLS 再初期化方程式の設計動機と不動点証明
+%
+% 内容は各 _s*.tex に分割管理されている（重複防止のため \input で委譲）
+
+\section{界面表現・物性補間・CLS の補足証明}
+\label{app:interface_math}
+
+\input{sections/appendix_b1_psi_phi_newton}       %% B.1 ψ→φ Newton 二次収束証明
+\input{sections/appendix_b2_onefluid_properties}  %% B.2 One-Fluid 化と物性補間
+\input{sections/appendix_b3_csf_delta_precision}  %% B.3 |∇ψ|≈δ_s の精度：Eikonal 条件下 O(ε²)
+\input{sections/appendix_b4_cls_reinitialization} %% B.4 CLS 再初期化方程式の設計動機と不動点証明

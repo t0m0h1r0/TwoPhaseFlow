@@ -103,16 +103,18 @@ SINGLE_VORTEX_REINIT_METHOD = "ridge_eikonal"
 SINGLE_VORTEX_MASS_CORRECTION = True
 
 
-def _slotted_disk_phi(X, Y) -> np.ndarray:
+def _slotted_disk_phi(
+    X, Y, slot_width: float = SLOT_WIDTH, slot_length: float = SLOT_LENGTH
+) -> np.ndarray:
     """Signed-distance-like phi: phi > 0 inside disk minus slot."""
     cx, cy = DISK_CENTER
     rho = np.sqrt((X - cx) ** 2 + (Y - cy) ** 2)
     # Disk: inside = R - rho > 0
     in_disk = DISK_R - rho
     # Slot: rectangle x in [cx-w/2, cx+w/2], y in [cy-R, cy-R+slot_len]
-    sx = np.abs(X - cx) - SLOT_WIDTH / 2.0  # >0 outside slot in x
+    sx = np.abs(X - cx) - slot_width / 2.0  # >0 outside slot in x
     sy_lo = (cy - DISK_R) - Y               # >0 below slot
-    sy_hi = Y - (cy - DISK_R + SLOT_LENGTH)  # >0 above slot
+    sy_hi = Y - (cy - DISK_R + slot_length)  # >0 above slot
     # In-slot when sx<0 and sy_lo<0 and sy_hi<0
     in_slot = np.maximum(np.maximum(sx, sy_lo), sy_hi)  # >0 outside slot
     # phi = min(in_disk, in_slot) so >0 only when in_disk>0 AND in_slot>0
@@ -159,7 +161,14 @@ def _host_mesh(backend, grid) -> tuple[np.ndarray, np.ndarray]:
     return np.asarray(backend.to_host(mesh_x)), np.asarray(backend.to_host(mesh_y))
 
 
-def _make_single_vortex_operators(backend, grid, eps: float):
+def _make_single_vortex_operators(
+    backend,
+    grid,
+    eps: float,
+    *,
+    reinit_method: str = SINGLE_VORTEX_REINIT_METHOD,
+    mass_correction: bool = SINGLE_VORTEX_MASS_CORRECTION,
+):
     """Build advection and Ridge-Eikonal operators for the active grid."""
     ccd_solver = CCDSolver(grid, backend, bc_type="wall")
     fccd_solver = FCCDSolver(grid, backend, bc_type="wall", ccd_solver=ccd_solver)
@@ -169,8 +178,8 @@ def _make_single_vortex_operators(backend, grid, eps: float):
     reinitializer = Reinitializer(
         backend, grid, ccd_solver, eps,
         n_steps=4,
-        method=SINGLE_VORTEX_REINIT_METHOD,
-        mass_correction=SINGLE_VORTEX_MASS_CORRECTION,
+        method=reinit_method,
+        mass_correction=mass_correction,
     )
     return ccd_solver, levelset_advection, reinitializer
 
@@ -202,7 +211,18 @@ def _measure_centroid_area(psi_h, X_h, Y_h, dV_h):
     return V, cx, cy
 
 
-def _run(N: int, alpha: float, n_steps: int = 200) -> dict:
+def _run(
+    N: int,
+    alpha: float,
+    n_steps: int = 200,
+    *,
+    shape: str = "slot",
+    slot_width: float = SLOT_WIDTH,
+    slot_length: float = SLOT_LENGTH,
+    eps_ratio: float = 1.5,
+    cfl: float = 0.25,
+    mass_correction_every: int = ZALESAK_MASS_CORRECTION_EVERY,
+) -> dict:
     backend = Backend(use_gpu=False)
     xp = backend.xp
     cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0),
@@ -211,11 +231,16 @@ def _run(N: int, alpha: float, n_steps: int = 200) -> dict:
     ccd = CCDSolver(grid, backend, bc_type="periodic")
 
     h_uniform = 1.0 / N
-    eps_init = 1.5 * h_uniform
+    eps_init = eps_ratio * h_uniform
     X0, Y0 = grid.meshgrid()
     X0_h = np.asarray(backend.to_host(X0))
     Y0_h = np.asarray(backend.to_host(Y0))
-    phi0_h = _slotted_disk_phi(X0_h, Y0_h)
+    if shape == "slot":
+        phi0_h = _slotted_disk_phi(X0_h, Y0_h, slot_width, slot_length)
+    elif shape == "circle":
+        phi0_h = _circle_phi(X0_h, Y0_h, center=DISK_CENTER, radius=DISK_R)
+    else:
+        raise ValueError(f"unknown Zalesak diagnostic shape {shape!r}")
     psi0_h = 1.0 / (1.0 + np.exp(-phi0_h / eps_init))
     if alpha > 1.0:
         grid.update_from_levelset(backend.to_device(psi0_h), eps_init, ccd=ccd)
@@ -223,10 +248,10 @@ def _run(N: int, alpha: float, n_steps: int = 200) -> dict:
     fccd = FCCDSolver(grid, backend, bc_type="periodic", ccd_solver=ccd)
 
     h_min = _grid_h_min(grid)
-    eps = 1.5 * h_min
+    eps = eps_ratio * h_min
     omega = 2.0 * np.pi / T_REV
     u_max = omega * 0.5 * np.sqrt(2.0)  # max |u| at corners
-    dt_est = 0.25 * h_min / max(u_max, 1e-3)
+    dt_est = cfl * h_min / max(u_max, 1e-3)
     n_steps = int(np.ceil(T_REV / dt_est))
     dt = T_REV / n_steps
 
@@ -235,7 +260,10 @@ def _run(N: int, alpha: float, n_steps: int = 200) -> dict:
     Y_h = np.asarray(backend.to_host(Y))
     dV_h = np.asarray(backend.to_host(grid.cell_volumes()))
 
-    phi_h = _slotted_disk_phi(X_h, Y_h)
+    if shape == "slot":
+        phi_h = _slotted_disk_phi(X_h, Y_h, slot_width, slot_length)
+    else:
+        phi_h = _circle_phi(X_h, Y_h, center=DISK_CENTER, radius=DISK_R)
     psi_h = 1.0 / (1.0 + np.exp(-phi_h / eps))  # H_eps for transport mass
     psi0_active = psi_h.copy()
     mass0 = float(np.sum(psi0_active * dV_h))
@@ -249,7 +277,7 @@ def _run(N: int, alpha: float, n_steps: int = 200) -> dict:
     mass_correction_count = 0
     for step in range(n_steps):
         psi_h = _fccd_advect(psi_h, u, v, ls_adv, backend, dt)
-        if (step + 1) % ZALESAK_MASS_CORRECTION_EVERY == 0:
+        if mass_correction_every > 0 and (step + 1) % mass_correction_every == 0:
             psi_h = _mass_reinitialize(psi_h, backend, dV_h, mass0)
             mass_correction_count += 1
 
@@ -262,8 +290,10 @@ def _run(N: int, alpha: float, n_steps: int = 200) -> dict:
                      / max(np.sum(dV_h), 1e-12))
 
     return {
-        "N": N, "alpha": alpha, "h_min": h_min, "dt": dt, "n_steps": n_steps,
-        "mass_correction_every": ZALESAK_MASS_CORRECTION_EVERY,
+        "N": N, "alpha": alpha, "shape": shape, "slot_width": slot_width,
+        "slot_length": slot_length, "eps_ratio": eps_ratio, "cfl": cfl,
+        "h_min": h_min, "dt": dt, "n_steps": n_steps,
+        "mass_correction_every": mass_correction_every,
         "mass_correction_count": mass_correction_count,
         "V0": mass0, "V_T": mass_T, "area0": area0, "area_T": area_T,
         "cx0": cx0, "cy0": cy0, "cx_T": cx_T, "cy_T": cy_T,
@@ -273,7 +303,19 @@ def _run(N: int, alpha: float, n_steps: int = 200) -> dict:
     }
 
 
-def _run_single_vortex(N: int = SINGLE_VORTEX_N, alpha: float = SINGLE_VORTEX_ALPHA) -> dict:
+def _run_single_vortex(
+    N: int = SINGLE_VORTEX_N,
+    alpha: float = SINGLE_VORTEX_ALPHA,
+    *,
+    T: float = SINGLE_VORTEX_T,
+    eps_ratio: float = 1.5,
+    cfl: float = 0.25,
+    phase_divisions: int = SINGLE_VORTEX_PHASE_DIVISIONS,
+    reinit_every: int = SINGLE_VORTEX_REINIT_EVERY,
+    reinit_method: str = SINGLE_VORTEX_REINIT_METHOD,
+    mass_correction: bool = SINGLE_VORTEX_MASS_CORRECTION,
+    grid_rebuild_every_override: int | None = None,
+) -> dict:
     backend = Backend(use_gpu=False)
     cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0),
                                             alpha_grid=alpha))
@@ -281,7 +323,7 @@ def _run_single_vortex(N: int = SINGLE_VORTEX_N, alpha: float = SINGLE_VORTEX_AL
     ccd = CCDSolver(grid, backend, bc_type="wall")
 
     h_uniform = 1.0 / N
-    eps_init = 1.5 * h_uniform
+    eps_init = eps_ratio * h_uniform
     X0, Y0 = grid.meshgrid()
     X0_h = np.asarray(backend.to_host(X0))
     Y0_h = np.asarray(backend.to_host(Y0))
@@ -290,7 +332,7 @@ def _run_single_vortex(N: int = SINGLE_VORTEX_N, alpha: float = SINGLE_VORTEX_AL
         grid.update_from_levelset(backend.to_device(psi_seed), eps_init, ccd=ccd)
 
     h_min = _grid_h_min(grid)
-    eps = 1.5 * h_min
+    eps = eps_ratio * h_min
     X_h, Y_h = _host_mesh(backend, grid)
     dV_h = np.asarray(backend.to_host(grid.cell_volumes()))
     psi0_h = 1.0 / (1.0 + np.exp(-_circle_phi(X_h, Y_h) / eps))
@@ -300,33 +342,44 @@ def _run_single_vortex(N: int = SINGLE_VORTEX_N, alpha: float = SINGLE_VORTEX_AL
     V0 = float(np.sum(psi0_h * dV_h))
     area0 = float(np.sum((psi0_h > 0.5) * dV_h))
 
-    u0, v0 = _single_vortex_velocity(X_h, Y_h, 0.0, SINGLE_VORTEX_T)
+    u0, v0 = _single_vortex_velocity(X_h, Y_h, 0.0, T)
     max_speed = float(np.max(np.sqrt(u0 * u0 + v0 * v0)))
-    dt_est = 0.25 * h_min / max(max_speed, 1e-3)
-    n_steps = int(np.ceil(SINGLE_VORTEX_T / dt_est))
+    dt_est = cfl * h_min / max(max_speed, 1e-3)
+    n_steps = int(np.ceil(T / dt_est))
     n_steps = int(
-        np.ceil(n_steps / SINGLE_VORTEX_PHASE_DIVISIONS) * SINGLE_VORTEX_PHASE_DIVISIONS
+        np.ceil(n_steps / phase_divisions) * phase_divisions
     )
-    dt = SINGLE_VORTEX_T / n_steps
-    steps_per_snapshot = n_steps // SINGLE_VORTEX_PHASE_DIVISIONS
-    phase_fractions = np.linspace(0.0, 1.0, SINGLE_VORTEX_PHASE_DIVISIONS + 1)
-    phase_times = SINGLE_VORTEX_T * phase_fractions
+    dt = T / n_steps
+    steps_per_snapshot = n_steps // phase_divisions
+    phase_fractions = np.linspace(0.0, 1.0, phase_divisions + 1)
+    phase_times = T * phase_fractions
     phase_psi = [psi_h.copy()]
     phase_X = [X_h.copy()]
     phase_Y = [Y_h.copy()]
 
-    ccd, ls_adv, reinit = _make_single_vortex_operators(backend, grid, eps)
+    ccd, ls_adv, reinit = _make_single_vortex_operators(
+        backend,
+        grid,
+        eps,
+        reinit_method=reinit_method,
+        mass_correction=mass_correction,
+    )
     t = 0.0
     reinit_count = 0
     grid_rebuild_count = 0
-    grid_rebuild_every = SINGLE_VORTEX_GRID_REBUILD_EVERY if alpha > 1.0 else 0
+    base_grid_rebuild_every = (
+        SINGLE_VORTEX_GRID_REBUILD_EVERY
+        if grid_rebuild_every_override is None
+        else grid_rebuild_every_override
+    )
+    grid_rebuild_every = base_grid_rebuild_every if alpha > 1.0 else 0
     grid_rebuild_steps = []
     h_min_history = [h_min]
     for step in range(n_steps):
         t_mid = t + 0.5 * dt
-        u, v = _single_vortex_velocity(X_h, Y_h, t_mid, SINGLE_VORTEX_T)
+        u, v = _single_vortex_velocity(X_h, Y_h, t_mid, T)
         psi_h = _fccd_advect(psi_h, u, v, ls_adv, backend, dt)
-        if (step + 1) % SINGLE_VORTEX_REINIT_EVERY == 0:
+        if reinit_every > 0 and (step + 1) % reinit_every == 0:
             psi_h = np.asarray(
                 backend.to_host(reinit.reinitialize(backend.to_device(psi_h)))
             )
@@ -336,7 +389,13 @@ def _run_single_vortex(N: int = SINGLE_VORTEX_N, alpha: float = SINGLE_VORTEX_AL
             and (step + 1) % grid_rebuild_every == 0
         ):
             psi_h = _rebuild_single_vortex_grid(psi_h, backend, grid, ccd, eps, V0)
-            ccd, ls_adv, reinit = _make_single_vortex_operators(backend, grid, eps)
+            ccd, ls_adv, reinit = _make_single_vortex_operators(
+                backend,
+                grid,
+                eps,
+                reinit_method=reinit_method,
+                mass_correction=mass_correction,
+            )
             X_h, Y_h = _host_mesh(backend, grid)
             dV_h = np.asarray(backend.to_host(grid.cell_volumes()))
             grid_rebuild_count += 1
@@ -350,7 +409,7 @@ def _run_single_vortex(N: int = SINGLE_VORTEX_N, alpha: float = SINGLE_VORTEX_AL
     phase_psi_h = np.stack(phase_psi, axis=0)
     phase_X_h = np.stack(phase_X, axis=0)
     phase_Y_h = np.stack(phase_Y, axis=0)
-    psi_half = phase_psi_h[SINGLE_VORTEX_PHASE_DIVISIONS // 2]
+    psi_half = phase_psi_h[phase_divisions // 2]
 
     if grid_rebuild_count > 0:
         to_initial = build_grid_remapper(
@@ -376,11 +435,12 @@ def _run_single_vortex(N: int = SINGLE_VORTEX_N, alpha: float = SINGLE_VORTEX_AL
     )
 
     return {
-        "N": N, "alpha": alpha, "h_min": h_min, "dt": dt, "n_steps": n_steps,
-        "reinit_every": SINGLE_VORTEX_REINIT_EVERY,
+        "N": N, "alpha": alpha, "T": T, "eps_ratio": eps_ratio, "cfl": cfl,
+        "h_min": h_min, "dt": dt, "n_steps": n_steps,
+        "reinit_every": reinit_every,
         "reinit_count": reinit_count,
-        "reinit_method": SINGLE_VORTEX_REINIT_METHOD,
-        "mass_correction": SINGLE_VORTEX_MASS_CORRECTION,
+        "reinit_method": reinit_method,
+        "mass_correction": mass_correction,
         "grid_rebuild_every": grid_rebuild_every,
         "grid_rebuild_count": grid_rebuild_count,
         "grid_rebuild_steps": np.asarray(grid_rebuild_steps, dtype=int),
@@ -388,7 +448,7 @@ def _run_single_vortex(N: int = SINGLE_VORTEX_N, alpha: float = SINGLE_VORTEX_AL
         "V0": V0, "V_T": V_T, "area0": area0, "area_T": area_T,
         "volume_drift": volume_drift, "area_drift": area_drift, "reversal_l1": reversal_l1,
         "X": X_h, "Y": Y_h, "psi0": psi0_h, "psi_half": psi_half, "psi_T": psi_h,
-        "phase_divisions": SINGLE_VORTEX_PHASE_DIVISIONS,
+        "phase_divisions": phase_divisions,
         "phase_fractions": phase_fractions, "phase_times": phase_times,
         "phase_psi": phase_psi_h, "phase_X": phase_X_h, "phase_Y": phase_Y_h,
     }

@@ -1,0 +1,196 @@
+\subsubsection{収束率解析と最適 \texorpdfstring{$\Delta\tau$}{Δτ} の導出}
+\label{sec:dtau_derive}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+本付録は §\ref{sec:ppe_pseudotime} で使用した収束率指標
+$\gamma(t) = (1+t^2)/(1+t)^2$ を導出し，最適擬似時間刻み $\Delta\tau_{\mathrm{opt}}$ を
+理論的に確定する．
+
+\subsubsection*{設定}
+
+スウィープ型擬似時間 PPE 反復の1ステップを
+\begin{equation}
+  (\mathbf{I} + \Delta\tau \mathcal{L}_x)(\mathbf{I} + \Delta\tau \mathcal{L}_y)\,
+  p^{m+1} = p^m + \Delta\tau\,q_h
+  \label{eq:dtau_sweep}
+\end{equation}
+と書く．ここで $\mathcal{L}_h = \mathcal{L}_x + \mathcal{L}_y$ は
+PPE 演算子 $-\nabla\cdot(1/\rho\,\nabla)$ の CCD 離散化の $x$・$y$ 方向分割である．
+符号規約に注意：$\mathcal{L}_h \equiv -\mathbf{L}_{\mathrm{CCD}}^{\rho}$
+（付録~\ref{app:ccd_kronecker} の $\mathbf{L}_{\mathrm{CCD}}^{\rho}$ は
+$\nabla\cdot(1/\rho\,\nabla)$ の離散化で負半定値；
+本付録の $\mathcal{L}_h$ はその符号反転で固有値 $\lambda_x,\lambda_y \ge 0$）．
+この符号規約により式~\eqref{eq:pseudo_parabolic} の誤差方程式
+$\partial e/\partial\tau = -\mathcal{L}_h\,e$ が安定（減衰）となる．
+
+\textbf{スプリッティング不動点．}
+式 \eqref{eq:dtau_sweep} の不動点 $\tilde{p}$（$p^{m+1}=p^m=\tilde{p}$）は
+\[
+  \bigl(\mathcal{L}_h + \Delta\tau\,\mathcal{L}_x\mathcal{L}_y\bigr)\tilde{p} = q_h
+\]
+を満たす．これは元の PPE $\mathcal{L}_h p^* = q_h$ とは
+演算子レベルで $\Delta\tau\,\mathcal{L}_x\mathcal{L}_y$ だけ異なり（解の差は $\mathcal{O}(\Delta\tau)$），
+この差がスプリッティング誤差（~\ref{warn:ppe_splitting}）の根源である．
+
+\subsubsection*{誤差収縮の解析}
+
+誤差 $e^m \equiv p^m - \tilde{p}$ を定義する．
+式 \eqref{eq:dtau_sweep} から不動点方程式を辺々引くと
+\[
+  (\mathbf{I}+\Delta\tau\mathcal{L}_x)(\mathbf{I}+\Delta\tau\mathcal{L}_y)\,e^{m+1} = e^m
+\]
+となり，誤差は\textbf{斉次}の縮小方程式に従う．
+
+\subsubsection*{スカラー化}
+
+等方格子 $(\Delta x = \Delta y = h)$ かつ一様係数を仮定すると
+$\lambda_x = \lambda_y = \lambda/2$（$\lambda$ は $\mathcal{L}_h$ の固有値）．
+$t \equiv \Delta\tau\lambda/2$ とおけば，スペクトル解析から
+
+\begin{equation}
+  e^{m+1} = \frac{e^m}{(1+t)^2}
+  \label{eq:error_contraction}
+\end{equation}
+
+が得られる．すなわちスウィープ型反復は，スプリッティング不動点 $\tilde{p}$ への誤差を
+各反復ごとに $1/(1+t)^2$ 倍に縮小する（線形スカラー化モデルでは任意の $t > 0$ で縮小率 $< 1$）．
+
+\medskip
+\textbf{実用的な収束率指標 $\gamma(t)$ の導出．}
+上記の純粋な誤差縮小率 $1/(1+t)^2$ は $t \to \infty$ で $0$ に近づくため，
+「大きな $\Delta\tau$ が常に良い」と誤解される恐れがある．
+しかし大きな $\Delta\tau$ はスプリッティング不動点誤差 $\|\tilde{p} - p^*\| \sim \mathcal{O}(\Delta\tau^2)$
+をも拡大する．このトレードオフを捉える指標として，
+等方格子・一様係数・スカラー固有値 $\lambda$（$t = \Delta\tau\lambda/2$）の設定で
+$p^0 = 0$ から1スウィープ後の真の残差比を厳密に計算する．
+
+\textbf{1スウィープ後の解：} 式 \eqref{eq:dtau_sweep} に $p^0 = 0$ を代入すると
+$(1+t)^2 p^1 = \Delta\tau\,q_h$，すなわち $p^1 = \Delta\tau q_h/(1+t)^2$．
+真の解は $\lambda p^* = q_h$，$\Delta\tau = 2t/\lambda$ より
+$p^* = q_h/\lambda = \Delta\tau q_h/(2t)$．
+
+\textbf{残差比の計算：}
+\begin{align*}
+  r^0 &= \lambda(p^0 - p^*) = -q_h \\
+  r^1 &= \lambda(p^1 - p^*) = \lambda\!\left[\frac{\Delta\tau q_h}{(1+t)^2} - \frac{\Delta\tau q_h}{2t}\right]
+       = \lambda\,\Delta\tau\,q_h \cdot \frac{2t - (1+t)^2}{2t(1+t)^2}
+       = -q_h\cdot\frac{1+t^2}{(1+t)^2}
+\end{align*}
+ここで $2t-(1+t)^2 = -(1+t^2)$，$\lambda\,\Delta\tau = 2t$ を用いた．したがって：
+
+\begin{equation}
+  \gamma(t) \equiv \frac{|r^1|}{|r^0|} = \frac{1 + t^2}{(1+t)^2}
+  \label{eq:gamma_t}
+\end{equation}
+
+（$t > 0$ に対して $\gamma(t) < 1$；初期残差を1スウィープで $\gamma$ 倍に縮小する指標．）
+この指標は「収束速度」と「スプリッティング誤差下限」の両方を反映しており，
+$t \to 0$ でも $t \to \infty$ でも $\gamma \to 1$（収束が遅い）という正しい定性的挙動を示す．
+
+\subsubsection*{最適点の導出}
+
+$\gamma(t)$ を最小化する $t^*$ を求める：
+\begin{equation}
+  \frac{d\gamma}{dt} = \frac{2(t-1)}{(1+t)^3} = 0
+  \quad\Longrightarrow\quad t^* = 1
+\end{equation}
+
+このとき $\gamma(1) = 2/4 = 1/2$．すなわち最適擬似時間刻みでは
+$\gamma$ の意味で\textbf{1スウィープごとに収束率指標が最小値}をとり，
+収束と分割誤差のトレードオフが最も良くバランスする．
+
+$t^* = 1$ を $\Delta\tau$ に戻すと $\Delta\tau_{\mathrm{opt}} = 2/\lambda_{\max}$．
+CCD Laplacian の最大固有値は $\lambda_{\max} = 9.6\,a_{\max}/h^2$（$a_{\max}$ は最大逆密度係数）であるから
+
+\begin{equation}
+  \Delta\tau_{\mathrm{opt}} \approx \frac{2h^2}{9.6\,a_{\max}}
+                             \approx \frac{0.208\,h^2}{a_{\max}}
+  \label{eq:dtau_opt_derive}
+\end{equation}
+
+これは §\ref{sec:ppe_pseudotime} の経験的指針 $C \approx 1$ の理論的根拠となる．
+
+\subsubsection*{\texorpdfstring{$t \to 0$}{t → 0} および \texorpdfstring{$t \to \infty$}{t → ∞} の挙動}
+
+\begin{itemize}
+  \item $\gamma(t) \to 1$（$t \to 0$）：$\Delta\tau$ が小さすぎると誤差縮小率 $1/(1+t)^2 \to 1$ となり，
+        スプリッティング不動点 $\tilde{p}$ への収束が遅い．
+  \item $\gamma(t) \to 1$（$t \to \infty$）：$\Delta\tau$ が大きすぎるとスプリッティング不動点誤差
+        $\|\tilde{p} - p^*\| \sim \mathcal{O}(\Delta\tau^2)$ が拡大し，真の解 $p^*$ からの乖離が増す．
+  \item 最適点 $t=1$（$\Delta\tau = \Delta\tau_{\mathrm{opt}}$）：指標 $\gamma$ が最小値 $1/2$ をとり，
+        収束速度と分割誤差のトレードオフが最良にバランスする．
+        式~\eqref{eq:error_contraction} の純粋な誤差縮小率はこの点で $1/4$ であり，
+        収束は速いが分割誤差下限が残る（残差収束判定により実用上は問題ない；~\ref{warn:ppe_splitting} 参照）．
+\end{itemize}
+\qed
+
+\subsubsection*{CCD Laplacian の最大固有値 \texorpdfstring{$\lambda_{\max} = 9.6\,a_{\max}/h^2$}{λ\_max = 9.6 a\_max/h²} の導出}
+\label{sec:lambda_max_derive}
+
+§\ref{sec:ppe_pseudotime} の $\Delta\tau_{\mathrm{opt}} \approx 0.208\,h^2/a_{\max}$ は
+$\lambda_{\max} = 2/\Delta\tau_{\mathrm{opt}} = 9.6\,a_{\max}/h^2$ を前提とする．
+ここでは，この値の理論的な上限と，実際の数値的由来を示す．
+
+\medskip
+\noindent\textbf{Eq-II 単独の Fourier 解析（分離近似）．}
+
+CCD 第2微分方程式（Eq-II）を Fourier モード $f_j = e^{\mathrm{i}\xi j}$，
+$f''_j = -\Lambda/h^2 \cdot e^{\mathrm{i}\xi j}$（$\Lambda = \lambda^* h^2 > 0$）で解析すると，
+\[
+  \beta_2\!\left(-\frac{\Lambda}{h^2}\right)\!(e^{\mathrm{i}\xi}+e^{-\mathrm{i}\xi})
+  - \frac{\Lambda}{h^2}
+  = \frac{a_2}{h^2}(e^{\mathrm{i}\xi}+e^{-\mathrm{i}\xi}-2)
+\]
+整理して
+\begin{equation}
+  \Lambda(\xi) = \frac{4a_2 \sin^2(\xi/2)}{1 + 2\beta_2 \cos\xi}
+  \label{eq:lambda_fourier}
+\end{equation}
+$\beta_2=-1/8$，$a_2=3$ を代入し，$\cos\xi = 1-2\sin^2(\xi/2)$ を用いると
+$\Lambda(\xi) = 24\sin^2(\xi/2)/(3/2 + \sin^2(\xi/2))$．
+$d\Lambda/d(\sin^2(\xi/2)) > 0$（単調増加）より最大値は $\xi=\pi$（$\sin^2(\pi/2)=1$）で達成される：
+\begin{equation}
+  \Lambda_{\max}^{\mathrm{Eq\text{-}II}} = \frac{24\cdot 1}{3/2 + 1} = \frac{24}{5/2} = 9.6
+  \quad\Longrightarrow\quad
+  \lambda_{\max}^{\mathrm{Eq\text{-}II}} = \frac{9.6}{h^2}
+  \label{eq:lambda_max_theoretical}
+\end{equation}
+
+\medskip
+\noindent\textbf{Eq-I・Eq-II 連立系の効果と数値的最大固有値．}
+
+CCD は Eq-I（第1微分）と Eq-II（第2微分）を\textbf{同時に}解く連立系であり，
+Eq-II の右辺に $f'$ 値との結合項（係数 $b_2=3/2$）が含まれる．
+この結合項は $\xi=\pi$（$\sin\pi=0$）では消滅するため，
+$\xi=\pi$ での最大値 $\Lambda(\pi)=9.6$ は連立系でも変わらない．
+しかし，Neumann 境界条件（$f'_0=0$，$f'_{N-1}=0$ を境界行で強制）を持つ
+有限格子数 $N$ の境界値問題では，周期 Fourier 解析の固有値と実際の行列スペクトルが異なる．
+
+§~\ref{sec:verify_ccd_spectral_radius} の数値計測により，
+CCD $D^{(2)}$ 行列の最大固有値は壁境界条件の有限格子（$N = 32$--$256$）でも
+$\lambda_{\max} h^2 = 9.60 \pm 0.01$ であり，
+Fourier 解析の理論値~\eqref{eq:lambda_max_theoretical} と一致する．
+以前の $\approx 3.43/h^2$ は PPE 擬似時間ステップの実験的チューニングに
+由来する値であり，$D^{(2)}$ のスペクトル半径ではない．
+
+\begin{tcolorbox}[mybox, title={CCD $D^{(2)}$ スペクトル半径のまとめ}]
+\begin{center}
+\PaperTableSetup
+\begin{tabular}{lc}
+\hline
+解析の種類 & $\lambda_{\max} h^2$（$a=1$）\\
+\hline
+Eq-II 単独 Fourier 解析（式~\eqref{eq:lambda_max_theoretical}） & $9.6$ \\
+Eq-I+II 連立 Fourier 解析（$\xi=\pi$，coupling 消滅） & $9.6$ \\
+壁 BC 有限格子（$N = 32$--$256$，数値固有値；§~\ref{sec:verify_ccd_spectral_radius}） & $9.60 \pm 0.01$ \\
+FD 中心差分 $D^{(2)}_{\mathrm{FD}}$（同一格子） & $4.00$ \\
+\hline
+\end{tabular}
+\end{center}
+Fourier 理論値 $9.6/h^2$ は有限格子でも維持される（FD 中心差分の 2.4 倍）．
+明示的粘性 CFL 安定限界は $\nu\Delta t/h^2 < 1/(2 \times 9.6) \approx 0.052$ であり，
+implicit--BDF2 粘性 Helmholtz 系（§~\ref{sec:time_viscous}；U8-c/U8-d は
+§~\ref{sec:U8_time_integration}）によりこの制約は回避される．
+\end{tcolorbox}
+
+% ═══════════════════════════════════════════════════════════════════════════════

@@ -1,0 +1,221 @@
+\subsection{FVM 基準手法の定式化と精度解析}
+\label{app:fvm_reference_methods}
+
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsubsection{\texorpdfstring{PPE 面係数 $a_f = 2/(\rho_L+\rho_R)$ の積分論理と周期境界対応}{PPE 面係数 a\_f = 2/(ρ\_L+ρ\_R) の積分論理と周期境界対応}}
+\label{app:fvm_face_coeff}
+\label{sec:fvm_face_coeff}
+% ═══════════════════════════════════════════════════════════════════════════════
+%% ※ 旧 08g_fvm_note.tex の内容を統合
+
+PPE 演算子 $\bnabla\cdot(a\bnabla p)$（$a \equiv 1/\rho$）を FVM で離散化すると，
+フェイス面係数として\textbf{調和平均}が自然に現れる：
+\begin{equation}
+  a_f = \frac{2}{\rho_L + \rho_R}
+  \label{eq:af_exact}
+\end{equation}
+よくある係数取り違えとして，$\rho$ の調和平均の逆数
+$(\rho_L+\rho_R)/(2\rho_L\rho_R)$ は式~\eqref{eq:af_exact} ではない．
+式~\eqref{eq:af_exact} は，低次 FVM 基準離散化，周期境界の参照行列，
+および §~\ref{sec:fvm_ccd_corrector} の面フラックス整合を説明するための
+面係数である．本稿の高密度比・低 Weber 数経路では，smoothed-Heaviside
+一括 PPE にこの係数だけを入れて閉じるのではなく，
+分相 PPE + 圧力ジャンプ条件 + HFE（§~\ref{sec:split_ppe_framework},
+§~\ref{sec:field_extension}）へ切り替える．
+
+\subsubsection{FVM 積分論理}
+
+セル $P$（位置 $x_L$）と $E$（位置 $x_R$）の間の等価面係数を FVM 積分で求める．
+フラックス $F = a_f(p_E - p_P)/\Delta x$ において，
+$a(x)$ が区分的定数（$a_L = 1/\rho_L$，$a_R = 1/\rho_R$）のとき：
+\[
+  \int_{x_L}^{x_R} \frac{dx}{a(x)}
+  = \frac{\Delta x/2}{a_L} + \frac{\Delta x/2}{a_R}
+  \quad\Rightarrow\quad
+  a_f = \frac{2a_L a_R}{a_L+a_R}
+  = \frac{2}{\rho_L+\rho_R}
+\]
+これは直列抵抗の等価抵抗と同じ論理（調和平均）である．\qed
+
+\subsubsection{FVM PPE 行列の周期境界条件対応}
+\label{sec:fvm_periodic}
+%% 旧所在: §8.4（08f_ppe_bc.tex）→ 付録 E.3 へ移動
+
+壁面（ノイマン）BC に対する FVM 離散化（式~\eqref{eq:af_exact}）は，
+周期境界を持つ計算領域ではそのまま適用できない．
+低次 FVM 基準離散化では以下の3点を変更して周期 FVM 行列を組み立てる．
+
+\paragraph{（1）折り返しフェイスの追加}
+周期 BC では内部フェイスに加え，ノード $N_x-1$ とノード $0$ を結ぶ
+\textbf{折り返しフェイス（wrap face）}を追加する：
+\begin{equation}
+  a_{N_x - 1/2} = \frac{2}{\rho_{N_x-1} + \rho_0}
+  \label{eq:af_wrap}
+\end{equation}
+
+\paragraph{（2）境界半格子体積補正の省略}
+周期 BC ではすべてのノードが同じ格子幅 $h$ の制御体積を持つため，
+壁面 BC の $h/2$ 体積補正は行わない（$a_f / h^2$ を一様に適用）．
+
+\paragraph{（3）ゴーストノードの同一性拘束}
+インデックス $N$ ノード（物理的に $0$ の周期像）を
+\textbf{同一性拘束行}で置き換える：
+\begin{equation}
+  p_{\mathrm{ghost}} - p_{\mathrm{src}} = 0
+  \quad\Longleftrightarrow\quad
+  A[\mathrm{ghost},\,\mathrm{ghost}] = 1,\;
+  A[\mathrm{ghost},\,\mathrm{src}]   = -1,\;
+  b[\mathrm{ghost}] = 0
+  \label{eq:ghost_identity}
+\end{equation}
+コーナー節点は最初の軸の拘束のみを採用する（重複適用を避けるため）．
+
+この同一性拘束は PPE だけの数値線形代数上の都合ではなく，
+周期領域を離散商空間として扱う幾何条件である．
+任意の節点場 $q_h$（圧力，速度，$\psi$，曲率補助場）は
+式~\eqref{eq:periodic_quotient_space} の $\mathcal{Q}_P$ 上で評価し，
+各演算子適用後に周期像面を source 面へ同期する．
+とくに面中心 flux から節点速度へ戻す場合，周期軸 $a$ では
+壁境界用の片側 endpoint 復元ではなく
+\begin{equation}
+  u_{i}^{(a)}
+  =
+  \frac{1}{2}
+  \left(
+    u_{f,i}^{(a)}
+    +
+    u_{f,i-1\ \mathrm{mod}\ N_a}^{(a)}
+  \right),
+  \qquad
+  u_{N_a}^{(a)}=u_{0}^{(a)}
+  \label{eq:periodic_face_to_node_reconstruction}
+\end{equation}
+を用いる．
+混合境界（例：$S^1\times[0,L_y]$）では，周期軸には
+式~\eqref{eq:periodic_face_to_node_reconstruction} を適用し，
+wall 軸にのみ片側壁閉包と no-slip/no-penetration 条件を適用する．
+
+\begin{tcolorbox}[warnbox, title={周期 FVM 行列のゲージと比較用途}]
+  式~\eqref{eq:ghost_identity} の同一性拘束行と FVM 行が混在した疎行列に対して，
+  Krylov 前処理の性能を本稿の検証契約に含めない．低次 FVM 基準値は
+  ゲージ固定後の直接法（\texttt{spsolve}）で取得し，反復前処理の
+  収束性は主張範囲から外す．
+\end{tcolorbox}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\subsubsection{CSF（連続表面力）モデルの参照定式化}
+\label{app:csf_full}
+% ══════════════════════════════════════════════════════════════════════════════
+
+\textbf{連続表面力（CSF: Continuum Surface Force）モデル} \cite{Brackbill1992} は
+表面張力（面力）を体積方程式に組み込む標準的手法である．
+本付録では，第~\ref{sec:levelset}章§\ref{sec:smoothed_delta} で導入した
+平滑化デルタ関数 $\delta_\varepsilon$（式~\eqref{eq:delta_eps_def}，
+図~\ref{fig:heaviside_delta}）を用いて CSF モデルを定式化する．
+
+% ───────────────────────────────────────────────────────────────────────────
+\subsubsection{界面ディラックデルタと CSF 体積力}
+% ────────────────────────────────────────────────────────────────────────────
+
+界面 $\Gamma$ 上に作用する表面張力は，本稿の液相$\to$気相法線規約では
+単位面積あたり $-\sigma\kappa_{lg}\hat{\bm{n}}_{lg}$ の法線力である．
+これを全空間で定義された体積力 $\bm{f}_\sigma$ として書くには，
+界面上だけ値を持つ\textbf{界面ディラックデルタ} $\delta_s$ を用いる：
+\begin{equation}
+  \bm{f}_\sigma = -\sigma\kappa_{lg}\hat{\bm{n}}_{lg}\,\delta_s(\bm{x})
+  \label{eq:csf_dirac_app}
+\end{equation}
+§\ref{sec:smoothed_delta} で示したように，CLS 変数の勾配
+$|\bnabla\psi| \approx \delta_\varepsilon(\phi)$（式~\eqref{eq:grad_psi_delta}）が
+$\delta_s$ の滑らかな近似を与え，界面法線は
+$\hat{\bm{n}}_{lg} = -\bnabla\psi/|\bnabla\psi|$ で得られる．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{CSF 体積力の最終形：\texorpdfstring{$\bm{f}_\sigma = \sigma\kappa_{lg}\bnabla\psi$}{f\_sigma = sigma*kappa_lg*grad(psi)}}
+% ────────────────────────────────────────────────────────────────────────────
+
+式~\eqref{eq:grad_psi_delta} の関係を式~\eqref{eq:csf_dirac_app} に代入する：
+\begin{equation}
+  \bm{f}_\sigma = -\sigma\kappa_{lg}\,\hat{\bm{n}}_{lg}\,\delta_s
+  \approx -\sigma\kappa_{lg}\,\frac{-\bnabla\psi}{|\bnabla\psi|}\,|\bnabla\psi|
+  \approx \sigma\kappa_{lg}\,\bnabla\psi
+  \label{eq:csf_final}
+\end{equation}
+
+ただし，この近似は $|\bnabla\phi| \approx 1$（Eikonal 条件）が成立する場合に限り有効である．
+CLS 法では再初期化ステップによって $|\bnabla\phi|\approx 1$ を維持し，この近似の誤差を抑制する．
+ただし精度は曲率評価，界面厚み，離散演算子の整合性にも依存するため，別途検証で確認する．
+
+$\bnabla\psi$ は気相から液相を向き，界面で最大値をとる．
+したがって $\sigma\kappa_{lg}\bnabla\psi$ は界面近傍でのみ作用し，
+全空間積分すると Young-Laplace のジャンプ条件 $j_{gl}=p_g-p_l=-\sigma\kappa_{lg}$ を再現する
+（以下の検証を参照）．
+
+\medskip
+\noindent\textbf{検証：CSF モデルが Young-Laplace ジャンプ条件を再現すること}
+\label{sec:csf_young_laplace_app}
+
+CSF 体積力 $\bm{f}_\sigma = \sigma\kappa_{lg}\bnabla\psi$ が界面ジャンプ条件
+$j_{gl}\equiv p_{\text{gas}} - p_{\text{liq}} = -\sigma\kappa_{lg}$
+を再現することを，界面法線方向の積分によって示す．
+
+平衡状態（速度ゼロ）では運動方程式より
+$\bnabla p = \sigma\kappa_{lg}\bnabla\psi$ が成立する．
+界面を法線方向 $s$ に沿って積分すると：
+\[
+  p_{\text{gas}} - p_{\text{liq}}
+  = \sigma\kappa_{lg} \int_{\text{liq}}^{\text{gas}} \frac{\partial\psi}{\partial s}\,ds
+  = \sigma\kappa_{lg}\,(0 - 1) = -\sigma\kappa_{lg}
+\]
+\begin{equation}
+  p_{\text{gas}} - p_{\text{liq}} = -\sigma\kappa_{lg}
+  \label{eq:young-laplace-app}
+\end{equation}
+
+% ══════════════════════════════════════════════════════════════════════════════
+\subsubsection{Balanced-Force 条件：離散化演算子不一致の誤差解析}
+\label{app:balanced_force_taylor}
+% ═════════════════════════════════════════════════════════════════════════════
+
+§\ref{sec:bf_operator_mismatch}（式~\eqref{eq:bf_operator_mismatch}）で示した演算子不一致誤差を，離散テイラー展開によって定量的に導出する．
+
+\subsubsection{打ち切り誤差の定量評価}
+
+連続レベルでは $\bnabla p = \kappa\bnabla\psi/We$ の釣り合いが成立している静止液滴を，
+異なる差分演算子 $D^{(1)}_{\mathrm{low}}$（低次）と $D^{(1)}_{\mathrm{CCD}}$（CCD，高次）で計算した場合の離散誤差を見る．
+
+$f$ が解析関数のとき，各演算子の打ち切り誤差は：
+\begin{align}
+  D^{(1)}_{\mathrm{low}} f   &= f' + c_1 h^2 f''' + \Ord{h^4} \\
+  D^{(1)}_{\mathrm{CCD}} f   &= f' + c_2 h^6 f^{(7)} + \Ord{h^8}
+\end{align}
+
+\textbf{平衡条件 $\nabla p = (\kappa/We)\nabla\psi$ を用いた残差の展開：}
+\begin{align}
+  D^{(1)}_{\mathrm{CCD}} p - \frac{\kappa}{We} D^{(1)}_{\mathrm{low}}\psi
+  &= \Bigl[\nabla p + \Ord{h^6}\Bigr]
+     - \frac{\kappa}{We}\Bigl[\nabla\psi + \Ord{h^2}\Bigr] \notag\\
+  &= \underbrace{\Bigl(\nabla p - \frac{\kappa}{We}\nabla\psi\Bigr)}_{=\,0\;\text{（平衡条件）}}
+     + \Ord{h^6} - \frac{\kappa}{We}\Ord{h^2} \notag\\
+  &= \Ord{h^2}
+  \label{eq:bf_mismatch_expand}
+\end{align}
+FD の打ち切り誤差 $O(h^2)$ が残差を支配し（CCD の $O(h^6)$ は無視できる），この $O(h^2)$ の不整合が\textbf{体積力として運動量方程式に残り，寄生流れを駆動し，最終的に計算の爆発を引き起こす}（§\ref{sec:bf_operator_mismatch}）．
+
+\subsubsection{同一演算子（CCD）使用時の誤差低減}
+
+同一の演算子（CCD）を両方に用いると，各項が独立に $O(h^6)$ 精度で連続微分を近似するため（$D_{\mathrm{CCD}}^{(1)} f = \nabla f + O(h^6)$），平衡条件 $\nabla p = (\kappa/We)\nabla\psi$ のもとで：
+\[
+  D^{(1)}_{\mathrm{CCD}} p - \frac{\kappa}{We} D^{(1)}_{\mathrm{CCD}}\psi
+  = \underbrace{\nabla p - \frac{\kappa}{We}\nabla\psi}_{=\,0\;\text{（平衡条件）}} + O(h^6)
+  = O(h^6)
+\]
+となり，寄生流れの\textbf{数値離散化誤差成分}は $O(h^6)$ まで低減される．
+
+\noindent\textbf{（注：演算子の可換性について）}
+$D_{\mathrm{CCD}}(\kappa\psi/We) = (\kappa/We)D_{\mathrm{CCD}}\psi + (\psi/We)D_{\mathrm{CCD}}\kappa$
+であるから，$\kappa$ が空間変化する一般の場合は代数的因数分解 $D_{\mathrm{CCD}}(p-\kappa\psi/We)$ は使えない．この $O(h^6)$ は各演算子の精度から直接導かれる．
+
+\subsubsection{CSF モデル誤差との関係：実測収束次数}
+
+ただし，残差は CSF モデルが界面を有限厚さ $\varepsilon \sim O(h)$ で近似することによる\textbf{モデル誤差 $O(\varepsilon^2) \approx O(h^2)$} が律速するため，実測の寄生流れ収束次数は $O(h^2)$ 程度となる（§\ref{sec:accuracy_summary} および第\ref{sec:verification}章の静止液滴ベンチマーク参照）．Balanced-Force 条件の「Balanced」とは「数値離散化誤差成分の相殺（$O(h^6)$ への低減）」を指し，CSF モデル誤差（$O(\varepsilon^2) \approx O(h^2)$）そのものを除去するものではない点に注意されたい．

@@ -1,0 +1,101 @@
+% paper/sections/appendix_e4_2_dc_ppe_iteration.tex
+% 付録 E.4.2: DC-PPE ソルバーの外側残差アルゴリズム
+
+\subsubsection{DC-PPE ソルバーの外側残差アルゴリズム}
+\label{app:dc_ppe_detail}
+
+本節では，統合更新手順の圧力 Poisson 方程式求解段における
+欠陥補正法の外側残差アルゴリズムを詳述する．
+
+\noindent\textbf{注：}分相 PPE 解法（§~\ref{sec:split_ppe_framework}）では各相内の密度が定数となるため，
+密度比は相内 Laplacian の次数を直接劣化させない．
+§~\ref{sec:verify_split_ppe_dc} の検証範囲では $k{=}3$ により
+$\Ord{h^7}$（Dirichlet）/ $\Ord{h^5}$（Neumann）相当の収束を確認しているが，
+これは一括 smoothed-Heaviside PPE の全密度比保証を意味しない．
+
+\textbf{入力：} 予測速度 $\bu^*$，密度場 $\rho^{n+1}$，前時刻圧力 $p^n$（IPC 増分との整合に使用），曲率場 $\kappa^{n+1}$（経路別の表面張力閉包に使用），
+仮想時間刻み $\Delta\tau$，収束許容誤差 $\varepsilon_{\mathrm{tol}}$
+
+\textbf{求解対象：} 圧力増分 $\delta p \equiv p^{n+1} - p^n$（初期反復値 $\delta p^0 = 0$）
+
+\medskip
+\textbf{前処理：}
+\begin{enumerate}
+  \item[(6.0)] \textbf{経路別係数の事前計算：}
+  一括 PPE 経路では各行・列に CCD を適用し，
+  $(D_x^{(1)}\rho)_{i,j}$ および $(D_y^{(1)}\rho)_{i,j}$ を計算する．
+  分相 PPE 経路では相内定数密度 Poisson と界面ジャンプ行を用いるため，
+  密度勾配ではなく相マスク，片側延長，ジャンプ係数を固定する．
+\end{enumerate}
+
+\textbf{右辺の構築：}
+\begin{enumerate}
+  \item[(6.1)] 経路別の面発散を計算：
+  \[
+    q_{i,j} = \frac{1}{\Delta t}\bigl(\mathcal{D}_{\mathrm{path}}\bu^*\bigr)_{i,j}.
+  \]
+  一括 PPE 経路では発散と速度補正に同じ面フラックス空間を用いる．
+  分相 PPE 解法使用時は HFE（付録~\ref{app:hfe_predictor}）により
+  前時刻圧力を延長し，圧力ジャンプは PPE の界面行に入れる．
+\end{enumerate}
+
+\textbf{仮想時間反復ループ（$m = 0, 1, 2, \dots$）：}
+\begin{enumerate}
+  \item[(6.2)] \textbf{対象 PPE 演算子の評価} $\mathcal{L}_{\mathrm{tar}}\delta p^m$
+  （$\delta p^0 = 0$）：
+  \begin{enumerate}
+    \item 一括 PPE 経路では $x/y$ 方向 CCD スウィープにより
+    $(D^{(1)}\delta p^m,D^{(2)}\delta p^m)$ を計算し，
+    式~\eqref{eq:L_CCD_2d_full} の product-rule 演算子を評価する：
+    \begin{align}
+      \bigl(\mathcal{L}_{\mathrm{1f}}\delta p^m\bigr)_{i,j}
+      &= \frac{(D_x^{(2)}\delta p^m)_{i,j} + (D_y^{(2)}\delta p^m)_{i,j}}{\rho_{i,j}}
+      \notag\\
+      &\quad
+      - \frac{(D_x^{(1)}\rho)_{i,j}}{\rho_{i,j}^2}(D_x^{(1)}\delta p^m)_{i,j}
+      - \frac{(D_y^{(1)}\rho)_{i,j}}{\rho_{i,j}^2}(D_y^{(1)}\delta p^m)_{i,j}
+      \label{eq:L_1f_dc_ppe_app}
+    \end{align}
+    \item 分相 PPE 経路では各相内の定数密度 Poisson と界面ジャンプ行を合わせた
+    $\mathcal{L}_{\mathrm{split}}$ を対象演算子とし，外側残差で
+    $\mathcal{L}_{\mathrm{split}}\delta p^m-q$ を評価する．
+  \end{enumerate}
+
+  \item[(6.3)] \textbf{残差の計算と収束判定：}
+  \[
+    \varepsilon^m = \bigl\|\mathcal{L}_{\mathrm{tar}}\delta p^m - q\bigr\|_2
+  \]
+  $\varepsilon^m < \varepsilon_{\mathrm{tol}}$ ならば収束として反復終了 $\rightarrow$ Step 6.5
+
+  \item[(6.4)] \textbf{補正の求解（欠陥補正 Step 2，低次演算子 $L_L$）：}
+
+  欠陥 $d^m = q - \mathcal{L}_{\mathrm{tar}}\delta p^m$（6.2--6.3 で算出）に対し，
+  低次演算子 $L_L$（経路と同じ境界位相・ゲージを持つ安定な補正問題）を
+  スパース行列として組み立て，基準経路では直接法で数値線形代数の許容誤差内で補正量を求解する
+  （§~\ref{sec:dc_sweep}）：
+  \[
+    \delta p_{\mathrm{corr}} = L_L^{-1}\,d^m
+  \]
+
+  \textbf{解の更新（欠陥補正 Step 3）：}
+  $\delta p^{m+1} = \delta p^m + \omega\,\delta p_{\mathrm{corr}}$
+  （$\omega \in (0, 0.833)$；付録~\ref{app:dc_convergence_theory}）．
+
+  \medskip
+  \noindent 注：明示行列の直接解法を用いる場合は
+  $\mathcal{L}_{\mathrm{tar}}\delta p = q$ を分割せずに解くため，
+  スウィープ型前処理に由来する分割誤差は生じない
+  （注意~\ref{warn:ppe_splitting} Approach 2）．
+
+  $m \leftarrow m+1$ として (6.2) へ戻る
+\end{enumerate}
+
+\textbf{収束後：}
+\begin{enumerate}
+  \item[(6.5)] $\delta p = \delta p^m$（収束した増分を採用）；$p^{n+1} = p^n + \delta p$（Step 7 へ引き渡し）
+\end{enumerate}
+
+\textbf{出力：} $\delta p$（対象演算子と外側残差で次数を判定；
+一括 PPE では smooth-RHS 条件に限って高次 CCD 残差を評価対象にできるが，
+高密度比・低 Weber 数では分相 PPE + HFE + 圧力ジャンプ条件を標準経路とする；
+§~\ref{sec:ppe_discretization_choice}），$p^{n+1} = p^n + \delta p$，総反復回数

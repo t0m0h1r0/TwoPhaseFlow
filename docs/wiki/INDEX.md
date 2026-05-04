@@ -1,6 +1,6 @@
-# Wiki Index — 225 entries
+# Wiki Index — 315 entries
 
-## Theory (77)
+## Theory (143)
 
 | REF-ID | Title |
 |--------|-------|
@@ -81,8 +81,74 @@
 | [WIKI-T-075](theory/WIKI-T-075.md) | Discrete Operator Contract for the Stage-Split Buoyancy Predictor |
 | [WIKI-T-076](theory/WIKI-T-076.md) | Projection-Closure Theorem for Phase-Separated FCCD |
 | [WIKI-T-077](theory/WIKI-T-077.md) | Capillary Energy Stability: Variational Geometry and Projection-Native Surface Tension |
+| [WIKI-T-078](theory/WIKI-T-078.md) | Interface Role Separation: psi Transport, phi Metric, and Oriented Stress Jump |
+| [WIKI-T-079](theory/WIKI-T-079.md) | Operator Eligibility by Field Regularity: Smoothness Before Formal Order |
+| [WIKI-T-080](theory/WIKI-T-080.md) | Shared Face Locus Invariant: The Paper's Strongest Discrete Contract |
+| [WIKI-T-081](theory/WIKI-T-081.md) | Wall Contact Topology Invariant for CLS Transport |
+| [WIKI-T-082](theory/WIKI-T-082.md) | Defect Correction Scope: High-Order Residual, Not Interface-Band Cure |
+| [WIKI-T-083](theory/WIKI-T-083.md) | Same-Time Capillary Jump Closure in the PPE |
+| [WIKI-T-084](theory/WIKI-T-084.md) | Non-Uniform Ridge--Eikonal Metric Guardrails |
+| [WIKI-T-085](theory/WIKI-T-085.md) | CLS A--F Staging: Three Responsibilities, Six Gates |
+| [WIKI-T-086](theory/WIKI-T-086.md) | Mass Closure Has Two Spaces: psi-Localized Before, phi-Uniform After |
+| [WIKI-T-087](theory/WIKI-T-087.md) | Reinitialization Trigger and DGR Applicability Are Context-Sensitive |
+| [WIKI-T-088](theory/WIKI-T-088.md) | FCCD Telescoping Conservation: Shared Face Flux Before Clamp |
+| [WIKI-T-089](theory/WIKI-T-089.md) | Dissipation Channel Taxonomy: None, Post-Filter, Internal, and Face-Locus |
+| [WIKI-T-090](theory/WIKI-T-090.md) | Boundary Closure Honesty: Interior Order Is Not Whole-Domain Order |
+| [WIKI-T-091](theory/WIKI-T-091.md) | Variable-Viscosity Stress Must Stay in Full Divergence Form |
+| [WIKI-T-092](theory/WIKI-T-092.md) | Shared Shear Stress tau_xy Is a First-Class Discrete Object |
+| [WIKI-T-093](theory/WIKI-T-093.md) | rho/mu Are Post-CLS Algebraic Fields, Not High-Order Interpolants |
+| [WIKI-T-094](theory/WIKI-T-094.md) | Non-Uniform Metrics Need a Single Geometric Source of Truth |
+| [WIKI-T-095](theory/WIKI-T-095.md) | Non-Uniform FCCD Order Has a Face-Centrality Gate |
+| [WIKI-T-096](theory/WIKI-T-096.md) | Regridding Requires Conservative Remap, History Reset, and Face Rebuild |
+| [WIKI-T-097](theory/WIKI-T-097.md) | Pressure Jump Must Match the Solved Unknown |
+| [WIKI-T-098](theory/WIKI-T-098.md) | Jump-Corrected Face Gradients Have One Global Gauge |
+| [WIKI-T-099](theory/WIKI-T-099.md) | HFE Extends Smooth One-Sided Fields, Not Pressure-History Contracts |
+| [WIKI-T-100](theory/WIKI-T-100.md) | Pressure-Jump Closure Solves Jump Absorption, Not Every Capillary Limit |
+| [WIKI-T-101](theory/WIKI-T-101.md) | CLS Transport Uses Projected Velocity, Never Predictor Velocity |
+| [WIKI-T-102](theory/WIKI-T-102.md) | Viscous Helmholtz DC Shares Coefficients, Boundaries, and Interface Bands |
+| [WIKI-T-103](theory/WIKI-T-103.md) | Time-Step Limits Are Per-Term: Capillary Is Physical, PPE Is Projective |
+| [WIKI-T-104](theory/WIKI-T-104.md) | One-Step Algorithm Freezes Geometry and Material State Before Projection |
+| [WIKI-T-105](theory/WIKI-T-105.md) | Failure Modes Are Coupled Symptoms, Not Module Labels |
+| [WIKI-T-106](theory/WIKI-T-106.md) | Diffuse Interface Width Has Operational Bands |
+| [WIKI-T-107](theory/WIKI-T-107.md) | One-Fluid CSF Absorbs the Stress Jump as a Weak-Form Body Force |
+| [WIKI-T-108](theory/WIKI-T-108.md) | Logit Inversion Is a Diagnostic Bridge, Not a Curvature Prerequisite |
+| [WIKI-T-109](theory/WIKI-T-109.md) | Direct psi Curvature Is Interface-Band Only |
+| [WIKI-T-110](theory/WIKI-T-110.md) | epsilon_eff Is a Profile-Quality Sensor, Not a New Width Parameter |
+| [WIKI-T-111](theory/WIKI-T-111.md) | xi_ridge Intentionally Violates Eikonal to Carry Topology |
+| [WIKI-T-112](theory/WIKI-T-112.md) | Ridge Seeds Cannot Be Promoted by Proximity Alone |
+| [WIKI-T-113](theory/WIKI-T-113.md) | Ridge-Eikonal Admissibility Is Four Conditions, Not Just FMM |
+| [WIKI-T-114](theory/WIKI-T-114.md) | Reinitialization Mass Conservation Changes Measure on Nonuniform Grids |
+| [WIKI-T-115](theory/WIKI-T-115.md) | M(tau) Is a Reinit Call Gate, Not an Error Norm |
+| [WIKI-T-116](theory/WIKI-T-116.md) | Iterative Eikonal Stopping Rules Do Not Apply to One-Shot Ridge-Eikonal |
+| [WIKI-T-117](theory/WIKI-T-117.md) | CCD Sixth Order Comes from Coupling f-prime and f-double-prime Unknowns |
+| [WIKI-T-118](theory/WIKI-T-118.md) | CCD Local Truncation and Spectral Error Coefficients Are Different Objects |
+| [WIKI-T-119](theory/WIKI-T-119.md) | UCCD6 Hyperviscosity Exponent 7 Is the Minimal Order-Preserving Choice |
+| [WIKI-T-120](theory/WIKI-T-120.md) | Face Jet Has Mixed Accuracy by Design |
+| [WIKI-T-121](theory/WIKI-T-121.md) | Face Jet Is a Public Contract, Not a Current Implementation Detail |
+| [WIKI-T-122](theory/WIKI-T-122.md) | FCCD Balanced-Force Fourth Order Requires a Smooth Constructive Relation |
+| [WIKI-T-123](theory/WIKI-T-123.md) | Term-Specific Discretization Is a Regularity Contract |
+| [WIKI-T-124](theory/WIKI-T-124.md) | TVD-RK3 Label Does Not Guarantee TVD for the FCCD Space Operator |
+| [WIKI-T-125](theory/WIKI-T-125.md) | IMEX-BDF2 Predictor Uses Projected History, Not Star Velocity |
+| [WIKI-T-126](theory/WIKI-T-126.md) | Defect Correction Accuracy Lives in the High-Order Residual |
+| [WIKI-T-127](theory/WIKI-T-127.md) | Viscous DC Low-Order Operator Must Share mu, rho, Boundaries, and Bands |
+| [WIKI-T-128](theory/WIKI-T-128.md) | Balanced Buoyancy Removes Hydrostatic Work Before Prediction |
+| [WIKI-T-129](theory/WIKI-T-129.md) | Variable-Density PPE Is a Pressure-Increment Equation in IPC |
+| [WIKI-T-130](theory/WIKI-T-130.md) | Nonuniform Projection Requires a Face-Adjoint Gradient Pair |
+| [WIKI-T-131](theory/WIKI-T-131.md) | HFE Is Mandatory Only When the Solved Pressure Field Has a Jump |
+| [WIKI-T-132](theory/WIKI-T-132.md) | Balanced-Force Mismatch Is a Positive Feedback Loop |
+| [WIKI-T-133](theory/WIKI-T-133.md) | The Adjoint PPE Pair Solves F-2 and F-3 Together |
+| [WIKI-T-134](theory/WIKI-T-134.md) | HFE Extension Normal Is an SDF Transport Direction, Not the Stress-Jump Normal |
+| [WIKI-T-135](theory/WIKI-T-135.md) | Nonuniform Geometry Data Is a Shared Source, Not Per-Operator Metadata |
+| [WIKI-T-136](theory/WIKI-T-136.md) | DCCD and UCCD6 Filtering Occur in Computational Space Before Metrics |
+| [WIKI-T-137](theory/WIKI-T-137.md) | Nonuniform FCCD Fourth Order Is a Central-Face Contract |
+| [WIKI-T-138](theory/WIKI-T-138.md) | Jump-Corrected Nonuniform Faces Must Share H_f |
+| [WIKI-T-139](theory/WIKI-T-139.md) | CLS Reinitialization Pseudo-Time CFL Is Not Physical Delta t |
+| [WIKI-T-140](theory/WIKI-T-140.md) | CLS Third-Order Time Is for Geometry Robustness, Not Global Third Order |
+| [WIKI-T-141](theory/WIKI-T-141.md) | Delta t_disc Covers Residual Explicit Spectra, Not Projection or Viscous CFL |
+| [WIKI-T-142](theory/WIKI-T-142.md) | HFE Is Direct Hermite Steady Extension, Not a Virtual-Time Solver |
+| [WIKI-T-143](theory/WIKI-T-143.md) | Mixed Derivatives Use Sequential 1D CCD, Not a Separate 2D Stencil |
 
-## Cross-Domain (39)
+## Cross-Domain (40)
 
 | REF-ID | Title |
 |--------|-------|
@@ -125,8 +191,9 @@
 | [WIKI-X-037](cross-domain/WIKI-X-037.md) | ResearchArchitect Wiki Knowledge Atlas: Retrieval Map, Invariants, and Open Fronts |
 | [WIKI-X-038](cross-domain/WIKI-X-038.md) | Theory-First CFL and Time-Integration Policy: SSPRK3 Scope, AB2 Risk, and IMEX-BDF2 Production Path |
 | [WIKI-X-039](cross-domain/WIKI-X-039.md) | Affine Jump Interface Stress: Oriented Young--Laplace Contract and ch14 Root Cause |
+| [WIKI-X-040](cross-domain/WIKI-X-040.md) | Recent Research Insight Digest: 2026-04-24 to 2026-05-03 |
 
-## Experiment (32)
+## Experiment (54)
 
 | REF-ID | Title |
 |--------|-------|
@@ -163,8 +230,30 @@
 | [WIKI-E-030](experiment/WIKI-E-030.md) | G^adj 後期ブローアップ: α=1.5 壁面BC 気泡 t≈12.6 の未解明不安定性 [OPEN] |
 | [WIKI-E-031](experiment/WIKI-E-031.md) | ch13 Static α=2 Rising-Bubble Diagnosis: Hypothesis Matrix and Verdicts (RESOLVED) |
 | [WIKI-E-032](experiment/WIKI-E-032.md) | ch13 Projection-Closure Trial Synthesis: Failed Hypotheses, Accepted Cause, Clean-Main Validation |
+| [WIKI-E-033](experiment/WIKI-E-033.md) | Negative Knowledge Guards in Chapters 12--13 |
+| [WIKI-E-034](experiment/WIKI-E-034.md) | Pressure Output Semantics in V-Series Verification |
+| [WIKI-E-035](experiment/WIKI-E-035.md) | U-Series Component Verification Is Not Integrated Physics Validation |
+| [WIKI-E-036](experiment/WIKI-E-036.md) | U5 epsilon/h Window Is a Moment-Accuracy Gate, Not a Cosmetic Width |
+| [WIKI-E-037](experiment/WIKI-E-037.md) | U6 Monolithic High-Density PPE Sweep Is a Guard, Not a Production Primitive |
+| [WIKI-E-038](experiment/WIKI-E-038.md) | U9 Negation Pass: A Rule Violation Can Be a Successful Test |
+| [WIKI-E-039](experiment/WIKI-E-039.md) | V-Series Uses Reduced Stack Paths, Not One Monolithic Solver Path |
+| [WIKI-E-040](experiment/WIKI-E-040.md) | V-Series Verdict Labels Encode Why a Result Counts |
+| [WIKI-E-041](experiment/WIKI-E-041.md) | V7 Coupled-Stack Slope Is Interface-Band Limited, Not BDF2 Failure |
+| [WIKI-E-042](experiment/WIKI-E-042.md) | V10 Splits Mass Success from Shape Hard Limits |
+| [WIKI-E-043](experiment/WIKI-E-043.md) | V9 Local-Epsilon Switch Is a No-Regression Stack Diagnostic |
+| [WIKI-E-044](experiment/WIKI-E-044.md) | U1 Is an Operator-Family Contract, Not a Single CCD Test |
+| [WIKI-E-045](experiment/WIKI-E-045.md) | U3 Separates Nonuniform Operator Order from Metric Guardrails |
+| [WIKI-E-046](experiment/WIKI-E-046.md) | U4 Distinguishes HJ Gradient Recovery from DGR Width Closure |
+| [WIKI-E-047](experiment/WIKI-E-047.md) | U5 Delta Moments Certify Surface-Force Measure Support |
+| [WIKI-E-048](experiment/WIKI-E-048.md) | U6 Omega Sweep Is a Relaxation Guard Before Split PPE |
+| [WIKI-E-049](experiment/WIKI-E-049.md) | U9 DCCD Pressure Violation Is an Asymptotic Order-Gap Test |
+| [WIKI-E-050](experiment/WIKI-E-050.md) | V1 Measures the Implemented CCD/PPE Path, Not the Old FFT Proxy |
+| [WIKI-E-051](experiment/WIKI-E-051.md) | V3 Separates Pressure Accuracy from Spurious-Flow Monotonicity |
+| [WIKI-E-052](experiment/WIKI-E-052.md) | V6 Pressure-Correction Ratio Is Auxiliary, Not Laplace Error |
+| [WIKI-E-053](experiment/WIKI-E-053.md) | V7 RCA Localizes the Time-Order Limit to the Capillary Jump Band |
+| [WIKI-E-054](experiment/WIKI-E-054.md) | V8/V9/V10 Preserve Future Gates by Design |
 
-## Paper (13)
+## Paper (14)
 
 | REF-ID | Title |
 |--------|-------|
@@ -181,6 +270,7 @@
 | [WIKI-P-011](paper/WIKI-P-011.md) | Optimizing Multi-Agent Kernel Prompts with Visible Extended Thinking |
 | [WIKI-P-012](paper/WIKI-P-012.md) | 07b_reinitialization: ξ-SDF, FMM, and ε-Widening Sections (CHK-137..139) |
 | [WIKI-P-013](paper/WIKI-P-013.md) | SP-Core Paper Rewrite (§2–§10) — Phase Dashboard for CHK-182..190 |
+| [WIKI-P-014](paper/WIKI-P-014.md) | Verification Grammar: U-Series Certificates, V-Series Identity Tests, and Type-A/B/D |
 
 ## Meta (29)
 
