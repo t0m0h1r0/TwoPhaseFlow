@@ -74,6 +74,13 @@ class FDPPEMatrix:
             raise NotImplementedError("FDPPEMatrix is implemented for 2D only.")
         if not grid.uniform:
             raise NotImplementedError("FDPPEMatrix requires a uniform grid.")
+        if getattr(backend, "is_gpu", lambda: False)():
+            raise NotImplementedError(
+                "FDPPEMatrix is a host-assembled legacy FD matrix builder and "
+                "would move GPU density fields to CPU. Use the GPU-native "
+                "PPESolverFDDirect/PPESolverFDMatrixFree paths instead, or run "
+                "FDPPEMatrix explicitly on the CPU backend."
+            )
 
         self.grid = grid
         self.backend = backend

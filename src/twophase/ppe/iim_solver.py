@@ -80,6 +80,13 @@ class PPESolverIIM(_CCDPPEBase):
         ccd: "CCDSolver | None" = None,
         bc_spec: "BoundarySpec | None" = None,
     ) -> None:
+        if getattr(backend, "is_gpu", lambda: False)():
+            raise NotImplementedError(
+                "PPESolverIIM is host-only and would require full-field "
+                "device-to-host transfers on GPU. Select a GPU-native PPE "
+                "solver such as fvm_iterative/fd_iterative/fvm_direct, or run "
+                "IIM explicitly on the CPU backend."
+            )
         super().__init__(backend, config, grid, ccd=ccd, bc_spec=bc_spec)
 
         self._iim_mode = getattr(config.solver, "iim_mode", "hermite")

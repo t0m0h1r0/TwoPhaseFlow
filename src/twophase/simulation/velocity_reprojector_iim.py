@@ -64,6 +64,13 @@ class ConsistentIIMReprojector(IVelocityReprojector):
     ) -> tuple[np.ndarray, np.ndarray]:
         self._stats["calls"] += 1
 
+        if getattr(backend, "is_gpu", lambda: False)():
+            raise NotImplementedError(
+                "consistent_iim velocity reprojection is host-only and would "
+                "transfer GPU fields to CPU. Select a GPU-native reproject_mode "
+                "or run consistent_iim explicitly on the CPU backend."
+            )
+
         if rho_l is None or rho_g is None:
             raise ValueError(
                 "consistent_iim requires explicit rho_l and rho_g; "

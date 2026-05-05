@@ -503,22 +503,27 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         rhs_flat = xp.asarray(rhs).ravel()
         residual_l2 = xp.linalg.norm(residual_flat)
         rhs_l2 = xp.linalg.norm(rhs_flat)
-        if self._to_scalar(rhs_l2) > 0.0:
-            relative_l2 = residual_l2 / rhs_l2
-        else:
-            relative_l2 = residual_l2
+        rhs_positive = rhs_l2 > 0.0
+        rhs_safe = xp.where(rhs_positive, rhs_l2, 1.0)
+        relative_l2 = xp.where(rhs_positive, residual_l2 / rhs_safe, residual_l2)
         if residual_flat.size:
             residual_linf = xp.max(xp.abs(residual_flat))
         else:
             residual_linf = xp.asarray(0.0, dtype=rhs_flat.dtype)
+        rhs_l2_h, residual_l2_h, relative_l2_h, residual_linf_h = [
+            float(value)
+            for value in self.backend.asnumpy(
+                xp.stack([rhs_l2, residual_l2, relative_l2, residual_linf])
+            )
+        ]
         self.last_diagnostics.update(
             {
                 "ppe_linear_info": float(info),
                 "ppe_linear_converged": float(info == 0),
-                "ppe_linear_rhs_l2": self._to_scalar(rhs_l2),
-                "ppe_linear_residual_l2": self._to_scalar(residual_l2),
-                "ppe_linear_relative_l2": self._to_scalar(relative_l2),
-                "ppe_linear_residual_linf": self._to_scalar(residual_linf),
+                "ppe_linear_rhs_l2": rhs_l2_h,
+                "ppe_linear_residual_l2": residual_l2_h,
+                "ppe_linear_relative_l2": relative_l2_h,
+                "ppe_linear_residual_linf": residual_linf_h,
             }
         )
 

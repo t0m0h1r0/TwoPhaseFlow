@@ -100,6 +100,13 @@ class PPESolverIterative(IPPESolver):
         method: str | None = None,
         bc_spec: "BoundarySpec | None" = None,
     ) -> None:
+        if getattr(backend, "is_gpu", lambda: False)():
+            raise NotImplementedError(
+                "PPESolverIterative is a host-only research/reference solver "
+                "and would move GPU fields to CPU. Select a GPU-native PPE "
+                "solver such as fvm_iterative/fd_iterative/fvm_direct, or run "
+                "this iterative toolkit explicitly on the CPU backend."
+            )
         self.xp = backend.xp
         self.backend = backend
         self.ndim = grid.ndim
