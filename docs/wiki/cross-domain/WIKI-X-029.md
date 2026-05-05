@@ -12,7 +12,7 @@ depends_on:
   - "[[WIKI-T-004]]: Balanced-Force Condition: Operator Consistency Principle"
   - "[[WIKI-T-046]]: FCCD: Face-Centered Upwind Combined Compact Difference"
   - "[[WIKI-X-024]]: Balanced-Force Design for Two-Phase UCCD6-NS"
-  - "[[WIKI-X-022]]: N-Robust BF-Consistent Full-Stack Architecture"
+  - "[[WIKI-X-041]]: Active retrieval gate and retired-knowledge map"
   - "[[WIKI-T-017]]: FVM Reference Methods: PPE Face Coefficients, CSF Model, Rhie-Chow"
   - "[[WIKI-T-025]]: C/RC (CCD-Enhanced Rhie-Chow)"
   - "[[WIKI-T-021]]: IIM-CCD"
@@ -246,7 +246,7 @@ Embed the jump directly into the PPE via GFM/IIM jump conditions. The pressure g
 | [[WIKI-T-046]] | FCCD definition and face-gradient derivation |
 | [[WIKI-T-063]] | FCCD PPE adjoint structure, defect correction, IIM/GFM integration |
 | [[WIKI-X-024]] | BF design applied to UCCD6 momentum convection |
-| [[WIKI-X-022]] | Full-stack architecture with 10-method role map |
+| [[WIKI-X-022]] | Historical full-stack role map; read through [[WIKI-X-041]] curation note |
 | [[WIKI-T-017]] | FVM PPE face coefficients and Rhie–Chow baseline |
 | [[WIKI-T-025]] | C/RC bracket correction (high-order RC variant) |
 | [[WIKI-T-021]] | IIM-CCD for sharp pressure jump |
