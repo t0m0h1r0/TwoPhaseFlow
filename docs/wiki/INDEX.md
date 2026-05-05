@@ -1,4 +1,4 @@
-# Wiki Index — 336 entries
+# Wiki Index — 338 entries
 
 ## Active Retrieval Gate
 
@@ -213,7 +213,7 @@ their curation notes.
 | [WIKI-X-043](cross-domain/WIKI-X-043.md) | RCA Artifacts Falsify Shortcuts Before Authorizing Fixes |
 | [WIKI-X-044](cross-domain/WIKI-X-044.md) | Test Failure Retention Separates Live Contracts from Stale Probes |
 
-## Experiment (56)
+## Experiment (57)
 
 | REF-ID | Title |
 |--------|-------|
@@ -274,6 +274,7 @@ their curation notes.
 | [WIKI-E-054](experiment/WIKI-E-054.md) | V8/V9/V10 Preserve Future Gates by Design |
 | [WIKI-E-055](experiment/WIKI-E-055.md) | Capillary-Wave RCA Requires Energy and Mode Diagnostics, Not Max Deviation Alone |
 | [WIKI-E-056](experiment/WIKI-E-056.md) | Under-Resolved Capillary Droplets Need Resolution Contracts, Not CFL Patches |
+| [WIKI-E-057](experiment/WIKI-E-057.md) | Wall-Contact Capillary Blowup Can Be a Curvature-Closure Energy Defect |
 
 ## Paper (16)
 
@@ -332,7 +333,7 @@ their curation notes.
 | [WIKI-M-030](meta/WIKI-M-030.md) | Meta-Prompt Evolution Needs Telemetry, Skills, and Tool-Trust Gates |
 | [WIKI-M-031](meta/WIKI-M-031.md) | Review Artifacts Close the Loop with Finding, Fix, and Validation |
 
-## Code (38)
+## Code (39)
 
 | REF-ID | Title |
 |--------|-------|
@@ -374,3 +375,4 @@ their curation notes.
 | [WIKI-L-036](code/WIKI-L-036.md) | Phase-Trace Jump Flux Operator for Phase-Separated PPE |
 | [WIKI-L-037](code/WIKI-L-037.md) | Backend Boundary Owns Host, Device, and Scalar Conversion |
 | [WIKI-L-038](code/WIKI-L-038.md) | GPU Utilization Work Must Preserve the Discrete Algebra |
+| [WIKI-L-039](code/WIKI-L-039.md) | GPU Utilization Probes Must Bound Output Without Changing the Route |
