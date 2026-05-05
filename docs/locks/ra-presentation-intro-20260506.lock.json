@@ -1,0 +1,11 @@
+{
+  "branch": "ra-presentation-intro-20260506",
+  "branch_slug": "ra-presentation-intro-20260506",
+  "session_id": "CHK-RA-PRES-001",
+  "worktree_path": ".claude/worktrees/ra-presentation-intro-20260506",
+  "holder_agent": "ResearchArchitect",
+  "acquired_at": "2026-05-05T16:22:04Z",
+  "expires_at": "2026-05-06T16:22:04Z",
+  "meta_version": "8.0.0-candidate",
+  "id_prefix": "RA-PRES"
+}
