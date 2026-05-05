@@ -1,0 +1,10 @@
+{
+  "id": "CHK-RA-WIKI-REVIEW-RECUR-001",
+  "branch": "ra-wiki-review-recur-20260505",
+  "worktree": ".claude/worktrees/ra-wiki-review-recur-20260505",
+  "created_at": "2026-05-05",
+  "base": "ra-memo-artifact-wiki-20260505",
+  "scope": "review docs/wiki contents, remove or quarantine stale/incorrect knowledge, reorganize retained information",
+  "stop_condition": "no further review-worthy issues or review round > 10",
+  "main_merge": "forbidden until explicit user instruction"
+}
