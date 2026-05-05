@@ -414,6 +414,11 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             sol = xp.zeros_like(rhs_dev)
             if not self._uses_phase_mean_gauge():
                 self._pin_flat(sol.ravel(), 0.0)
+            self._record_linear_solve_diagnostics(
+                info=0,
+                residual=xp.zeros_like(rhs_dev),
+                rhs=rhs_dev,
+            )
             self.last_base_pressure = xp.copy(sol)
             if not self._defer_interface_jump:
                 sol = self.apply_interface_jump(sol)
@@ -476,6 +481,13 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         else:
             self._pin_flat(sol.ravel(), 0.0)
         sol = self._sync_periodic_images(sol)
+        linear_residual = xp.asarray(_matvec(sol.ravel())).reshape(self.grid.shape)
+        linear_residual = linear_residual - rhs_dev
+        self._record_linear_solve_diagnostics(
+            info=info,
+            residual=linear_residual,
+            rhs=rhs_dev,
+        )
         self.last_base_pressure = xp.copy(sol)
         if not self._defer_interface_jump:
             sol = self.apply_interface_jump(sol)
@@ -483,6 +495,32 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         if return_host:
             return np.asarray(self.backend.to_host(sol))
         return sol
+
+    def _record_linear_solve_diagnostics(self, *, info: int, residual, rhs) -> None:
+        """Record true PPE residual norms for ``A p = b`` diagnostics."""
+        xp = self.xp
+        residual_flat = xp.asarray(residual).ravel()
+        rhs_flat = xp.asarray(rhs).ravel()
+        residual_l2 = xp.linalg.norm(residual_flat)
+        rhs_l2 = xp.linalg.norm(rhs_flat)
+        if self._to_scalar(rhs_l2) > 0.0:
+            relative_l2 = residual_l2 / rhs_l2
+        else:
+            relative_l2 = residual_l2
+        if residual_flat.size:
+            residual_linf = xp.max(xp.abs(residual_flat))
+        else:
+            residual_linf = xp.asarray(0.0, dtype=rhs_flat.dtype)
+        self.last_diagnostics.update(
+            {
+                "ppe_linear_info": float(info),
+                "ppe_linear_converged": float(info == 0),
+                "ppe_linear_rhs_l2": self._to_scalar(rhs_l2),
+                "ppe_linear_residual_l2": self._to_scalar(residual_l2),
+                "ppe_linear_relative_l2": self._to_scalar(relative_l2),
+                "ppe_linear_residual_linf": self._to_scalar(residual_linf),
+            }
+        )
 
     def apply_interface_jump(self, pressure):
         """Apply the stored sharp-interface pressure jump decomposition."""

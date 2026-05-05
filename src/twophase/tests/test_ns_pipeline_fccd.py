@@ -149,6 +149,35 @@ def test_fccd_matrixfree_enforces_mixed_periodic_image_rows():
     rhs[-1, :] = 1.0
     solved = np.asarray(ppe.solve(rhs, rho))
     np.testing.assert_allclose(solved[-1, :], solved[0, :], atol=1.0e-14)
+    assert ppe.last_diagnostics["ppe_linear_info"] == pytest.approx(0.0)
+    assert ppe.last_diagnostics["ppe_linear_residual_l2"] == pytest.approx(0.0)
+
+
+def test_fccd_matrixfree_records_true_linear_residual():
+    """PPE diagnostics must report the residual of the actual solved system."""
+    backend = Backend(use_gpu=False)
+    cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(7, 6), L=(1.0, 1.0)))
+    grid = Grid(cfg.grid, backend)
+    ccd = CCDSolver(grid, backend, bc_type="wall")
+    fccd = FCCDSolver(grid, backend, bc_type="wall", ccd_solver=ccd)
+    ppe = PPESolverFCCDMatrixFree(backend, SimulationConfig(), grid, fccd)
+    rng = np.random.default_rng(1732)
+    rhs = rng.standard_normal(grid.shape)
+    rho = 1.0 + 0.2 * rng.random(grid.shape)
+
+    pressure = np.asarray(ppe.solve(rhs, rho))
+    projected_rhs = np.asarray(ppe._project_rhs_compatibility(rhs, record_stats=False))
+    projected_rhs = np.asarray(ppe._zero_periodic_image_rows(projected_rhs))
+    residual = np.asarray(ppe.apply(pressure)) - projected_rhs
+    diagnostics = ppe.last_diagnostics
+
+    assert diagnostics["ppe_linear_info"] == pytest.approx(0.0)
+    assert diagnostics["ppe_linear_converged"] == pytest.approx(1.0)
+    assert diagnostics["ppe_linear_rhs_l2"] > 0.0
+    assert diagnostics["ppe_linear_residual_l2"] == pytest.approx(
+        float(np.linalg.norm(residual.ravel()))
+    )
+    assert diagnostics["ppe_linear_relative_l2"] < 1.0e-7
 
 
 def test_defect_correction_preserves_mixed_periodic_pressure_space():
