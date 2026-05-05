@@ -6,10 +6,14 @@ status: ACTIVE
 superseded_by: null
 tags: [ch14, capillary_wave, wall_contact, curvature, energy_defect, rca]
 sources:
+  - path: artifacts/A/ch14_capillary_wall_contact_rca_CHK-RA-GPU-UTIL-008.md
+    description: "Wall-attached capillary wave contact-line invariant RCA"
   - path: artifacts/A/ch14_capillary_energy_wall_curvature_rca_CHK-RA-GPU-UTIL-013.md
     description: "Capillary energy instability RCA after wall topology fix"
   - path: artifacts/A/ch14_no_slip_contact_line_theory_design_CHK-RA-GPU-UTIL-009.md
     description: "No-slip contact-line invariant and wall-contact constraint service design"
+  - path: artifacts/A/ch14_no_slip_contact_line_implementation_CHK-RA-GPU-UTIL-010.md
+    description: "Implementation evidence for no-slip contact pinning"
 depends_on:
   - "[[WIKI-T-150]]"
   - "[[WIKI-E-055]]"
@@ -27,6 +31,8 @@ the curvature/stress closure at the wall-contact neighborhood.  The important
 distinction is:
 
 - wall-contact topology remains pinned;
+- the no-slip contact-line invariant is enforced as a separate material
+  constraint;
 - the first-mode Young--Laplace sign is restoring;
 - nevertheless, bulk nodal curvature near a no-slip contact point on a fitted
   non-uniform grid can become orders of magnitude too large.
