@@ -178,6 +178,11 @@ def run_simulation(
                 "p": p_h.copy(),
                 "rho": (ph.rho_l * psi_h + ph.rho_g * (1.0 - psi_h)).copy(),
             }
+            if solver._p_prev_accel_face_components is not None:
+                snap_entry["pressure_accel_faces"] = [
+                    _to_h(component).copy()
+                    for component in solver._p_prev_accel_face_components
+                ]
             if solver._alpha_grid > 1.0:
                 snap_entry["grid_coords"] = [c.copy() for c in solver._grid.coords]
             snaps.append(snap_entry)

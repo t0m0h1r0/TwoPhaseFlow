@@ -159,8 +159,8 @@ output:
       file_prefix: velocity_t
 
     - type: snapshot_series
-      field: pressure_bulk
-      file_prefix: pressure_bulk_t
+      field: pressure_hodge
+      file_prefix: pressure_hodge_t
 
 diagnostics: [volume_conservation, kinetic_energy, deformation, signed_deformation]
 
