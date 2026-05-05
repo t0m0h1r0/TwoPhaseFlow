@@ -246,8 +246,7 @@ def _apply_periodic_row_constraints(builder, data, rows, cols):
     xp = builder.xp
     img_dofs = builder._periodic_image_dofs
     src_dofs = builder._periodic_image_sources
-    rows_h = np.asarray(builder.backend.to_host(rows))
-    keep = xp.asarray(~np.isin(rows_h, img_dofs))
+    keep = ~xp.isin(rows, img_dofs)
     data, rows, cols = data[keep], rows[keep], cols[keep]
     data = xp.concatenate([data, xp.ones(len(img_dofs)), -xp.ones(len(img_dofs))])
     rows = xp.concatenate([rows, xp.asarray(img_dofs), xp.asarray(img_dofs)])

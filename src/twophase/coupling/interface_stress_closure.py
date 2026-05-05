@@ -45,11 +45,8 @@ class InterfaceStressContext:
     cut_face_quadrature: bool = False
 
     def is_active(self) -> bool:
-        """Return whether a non-zero pressure jump should be applied."""
-        return (
-            self.pressure_jump_gas_minus_liquid is not None
-            and abs(float(self.sigma)) > 0.0
-        )
+        """Return whether an affine pressure jump is present."""
+        return self.pressure_jump_gas_minus_liquid is not None
 
     @property
     def kappa(self):
@@ -74,7 +71,11 @@ def build_interface_stress_context(
     builder and computes ``p_gas - p_liquid = -sigma * kappa_lg``.
     """
     curvature = kappa_lg if kappa_lg is not None else kappa
-    if pressure_jump_gas_minus_liquid is None and curvature is not None:
+    if (
+        pressure_jump_gas_minus_liquid is None
+        and curvature is not None
+        and abs(float(sigma)) > 0.0
+    ):
         pressure_jump_gas_minus_liquid = -float(sigma) * xp.asarray(curvature)
     return InterfaceStressContext(
         psi=xp.asarray(psi),
