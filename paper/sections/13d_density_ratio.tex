@@ -69,7 +69,7 @@ $\rho_r$ & $N$ & $u_\infty^{\mathrm{end}}$ & $|\Delta V_\psi|/V_{\psi,0}$ & $|\D
 \includegraphics[width=0.98\linewidth]{figures/ch13_v6_density_ratio_fields.pdf}
 \caption{V6：密度比掃引の終端速度場}
 \label{fig:V6_density_ratio_fields}
-\PaperCaptionNote{$\rho_l/\rho_g \in \{2, 100, 833\}$，$N=32$，§14 stack（FCCD/UCCD6/HFE/pressure-jump/分相 PPE/DC/projection-native face closure/affine pressure-history faces）．白円は界面 $\psi = 0.5$．各パネルで個別 $v_{\max}$ を取り，$\|u\|_\infty$ が $\rho_r=2 \to 833$（水--空気）で $3.60\times 10^{-3} \to 2.42\times 10^{-4}$ と約 1 桁以上抑制される様子を直接可視化．高密度比でも界面リング構造が破綻せず，本 stack が密度比に対して頑健であることを示す．}
+\PaperCaptionNote{$\rho_l/\rho_g \in \{2, 100, 833\}$，$N=32$，§14 stack（FCCD, UCCD6, HFE, pressure-jump 分相 PPE/DC, projection-native face closure, affine pressure-history faces）．白円は界面 $\psi = 0.5$．各パネルで個別 $v_{\max}$ を取り，$\|u\|_\infty$ が $\rho_r=2 \to 833$（水--空気）で $3.60\times 10^{-3} \to 2.42\times 10^{-4}$ と約 1 桁以上抑制される様子を直接可視化．高密度比でも界面リング構造が破綻せず，本 stack が密度比に対して頑健であることを示す．}
 \end{figure}
 
 \paragraph{判定と制約条件．}
@@ -83,7 +83,8 @@ $\rho_r$ & $N$ & $u_\infty^{\mathrm{end}}$ & $|\Delta V_\psi|/V_{\psi,0}$ & $|\D
         pressure-jump PPE の補正圧 diagnostic（§\ref{sec:verification}「圧力出力の取り扱い」参照；
         Laplace 絶対圧誤差ではない）であり，合格基準には含めない．
   \item 本 V6 は stack assertion により通常 CCD/FVM-PPE ではなく
-        FCCD/UCCD6/HFE/pressure-jump/phase-separated PPE/DC 経路を直接検証する．
+        FCCD, UCCD6, HFE, pressure-jump phase-separated PPE/DC,
+        projection-native face closure, affine pressure-history faces 経路を直接検証する．
 \end{itemize}
 検証対応：式~\eqref{eq:split_ppe}，\autoref{sec:split_ppe_motivation} の分相 PPE，
 \autoref{sec:verify_split_ppe_dc}（DC），\autoref{sec:U6_split_ppe_dc_hfe}（HFE）に対し，
