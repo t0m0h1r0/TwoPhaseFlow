@@ -2,9 +2,20 @@
 # Rules: docs/00_GLOBAL_RULES.md | Live state: docs/02_ACTIVE_LEDGER.md
 
 ────────────────────────────────────────────────────────
+# §0 — Current Codex / Execution Environment
+
+| Area | Current contract |
+|---|---|
+| Codex config | `.codex/config.toml`: `model = "gpt-5.5"`, `model_reasoning_effort = "high"` |
+| Sandbox | `sandbox_mode = "workspace-write"` + `sandbox_workspace_write.network_access = true` |
+| Shell env | `inherit = "core"`; `ENABLE_TOOL_SEARCH=true`; Claude compatibility vars retained |
+| Execution | Remote-first via `make run` / `make test`; local fallback only when SSH unavailable |
+| Work isolation | Git worktrees + `docs/locks/*.lock.json`; no main merge without explicit user instruction |
+
+────────────────────────────────────────────────────────
 # §1 — Module Map
 
-> **Experiment Policy:** When running experiments, reuse existing `src/` libraries as much as possible. Do NOT reimplement physics, numerics, or I/O that already exists in the module tree below. Write experiment scripts that import and compose from `src/twophase/`.
+> **Experiment Policy:** Reuse `src/twophase/` and `twophase.experiment`; run through `make run` / `make cycle` unless explicitly doing local fallback. Do NOT reimplement existing physics, numerics, or I/O in experiment scripts.
 
 ```
 src/twophase/
@@ -52,7 +63,7 @@ src/twophase/
 │   ├── solvers/                # PPE solver implementations
 │   │   ├── ccd_ppe_base.py     # _CCDPPEBase — Template Method for CCD solvers
 │   │   ├── ccd_ppe_utils.py    # CCD Laplacian evaluation helpers
-│   │   ├── ccd_lu.py           # PPESolverCCDLU — CCD Kronecker + sparse LU (PRODUCTION)
+│   │   ├── ccd_lu.py           # PPESolverCCDLU — CCD Kronecker + sparse LU (restricted reference)
 │   │   ├── iim.py              # PPESolverIIM — CCD + IIM interface correction
 │   │   ├── iterative.py        # PPESolverIterative — research toolkit
 │   │   ├── factory.py          # Registry-based factory (OCP)
@@ -122,7 +133,7 @@ src/twophase/
 │   └── convergence.py          # Convergence rate computation, error norms
 ├── backend.py                  # Compute backend injection (CPU/GPU, xp namespace)
 ├── config.py                   # SimulationConfig — sub-config composition root (ASM-007)
-└── tests/                      # pytest suite — 154 tests passing (2026-04-10)
+└── tests/                      # pytest suite; use `make test` for current status
     ├── test_ccd.py
     ├── test_config.py
     ├── test_grid.py
@@ -150,8 +161,9 @@ IPPESolver.solve(rhs, rho, dt, p_init=None) → p
 | `p_init` | `grid.shape` or None | Warm-start pⁿ |
 | **return** `p` | `grid.shape` | Solved pressure p^{n+1} |
 
-Implementations: PPESolverPseudoTime (PRODUCTION), PPESolverSweep, PPESolverCCDLU,
-PPESolverLU, PPESolverBiCGSTAB (testing only).
+Implementations route through `SolverConfig.ppe_solver_type`: `fvm_iterative` default;
+`fd_direct`, `fd_iterative`, `fvm_direct`, `iim`, and legacy/reference paths are explicit.
+`ccd_lu` requires `allow_kronecker_lu=True`.
 
 ### INSTerm (`interfaces/ns_terms.py`)
 Marker only — SimulationBuilder.with_*() enforces type safety at construction.
@@ -181,11 +193,11 @@ Pure data class — no logic.
 `SimulationConfig` is pure sub-config composition (ASM-007):
 ```
 SimulationConfig
-├── PhysicsConfig    (Re, We, Fr, rho_ratio, epsilon)
-├── GridConfig       (Nx, Ny, domain size)
-├── SolverConfig     (solver_type: "pseudotime" | "bicgstab", max_iter, tol)
-├── TimeConfig       (dt, t_end, CFL limit)
-└── OutputConfig     (output_dir, save_interval)
+├── GridConfig       (ndim, N, L, fitting/wall refinement)
+├── FluidConfig      (Re, We, Fr, rho_ratio, mu_ratio)
+├── NumericsConfig   (CFL, t_end, reinit, advection/convection, surface tension, HFE)
+├── SolverConfig     (ppe_solver_type: "fvm_iterative" default; FD/FVM/IIM/legacy refs)
+└── use_gpu          (backend selection; array ops through backend.xp)
 ```
 
 ────────────────────────────────────────────────────────
@@ -211,11 +223,13 @@ Check `_weno5_divergence` wrap-around flux if spatial order degrades to ~O(1/h).
 8-dimensional null space. Do NOT use ‖Lp−q‖₂ as pass/fail metric.
 Use physical diagnostics: divergence-free projection, Laplace pressure dp, ‖u‖.
 
-### PPE Solver Consistency (ASM-003)
-| solver_type | Matrix | Corrector ∇ | Status |
-|---|---|---|---|
-| `"pseudotime"` | CCD Laplacian | CCD ∇ | CONSISTENT — production |
-| `"bicgstab"` | FVM matrix | CCD ∇ | Approximate O(h²) — testing only |
+### PPE Solver Consistency (ASM-003/005)
+| ppe_solver_type | Operator | Status |
+|---|---|---|
+| `"fvm_iterative"` | FVM matrix-free | Default production route |
+| `"fvm_direct"` / `"fd_direct"` | Sparse direct | Deterministic direct routes |
+| `"iim"` | Jump-corrected CCD/IIM | Explicit interface-correction route |
+| `"ccd_lu"` | CCD Kronecker LU | Restricted reference/component tests only |
 
 ### Known Symmetry-Breaking Root Causes (fixed 2026-03-22, ASM-008)
 | Root Cause | Stage | Signature |
@@ -244,9 +258,9 @@ PPE code must use dynamic center pin — never hardcode (0,0):
 |---|---|---|
 | ASM-001 | ACTIVE | SimulationBuilder is sole construction path |
 | ASM-002 | ACTIVE | PPE Kronecker Laplacian has 8-dim null space — ‖Lp−q‖₂ not valid |
-| ASM-003 | ACTIVE | "pseudotime" is production solver; "bicgstab" testing-only |
+| ASM-003 | DEPRECATED | CCD Kronecker PPE indefinite; CCD-LU restricted to reference/component tests |
 | ASM-004 | ACTIVE | CCD boundary PASS: d1 slope ≥ 3.5, d2 slope ≥ 2.5 |
-| ASM-005 | ACTIVE | PPE global: LGMRES primary, spsolve fallback |
+| ASM-005 | DEPRECATED | LGMRES prohibited for PPE production (PR-6) |
 | ASM-006 | ACTIVE | Banded systems: direct LU |
 | ASM-007 | ACTIVE | SimulationConfig is pure sub-config composition |
 | ASM-008 | FIXED | Three symmetry-breaking root causes found and fixed (2026-03-22) |
@@ -262,10 +276,10 @@ PPE code must use dynamic center pin — never hardcode (0,0):
 | Legacy class | File | Superseded by | Reason kept |
 |---|---|---|---|
 | `ReinitializerWENO5` | `levelset/reinitialize.py` | `Reinitializer` (DCCD+CN) | Paper §5c cross-validation |
-| `PPESolver` (FVM BiCGSTAB) | `pressure/legacy/ppe_solver.py` | `PPESolverCCDLU` | FVM reference (PR-1) |
-| `PPESolverLU` | `pressure/legacy/ppe_solver_lu.py` | `PPESolverCCDLU` | FVM direct LU reference |
-| `PPESolverPseudoTime` | `pressure/legacy/ppe_solver_pseudotime.py` | `PPESolverCCDLU` | CCD+LGMRES baseline (PR-6) |
-| `PPESolverSweep` | `pressure/legacy/ppe_solver_sweep.py` | `PPESolverCCDLU` | Matrix-free sweep reference |
+| `PPESolver` (FVM BiCGSTAB) | `pressure/legacy/ppe_solver.py` | `ppe_solver_type="fvm_iterative"` | FVM reference (PR-1) |
+| `PPESolverLU` | `pressure/legacy/ppe_solver_lu.py` | `ppe_solver_type="fvm_direct"` | FVM direct LU reference |
+| `PPESolverPseudoTime` | `pressure/legacy/ppe_solver_pseudotime.py` | current FD/FVM/DC routes | CCD+LGMRES baseline (PR-6) |
+| `PPESolverSweep` | `pressure/legacy/ppe_solver_sweep.py` | DC/PPE sweep routes | Matrix-free sweep reference |
 | `PPESolverDCOmega` | `pressure/legacy/ppe_solver_dc_omega.py` | `PPESolverCCDLU` | Under-relaxed ADI reference |
 | `CurvatureCalculator` | `levelset/curvature.py` | `CurvatureCalculatorPsi` | phi-inversion cross-validation |
 | `simulation.interface_stress_closure` imports | `simulation/interface_stress_closure.py` | `coupling/interface_stress_closure.py` | Compatibility path after affine face-jump helpers moved to neutral coupling layer |
@@ -331,4 +345,4 @@ All under `src/twophase/pressure/*.py` forward to `pressure/solvers/*.py`:
 | L — Library | `src/twophase/` | Solver kernels, tests |
 | E — Experiment | `experiment/` | Simulation scripts, benchmarks |
 | A — Paper | `paper/` | LaTeX manuscript |
-| K — Knowledge | `docs/wiki/` | Compiled wiki (96+ entries) |
+| K — Knowledge | `docs/wiki/` | Compiled wiki; live counts in `docs/wiki/INDEX.md` |

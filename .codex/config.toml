@@ -1,17 +1,18 @@
-# TwoPhaseFlow — Codex project configuration
-# Equivalent to .claude/settings.json for Claude Code.
-# Reference: https://developers.openai.com/codex/config-reference
-
-# Primary coding-optimized model.
-# Alternatives: "o4-mini" (faster/cheaper), "o3" (strongest reasoning)
-model = "codex-1"
-
-# Effort level — matches CLAUDE_CODE_EFFORT_LEVEL=max intent
-model_reasoning_effort = "high"
-
-# Auto-approve most ops; agent asks confirmation when needed.
 approval_policy = "on-request"
+model = "gpt-5.5"
+model_reasoning_effort = "high"
+sandbox_mode = "workspace-write"
 
-# Full access required: make run/push/pull SSH to remote GPU server.
-sandbox_mode = "danger-full-access"
+[sandbox_workspace_write]
+network_access = true
 
+[shell_environment_policy]
+inherit = "core"
+
+[shell_environment_policy.set]
+CLAUDE_CODE_DISABLE_1M_CONTEXT = "1"
+CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING = "1"
+CLAUDE_CODE_DISABLE_AUTO_MEMORY = "1"
+CLAUDE_CODE_EFFORT_LEVEL = "max"
+CLAUDE_CODE_SUBAGENT_MODEL = "sonnet"
+ENABLE_TOOL_SEARCH = "true"

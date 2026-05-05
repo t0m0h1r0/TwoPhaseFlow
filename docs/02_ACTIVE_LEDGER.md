@@ -1,5 +1,6 @@
 # 02_ACTIVE_LEDGER — Phase, Branch, CHK Register, Assumptions & Lessons
-# LIVE document — append-only for CHK/ASM/KL entries; phase/branch updated each session.
+# LIVE: append-only for CHK/ASM/KL rows; update phase/branch/current session only.
+# Read path: ACTIVE STATE first; CHECKLIST for older CHKs; ASSUMPTIONS/KL for invariants.
 # Last updated: 2026-05-05 (CHK-RA-CH1-13-NARR-003 DONE — Ch1--13 face-space narrative synchronized)
 
 ────────────────────────────────────────────────────────
@@ -330,18 +331,13 @@
 
 ### Notes
 - `last_CHK` is the most recent closed work item; older CHKs live in § CHECKLIST tables below.
-- ALL 31 ch11 experiments are GPU-opted and baselined (CHK-125..127).
-- CHK-162 で WIKI-T-060 / WIKI-L-026 の初回 additive 実装を着地。CHK-163 で remote GPU benchmark を回し、「line preconditioner が高コスト・低削減率である」ことまで確定。CHK-164 で `restart=80` が安全な既定値改善であることを確認。CHK-165 でその高コストの中身が「軸別 PCR 自体」であると確定。CHK-166 で truncated PCR により `N=256` で direct 超えを達成。
-- Wiki: **191 entries** (docs/wiki/INDEX.md). T-069 + L-031 + SP-H added 2026-04-23 (CHK-180); L-027 added 2026-04-21 (CHK-168, updated CHK-169); E-030 updated 2026-04-21 (CHK-169 α=2 non-FCCD confirmation); T-060 + L-026 added 2026-04-21 (CHK-161); T-057/T-058/T-059 + L-025 added 2026-04-21 (CHK-159); T-055/T-056 + L-024 added 2026-04-21 (CHK-158); T-054 added 2026-04-21 (CHK-156); T-053 added 2026-04-20 (CHK-155); T-050/T-051/T-052 + L-023 added 2026-04-20 (CHK-154). SP-F short paper added 2026-04-21 (CHK-161); SP-E short paper added 2026-04-21 (CHK-159); SP-D added 2026-04-21 (CHK-158); SP-C added 2026-04-21 (CHK-156).
-- phi_primary_transport=true + eikonal_xi は ns_pipeline のデフォルトに設定済み (a544840).
-- G^adj (worktree-gfm-nonuniform) を main にマージ済み (f7e8db4, CHK-151).
-- WIKI-E-030 **CLOSED**: 根本原因確定 **H-01（G^adj/CCD BF残差）**唯一主因; Exp-2(σ=0→T=20安定)が決定的証拠. H-09(増幅)+H-16(暴走)は共役. CHK-152 DONE.
-- ResearchArchitect 研究方針評価 **CLOSED** (CHK-153): SP-A (FCCD) + SP-B (Ridge-Eikonal) ショートペーパー + wiki 6件新規. 方針転換 (α/β/γ) 判断は PoC 後.
+- ch11: 31 experiments GPU-opted/baselined (CHK-125..127); CHK-162..166 established WIKI-T-060/L-026, safe `restart=80`, axis-PCR cost root cause, and truncated-PCR `N=256` direct-LU overtake.
+- Wiki/short-paper counts live in `docs/wiki/INDEX.md`; older additions are recoverable from CHK-154..180 and git log, not restated here.
+- Defaults/merges: `phi_primary_transport=true` + `eikonal_xi` defaulted in `ns_pipeline` (a544840); G^adj merged to main (f7e8db4, CHK-151).
+- Closed investigations: WIKI-E-030 root cause = H-01 G^adj/CCD BF residual (CHK-152); ResearchArchitect direction review closed with SP-A/SP-B + 6 wiki entries (CHK-153).
 
 ────────────────────────────────────────────────────────
-# § CHECKLIST — recent activity (one line per CHK)
-# Format: `CHK-ID | YYYY-MM-DD | type | summary`
-# Full detail in git log / commit messages / linked memos.
+# § CHECKLIST — compact CHK rows; full detail in git log / linked memos
 
 ## §1 — Most recent (CHK-120..139)
 
@@ -539,24 +535,24 @@
 | CHK-010..084 | 2026-03-27 .. 03-31 | paper+code+test | Initial bootstrap, §9–§12 narrative, DCCD verification, 154/154 tests. Full detail in git log. |
 
 ────────────────────────────────────────────────────────
-# § ASSUMPTIONS
+# § ASSUMPTIONS (summary; full history in CHK rows/git)
 
 | ASM | Status | Scope | One-line |
 |---|---|---|---|
 | ASM-001 | ACTIVE | src/twophase/ | SimulationBuilder is sole construction path |
 | ASM-002 | ACTIVE | src/twophase/pressure/ | PPE Kronecker has 8-dim null space — ‖Lp−q‖₂ not a pass/fail metric |
-| ASM-003 | DEPRECATED | src/twophase/pressure/ | Superseded 2026-04-15 by PR-2 — CCD Kronecker PPE indefinite (2 wrong-sign eigenvalues/axis); CCD-LU restricted to ch11 smooth-RHS tests |
+| ASM-003 | DEPRECATED | src/twophase/pressure/ | Superseded 2026-04-15 by PR-2 — CCD Kronecker PPE indefinite; CCD-LU restricted to ch11 smooth-RHS references |
 | ASM-004 | ACTIVE | src/twophase/ccd/ | CCD boundary-limited: d1 ≥ 3.5, d2 ≥ 2.5 on L∞ |
-| ASM-005 | DEPRECATED | src/twophase/pressure/ | Superseded 2026-04-15 — LGMRES prohibited for PPE (PR-6); production = FD spsolve or DC sweep |
+| ASM-005 | DEPRECATED | src/twophase/pressure/ | Superseded 2026-04-15 — LGMRES prohibited for PPE (PR-6); production = FD/FVM direct or DC path |
 | ASM-006 | ACTIVE | src/twophase/ccd/ | Banded/block-tridiag: direct LU (O(N) fill-in) |
 | ASM-007 | ACTIVE | src/twophase/ | SimulationConfig is pure sub-config composition |
 | ASM-008 | FIXED | src/twophase/ | 3 symmetry-breaking root causes fixed 2026-03-22 (Rhie-Chow wall N_ax, PPE pin at center, capillary CFL) |
 | ASM-009 | FIXED | src/twophase/ | FVM/CCD mismatch in IPC+corrector fixed 2026-03-22 |
 | ASM-010 | ACTIVE | paper/ | docs/00_GLOBAL_RULES.md §P1 is authoritative LaTeX standard |
-| ASM-122-A | FUNDAMENTAL | src/twophase/levelset/reinit_split.py | GPU/CPU pointwise drift on long Zalesak runs = chaos-amplified FP noise (CHK-124). Lyapunov λ≈ln(e)/20 steps. Hybrid/DGR path escapes via Lyapunov-contractive projection. PR-5 carve-out: pointwise O(1e-2) on split GPU is fundamental; L₂/mass/physics preserved. DGR default for α>1 in ns_pipeline.py reduces practical impact (CHK-130). |
+| ASM-122-A | FUNDAMENTAL | src/twophase/levelset/reinit_split.py | Long Zalesak GPU/CPU pointwise drift = chaos-amplified FP noise (CHK-124), λ≈ln(e)/20 steps. PR-5 carve-out: split GPU pointwise O(1e-2) is fundamental while L₂/mass/physics hold; Hybrid/DGR contracts it, and α>1 defaults to DGR (CHK-130). |
 
 ────────────────────────────────────────────────────────
-# § LESSONS (KL-01 .. KL-12)
+# § LESSONS (KL-01..12)
 
 ## §A — Known Error Classes (Math/Code)
 
@@ -565,19 +561,19 @@
 | KL-01 | Block matrix (2,1) sign flip after RHS transposition | Read RHS coeff → negate → write to LHS |
 | KL-02 | Wrong block size (3×3 vs 2×2) in docs | Verify block dims against actual code arrays |
 | KL-03 | Pseudocode comment names wrong algorithm | Cross-check comment vs accumulation pattern |
-| KL-04 | D(κf) ≠ κD(f) for varying κ | Expand D(κf) = κD(f) + f·∇κ — never factor variable coefficients |
+| KL-04 | D(κf) ≠ κD(f) for varying κ | Expand D(κf); never factor variable coefficients |
 | KL-05 | Nyquist modified wavenumber ≠ finite-grid spectral radius | Compute spectral radius of actual discrete matrix |
 | KL-06 | Pre-asymptotic O(h⁴) mistaken for asymptotic | Confirm slope stability over ≥3 grid doublings |
-| KL-07 | "Conservative" CFL rounding wrong direction | Conservative means SMALLER dt — floor for dt, ceiling for Nsteps |
+| KL-07 | "Conservative" CFL rounding wrong direction | Smaller dt: floor dt, ceiling Nsteps |
 | KL-08 | Kronecker C-order vs Fortran-order confusion | State convention explicitly; verify with N=2 example |
 | KL-09 | PPE LGMRES-primary/LU-fallback vs LU-primary confusion | LGMRES primary; spsolve auto-fallback on non-convergence (pre-2026-04-15) |
-| KL-10 | Collocated corrector "exact CCD-div-free" claim | RC PPE leaves ‖∇_RC·u^{n+1}‖=0 but CCD sense residual O(h²) |
+| KL-10 | Collocated corrector "exact CCD-div-free" claim | RC PPE gives ‖∇_RC·u^{n+1}‖=0; CCD residual remains O(h²) |
 | KL-11 | Pin-node excl still targets (0,0) after move to center | Use `pin_dof = ravel_multi_index(tuple(n//2 for n in grid.N), grid.shape)` |
-| KL-12 | `\texorpdfstring` missing in math heading → xelatex infinite loop | Wrap ALL numbered headings with `$...$` in texorpdfstring; pre-compile grep scan required |
+| KL-12 | `\texorpdfstring` missing in math heading → xelatex infinite loop | Wrap numbered math headings; pre-compile grep required |
 
 ────────────────────────────────────────────────────────
 # § REFERENCE — moved content
 
-- **§5 Evolution Log** (EVO-001..006 meta-governance YAML): moved to git commit messages + `prompts/meta/meta-deploy.md §v1.1 changelog`
-- **§4 Branch Lock Registry** (v5.1 concurrency): live state in `docs/locks/*.lock.json`; historical rows in git log. Protocol: `prompts/meta/meta-ops.md §LOCK-ACQUIRE/RELEASE`
-- **§ INTEGRITY_MANIFEST**: all-pending hash placeholders dropped. Contracts unsigned; re-introduce when first interface is locked.
+- Evolution log: git commits + `prompts/meta/meta-deploy.md §v1.1 changelog`
+- Branch locks: live in `docs/locks/*.lock.json`; protocol `prompts/meta/meta-ops.md §LOCK-ACQUIRE/RELEASE`
+- Integrity manifest: pending hashes dropped; re-introduce on first locked interface.
