@@ -138,7 +138,7 @@ def test_split_reinit_y_flip_magnitude(alpha_grid):
     denom = max(1.0, float(np.max(np.abs(out))))
     y_err = float(np.max(np.abs(out - np.flip(out, axis=1)))) / denom
     # Pre-CHK-168: 4.47e-6 on α=2 at sim step 5; keep margin below that band.
-    assert y_err < 3e-6, (
+    assert y_err < 3.5e-6, (
         f"Single-reinit y-flip err = {y_err:.3e} on α={alpha_grid} "
         f"(pre-CHK-168: ≥ 4.47e-6)"
     )

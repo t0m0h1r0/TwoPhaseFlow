@@ -84,14 +84,14 @@ class LinearGridRemapper(GridRemapper):
         self._axis = []
 
         for ax in range(self.ndim):
+            if np.any(self.source_coords[ax][1:] < self.source_coords[ax][:-1]):
+                raise ValueError("Source coordinates must be monotone non-decreasing.")
             src = xp.asarray(self.source_coords[ax])
             tgt = xp.asarray(self.target_coords[ax])
             if src.ndim != 1 or tgt.ndim != 1:
                 raise ValueError("Coordinates must be 1-D arrays per axis.")
             if src.size < 2:
                 raise ValueError("Each source axis must have at least two nodes.")
-            if bool(xp.any(src[1:] < src[:-1])):
-                raise ValueError("Source coordinates must be monotone non-decreasing.")
 
             left = xp.searchsorted(src, tgt, side="right") - 1
             left = xp.clip(left, 0, src.size - 2)
@@ -161,6 +161,8 @@ class CubicGridRemapper(GridRemapper):
         self._axis = []
 
         for ax in range(self.ndim):
+            if np.any(self.source_coords[ax][1:] < self.source_coords[ax][:-1]):
+                raise ValueError("Source coordinates must be monotone non-decreasing.")
             src = xp.asarray(self.source_coords[ax], dtype=float)
             tgt = xp.asarray(self.target_coords[ax], dtype=float)
             if src.ndim != 1 or tgt.ndim != 1:
@@ -168,8 +170,6 @@ class CubicGridRemapper(GridRemapper):
             n = src.size
             if n < 4:
                 raise ValueError(f"Axis {ax}: cubic remapper requires >= 4 source nodes.")
-            if bool(xp.any(src[1:] < src[:-1])):
-                raise ValueError("Source coordinates must be monotone non-decreasing.")
 
             # Find left bracket: src[left] <= tgt < src[left+1]
             left = xp.searchsorted(src, tgt, side="right") - 1
@@ -305,4 +305,3 @@ def build_nonuniform_to_uniform_remapper(backend, grid, target_shape: tuple[int,
         for ax in range(ndim)
     ]
     return build_grid_remapper(backend, grid.coords, target_coords)
-

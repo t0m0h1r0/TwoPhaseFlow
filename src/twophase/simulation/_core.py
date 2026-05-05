@@ -1,11 +1,14 @@
 """
 legacy トップレベル タイムステップ ループ。
 
-§9.1 の完全な 7 ステップアルゴリズム (Eq. 85–94) を実装する。
+DO NOT DELETE: C2-retained pre-§14 split-step implementation.  The current
+§14 reference path is ``TwoPhaseNSSolver``; this module preserves the legacy
+builder surface and historical validation path without claiming to be the
+projection-native FCCD/UCCD6/affine-history stack.
 
 各タイムステップの処理:
 
-  Step 1 — CLS 移流（WENO5 + TVD-RK3）
+  Step 1 — CLS 移流（configured legacy transport + TVD-RK3）
   Step 2 — 再初期化（疑似時間 PDE）
   Step 3 — 物性更新（ρ̃, μ̃）
   Step 4 — 曲率（φ ← H_ε^{-1}(ψ), κ ← CCD）
@@ -169,7 +172,7 @@ class TwoPhaseSimulation:
         return build_legacy_flow_state(self, pressure)
 
     def _step_advect_reinit(self, dt: float) -> None:  # modifies self.psi in-place
-        """Step 1–2: CLS 移流（WENO5+TVD-RK3）→ 再初期化（疑似時間 PDE）。"""
+        """Step 1–2: CLS 移流（configured legacy transport）→ 再初期化。"""
         advance_legacy_levelset(self, dt)
 
     def _step_predictor(self, state: FlowState, dt: float) -> List:
