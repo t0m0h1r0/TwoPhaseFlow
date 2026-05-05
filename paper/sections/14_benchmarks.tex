@@ -82,39 +82,22 @@ $T=1.5$ の final kinetic energy は $1.69\times10^{-2}$ から
 $6.99\times10^{-5}$ へ低下し，圧力コントラストは
 $2.68\times10^{1}$ から $5.03\times10^{-1}$ へ抑制された．
 
-同じ stack を N64 $\alpha=2$ の振動液滴へ進める前に，
-短時間 gate として projection DC 残差，体積 drift，signed deformation，
-圧力代表を同時に読む．
-affine pressure-history faces，projection-native transport，
-DC 残差契約~\eqref{eq:ppe_dc_residual_contract}，
-および Hodge 圧力代表を併用した $T=0.25$ run では
-final/max kinetic energy $1.44\times10^{-5}$，
-最大体積 drift $5.44\times10^{-7}$，
-signed deformation $0.09227\to0.09219$ を得た．
-$T=1$ run でも final/max kinetic energy は $9.70\times10^{-5}$，
-最大体積 drift は $9.40\times10^{-6}$ に留まり，
-projection DC は全 step で式~\eqref{eq:ppe_dc_residual_contract} を満たした．
-したがって一周期級の長時間 run は，まずこの短時間 gate で
-楕円求解残差と raw pressure representative の誤読を除外してから実行する．
+N64 $\alpha=2$ の振動液滴を長時間デモンストレーションへ進める前の
+受理 gate は，本章ではなく第~\ref{sec:numerical_integrity}章の成分検証と
+第~\ref{sec:verification}章の精度バジェットで扱う．
+本章は，§~\ref{sec:error_budget} で確認した projection residual，
+界面輸送，圧力代表の条件を前提に，本番 benchmark の挙動を示す章である．
 
-\paragraph{DC 以外に本稿へ残す N64 RCA 知見．}
-N64 $\alpha=2$ の試行錯誤で有効だった非 DC 知見は，
-いずれも離散変分・面空間の契約として整理できるものに限る．
-第一に，式~\eqref{eq:projection_native_psi_transport} の
-projection-native transport は，射影で得た発散零の正準面速度を
-そのまま CLS 保存 flux に用いるという保存則であり，
-節点速度へ戻してから face flux を再構成する経路とは同値ではない．
-第二に，式~\eqref{eq:affine_pressure_history_faces} の
-affine pressure-history faces は，履歴圧力を節点スカラーではなく
-圧力ジャンプ込みの面加速度 cochain として持ち越す契約である．
-第三に，非一様 fitted grid 上の圧力コントラストは
-算術平均ではなく体積重み付き相平均で読み，
-diffuse interface band の raw 圧力は Hodge/相内代表へ写して可視化する．
-第四に，ALE/discrete-gradient 経路では surface-energy endpoint を
-再格子化 step の局所量として扱い，古い格子のエネルギーを後続 step に
-持ち越さない．これらは曲率 cap，smoothing，CFL 再調整，damping のような
-小手先の安定化ではなく，圧力仕事・界面輸送・表示代表が同じ離散対象を
-参照するための条件である．
+\paragraph{N64 RCA 知見の章配置．}
+N64 $\alpha=2$ の試行錯誤から採用した理論・設計条件は，
+結果章ではなく §~\ref{sec:split_ppe_framework}--§~\ref{sec:grid_ale}
+の閉包条件として定式化する．
+本章では，それらの条件を同時に満たす短時間 gate が
+第~\ref{sec:numerical_integrity}章--第~\ref{sec:verification}章で
+楕円求解残差，界面輸送，圧力代表の誤読を分離したことを前提に，
+デモンストレーション結果だけを報告する．
+実行経路や設定ファイルの選択規約は再現性の記録であり，
+本章の物理・数学的主張には含めない．
 
 % ═══════════════════════════════════════════════════════════════════
 \subsection{毛管波：向き付き affine jump の符号検証}

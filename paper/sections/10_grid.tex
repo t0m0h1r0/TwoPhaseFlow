@@ -409,6 +409,26 @@ $t=0$ に $\phi^{(0)}$ から格子を生成し，全時間段階で同一格子
   \label{eq:ale_conservative_update}
 \]
 として更新または保存的に再写像する．
+さらに表面エネルギー $E_\Gamma$ を discrete-gradient 型に扱う場合，
+変分恒等式は同一の再写像 step に属する二端点の間でのみ意味を持つ：
+\begin{equation}
+  \overline{\nabla E_\Gamma}^{\,n\to n+1}_{\chi^n,\chi^{n+1}}
+  \cdot
+  \left(\psi^{n+1}_{\chi^{n+1}}-\mathcal R_{n\to n+1}\psi^n_{\chi^n}\right)
+  =
+  E_\Gamma^{\chi^{n+1}}(\psi^{n+1})
+  -
+  E_\Gamma^{\chi^{n+1}}(\mathcal R_{n\to n+1}\psi^n).
+  \label{eq:ale_discrete_gradient_endpoint_locality}
+\end{equation}
+ここで $\mathcal R_{n\to n+1}$ は同じ保存的再写像である．
+古い格子 $\chi^n$ 上の surface-energy endpoint を，
+再写像の発生していない後続 step へ持ち越すと，
+式~\eqref{eq:ale_discrete_gradient_endpoint_locality} の両辺は異なる測度上の量を比較するため，
+圧力仕事との変分的対応を失う．
+したがって ALE/discrete-gradient の endpoint は
+\textbf{現在の再写像 step に局所化された状態量}であり，
+履歴キャッシュとして時間段階を跨いで再利用してはならない．
 本稿の実装はこの式を演算子分割して扱う：
 物理輸送を旧格子上で行った後，$\phi,\psi$ から格子を再生成し，
 $\psi$ を体積重み付き質量補正で保存的に写像し，$u,v$ を新格子へ写した上で速度を再投影する．

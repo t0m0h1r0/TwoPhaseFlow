@@ -341,6 +341,49 @@ $D_f\bu_f^{n+1}=0$ を満たす速度場から，離散的に非同一な
 $D_f(P_f\psi\,P_f\mathcal{R}\bu_f)$ を再生成することになり，
 静止 Young--Laplace 界面に人工的な $\psi$ 摂動を注入する．
 
+\paragraph{面空間閉包から導かれる観測量．}
+以上の面空間閉包では，圧力の物理的仕事は節点スカラーではなく
+\begin{equation}
+  \ba_{p,f}
+  =
+  A_f\bigl(G_fp-B_f(j)\bigr)
+  \label{eq:pressure_work_face_cochain}
+\end{equation}
+という面 cochain で定義される．
+したがって，diffuse interface band 内の raw 節点圧力を
+相内スカラー圧力そのものとして読むことはできない．
+相内で可視化・診断に用いるスカラー代表 $p_H$ は，
+界面を横切らない同相面集合 $\mathcal F_{\mathrm{same}}$ 上で
+\begin{equation}
+  p_H
+  =
+  \arg\min_{q,\ \mathcal G_q(q)=0}
+  \sum_{f\in\mathcal F_{\mathrm{same}}}
+  w_f
+  \left(
+    G_fq-A_f^{-1}\ba_{p,f}
+  \right)^2
+  \label{eq:phase_hodge_pressure_representative}
+\end{equation}
+として定義する．
+ここで $\mathcal G_q(q)=0$ は相ごとの体積平均ゲージであり，
+$A_f^{-1}\ba_{p,f}$ は同相面での圧力勾配代表である．
+界面を横切る面のジャンプは $B_f(j)$ として
+式~\eqref{eq:pressure_work_face_cochain} の cochain 側に保持され，
+単一節点値へ押し込まない．
+同じ理由で，非一様 fitted grid 上の相平均圧力は
+\begin{equation}
+  \langle p\rangle_{\Omega_q}
+  =
+  \frac{\sum_{i\in\Omega_q}p_i\,\Delta V_i}
+       {\sum_{i\in\Omega_q}\Delta V_i}
+  \label{eq:phase_volume_weighted_pressure_mean}
+\end{equation}
+で読む．算術平均はセル体積が同一である場合にのみこの式へ退化する．
+本節の圧力代表は出力・診断の定義であり，
+運動量更新そのものは常に式~\eqref{eq:pressure_work_face_cochain} の
+面 cochain を通して行う．
+
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{GFM ゴーストジェットによる相間接続}
 \label{sec:gfm_ghost_jet_connection}
