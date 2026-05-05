@@ -709,9 +709,11 @@ def p2_trace_surface_energy_discrete_gradient_2d(
     midpoint_work = xp.sum(midpoint_gradient * direction)
     direction_norm_sq = xp.sum(direction * direction)
     zero = xp.asarray(0.0, dtype=current.dtype)
+    active_step = direction_norm_sq > zero
+    safe_norm_sq = xp.where(active_step, direction_norm_sq, xp.ones_like(direction_norm_sq))
     correction_scale = xp.where(
-        direction_norm_sq > zero,
-        (energy_delta - midpoint_work) / direction_norm_sq,
+        active_step,
+        (energy_delta - midpoint_work) / safe_norm_sq,
         zero,
     )
     return midpoint_gradient + correction_scale * direction
@@ -776,9 +778,11 @@ def p2_trace_surface_energy_ale_discrete_gradient_2d(
     midpoint_work = xp.sum(midpoint_gradient * direction)
     direction_norm_sq = xp.sum(direction * direction)
     zero = xp.asarray(0.0, dtype=current.dtype)
+    active_step = direction_norm_sq > zero
+    safe_norm_sq = xp.where(active_step, direction_norm_sq, xp.ones_like(direction_norm_sq))
     correction_scale = xp.where(
-        direction_norm_sq > zero,
-        (energy_delta - midpoint_work) / direction_norm_sq,
+        active_step,
+        (energy_delta - midpoint_work) / safe_norm_sq,
         zero,
     )
     return midpoint_gradient + correction_scale * direction

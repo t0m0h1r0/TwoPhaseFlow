@@ -290,6 +290,41 @@ def test_transport_variational_p2_ale_discrete_gradient_matches_energy_delta():
     )
 
 
+def test_transport_variational_p2_discrete_gradient_zero_step_is_safe():
+    """Zero displacement uses the midpoint gradient without invalid division."""
+    backend = Backend(use_gpu=False)
+    grid = Grid(GridConfig(ndim=2, N=(16, 16), L=(1.0, 1.0)), backend)
+    x_coord, y_coord = np.meshgrid(grid.coords[0], grid.coords[1], indexing="ij")
+    phi = ((x_coord - 0.51) / 0.25) ** 2 + ((y_coord - 0.48) / 0.18) ** 2 - 1.0
+    psi = 1.0 / (1.0 + np.exp(phi / 0.035))
+    sigma = 0.072
+
+    with np.errstate(all="raise"):
+        discrete_gradient = p2_trace_surface_energy_discrete_gradient_2d(
+            xp=np,
+            grid=grid,
+            psi_previous=psi,
+            psi=psi,
+            sigma=sigma,
+        )
+        ale_gradient = p2_trace_surface_energy_ale_discrete_gradient_2d(
+            xp=np,
+            grid=grid,
+            psi_previous=psi,
+            psi=psi,
+            sigma=sigma,
+        )
+
+    midpoint_gradient = p2_trace_surface_energy_gradient_2d(
+        xp=np,
+        grid=grid,
+        psi=psi,
+        sigma=sigma,
+    )
+    np.testing.assert_allclose(discrete_gradient, midpoint_gradient)
+    np.testing.assert_allclose(ale_gradient, midpoint_gradient)
+
+
 def test_transport_variational_p2_jump_is_transport_adjoint_work():
     """P2 jump route must preserve exact discrete transport work adjointness."""
     backend = Backend(use_gpu=False)
