@@ -38,8 +38,10 @@ from twophase.simulation.face_projection import reconstruct_nodes_from_faces
 from twophase.levelset.transport_strategy import PhiPrimaryTransport, PsiDirectTransport
 from twophase.simulation.velocity_reprojector import (
     ConsistentIIMReprojector,
+    IVelocityReprojector,
     VariableDensityReprojector,
 )
+from twophase.simulation.scheme_build_ctx import ReprojectorBuildCtx
 from twophase.ppe.interfaces import IPPESolver, MatrixAssemblyUnavailable
 
 
@@ -692,7 +694,7 @@ def test_p2_midpoint_capillary_interface_uses_temporal_midpoint():
     [("fccd_flux", "fccd_flux"), ("fccd_nodal", "fccd_nodal")],
 )
 def test_fullstack_two_steps_no_nan(advection_scheme: str, convection_scheme: str):
-    """FCCD × Ridge-Eikonal × α=2 × consistent_gfm × HFE — 2 steps stable."""
+    """FCCD × Ridge-Eikonal × α=2 × explicit variable-density reproject — stable."""
     solver = TwoPhaseNSSolver(
         N, N, L, L, bc_type="wall",
         alpha_grid=2.0,
@@ -703,7 +705,7 @@ def test_fullstack_two_steps_no_nan(advection_scheme: str, convection_scheme: st
         reinit_every=2,
         reinit_eps_scale=1.4,
         ridge_sigma_0=3.0,
-        reproject_mode="consistent_gfm",
+        reproject_mode="variable_density_only",
         phi_primary_transport=True,
         advection_scheme=advection_scheme,
         convection_scheme=convection_scheme,
@@ -1772,7 +1774,7 @@ def test_fccd_psi_bimodal_preserved():
         reinit_every=2,
         reinit_eps_scale=1.4,
         ridge_sigma_0=3.0,
-        reproject_mode="consistent_gfm",
+        reproject_mode="variable_density_only",
         phi_primary_transport=True,
         advection_scheme="fccd_flux",
         convection_scheme="fccd_flux",
@@ -1854,12 +1856,12 @@ def test_from_config_threads_fccd_keys():
             },
             "elliptic": {
                 "pressure_projection": {
-                    "mode": "consistent_gfm",
-                        "poisson": {
-                            "discretization": "fvm",
-                            "coefficient": "phase_density",
-                            "solver": {"kind": "direct"},
-                        },
+                    "mode": "variable_density",
+                    "poisson": {
+                        "discretization": "fvm",
+                        "coefficient": "phase_density",
+                        "solver": {"kind": "direct"},
+                    },
                 },
             },
         },
@@ -2069,3 +2071,31 @@ def test_reprojector_clears_interface_jump_context_before_ppe_solve():
     )
 
     assert ppe.events == ["clear", "solve"]
+
+
+def test_variable_density_reprojector_requires_explicit_densities():
+    reprojector = VariableDensityReprojector()
+    psi = np.zeros((4, 4))
+    u = np.zeros_like(psi)
+    v = np.zeros_like(psi)
+
+    with pytest.raises(ValueError, match="requires explicit rho_l and rho_g"):
+        reprojector.reproject(
+            psi,
+            u,
+            v,
+            _ContextRecordingPPESolver(),
+            ccd=_DerivativeOnlyCCD(),
+            backend=_ArrayBackend(),
+        )
+
+
+def test_consistent_gfm_reprojector_fails_closed_until_implemented():
+    with pytest.raises(ValueError, match="not implemented as a GFM"):
+        IVelocityReprojector.from_scheme(
+            "consistent_gfm",
+            ReprojectorBuildCtx(
+                iim_stencil_corrector=object(),
+                reconstruct_base=object(),
+            ),
+        )

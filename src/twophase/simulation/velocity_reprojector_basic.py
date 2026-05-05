@@ -81,7 +81,7 @@ class LegacyReprojector(IVelocityReprojector):
 class VariableDensityReprojector(IVelocityReprojector):
     """Reprojector with variable density ρ = ρ_g + (ρ_l − ρ_g) ψ."""
 
-    scheme_names = ("variable_density_only", "gfm", "consistent_gfm")
+    scheme_names = ("variable_density_only",)
 
     @classmethod
     def _build(cls, name: str, ctx: "ReprojectorBuildCtx") -> "VariableDensityReprojector":
@@ -108,10 +108,12 @@ class VariableDensityReprojector(IVelocityReprojector):
         u_d = _device_array(u, backend)
         v_d = _device_array(v, backend)
 
-        if rho_l is not None and rho_g is not None:
-            rho = rho_g + (rho_l - rho_g) * psi_d
-        else:
-            rho = xp.ones_like(psi_d)
+        if rho_l is None or rho_g is None:
+            raise ValueError(
+                "variable_density_only reprojection requires explicit rho_l and rho_g; "
+                "select reproject_mode='legacy' explicitly for constant-density projection."
+            )
+        rho = rho_g + (rho_l - rho_g) * psi_d
 
         du_dx = ccd.first_derivative(u_d, 0)
         dv_dy = ccd.first_derivative(v_d, 1)
@@ -133,10 +135,21 @@ class VariableDensityReprojector(IVelocityReprojector):
 
 
 class ConsistentGFMReprojectorLegacy(IVelocityReprojector):
-    """Legacy alias retained per C2."""
+    """Fail-closed placeholder for the unimplemented consistent-GFM reprojector."""
+
+    scheme_names = ("gfm", "consistent_gfm")
 
     def __init__(self) -> None:
-        self._delegate = VariableDensityReprojector()
+        self._stats = {"calls": 0}
+
+    @classmethod
+    def _build(cls, name: str, ctx: "ReprojectorBuildCtx") -> "ConsistentGFMReprojectorLegacy":
+        raise ValueError(
+            f"reproject_mode={name!r} is not implemented as a GFM velocity "
+            "reprojection scheme. It must not run as variable_density_only implicitly; "
+            "select reproject_mode='variable_density_only' explicitly for the "
+            "density-weighted projection, or choose 'consistent_iim' for the IIM path."
+        )
 
     def reproject(
         self,
@@ -149,11 +162,15 @@ class ConsistentGFMReprojectorLegacy(IVelocityReprojector):
         rho_l: float | None = None,
         rho_g: float | None = None,
     ) -> tuple[np.ndarray, np.ndarray]:
-        return self._delegate.reproject(psi, u, v, ppe_solver, ccd, backend, rho_l, rho_g)
+        self._stats["calls"] += 1
+        raise RuntimeError(
+            "consistent_gfm velocity reprojection is not implemented; "
+            "no alternate reprojection scheme was applied."
+        )
 
     @property
     def stats(self) -> dict[str, float]:
-        return self._delegate.stats
+        return dict(self._stats)
 
 
 ConsistentGFMReprojector = ConsistentGFMReprojectorLegacy
