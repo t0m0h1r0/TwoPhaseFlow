@@ -1,6 +1,25 @@
+---
+ref_id: WIKI-L-028
+title: "Implementation: IIM Jump Decomposition + DC Iteration (LU-Free)"
+domain: code
+status: REFERENCE
+superseded_by: WIKI-X-041
+tags: [ppe, iim, defect_correction, adi, historical_proposal, curation]
+compiled_by: ResearchArchitect
+compiled_at: "2026-04-22"
+curated_at: "2026-05-05"
+---
+
 # WIKI-L-028 — Implementation: IIM Jump Decomposition + DC Iteration (LU-Free)
 
-**ref_id:** WIKI-L-028 | **Status:** PROPOSED | **CHK:** CHK-177 (proposed)
+**ref_id:** WIKI-L-028 | **Status:** REFERENCE | **CHK:** CHK-177 (proposed)
+
+> Curation note (CHK-RA-WIKI-REVIEW-RECUR-001, 2026-05-05):
+> This is a historical LU-removal proposal based on jump decomposition plus
+> ADI-like defect-correction sweeps.  It is not the current PPE implementation
+> contract and must not be selected as a fallback route.  Use the active
+> projection-native face-space contracts and GPU-resident Krylov/preconditioner
+> roadmap (`WIKI-X-041`, `WIKI-X-040`, `WIKI-L-026`, `WIKI-L-038`) instead.
 
 ## Executive Summary
 

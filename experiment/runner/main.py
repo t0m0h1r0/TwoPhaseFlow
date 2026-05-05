@@ -94,7 +94,14 @@ def _peek_handler_key(config_path: pathlib.Path) -> str:
     )
 
 
-def _dispatch(config_path: pathlib.Path, plot_only: bool) -> None:
+def _dispatch(
+    config_path: pathlib.Path,
+    plot_only: bool,
+    *,
+    resume_from: pathlib.Path | None = None,
+    checkpoint_final: bool = True,
+    checkpoint_every_steps: int | None = None,
+) -> None:
     from .registry import HANDLER_REGISTRY
     from . import handlers  # noqa: F401  trigger handler registrations
 
@@ -109,6 +116,10 @@ def _dispatch(config_path: pathlib.Path, plot_only: bool) -> None:
     cfg = handler.load_config(config_path)
     outdir = _outdir(config_path)
     outdir.mkdir(parents=True, exist_ok=True)
+    cfg._config_path = config_path
+    cfg._checkpoint_path = outdir / "checkpoint_final.npz" if checkpoint_final else None
+    cfg._resume_from = resume_from
+    cfg._checkpoint_every_steps = checkpoint_every_steps
 
     title = ""
     exp_meta = getattr(cfg, "experiment", None)
@@ -119,6 +130,8 @@ def _dispatch(config_path: pathlib.Path, plot_only: bool) -> None:
     print(f"    outdir : {outdir}")
 
     if plot_only:
+        if resume_from is not None:
+            raise ValueError("--resume-from cannot be combined with --plot-only")
         handler.plot(cfg, outdir)
     else:
         results = handler.run(cfg, outdir)
@@ -139,6 +152,12 @@ def main() -> None:
                         help="Config YAML name or path (stem or full path).")
     parser.add_argument("--plot-only", action="store_true",
                         help="Re-plot from saved .npz without rerunning.")
+    parser.add_argument("--resume-from", default=None,
+                        help="Explicitly resume from a ch14 checkpoint .npz.")
+    parser.add_argument("--no-checkpoint-final", action="store_true",
+                        help="Do not write outdir/checkpoint_final.npz after a run.")
+    parser.add_argument("--checkpoint-every-steps", type=int, default=None,
+                        help="Also refresh the checkpoint every N completed steps.")
     parser.add_argument("--all", action="store_true",
                         help="Run all YAML configs in all chapter config/ directories.")
     args = parser.parse_args()
@@ -152,11 +171,22 @@ def main() -> None:
             print("No YAML configs found.", file=sys.stderr)
             sys.exit(1)
         for cp in configs:
-            _dispatch(cp, plot_only=args.plot_only)
+            _dispatch(
+                cp,
+                plot_only=args.plot_only,
+                checkpoint_final=not args.no_checkpoint_final,
+                checkpoint_every_steps=args.checkpoint_every_steps,
+            )
         return
 
     if args.config is None:
         parser.print_help()
         sys.exit(1)
 
-    _dispatch(_resolve_config(args.config), plot_only=args.plot_only)
+    _dispatch(
+        _resolve_config(args.config),
+        plot_only=args.plot_only,
+        resume_from=pathlib.Path(args.resume_from).resolve() if args.resume_from else None,
+        checkpoint_final=not args.no_checkpoint_final,
+        checkpoint_every_steps=args.checkpoint_every_steps,
+    )

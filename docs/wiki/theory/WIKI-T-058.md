@@ -1,9 +1,9 @@
 ---
 ref_id: WIKI-T-058
-title: "Physical-Space Hessian for Ridge Detection; Direct Non-Uniform CCD (Approach A) vs FD Fallback"
+title: "Physical-Space Hessian for Ridge Detection; Direct Non-Uniform CCD and Historical FD Probe"
 domain: theory
 status: PROPOSED
-superseded_by: null
+superseded_by: WIKI-X-041
 sources:
   - path: docs/memo/short_paper/SP-E_ridge_eikonal_nonuniform_grid.md
     description: "SP-E §4 (D2) — derivation of physical-space Hessian and ξ-space prohibition"
@@ -18,12 +18,18 @@ consumers:
     description: "WIKI-L-025 (RidgeEikonalReinitializer library card)"
   - domain: theory
     description: "Deferred CHK-160 — Approach A implementation"
-tags: [hessian, ridge_detection, chain_rule, direct_ccd, approach_a, fd_fallback, chk_159, chk_160]
+tags: [hessian, ridge_detection, chain_rule, direct_ccd, approach_a, historical_fd_probe, chk_159, chk_160]
 compiled_by: Claude Opus 4.7
 chk: CHK-159
 ---
 
 # Physical-Space Hessian for Ridge Detection
+
+> Curation note (CHK-RA-WIKI-CURATION-001, 2026-05-05):
+> Approach B is retained only as a CHK-159 historical probe.  It is not an
+> admissible production path under the current paper-exact policy.  Active
+> derivations should use the direct physical-space nonuniform CCD/FCCD route
+> and the guardrails in [[WIKI-X-041]].
 
 ## Context
 
@@ -40,7 +46,7 @@ $$\nabla_{x}^{2}\;=\;J^{T}\nabla_{\xi}^{2}J+(\nabla_{\xi}J^{T})\nabla_{\xi}.$$
 
 Direct Non-Uniform CCD ([WIKI-T-039 §5a](WIKI-T-039.md)) builds a compact finite-difference system whose stencils use physical spacings $h_\text{x}(i),h_\text{y}(j)$ explicitly. The second-derivative operator is $\mathcal{O}(h^{6})$ and by construction does *not* route through $\xi_\text{idx}$.
 
-## Approach B (FD fallback, CHK-159)
+## Approach B (historical FD probe, CHK-159)
 
 Second-order physical-space finite differences:
 $$[\partial_{xx}\xi]_{ij}=\frac{\xi_{i+1,j}-2\xi_{ij}+\xi_{i-1,j}}{h^{-}\cdot h^{+}},\quad h^{\pm}=h_\text{x}(i\pm{\tfrac{1}{2}}),$$

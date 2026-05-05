@@ -2,8 +2,8 @@
 ref_id: WIKI-X-037
 title: "ResearchArchitect Wiki Knowledge Atlas: Retrieval Map, Invariants, and Open Fronts"
 domain: cross-domain
-status: ACTIVE
-superseded_by: null
+status: REFERENCE
+superseded_by: WIKI-X-041
 sources:
   - path: docs/wiki/INDEX.md
     git_hash: 266d87c
@@ -79,6 +79,12 @@ compiled_at: 2026-04-25
 ---
 
 # WIKI-X-037 — ResearchArchitect Wiki Knowledge Atlas
+
+> Curation note (CHK-RA-WIKI-REVIEW-RECUR-001, 2026-05-05):
+> This atlas is the previous retrieval map.  It preserved the then-active
+> R-1.5/R-1 architecture and SP-core routing, but it has been superseded by
+> the active gate `WIKI-X-041` plus the recent digest `WIKI-X-040`.  Do not use
+> its "Active architecture direction" table as current policy.
 
 ## Scope
 

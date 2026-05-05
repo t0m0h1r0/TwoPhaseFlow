@@ -2,8 +2,8 @@
 ref_id: WIKI-T-013
 title: "WENO5 Reference Scheme & DCCD Comparative Advection Experiments"
 domain: T
-status: ACTIVE
-superseded_by: null
+status: REFERENCE
+superseded_by: WIKI-X-041
 sources:
   - path: paper/sections/appendix_numerics_schemes_s2.tex
     git_hash: 3d4d1bb
@@ -28,7 +28,14 @@ compiled_at: 2026-04-08
 
 ## C.1 — WENO5 Reference Scheme
 
-WENO5 serves as the comparison baseline for DCCD. Not the primary implementation — DCCD is preferred for CLS advection.
+> Curation note (CHK-RA-WIKI-CURATION-001, 2026-05-05):
+> WENO5 remains a reference comparator, and the DCCD benchmark remains
+> historical evidence.  The current paper does not use either WENO5 or DCCD as
+> the active CLS transport policy; it uses FCCD face-flux CLS transport.  Do
+> not cite the final "DCCD optimal" reading below as current algorithm policy.
+
+WENO5 serves as the comparison baseline for older DCCD studies. It is not the
+primary implementation path for the current paper.
 
 ### Lax-Friedrichs Flux Splitting
 
@@ -86,4 +93,6 @@ Negative flux: mirror index. Total: F̂_{i+½} = F̂⁺ + F̂⁻.
 1. **Discontinuous:** WENO5 best TV (1.00) but DCCD best L² (1.5× better)
 2. **C⁰ corners:** CCD best L²; DCCD uniquely achieves TV=1.00; WENO5 slightly over-dissipates (0.97)
 3. **C^∞ smooth:** CCD best L² (2.57e-5); WENO5 is 38× worse due to O(h⁵) + ENO overhead
-4. **CLS suitability:** DCCD optimal trade-off for sharp-yet-smooth CLS profiles
+4. **Historical CLS reading:** DCCD was the best trade-off in this older
+   one-dimensional comparison, but current CLS transport policy is superseded
+   by FCCD face-flux transport in the paper.

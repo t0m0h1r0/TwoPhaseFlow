@@ -1,4 +1,24 @@
+---
+ref_id: WIKI-X-022
+title: "N-Robust BF-Consistent Full-Stack Architecture: 10-Method Role Map"
+domain: cross-domain
+status: SUPERSEDED
+superseded_by: WIKI-X-041
+tags: [balanced_force, historical_role_map, retired_stack, curation]
+compiled_by: ResearchArchitect
+compiled_at: "2026-04-22"
+curated_at: "2026-05-05"
+---
+
 # WIKI-X-022: N-Robust BF-Consistent Full-Stack Architecture — Unified Role Map for the 10-Method Toolkit
+
+> Curation note (CHK-RA-WIKI-REVIEW-RECUR-001, 2026-05-05):
+> This role map captured an intermediate R-1.5/R-1 full-stack design.  It is no
+> longer the active algorithm map because the current route is projection-native
+> face-space closure with oriented affine interface stress and pressure-history
+> face acceleration.  Retain the N-scaling/BF motivation as negative evidence,
+> but route implementation or paper work through `WIKI-X-041`, `WIKI-X-040`,
+> `WIKI-X-039`, and `WIKI-T-101`.
 
 ## Statement of the principle
 

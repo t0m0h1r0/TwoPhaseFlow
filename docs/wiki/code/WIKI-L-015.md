@@ -1,13 +1,20 @@
 ---
 id: WIKI-L-015
 title: "CuPy / GPU Backend Unification: xp Dispatch, SciPy Shim, Batched Thomas"
-status: ACTIVE
+status: REFERENCE
 created: 2026-04-11
 updated: 2026-04-11
-depends_on: [WIKI-L-001, WIKI-L-008, WIKI-T-015]
+superseded_by: WIKI-L-037
+depends_on: [WIKI-L-037, WIKI-L-038]
 ---
 
 # CuPy / GPU Backend Unification
+
+> Curation note (CHK-RA-WIKI-REVIEW-RECUR-001, 2026-05-05):
+> This is the first GPU-unification snapshot.  The general backend lesson is
+> retained, but old `pressure/` paths, sparse-LU routing, and parent links to
+> the retired 7-step loop are historical.  Current backend boundaries are
+> `WIKI-L-037` and algebra-preserving GPU policy is `WIKI-L-038`.
 
 ## Motivation
 

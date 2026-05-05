@@ -19,8 +19,8 @@ consumers:
   - domain: L
     usage: "ns_pipeline.py uses grid_remap + reconstruction at runtime"
 depends_on:
-  - "[[WIKI-L-008]]"
-  - "[[WIKI-L-015]]"
+  - "[[WIKI-L-009]]"
+  - "[[WIKI-L-037]]"
 compiled_by: ResearchArchitect
 verified_by: null
 compiled_at: 2026-04-16
@@ -28,8 +28,14 @@ compiled_at: 2026-04-16
 
 # Library Additions (wt/gpu-remote)
 
-Four new library modules added to `src/twophase/`, following the module hierarchy
-defined in [[WIKI-L-008]].
+> Curation note (CHK-RA-WIKI-REVIEW-RECUR-001, 2026-05-05):
+> The added-module evidence is retained, but its original dependency on the
+> old module hierarchy and first GPU-unification snapshot is historical.  Use
+> `WIKI-L-009` and `WIKI-L-037` to resolve current paths and backend rules.
+
+Four library modules were added to `src/twophase/` in this historical
+checkpoint.  Resolve their current location through [[WIKI-L-009]] or
+`docs/01_PROJECT_MAP.md` before editing.
 
 ---
 

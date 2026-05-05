@@ -2,8 +2,8 @@
 ref_id: WIKI-L-001
 title: "Algorithm Flow: 7-Step Time Integration Loop"
 domain: L
-status: ACTIVE
-superseded_by: null
+status: SUPERSEDED
+superseded_by: WIKI-X-041
 sources:
   - path: paper/sections/10_full_algorithm.tex
     git_hash: 7328bf1
@@ -27,6 +27,12 @@ depends_on:
 compiled_by: KnowledgeArchitect
 compiled_at: 2026-04-07
 ---
+
+> Curation note (CHK-RA-WIKI-REVIEW-RECUR-001, 2026-05-05):
+> This 7-step loop is historical.  It encodes the early DCCD/Rhie-Chow/DC-ADI
+> algorithm sketch and must not be used as the current implementation contract.
+> Use `WIKI-X-041` for retrieval routing and paper §11 / `WIKI-T-101` for the
+> current one-step algorithm.
 
 ## 7-Step Time Integration Loop
 

@@ -53,12 +53,10 @@ class InterfaceStressContext:
     transport_variational_previous_surface_energy: Any | None = None
 
     def is_active(self) -> bool:
-        """Return whether a non-zero pressure jump should be applied."""
-        return (
-            (
-                self.pressure_jump_gas_minus_liquid is not None
-                or self.kappa_lg is not None
-            )
+        """Return whether a jump cochain should enter face-pressure work."""
+        return self.pressure_jump_gas_minus_liquid is not None or (
+            self.cut_face_quadrature
+            and self.kappa_lg is not None
             and abs(float(self.sigma)) > 0.0
         )
 
@@ -90,7 +88,11 @@ def build_interface_stress_context(
     builder and computes ``p_gas - p_liquid = -sigma * kappa_lg``.
     """
     curvature = kappa_lg if kappa_lg is not None else kappa
-    if pressure_jump_gas_minus_liquid is None and curvature is not None:
+    if (
+        pressure_jump_gas_minus_liquid is None
+        and curvature is not None
+        and abs(float(sigma)) > 0.0
+    ):
         pressure_jump_gas_minus_liquid = -float(sigma) * xp.asarray(curvature)
     return InterfaceStressContext(
         psi=xp.asarray(psi),

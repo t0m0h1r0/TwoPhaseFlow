@@ -2,8 +2,8 @@
 ref_id: WIKI-X-011
 title: "Divergence Criterion Gap: Single-Phase FFT-PPE (1e-10) vs Two-Phase CSF (1e-2)"
 domain: B
-status: ACTIVE
-superseded_by: null
+status: REFERENCE
+superseded_by: WIKI-E-050
 sources:
   - path: "paper/sections/12_verification.tex"
   - path: "paper/sections/12e_coupling.tex"
@@ -16,6 +16,12 @@ compiled_at: 2026-04-16
 ---
 
 # Divergence Criterion Gap: Single-Phase (1e-10) vs Two-Phase (1e-2)
+
+> Curation note (CHK-RA-WIKI-REVIEW-RECUR-001, 2026-05-05):
+> Keep this as historical evidence for why a single-phase FFT-PPE divergence
+> threshold could not be applied to older two-phase CSF runs.  It must not be
+> used as the current V1 or two-phase acceptance policy; retrieve current
+> verification reading through `WIKI-E-050`, `WIKI-X-040`, and `WIKI-X-041`.
 
 ## Observation
 

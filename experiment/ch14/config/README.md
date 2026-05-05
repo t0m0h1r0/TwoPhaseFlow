@@ -22,6 +22,20 @@ Run them through the unified runner (`experiment/run.py`):
 - `python experiment/run.py --config ch14_rayleigh_taylor`
 - Add `--plot-only` to regenerate figures from a prior `data.npz`.
 
+Each normal run writes a restart checkpoint to
+`experiment/ch14/results/<config>/checkpoint_final.npz`. Resume is never
+implicit: pass `--resume-from <path>` explicitly, usually after increasing
+`run.T_final` in the same YAML. The checkpoint manifest ignores restart-safe
+output-only paths (`output.*`, `run.snap_times`, `run.snap_interval`,
+`run.print_every`, and `run.debug_diagnostics`) but refuses restart if any
+physics/numerics/grid/interface/diagnostic parameter or any execution code under
+`src/twophase/`, `experiment/runner/`, or `experiment/run.py` changed. For long runs,
+`--checkpoint-every-steps N` refreshes the same checkpoint atomically every `N`
+completed steps, and `--no-checkpoint-final` disables the final write when a
+read-only dry run is needed. Numerical state is stored as NumPy `.npy` binary
+members inside the `.npz`, preserving array dtype bytes losslessly; JSON is used
+only for non-numerical metadata such as the manifest and debug key names.
+
 The four production configs emit periodic snapshots with `psi`, `velocity`,
 and `pressure` fields. The runner stores these in `data.npz` under `fields/psi`,
 `fields/velocity`, and `fields/pressure` (plus compatibility fields

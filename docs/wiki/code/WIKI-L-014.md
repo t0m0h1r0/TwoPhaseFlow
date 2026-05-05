@@ -1,13 +1,20 @@
 ---
 id: WIKI-L-014
 title: "Config-Driven Experiment Framework: ExperimentConfig, NS Pipeline, Unified Runner"
-status: ACTIVE
+status: REFERENCE
 created: 2026-04-10
 updated: 2026-04-10
-depends_on: [WIKI-L-001, WIKI-L-008]
+superseded_by: WIKI-X-041
+depends_on: [WIKI-L-009, WIKI-X-041]
 ---
 
 # Config-Driven Experiment Framework
+
+> Curation note (CHK-RA-WIKI-REVIEW-RECUR-001, 2026-05-05):
+> Retain this as provenance for the YAML-runner migration.  The listed
+> `TwoPhaseNSSolver`, five-stage loop, and file locations are not a current
+> implementation map.  Use the active project map and `WIKI-X-041` before
+> editing experiment runners or configs.
 
 ## Motivation
 

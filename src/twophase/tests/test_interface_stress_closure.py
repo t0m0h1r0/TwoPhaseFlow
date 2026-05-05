@@ -793,6 +793,30 @@ def test_explicit_pressure_jump_context_is_not_recomputed_from_curvature():
     np.testing.assert_allclose(context.pressure_jump_gas_minus_liquid, 4.0)
 
 
+def test_explicit_pressure_jump_context_active_without_sigma():
+    """Explicit affine jumps are physical data, not gated by capillary sigma."""
+    grid, _ = _make_two_cell_operator()
+    psi = np.ones(grid.shape)
+    psi[1:, :] = 0.0
+    context = build_interface_stress_context(
+        xp=np,
+        psi=psi,
+        pressure_jump_gas_minus_liquid=np.full(grid.shape, 4.0),
+        sigma=0.0,
+    )
+
+    jump_x = signed_pressure_jump_gradient(
+        xp=np,
+        grid=grid,
+        context=context,
+        axis=0,
+    )
+
+    assert context.is_active()
+    np.testing.assert_allclose(jump_x[0, :], 4.0)
+    np.testing.assert_allclose(jump_x[1, :], 0.0)
+
+
 def test_affine_jump_pressure_flux_preserves_cut_face_jump():
     """The phase-separated zero mask must not erase affine jump flux."""
     grid, div_op = _make_two_cell_operator()

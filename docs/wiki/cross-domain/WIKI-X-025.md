@@ -2,8 +2,8 @@
 ref_id: WIKI-X-025
 title: "Time Integration Design for Two-Phase UCCD6-NS (Capillary Wave Resolution, Semi-Implicit ST, BF Projection)"
 domain: cross-domain
-status: PROPOSED  # Research design; Level-2 integrated PoC pending
-superseded_by: null
+status: REFERENCE  # Historical research design; not current production default
+superseded_by: WIKI-T-147
 sources:
   - description: Internal research memo on time-integration design for two-phase UCCD6-NS (2026-04-22)
   - description: "Denner, F. & van Wachem, B. G. M. (2015). Numerical time-step restrictions as a result of capillary waves. JCP 285, 24–40."
@@ -34,6 +34,13 @@ compiled_at: "2026-04-22"
 ---
 
 # Time Integration Design for Two-Phase UCCD6-NS
+
+> Curation note (CHK-RA-WIKI-REVIEW-RECUR-001, 2026-05-05):
+> This card is retained as a time-integration design proposal.  Its Level-2
+> AB2/CN/semi-implicit-ST recommendation must not be read as the current
+> production default for the paper stack.  For current startup/projection
+> consistency and capillary-jump timing, start from `WIKI-T-147`, `WIKI-X-040`,
+> and `WIKI-X-041`.
 
 ## Thesis
 

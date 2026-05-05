@@ -2,8 +2,8 @@
 ref_id: WIKI-P-002
 title: "Accuracy Summary: Component-Level Precision Map"
 domain: A
-status: ACTIVE
-superseded_by: null
+status: REFERENCE
+superseded_by: WIKI-X-040
 sources:
   - path: paper/sections/09d_pressure_summary.tex
     git_hash: 7328bf1
@@ -30,6 +30,12 @@ depends_on:
 compiled_by: KnowledgeArchitect
 compiled_at: 2026-04-07
 ---
+
+> Curation note (CHK-RA-WIKI-REVIEW-RECUR-001, 2026-05-05):
+> This April accuracy table preserves the old DCCD/DC/CN accuracy narrative.
+> It is no longer the authoritative accuracy summary for implementation or
+> paper claims.  Use current verification cards, `WIKI-X-040`, and the
+> paper/appendix traceability cards before citing rates from this table.
 
 ## Authoritative Accuracy Table
 

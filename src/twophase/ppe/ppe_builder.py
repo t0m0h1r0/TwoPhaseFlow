@@ -119,8 +119,8 @@ class PPEBuilder:
 
         Note
         ----
-        Periodic BC uses np.isin (not in CuPy): rows are pulled to host
-        for that one mask operation, then results converted back to xp.
+        Periodic row constraints use the active array namespace, so GPU
+        assembly keeps the mask operation on device.
         """
         return build_ppe_matrix_triplets(self, rho)
 

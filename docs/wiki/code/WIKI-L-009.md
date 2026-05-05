@@ -1,6 +1,6 @@
 ---
 id: WIKI-L-009
-title: "Interface Contracts: 5 Abstractions Enabling DIP Throughout the Library"
+title: "Interface Contracts: 6 Abstractions Enabling DIP Throughout the Library"
 status: ACTIVE
 created: 2026-04-10
 depends_on: [WIKI-L-008, WIKI-X-002]
@@ -8,9 +8,12 @@ depends_on: [WIKI-L-008, WIKI-X-002]
 
 # Interface Contracts Reference
 
-All interfaces live in `src/twophase/interfaces/`. They enable Dependency Inversion — simulation components depend on these abstractions, not on concrete implementations.
+Interfaces live in the owning subpackages, including `src/twophase/ppe/interfaces.py`,
+`src/twophase/levelset/interfaces.py`, `src/twophase/field_extension/interfaces.py`,
+and `src/twophase/ns_terms/interfaces.py`. They enable Dependency Inversion:
+simulation components depend on abstractions, not on concrete implementations.
 
-## 1. IPPESolver (`interfaces/ppe_solver.py`)
+## 1. IPPESolver (`src/twophase/ppe/interfaces.py`)
 
 ```python
 class IPPESolver(ABC):
@@ -28,7 +31,7 @@ class IPPESolver(ABC):
 **Implementations (active)**: PPESolverCCDLU, PPESolverIIM, PPESolverIterative
 **Implementations (legacy)**: PPESolverPseudoTime, PPESolverSweep, PPESolverDCOmega, PPESolver, PPESolverLU
 
-## 2. ILevelSetAdvection (`interfaces/levelset.py`)
+## 2. ILevelSetAdvection (`src/twophase/levelset/interfaces.py`)
 
 ```python
 class ILevelSetAdvection(ABC):
@@ -36,9 +39,9 @@ class ILevelSetAdvection(ABC):
     def advance(self, psi, velocity_components: List, dt: float) -> "array":
 ```
 
-**Implementations**: LevelSetAdvection (WENO5), DissipativeCCDAdvection (paper-primary)
+**Implementations**: FCCDLevelSetAdvection (paper-current), DissipativeCCDAdvection (legacy/reference), LevelSetAdvection (WENO5 reference)
 
-## 3. IReinitializer (`interfaces/levelset.py`)
+## 3. IReinitializer (`src/twophase/levelset/interfaces.py`)
 
 ```python
 class IReinitializer(ABC):
@@ -48,7 +51,7 @@ class IReinitializer(ABC):
 
 **Implementations**: Reinitializer (facade), SplitReinitializer, UnifiedDCCDReinitializer, DGRReinitializer, HybridReinitializer, ReinitializerWENO5 (legacy)
 
-## 4. ICurvatureCalculator (`interfaces/levelset.py`)
+## 4. ICurvatureCalculator (`src/twophase/levelset/interfaces.py`)
 
 ```python
 class ICurvatureCalculator(ABC):
@@ -58,7 +61,7 @@ class ICurvatureCalculator(ABC):
 
 **Implementations**: CurvatureCalculatorPsi (active, psi-direct), CurvatureCalculator (legacy, phi-inversion)
 
-## 5. IFieldExtension (`interfaces/field_extension.py`)
+## 5. IFieldExtension (`src/twophase/field_extension/interfaces.py`)
 
 ```python
 class IFieldExtension(ABC):
@@ -74,7 +77,7 @@ class IFieldExtension(ABC):
 
 **Implementations**: FieldExtender (upwind FD), ClosestPointExtender (Hermite), HermiteFieldExtension (HFE), NullFieldExtender (no-op)
 
-## 6. INSTerm (`interfaces/ns_terms.py`) — Marker Interface
+## 6. INSTerm (`src/twophase/ns_terms/interfaces.py`) — Marker Interface
 
 ```python
 class INSTerm(ABC):

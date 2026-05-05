@@ -2,8 +2,8 @@
 ref_id: WIKI-P-001
 title: "Paper Narrative Structure: Sections 4-10 Flow Analysis"
 domain: A
-status: ACTIVE
-superseded_by: null
+status: REFERENCE
+superseded_by: WIKI-P-015
 sources:
   - path: paper/sections/04_ccd.tex
     git_hash: 7328bf1
@@ -33,6 +33,11 @@ depends_on: []
 compiled_by: KnowledgeArchitect
 compiled_at: 2026-04-07
 ---
+
+> Curation note (CHK-RA-WIKI-REVIEW-RECUR-001, 2026-05-05):
+> This is an early paper-structure review for the old sections 4--10.  Retain
+> it as provenance for narrative edits, not as current paper routing.  Current
+> chapter retrieval starts from `WIKI-P-015`, `WIKI-P-016`, and `WIKI-X-041`.
 
 ## Overall Arc: Tool -> Application -> Assembly
 

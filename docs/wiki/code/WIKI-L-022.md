@@ -2,15 +2,15 @@
 ref_id: WIKI-L-022
 title: "G^adj FVM-Consistent Pressure Gradient: Implementation in ns_pipeline.py"
 domain: code
-status: ACTIVE
-superseded_by: null
+status: REFERENCE
+superseded_by: WIKI-L-035
 sources:
   - path: src/twophase/simulation/ns_pipeline.py
     description: _precompute_fvm_grad_spacing(), _fvm_pressure_grad(), velocity corrector guard
 depends_on:
   - "[[WIKI-T-044]]: FVM-CCD Metric Inconsistency Theory"
-  - "[[WIKI-L-001]]: Algorithm Flow: 7-Step Time Integration Loop"
-  - "[[WIKI-L-015]]: CuPy / GPU Backend Unification"
+  - "[[WIKI-L-035]]: Implementation Roadmap: Projection-Native Capillary Coupling"
+  - "[[WIKI-L-037]]: Backend Boundary Owns Host, Device, and Scalar Conversion"
 tags: [ns_pipeline, pressure_gradient, non_uniform_grid, FVM, GPU, velocity_corrector]
 compiled_by: Claude Sonnet 4.6
 compiled_at: "2026-04-19"
@@ -18,9 +18,15 @@ compiled_at: "2026-04-19"
 
 # G^adj FVM-Consistent Pressure Gradient: Implementation in ns_pipeline.py
 
+> Curation note (CHK-RA-WIKI-REVIEW-RECUR-001, 2026-05-05):
+> This card records the earlier `G^adj` implementation step.  It is no longer
+> the active projection/capillary code contract because current work routes
+> through projection-native capillary coupling and phase-trace jump flux cards.
+> Use `WIKI-L-035`, `WIKI-L-036`, and `WIKI-X-041` first.
+
 ## Context in the Pipeline
 
-The 7-step projection loop (WIKI-L-001) includes:
+The retired 7-step projection loop included:
 
 ```
 Step 5 — Corrector: u = u* - (dt/rho) * grad(p)

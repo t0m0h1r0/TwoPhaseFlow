@@ -375,8 +375,8 @@ class _LowOrderViscousHelmholtzSolver:
         self.shape = tuple(ccd.grid.shape)
         self.ndim = len(self.shape)
         self.node_count = int(np.prod(self.shape))
-        self.mu = self.xp.asarray(mu, dtype=self.xp.float64)
-        self.rho = self.xp.asarray(rho, dtype=self.xp.float64)
+        self.mu = self._as_field(mu, name="mu")
+        self.rho = self._as_field(rho, name="rho")
         self.reynolds_number = float(reynolds_number)
         self.dt_effective = float(dt_effective)
         self.component_count = int(component_count)
@@ -399,6 +399,17 @@ class _LowOrderViscousHelmholtzSolver:
             self._factor_component(component_index)
             for component_index in range(self._factor_count)
         ]
+
+    def _as_field(self, value, *, name: str):
+        """Return scalar or field coefficient data on the full grid."""
+        arr = self.xp.asarray(value, dtype=self.xp.float64)
+        if arr.shape == self.shape:
+            return arr
+        if arr.size == 1:
+            return self.xp.broadcast_to(arr, self.shape)
+        raise ValueError(
+            f"{name} must be scalar or have shape {self.shape}; got {arr.shape}"
+        )
 
     def solve_components(self, rhs_components: list) -> list:
         if self.low_operator == "scalar":

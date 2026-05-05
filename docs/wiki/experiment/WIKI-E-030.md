@@ -1,6 +1,6 @@
 ---
 ref_id: WIKI-E-030
-title: "G^adj 後期ブローアップ: α=1.5 壁面BC 気泡上昇 t≈12.6 の未解明不安定性"
+title: "G^adj 後期ブローアップ: H-01 BF残差主因を確認した解決済み診断"
 domain: experiment
 status: CLOSED  # H-01 PRIMARY CONFIRMED by Exp-2 (σ=0→stable T=20). H-09+H-16 co-factors. 2026-04-20
 superseded_by: null
@@ -15,12 +15,17 @@ depends_on:
   - "[[WIKI-T-044]]: FVM-CCD Metric Inconsistency (G^adj の理論)"
   - "[[WIKI-T-045]]: 後期ブローアップ仮説カタログ (H-01〜H-20)"
   - "[[WIKI-E-030 前提]]: ch13_02_waterair_bubble G^adj 修正 (b83837r0w)"
-tags: [non_uniform_grid, bubble_rising, blowup, open_issue, late_instability, alpha_1.5, wall_bc]
+tags: [non_uniform_grid, bubble_rising, blowup, resolved_issue, late_instability, alpha_1.5, wall_bc]
 compiled_by: Claude Sonnet 4.6
 compiled_at: "2026-04-20"
 ---
 
-# G^adj 後期ブローアップ: α=1.5 壁面BC 気泡上昇 t≈12.6 の未解明不安定性
+# G^adj 後期ブローアップ: H-01 BF残差主因を確認した解決済み診断
+
+> Curation note (CHK-RA-WIKI-CURATION-001, 2026-05-05):
+> This card is CLOSED.  The old "unexplained/open" title was stale; retain the
+> chronology below as diagnostic evidence, but cite the H-01 BF-residual
+> verdict rather than treating this as an active open issue.
 
 ## 現象の観察
 
