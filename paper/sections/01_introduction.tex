@@ -16,11 +16,16 @@
 （§~\ref{sec:failure_modes}［代表的 4 失敗例の分類］，§~\ref{sec:balanced_force}［BF 条件の離散整合条件］）．
 
 \textbf{本稿の技術的中核は，寄生流れの離散化起因成分を構造的に抑えることにある．}
-結合コンパクト差分法（CCD，第~\ref{sec:CCD}章以降）による高精度曲率計算と，
-分相 PPE 解法＋欠陥補正法（DC $k=3$）＋CCD $\Ord{h^6}$ 勾配の統合により，
-Balanced--Force 条件の離散化整合性（本稿で系統化する 7 原則 P-1..P-7；§~\ref{sec:bf_seven_principles}）を
-高精度に維持し，
-平滑領域の数値離散化誤差成分を CSF モデル誤差 $\Ord{\varepsilon^2}$ が律速する水準まで低減する設計とした
+結合コンパクト差分法（CCD，第~\ref{sec:CCD}章以降）を基盤に，
+FCCD 面フラックス/圧力勾配，HFE 曲率，向き付き pressure-jump 分相 PPE + DC ($k=3$)，
+projection-native な正準面速度，および affine jump の履歴圧力面加速度を
+同じ face-space contract で閉じる．
+この構成により，Balanced--Force 条件の離散化整合性
+（本稿で系統化する 7 原則 P-1..P-7；§~\ref{sec:bf_seven_principles}）を
+曲率・圧力・速度補正・界面移流の同一面データ共有として維持し，
+一括 CSF/BF 縮約経路では CSF モデル誤差 $\Ord{\varepsilon^2}$ が律速する水準まで，
+pressure-jump 経路では界面ジャンプと投影後面速度の不整合を直接消す水準まで，
+離散化起因の寄生流れを低減する設計とした
 （具体的検証範囲は §~\ref{sec:density_ratio_sweep}〔V6 静止液滴 8-step 安定性，密度比 $\rho_r\le 833$〕，
 §~\ref{sec:imex_bdf2_twophase_time}〔V7 coupled-stack 時間精度〕，
 §~\ref{sec:zalesak_cls_advection}/§~\ref{sec:single_vortex_reversal}〔V10-a/b 一様格子・NS 非連成 CLS 強変形移流〕までとし，
@@ -215,9 +220,12 @@ CLS 再初期化は崩れた界面プロファイルを $\psi = H_\varepsilon(-\
 具体的には，``向き付き圧力ジャンプ条件 $j_{gl}=p_g-p_l=-\sigma\kappa_{lg}$'' を離散的に正確に満足しないために発生する．
 
 \subparagraph{本稿の対処．}
-CCD 法による滑らかな領域での高精度な $\kappa$ 計算と
-Balanced--Force 条件（$\bnabla p$ と $\kappa\bnabla\psi$ に同一の面中心演算子族を使用）により
-寄生流れを CSF モデル誤差の水準まで抑制する
+CCD/FCCD による滑らかな領域の高次幾何評価に加え，
+HFE 曲率，向き付き pressure-jump 分相 PPE，projection-native な正準面速度，
+affine jump の履歴圧力面加速度を同じ面中心演算子族で閉じる．
+一括 CSF/BF 縮約経路では $\bnabla p$ と $\kappa\bnabla\psi$ の演算子整合により
+寄生流れを CSF モデル誤差の水準まで抑制し，
+分相 pressure-jump 経路では界面ジャンプ・補正・界面移流の face-space 不一致を直接取り除く
 （付録~\ref{sec:ppe_discretization_choice}；
 密度比 $\rho_r\le 833$ までの結合 stack 静止液滴 8-step 安定性は §~\ref{sec:density_ratio_sweep}〔V6〕で確認し，
 一様格子・NS 非連成 CLS 強変形移流は §~\ref{sec:zalesak_cls_advection}/§~\ref{sec:single_vortex_reversal}〔V10-a/b〕で確認；
