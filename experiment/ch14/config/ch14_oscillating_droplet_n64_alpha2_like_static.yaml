@@ -159,8 +159,8 @@ output:
       file_prefix: velocity_t
 
     - type: snapshot_series
-      field: pressure
-      file_prefix: pressure_t
+      field: pressure_bulk
+      file_prefix: pressure_bulk_t
 
 diagnostics: [volume_conservation, kinetic_energy, deformation, signed_deformation]
 

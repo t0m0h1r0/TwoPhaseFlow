@@ -41,6 +41,13 @@ and `pressure` fields. The runner stores these in `data.npz` under `fields/psi`,
 `fields/velocity`, and `fields/pressure` (plus compatibility fields
 `fields/u`, `fields/v`, and `fields/p`).
 
+For affine pressure-jump runs, `fields/pressure` is the stored scalar
+representative associated with the face pressure cochain.  The sharp-interface
+pressure is single-valued only inside each phase and has a jump on the
+interface, so production pressure figures should use `snapshot_series` field
+`pressure_bulk`; this masks the diffuse interface layer instead of smoothing or
+clipping it.
+
 The schema is organized by *what the setting means*, not by where the current
 Python implementation stores it.
 

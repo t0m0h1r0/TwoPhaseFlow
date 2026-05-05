@@ -5,7 +5,7 @@ Symbol mapping
 ``psi`` -> conservative level-set field ``ψ``
 ``u``   -> x-velocity
 ``v``   -> y-velocity
-``p``   -> pressure
+``p``   -> stored scalar pressure representative
 ``rho`` -> density ``ρ``
 """
 
@@ -16,6 +16,9 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import TYPE_CHECKING, Callable
 
+import matplotlib
+
+matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -206,6 +209,72 @@ def pressure_snapshot(
     return fig
 
 
+def masked_bulk_pressure(
+    pressure: np.ndarray,
+    psi: np.ndarray,
+    *,
+    gas_max_psi: float = 0.05,
+    liquid_min_psi: float = 0.95,
+) -> np.ndarray:
+    """Return the one-sided pressure field defined away from ``Γ_h``.
+
+    A3 mapping:
+      Equation: sharp-interface pressure is a phase-wise scalar with a jump
+      on ``Γ``; the point value on ``Γ`` is not a single-valued physical
+      observable.
+      Discretization: affine-jump IPC stores the physical pressure work in
+      the face cochain ``A_f(G_f p-B_f(j))``; the nodal scalar inside the
+      diffuse transition layer is only a representative/gauge field.
+      Code: for visualization, retain only gas/liquid bulk nodes and mark the
+      diffuse interface layer as undefined instead of smoothing or capping it.
+    """
+    pressure_arr = np.asarray(pressure)
+    psi_arr = np.asarray(psi)
+    bulk = (psi_arr <= float(gas_max_psi)) | (psi_arr >= float(liquid_min_psi))
+    return np.where(bulk, pressure_arr, np.nan)
+
+
+def pressure_bulk_snapshot(
+    spec: dict,
+    results: dict,
+    cfg: "ExperimentConfig",
+) -> plt.Figure:
+    """Render the phase-wise pressure and mask undefined interface nodes."""
+    context = build_snapshot_plot_context(spec, results, cfg)
+    grid = cfg.grid
+    pressure = remap_snapshot_field(context, context.snap["p"])
+    bulk_pressure = masked_bulk_pressure(
+        pressure,
+        context.psi,
+        gas_max_psi=float(spec.get("gas_max_psi", 0.05)),
+        liquid_min_psi=float(spec.get("liquid_min_psi", 0.95)),
+    )
+    title = spec.get("title", f"Bulk pressure at t = {context.t_val:.3f}")
+    cmap = spec.get("cmap", "RdBu_r")
+
+    fig, ax = plt.subplots(figsize=(4, 4 * grid.LY / grid.LX))
+    im = ax.pcolormesh(
+        context.X,
+        context.Y,
+        bulk_pressure.T,
+        cmap=cmap,
+        vmin=spec.get("vmin"),
+        vmax=spec.get("vmax"),
+        shading="nearest",
+    )
+    if spec.get("colorbar", True):
+        fig.colorbar(im, ax=ax, label="p (bulk phases)")
+    if spec.get("contour", True):
+        ax.contour(
+            context.X, context.Y, context.psi.T, levels=[0.5], colors="k", linewidths=0.8
+        )
+    ax.set_aspect("equal")
+    ax.set_xlabel(spec.get("xlabel", "x"))
+    ax.set_ylabel(spec.get("ylabel", "y"))
+    ax.set_title(title)
+    return fig
+
+
 def density_snapshot(
     spec: dict,
     results: dict,
@@ -252,6 +321,9 @@ def build_snapshot_series_renderers() -> dict[str, Callable]:
         "velocity": lambda snap, cfg: velocity_snapshot({"t_idx": 0}, {"snapshots": [snap]}, cfg),
         "psi": lambda snap, cfg: snapshot({"t_idx": 0}, {"snapshots": [snap]}, cfg),
         "pressure": lambda snap, cfg: pressure_snapshot({"t_idx": 0}, {"snapshots": [snap]}, cfg),
+        "pressure_bulk": lambda snap, cfg: pressure_bulk_snapshot(
+            {"t_idx": 0}, {"snapshots": [snap]}, cfg
+        ),
     }
 
 
