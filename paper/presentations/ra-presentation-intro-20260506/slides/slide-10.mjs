@@ -2,30 +2,30 @@ import { makeSlide } from "./common.mjs";
 
 const data = {
   "no": 10,
-  "title": "単体検証は、各primitiveが単独で設計どおり働くことを確認した",
-  "lead": "U1--U9は、基礎演算から否定検証までをトポロジカルに並べ、式・離散化・観測指標を一対一に結んだ。",
-  "source": "paper/sections/12_component_verification.tex; 12h_summary.tex",
+  "title": "単体検証は、CCDファミリと圧力閉包が単独で働くことを確認",
+  "lead": "基礎演算・非一様格子・静止液滴・圧力DCCD禁止を、式と観測指標の対応で確認した。",
+  "source": "Component verification summary",
   "visual": "uTests",
   "metrics": [
     [
-      "U1",
-      "CCD h^6.0",
-      "operator"
+      "CCD演算子",
+      "h^6.0",
+      "節点微分"
     ],
     [
-      "U3",
+      "非一様格子",
       "GCL 2.13e-13",
-      "nonuniform"
+      "metric consistency"
     ],
     [
-      "U7",
+      "静止液滴",
       "0.61%",
       "Laplace error"
     ],
     [
-      "U9",
+      "圧力DCCD",
       "禁止",
-      "DCCD on pressure"
+      "pressureには適用しない"
     ]
   ]
 };

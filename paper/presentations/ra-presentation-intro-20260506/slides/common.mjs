@@ -203,7 +203,7 @@ function uTests(ctx, slide, data) {
 }
 
 function verdictBars(ctx, slide, data) {
-  addText(ctx, slide, "判定軸数（V10は質量保存軸と形状軸に分割）", 390, 202, 650, 20, { size: 13, color: C.muted, bold: true });
+  addText(ctx, slide, "判定軸数（強変形CLSは質量保存軸と形状軸に分割）", 390, 202, 650, 20, { size: 13, color: C.muted, bold: true });
   const total = 13;
   data.bars.forEach((b, i) => {
     const y = 230 + i * 76;
@@ -221,9 +221,9 @@ function evidenceCards(ctx, slide, data) {
 function limitMap(ctx, slide, data) {
   data.limits.forEach((m, i) => {
     rect(ctx, slide, 104, 228 + i * 116, 1072, 82, i === 0 ? C.paleAmber : C.paper, C.line);
-    addText(ctx, slide, m[0], 130, 250 + i * 116, 96, 24, { size: 18, bold: true, color: C.red });
-    addText(ctx, slide, m[1], 250, 247 + i * 116, 210, 30, { size: 22, bold: true, color: C.blue });
-    addText(ctx, slide, m[2], 492, 251 + i * 116, 610, 24, { size: 16, color: C.ink });
+    addText(ctx, slide, m[0], 126, 250 + i * 116, 142, 24, { size: 16, bold: true, color: C.red });
+    addText(ctx, slide, m[1], 300, 247 + i * 116, 190, 30, { size: 22, bold: true, color: C.blue });
+    addText(ctx, slide, m[2], 520, 251 + i * 116, 580, 24, { size: 16, color: C.ink });
   });
 }
 

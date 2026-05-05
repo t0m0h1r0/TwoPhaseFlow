@@ -4,7 +4,7 @@ const data = {
   "no": 14,
   "title": "物理ベンチマークは、毛管波の符号検証から次のゲートへ進む",
   "lead": "向き付き affine jump は短時間の復元力符号を通したが、気泡上昇とRayleigh--Taylorは未完了検証として分離する。",
-  "source": "paper/sections/14_benchmarks.tex; 15_conclusion.tex",
+  "source": "Benchmark gates; conclusion",
   "visual": "benchmarkRoadmap",
   "stages": [
     [

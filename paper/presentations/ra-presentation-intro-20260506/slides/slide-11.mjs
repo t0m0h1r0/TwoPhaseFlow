@@ -2,28 +2,28 @@ import { makeSlide } from "./common.mjs";
 
 const data = {
   "no": 11,
-  "title": "統合検証は、合格領域と条件付き領域を分けて読む",
-  "lead": "V1--V10は x ゼロだが、V7とV10の形状軸はType-Dとして設計限界を明示した。",
-  "source": "paper/sections/13_verification.tex; 13f_error_budget.tex",
+  "title": "統合検証は、合格領域・構造修正・設計限界を分けて読む",
+  "lead": "単に「全ケース合格」と言わず、通常合格、質量補正での合格、理論的限界に分解した。",
+  "source": "Integrated verification; error budget",
   "visual": "verdictBars",
   "bars": [
     [
-      "Design / Type-A",
+      "通常合格 / 文献基準",
       8,
       "#1B998B"
     ],
     [
-      "Type-B",
+      "質量補正で合格",
       2,
       "#F0B429"
     ],
     [
-      "Type-D",
+      "設計限界として記録",
       3,
       "#D95D39"
     ],
     [
-      "Out of scope",
+      "保証範囲外",
       0,
       "#9CA3AF"
     ]

@@ -4,7 +4,7 @@ const data = {
   "no": 7,
   "title": "高密度比では、一括PPEではなく分相PPEとして圧力を閉じる",
   "lead": "相内Poisson、HFE場延長、欠陥補正DCを組み合わせ、ジャンプ条件をPPEとcorrectorが共有する。",
-  "source": "paper/sections/09b_split_ppe.tex; 09c_hfe.tex; 09d_defect_correction.tex; 12u6_split_ppe_dc_hfe.tex",
+  "source": "Split PPE; HFE; defect correction; component verification",
   "visual": "pressureClosure",
   "metrics": [
     [
@@ -20,7 +20,7 @@ const data = {
     [
       "残差",
       "7e-6",
-      "U6 split PPE + DC"
+      "split PPE + DC"
     ]
   ]
 };

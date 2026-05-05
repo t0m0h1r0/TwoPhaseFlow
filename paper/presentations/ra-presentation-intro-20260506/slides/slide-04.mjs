@@ -4,7 +4,7 @@ const data = {
   "no": 4,
   "title": "One-Fluid 表現は入口であり、圧力ジャンプの扱いが出口を決める",
   "lead": "CLS は界面を保存形に追跡し、Young--Laplace ジャンプは CSF 体積力ではなく pressure-jump として PPE に渡す。",
-  "source": "paper/sections/02_governing.tex; 02b_surface_tension.tex; 03_levelset.tex; 09b_split_ppe.tex",
+  "source": "Governing equations; surface tension jump; CLS; split PPE",
   "visual": "equationFlow",
   "flow": [
     [

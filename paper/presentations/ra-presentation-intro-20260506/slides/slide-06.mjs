@@ -4,7 +4,7 @@ const data = {
   "no": 6,
   "title": "界面追跡は、保存形輸送と距離関数修復を分けて設計する",
   "lead": "FCCD flux-form で質量を運び、Ridge--Eikonal 再初期化で距離関数品質を戻す。",
-  "source": "paper/sections/03b_cls_transport.tex; 03d_ridge_eikonal.tex; 05b_cls_stages.tex; 12_component_verification.tex",
+  "source": "CLS transport; Ridge-Eikonal; CLS stages; component verification",
   "visual": "stageRail",
   "stages": [
     "移流",

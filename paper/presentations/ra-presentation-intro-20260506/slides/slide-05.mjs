@@ -2,9 +2,9 @@ import { makeSlide } from "./common.mjs";
 
 const data = {
   "no": 5,
-  "title": "CCDファミリは、節点中心の高次性を面中心の保存形へ広げる",
-  "lead": "内点6次のCCDを起点に、DCCDで高波数を制御し、UCCD6とFCCDで運動量・界面フラックスを分担する。",
-  "source": "paper/sections/04_ccd.tex; 04c_dccd_derivation.tex; 04d_uccd6.tex; 04e_fccd.tex",
+  "title": "CCD -> FCCD/UCCD6 が、この数値法の演算子コア",
+  "lead": "CCDの高次微分を、FCCDの保存形face fluxとUCCD6の運動量対流へ展開する。DCCDは補助的な高波数制御に限定する。",
+  "source": "CCD, DCCD, UCCD6, and FCCD operator derivations",
   "visual": "operatorStack",
   "metrics": [
     [

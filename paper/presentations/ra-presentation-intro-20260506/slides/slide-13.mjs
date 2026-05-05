@@ -2,23 +2,23 @@ import { makeSlide } from "./common.mjs";
 
 const data = {
   "no": 13,
-  "title": "限界は隠さず、どの誤差源が支配するかを分離する",
-  "lead": "二相時間精度はcapillary pressure-jump/projection界面帯に律速され、CLS形状復元は固定格子の位相・filament限界に当たる。",
-  "source": "paper/sections/13f_error_budget.tex; 15_conclusion.tex",
+  "title": "設計限界は、テストIDではなく物理的な誤差源として読む",
+  "lead": "時間精度は毛管圧力ジャンプとprojectionの界面帯に律速され、強変形CLSは固定格子の位相・細線解像限界に当たる。",
+  "source": "Error budget; conclusion",
   "visual": "limitMap",
   "limits": [
     [
-      "V7",
+      "二相時間精度",
       "slope 1.48",
-      "BDF2単体ではなくcoupled-stack実効次数"
+      "毛管pressure-jump/projection界面帯が支配"
     ],
     [
-      "V10-a",
+      "Zalesak形状",
       "centroid 4.911e-3",
-      "Zalesak slot under-resolution"
+      "slot under-resolution"
     ],
     [
-      "V10-b",
+      "単一渦形状",
       "L1 2.248e-2",
       "folded filament の固定格子限界"
     ]

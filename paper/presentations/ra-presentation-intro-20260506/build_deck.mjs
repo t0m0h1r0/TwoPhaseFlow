@@ -10,17 +10,19 @@ const slides = [
   {
     no: 1,
     kind: "title",
-    title: "高次コンパクト差分に基づく気液二相流数値法",
-    lead: "保存形界面追跡・Balanced-Force・pressure-jump 分相PPEを、同じ面幾何で閉じる。",
+    title: "CCD/FCCD/UCCD6を核にした二相流数値法",
+    lead: "保存形界面追跡・Balanced-Force・pressure-jump分相PPEを、CCDファミリの面幾何で閉じる。",
     kicker: "流体力学会向け 研究内容紹介",
-    source: "paper/sections/00_abstract.tex; 01_introduction.tex",
-    tags: ["Conservative Level Set", "FCCD face jet", "Phase-separated PPE", "HFE + DC"],
+    source: "Abstract; Introduction",
+    sourceFiles: ["paper/sections/00_abstract.tex", "paper/sections/01_introduction.tex"],
+    tags: ["CCD node derivatives", "FCCD face flux", "UCCD6 momentum", "DCCD damping"],
   },
   {
     no: 2,
     title: "二相流の難しさは、界面が方程式の全項を同時に壊すことにある",
     lead: "密度・粘性・曲率・圧力ジャンプが同じ場所で不連続になるため、単相流の高次化だけでは寄生流れを止められない。",
-    source: "paper/sections/01_introduction.tex",
+    source: "Introduction",
+    sourceFiles: ["paper/sections/01_introduction.tex"],
     visual: "problemMatrix",
     bullets: [
       ["物性ジャンプ", "rho_l/rho_g は水/空気で約1000"],
@@ -31,13 +33,14 @@ const slides = [
   },
   {
     no: 3,
-    title: "本研究の主張は、寄生流れを「調整」ではなく離散契約で抑えること",
-    lead: "曲率・圧力・速度補正・界面輸送を face-space contract に集約し、Balanced-Force 条件を演算子レベルで保つ。",
-    source: "paper/sections/01_introduction.tex; 08_collocate.tex; 11_full_algorithm.tex",
+    title: "計算コアはCCDファミリ：微分・面フラックス・運動量対流",
+    lead: "CCDが節点微分、FCCDが面値/面勾配、UCCD6が運動量対流を担い、その上に圧力閉包と界面追跡を載せる。",
+    source: "Introduction; collocated face geometry; full algorithm",
+    sourceFiles: ["paper/sections/01_introduction.tex", "paper/sections/08_collocate.tex", "paper/sections/11_full_algorithm.tex"],
     visual: "threePillars",
     pillars: [
-      ["高次演算子群", "CCD / DCCD / UCCD6 / FCCD"],
-      ["圧力閉包", "phase-separated PPE + HFE + DC k=3"],
+      ["CCD/FCCD/UCCD6", "節点微分・面フラックス・運動量対流"],
+      ["圧力ジャンプ閉包", "phase-separated PPE + HFE + DC k=3"],
       ["面幾何共有", "FCCD face jet + projection-native face velocity"],
     ],
   },
@@ -45,7 +48,8 @@ const slides = [
     no: 4,
     title: "One-Fluid 表現は入口であり、圧力ジャンプの扱いが出口を決める",
     lead: "CLS は界面を保存形に追跡し、Young--Laplace ジャンプは CSF 体積力ではなく pressure-jump として PPE に渡す。",
-    source: "paper/sections/02_governing.tex; 02b_surface_tension.tex; 03_levelset.tex; 09b_split_ppe.tex",
+    source: "Governing equations; surface tension jump; CLS; split PPE",
+    sourceFiles: ["paper/sections/02_governing.tex", "paper/sections/02b_surface_tension.tex", "paper/sections/03_levelset.tex", "paper/sections/09b_split_ppe.tex"],
     visual: "equationFlow",
     flow: [
       ["psi = H_e(-phi)", "保存形界面変数"],
@@ -56,9 +60,10 @@ const slides = [
   },
   {
     no: 5,
-    title: "CCDファミリは、節点中心の高次性を面中心の保存形へ広げる",
-    lead: "内点6次のCCDを起点に、DCCDで高波数を制御し、UCCD6とFCCDで運動量・界面フラックスを分担する。",
-    source: "paper/sections/04_ccd.tex; 04c_dccd_derivation.tex; 04d_uccd6.tex; 04e_fccd.tex",
+    title: "CCD -> FCCD/UCCD6 が、この数値法の演算子コア",
+    lead: "CCDの高次微分を、FCCDの保存形face fluxとUCCD6の運動量対流へ展開する。DCCDは補助的な高波数制御に限定する。",
+    source: "CCD, DCCD, UCCD6, and FCCD operator derivations",
+    sourceFiles: ["paper/sections/04_ccd.tex", "paper/sections/04c_dccd_derivation.tex", "paper/sections/04d_uccd6.tex", "paper/sections/04e_fccd.tex"],
     visual: "operatorStack",
     metrics: [
       ["CCD", "h^6.0", "内点微分"],
@@ -72,7 +77,8 @@ const slides = [
     no: 6,
     title: "界面追跡は、保存形輸送と距離関数修復を分けて設計する",
     lead: "FCCD flux-form で質量を運び、Ridge--Eikonal 再初期化で距離関数品質を戻す。",
-    source: "paper/sections/03b_cls_transport.tex; 03d_ridge_eikonal.tex; 05b_cls_stages.tex; 12_component_verification.tex",
+    source: "CLS transport; Ridge-Eikonal; CLS stages; component verification",
+    sourceFiles: ["paper/sections/03b_cls_transport.tex", "paper/sections/03d_ridge_eikonal.tex", "paper/sections/05b_cls_stages.tex", "paper/sections/12_component_verification.tex"],
     visual: "stageRail",
     stages: ["移流", "クランプ", "逆変換", "Eikonal", "DGR", "曲率"],
     metricCallout: "epsilon_eff / epsilon_*: 2.0 → 1.0000033",
@@ -81,19 +87,21 @@ const slides = [
     no: 7,
     title: "高密度比では、一括PPEではなく分相PPEとして圧力を閉じる",
     lead: "相内Poisson、HFE場延長、欠陥補正DCを組み合わせ、ジャンプ条件をPPEとcorrectorが共有する。",
-    source: "paper/sections/09b_split_ppe.tex; 09c_hfe.tex; 09d_defect_correction.tex; 12u6_split_ppe_dc_hfe.tex",
+    source: "Split PPE; HFE; defect correction; component verification",
+    sourceFiles: ["paper/sections/09b_split_ppe.tex", "paper/sections/09c_hfe.tex", "paper/sections/09d_defect_correction.tex", "paper/sections/12u6_split_ppe_dc_hfe.tex"],
     visual: "pressureClosure",
     metrics: [
       ["HFE 1D", "h^5.91", "Hermite 場延長"],
       ["DC k=3", "h^6.90", "Dirichlet production"],
-      ["残差", "7e-6", "U6 split PPE + DC"],
+      ["残差", "7e-6", "split PPE + DC"],
     ],
   },
   {
     no: 8,
     title: "Balanced-Force の条件は、同じface footprintを共有することに落ちる",
     lead: "圧力勾配、表面張力、HFE上流点、GFMジャンプを別々に作ると、同じ式を使っても釣合いは崩れる。",
-    source: "paper/sections/08_collocate.tex; 11_full_algorithm.tex; 14_benchmarks.tex",
+    source: "Collocated face geometry; full algorithm; benchmark conditions",
+    sourceFiles: ["paper/sections/08_collocate.tex", "paper/sections/11_full_algorithm.tex", "paper/sections/14_benchmarks.tex"],
     visual: "faceContract",
     center: "FCCD face jet J_f(u)",
     spokes: ["pressure gradient", "surface tension", "HFE upwind", "GFM jump", "projection face velocity"],
@@ -102,66 +110,72 @@ const slides = [
     no: 9,
     title: "1タイムステップは、界面面幾何を先に閉じてからNS更新へ渡す",
     lead: "7段更新は部品表ではなく、psi・phi・rho・mu・kappa・face-state の受け渡し契約である。",
-    source: "paper/sections/11_full_algorithm.tex",
+    source: "Full algorithm",
+    sourceFiles: ["paper/sections/11_full_algorithm.tex"],
     visual: "sevenStep",
     stages: ["CLS移流", "再初期化", "物性更新", "曲率", "予測", "PPE", "補正"],
   },
   {
     no: 10,
-    title: "単体検証は、各primitiveが単独で設計どおり働くことを確認した",
-    lead: "U1--U9は、基礎演算から否定検証までをトポロジカルに並べ、式・離散化・観測指標を一対一に結んだ。",
-    source: "paper/sections/12_component_verification.tex; 12h_summary.tex",
+    title: "単体検証は、CCDファミリと圧力閉包が単独で働くことを確認",
+    lead: "基礎演算・非一様格子・静止液滴・圧力DCCD禁止を、式と観測指標の対応で確認した。",
+    source: "Component verification summary",
+    sourceFiles: ["paper/sections/12_component_verification.tex", "paper/sections/12h_summary.tex"],
     visual: "uTests",
     metrics: [
-      ["U1", "CCD h^6.0", "operator"],
-      ["U3", "GCL 2.13e-13", "nonuniform"],
-      ["U7", "0.61%", "Laplace error"],
-      ["U9", "禁止", "DCCD on pressure"],
+      ["CCD演算子", "h^6.0", "節点微分"],
+      ["非一様格子", "GCL 2.13e-13", "metric consistency"],
+      ["静止液滴", "0.61%", "Laplace error"],
+      ["圧力DCCD", "禁止", "pressureには適用しない"],
     ],
   },
   {
     no: 11,
-    title: "統合検証は、合格領域と条件付き領域を分けて読む",
-    lead: "V1--V10は x ゼロだが、V7とV10の形状軸はType-Dとして設計限界を明示した。",
-    source: "paper/sections/13_verification.tex; 13f_error_budget.tex",
+    title: "統合検証は、合格領域・構造修正・設計限界を分けて読む",
+    lead: "単に「全ケース合格」と言わず、通常合格、質量補正での合格、理論的限界に分解した。",
+    source: "Integrated verification; error budget",
+    sourceFiles: ["paper/sections/13_verification.tex", "paper/sections/13f_error_budget.tex"],
     visual: "verdictBars",
     bars: [
-      ["Design / Type-A", 8, "#1B998B"],
-      ["Type-B", 2, "#F0B429"],
-      ["Type-D", 3, "#D95D39"],
-      ["Out of scope", 0, "#9CA3AF"],
+      ["通常合格 / 文献基準", 8, "#1B998B"],
+      ["質量補正で合格", 2, "#F0B429"],
+      ["設計限界として記録", 3, "#D95D39"],
+      ["保証範囲外", 0, "#9CA3AF"],
     ],
   },
   {
     no: 12,
     title: "寄生流れは、FD基準より小さい絶対スケールへ抑制",
     lead: "静止液滴と密度比sweepでは、CCD/BF構成とpressure-jump stackの安定性を別々の指標で確認した。",
-    source: "paper/sections/13b_twophase_static.tex; 13d_density_ratio.tex; 13f_error_budget.tex",
+    source: "Static droplet; density-ratio sweep; error budget",
+    sourceFiles: ["paper/sections/13b_twophase_static.tex", "paper/sections/13d_density_ratio.tex", "paper/sections/13f_error_budget.tex"],
     visual: "evidenceCards",
     metrics: [
-      ["V3", "0.97%", "Laplace pressure error at N=128"],
-      ["V5", "1.93e-2", "u_inf end at rho_r=1,N=32"],
-      ["V6", "rho_r <= 833", "no blow-up"],
-      ["V6", "6.4e-16", "volume drift floor"],
+      ["静止液滴", "0.97%", "Laplace pressure error at N=128"],
+      ["寄生流れ", "1.93e-2", "u_inf end at rho_r=1,N=32"],
+      ["密度比", "rho_r <= 833", "no blow-up"],
+      ["体積保存", "6.4e-16", "volume drift floor"],
     ],
   },
   {
     no: 13,
-    title: "限界は隠さず、どの誤差源が支配するかを分離する",
-    lead: "二相時間精度はcapillary pressure-jump/projection界面帯に律速され、CLS形状復元は固定格子の位相・filament限界に当たる。",
-    source: "paper/sections/13f_error_budget.tex; 15_conclusion.tex",
+    title: "設計限界は、テストIDではなく物理的な誤差源として読む",
+    lead: "時間精度は毛管圧力ジャンプとprojectionの界面帯に律速され、強変形CLSは固定格子の位相・細線解像限界に当たる。",
+    source: "Error budget; conclusion",
+    sourceFiles: ["paper/sections/13f_error_budget.tex", "paper/sections/15_conclusion.tex"],
     visual: "limitMap",
     limits: [
-      ["V7", "slope 1.48", "BDF2単体ではなくcoupled-stack実効次数"],
-      ["V10-a", "centroid 4.911e-3", "Zalesak slot under-resolution"],
-      ["V10-b", "L1 2.248e-2", "folded filament の固定格子限界"],
+      ["二相時間精度", "slope 1.48", "毛管pressure-jump/projection界面帯が支配"],
+      ["Zalesak形状", "centroid 4.911e-3", "slot under-resolution"],
+      ["単一渦形状", "L1 2.248e-2", "folded filament の固定格子限界"],
     ],
   },
   {
     no: 14,
     title: "物理ベンチマークは、毛管波の符号検証から次のゲートへ進む",
     lead: "向き付き affine jump は短時間の復元力符号を通したが、気泡上昇とRayleigh--Taylorは未完了検証として分離する。",
-    source: "paper/sections/14_benchmarks.tex; 15_conclusion.tex",
+    source: "Benchmark gates; conclusion",
+    sourceFiles: ["paper/sections/14_benchmarks.tex", "paper/sections/15_conclusion.tex"],
     visual: "benchmarkRoadmap",
     stages: [
       ["毛管波", "A''符号・大きさを確認", "進行中"],
@@ -172,21 +186,23 @@ const slides = [
   {
     no: 15,
     title: "結論：高次化の本体は、演算子次数ではなく界面面契約の整合である",
-    lead: "本研究は、CCD高次群・分相PPE+HFE+DC・Balanced-Force face subsystemを統合し、二相流で何が合格し何が未解決かを検証軸として固定した。",
-    source: "paper/sections/15_conclusion.tex",
+    lead: "本研究は、CCD/FCCD/UCCD6を核に分相PPE+HFE+DC・Balanced-Force face subsystemを統合し、合格範囲と未解決範囲を検証軸として固定した。",
+    source: "Conclusion",
+    sourceFiles: ["paper/sections/15_conclusion.tex"],
     visual: "takeaways",
     takeaways: [
       "寄生流れの離散化起因成分を構造的に低減",
       "密度比 <= 833 まで pressure-jump stack の有界性を確認",
-      "V7 / V10 の Type-D 限界を次の研究ゲートとして明示",
+      "二相時間精度と強変形CLSの設計限界を次の研究ゲートとして明示",
     ],
   },
 ];
 
 function slideModule(slide) {
+  const { sourceFiles, ...slidePayload } = slide;
   return `import { makeSlide } from "./common.mjs";
 
-const data = ${JSON.stringify(slide, null, 2)};
+const data = ${JSON.stringify(slidePayload, null, 2)};
 
 export async function slide${String(slide.no).padStart(2, "0")}(presentation, ctx) {
   return makeSlide(presentation, ctx, data);
@@ -399,7 +415,7 @@ function uTests(ctx, slide, data) {
 }
 
 function verdictBars(ctx, slide, data) {
-  addText(ctx, slide, "判定軸数（V10は質量保存軸と形状軸に分割）", 390, 202, 650, 20, { size: 13, color: C.muted, bold: true });
+  addText(ctx, slide, "判定軸数（強変形CLSは質量保存軸と形状軸に分割）", 390, 202, 650, 20, { size: 13, color: C.muted, bold: true });
   const total = 13;
   data.bars.forEach((b, i) => {
     const y = 230 + i * 76;
@@ -417,9 +433,9 @@ function evidenceCards(ctx, slide, data) {
 function limitMap(ctx, slide, data) {
   data.limits.forEach((m, i) => {
     rect(ctx, slide, 104, 228 + i * 116, 1072, 82, i === 0 ? C.paleAmber : C.paper, C.line);
-    addText(ctx, slide, m[0], 130, 250 + i * 116, 96, 24, { size: 18, bold: true, color: C.red });
-    addText(ctx, slide, m[1], 250, 247 + i * 116, 210, 30, { size: 22, bold: true, color: C.blue });
-    addText(ctx, slide, m[2], 492, 251 + i * 116, 610, 24, { size: 16, color: C.ink });
+    addText(ctx, slide, m[0], 126, 250 + i * 116, 142, 24, { size: 16, bold: true, color: C.red });
+    addText(ctx, slide, m[1], 300, 247 + i * 116, 190, 30, { size: 22, bold: true, color: C.blue });
+    addText(ctx, slide, m[2], 520, 251 + i * 116, 580, 24, { size: 16, color: C.ink });
   });
 }
 
@@ -485,16 +501,16 @@ function readme() {
 
 ## Source Discipline
 
-Each slide carries a source footer. Claims are limited to manuscript sections and paper figures under \`paper/sections\` and \`paper/figures\`.
+Each slide carries a human-readable source footer. Claims are limited to manuscript sections and paper figures under \`paper/sections\` and \`paper/figures\`; exact manuscript files are tracked in \`source_map.md\`.
 `;
 }
 
 function sourceMap() {
-  const rows = slides.map((s) => `| ${s.no} | ${s.title.replaceAll("|", "/")} | ${s.source} |`);
+  const rows = slides.map((s) => `| ${s.no} | ${s.title.replaceAll("|", "/")} | ${s.source} | ${(s.sourceFiles ?? []).join("; ")} |`);
   return `# Slide Source Map
 
-| Slide | Lead claim | Source |
-|---:|---|---|
+| Slide | Lead claim | Audience source label | Manuscript source files |
+|---:|---|---|---|
 ${rows.join("\n")}
 `;
 }

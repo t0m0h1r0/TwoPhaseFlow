@@ -4,7 +4,7 @@ const data = {
   "no": 2,
   "title": "二相流の難しさは、界面が方程式の全項を同時に壊すことにある",
   "lead": "密度・粘性・曲率・圧力ジャンプが同じ場所で不連続になるため、単相流の高次化だけでは寄生流れを止められない。",
-  "source": "paper/sections/01_introduction.tex",
+  "source": "Introduction",
   "visual": "problemMatrix",
   "bullets": [
     [

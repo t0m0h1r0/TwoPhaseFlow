@@ -4,7 +4,7 @@ const data = {
   "no": 9,
   "title": "1タイムステップは、界面面幾何を先に閉じてからNS更新へ渡す",
   "lead": "7段更新は部品表ではなく、psi・phi・rho・mu・kappa・face-state の受け渡し契約である。",
-  "source": "paper/sections/11_full_algorithm.tex",
+  "source": "Full algorithm",
   "visual": "sevenStep",
   "stages": [
     "CLS移流",

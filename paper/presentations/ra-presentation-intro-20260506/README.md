@@ -8,4 +8,4 @@
 
 ## Source Discipline
 
-Each slide carries a source footer. Claims are limited to manuscript sections and paper figures under `paper/sections` and `paper/figures`.
+Each slide carries a human-readable source footer. Claims are limited to manuscript sections and paper figures under `paper/sections` and `paper/figures`; exact manuscript files are tracked in `source_map.md`.

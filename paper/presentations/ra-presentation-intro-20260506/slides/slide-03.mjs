@@ -2,17 +2,17 @@ import { makeSlide } from "./common.mjs";
 
 const data = {
   "no": 3,
-  "title": "本研究の主張は、寄生流れを「調整」ではなく離散契約で抑えること",
-  "lead": "曲率・圧力・速度補正・界面輸送を face-space contract に集約し、Balanced-Force 条件を演算子レベルで保つ。",
-  "source": "paper/sections/01_introduction.tex; 08_collocate.tex; 11_full_algorithm.tex",
+  "title": "計算コアはCCDファミリ：微分・面フラックス・運動量対流",
+  "lead": "CCDが節点微分、FCCDが面値/面勾配、UCCD6が運動量対流を担い、その上に圧力閉包と界面追跡を載せる。",
+  "source": "Introduction; collocated face geometry; full algorithm",
   "visual": "threePillars",
   "pillars": [
     [
-      "高次演算子群",
-      "CCD / DCCD / UCCD6 / FCCD"
+      "CCD/FCCD/UCCD6",
+      "節点微分・面フラックス・運動量対流"
     ],
     [
-      "圧力閉包",
+      "圧力ジャンプ閉包",
       "phase-separated PPE + HFE + DC k=3"
     ],
     [
