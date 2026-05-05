@@ -2,8 +2,8 @@
 ref_id: WIKI-P-006
 title: "Paper Review §11–§13: Findings and Action Items (2026-04-11)"
 domain: A
-status: ACTIVE
-superseded_by: null
+status: REFERENCE
+superseded_by: WIKI-P-015
 sources:
   - path: paper/sections/11_chapter.tex
   - path: paper/sections/11_spatial.tex
@@ -32,6 +32,12 @@ tags: [review, paper, chapters-11-13, CHK-111]
 ---
 
 # Paper Review §11–§13 — CHK-111
+
+> Curation note (CHK-RA-WIKI-REVIEW-RECUR-001, 2026-05-05):
+> This CHK-111 review is retained for provenance only.  Its section map,
+> pending action list, and DCCD/split-PPE framing predate the current
+> projection-native chapter traceability cards.  Use `WIKI-P-015`,
+> `WIKI-P-016`, and `WIKI-X-040` for current paper retrieval.
 
 **Date**: 2026-04-11
 **Scope**: §11 delta (since CHK-096) + §12 first-pass + §13 first-pass (18 .tex files)
@@ -95,7 +101,9 @@ CHK-096 (2026-04-08, WIKI-P-004) covered §1–§11 with 0F / 7M / 14m / 3S find
 
 ## Superseded items
 
-This entry extends [WIKI-P-004](WIKI-P-004.md) (CHK-096) for the §11–§13 scope. WIKI-P-004 remains authoritative for §1–§10.
+This entry historically extended [WIKI-P-004](WIKI-P-004.md) (CHK-096) for
+the §11–§13 scope.  After curation, both entries are provenance rather than
+current paper status.
 
 ## Next actions
 

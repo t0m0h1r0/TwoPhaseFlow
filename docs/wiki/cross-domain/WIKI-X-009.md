@@ -3,10 +3,16 @@ id: WIKI-X-009
 title: "PPE Solver Policy: CCD Kronecker+LU Restricted to §11 Component Tests"
 status: ACTIVE
 created: 2026-04-15
-depends_on: [WIKI-T-012, WIKI-T-024, WIKI-X-005]
+depends_on: [WIKI-T-012, WIKI-T-024, WIKI-X-040]
 ---
 
 # PPE Solver Policy: CCD Kronecker+LU ch11-Only Restriction
+
+> Curation note (CHK-RA-WIKI-REVIEW-RECUR-001, 2026-05-05):
+> The ch11-only restriction for CCD Kronecker+LU remains active.  The older
+> approved-solver list and `WIKI-X-005` verification hierarchy are historical;
+> current PPE/capillary work must route through projection-native face-space
+> contracts and the active retrieval gate.
 
 ## Decision (2026-04-15, commit 050a900)
 

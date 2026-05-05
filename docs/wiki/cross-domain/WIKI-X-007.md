@@ -2,8 +2,8 @@
 ref_id: WIKI-X-007
 title: "CFL constraint hierarchy and stability budget for two-phase CCD-PPE solver"
 domain: X
-status: ACTIVE
-superseded_by: null
+status: REFERENCE
+superseded_by: WIKI-E-055
 sources:
   - path: "paper/sections/10_full_algorithm.tex"
     description: "§10 full algorithm with CFL control (Step 0)"
@@ -31,6 +31,13 @@ compiled_at: 2026-04-10
 ---
 
 # CFL Constraint Hierarchy and Stability Budget
+
+> Curation note (CHK-RA-WIKI-REVIEW-RECUR-001, 2026-05-05):
+> This is an April CFL budget snapshot.  The scaling laws remain useful
+> background, but the production acceptance reading has moved: capillary CFL is
+> a resolution/diagnostic constraint and cannot certify or repair a capillary
+> benchmark by itself.  Use `WIKI-E-055`, `WIKI-E-056`, and `WIKI-X-040` before
+> applying any constants or scheme-specific CFL wording here.
 
 ## Three Independent CFL Constraints
 

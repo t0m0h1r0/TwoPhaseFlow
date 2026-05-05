@@ -2,8 +2,8 @@
 ref_id: WIKI-P-004
 title: "Paper Review §1–§11: Findings and Action Items (2026-04-08)"
 domain: A
-status: ACTIVE
-superseded_by: null
+status: REFERENCE
+superseded_by: WIKI-P-015
 sources:
   - path: paper/sections/01_introduction.tex
   - path: paper/sections/02_governing.tex
@@ -42,6 +42,12 @@ compiled_by: PaperReviewer
 ---
 
 # Paper Review §1–§11: Findings (2026-04-08)
+
+> Curation note (CHK-RA-WIKI-REVIEW-RECUR-001, 2026-05-05):
+> This review is a historical action list.  Some file names, section numbers,
+> DCCD/CN framing, and TODO findings were later resolved or replaced.  Do not
+> use it as current paper status; retrieve current paper structure through
+> `WIKI-P-015`, `WIKI-P-016`, and the active ledger.
 
 ## Verdict
 - **Fatal [F]**: 0

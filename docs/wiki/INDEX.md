@@ -174,7 +174,7 @@ their curation notes.
 | [WIKI-X-004](cross-domain/WIKI-X-004.md) | Pressure Instability in High-Order Two-Phase Flow: Root Causes and Mitigation Survey |
 | [WIKI-X-005](cross-domain/WIKI-X-005.md) | [SUPERSEDED] Architectural Decisions: PPE Strategy, Solver Integration, and Verification Hierarchy |
 | [WIKI-X-006](cross-domain/WIKI-X-006.md) | Zalesak Disk Role in Balanced-Force CLS: Stress Test, Not Performance Benchmark |
-| [WIKI-X-007](cross-domain/WIKI-X-007.md) | CFL Constraint Hierarchy and Stability Budget for Two-Phase CCD-PPE Solver |
+| [WIKI-X-007](cross-domain/WIKI-X-007.md) | [REFERENCE] CFL Constraint Hierarchy and Stability Budget for Two-Phase CCD-PPE Solver |
 | [WIKI-X-008](cross-domain/WIKI-X-008.md) | Derived Physics Resolution: Non-Dimensional → Physical Parameter Mapping |
 | [WIKI-X-009](cross-domain/WIKI-X-009.md) | PPE Solver Policy: CCD Kronecker+LU Restricted to §11 Component Tests |
 | [WIKI-X-010](cross-domain/WIKI-X-010.md) | Reinitializer Uniform-Grid Assumption: Verification Design Constraint |
@@ -280,12 +280,12 @@ their curation notes.
 
 | REF-ID | Title |
 |--------|-------|
-| [WIKI-P-001](paper/WIKI-P-001.md) | Paper Narrative Structure: Sections 4-10 Flow Analysis |
-| [WIKI-P-002](paper/WIKI-P-002.md) | Accuracy Summary: Component-Level Precision Map |
+| [WIKI-P-001](paper/WIKI-P-001.md) | [REFERENCE] Paper Narrative Structure: Sections 4-10 Flow Analysis |
+| [WIKI-P-002](paper/WIKI-P-002.md) | [REFERENCE] Accuracy Summary: Component-Level Precision Map |
 | [WIKI-P-003](paper/WIKI-P-003.md) | [SUPERSEDED] Problem Statement: Four Failure Modes and Three-Pillar Solution |
-| [WIKI-P-004](paper/WIKI-P-004.md) | Paper Review S1-S11: Findings and Action Items (2026-04-08) |
+| [WIKI-P-004](paper/WIKI-P-004.md) | [REFERENCE] Paper Review S1-S11: Findings and Action Items (2026-04-08) |
 | [WIKI-P-005](paper/WIKI-P-005.md) | [SUPERSEDED] §10-§12 Verification Architecture: 27 Component + 13 NS Consistency Tests |
-| [WIKI-P-006](paper/WIKI-P-006.md) | Paper Review §11–§13: Findings and Action Items (2026-04-11) |
+| [WIKI-P-006](paper/WIKI-P-006.md) | [REFERENCE] Paper Review §11–§13: Findings and Action Items (2026-04-11) |
 | [WIKI-P-007](paper/WIKI-P-007.md) | Ch11 Formal Review Corrections: 9 Factual Errors Fixed (2026-04-15) |
 | [WIKI-P-008](paper/WIKI-P-008.md) | Ch11+Ch12 Review Corrections: 14 Findings Fixed (2026-04-16) |
 | [WIKI-P-009](paper/WIKI-P-009.md) | 07b_reinitialization: DGR Mass Correction and σ>0 Limitation (CHK-135) |

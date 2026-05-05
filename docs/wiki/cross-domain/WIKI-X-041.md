@@ -77,6 +77,8 @@ recommendations without the curation note at the top of each page.
 | [[WIKI-L-028]] | IIM jump decomposition plus ADI defect correction as a selectable PPE fallback. | GPU-resident Krylov/preconditioner roadmap in [[WIKI-L-026]] and algebra-preserving GPU policy in [[WIKI-L-038]]. |
 | [[WIKI-P-003]], [[WIKI-P-005]] | Early paper problem/verification maps with DCCD/CN/CSF as the organizing story. | Paper traceability cards [[WIKI-P-015]] and [[WIKI-P-016]]. |
 | [[WIKI-X-025]] | AB2/CN/semi-implicit-ST Level-2 design as production default. | Startup/projection consistency in [[WIKI-T-147]] and current digest [[WIKI-X-040]]. |
+| [[WIKI-X-007]] | Scheme-specific CFL constants as proof of capillary benchmark validity. | Capillary energy/mode and resolution contracts in [[WIKI-E-055]] and [[WIKI-E-056]]. |
+| [[WIKI-P-001]], [[WIKI-P-002]], [[WIKI-P-004]], [[WIKI-P-006]] | Early paper narrative, accuracy, and review snapshots as current status. | Current chapter/appendix traceability in [[WIKI-P-015]] and [[WIKI-P-016]]. |
 
 ## Retained Negative Knowledge
 
@@ -85,6 +87,9 @@ They are retained with a bounded reading:
 
 - old FFT proxy claims do not transfer to V1;
 - old CCD-LU/CN component interpretations do not transfer to U2/U8;
+- the CCD Kronecker+LU ch11-only restriction in [[WIKI-X-009]] remains valid,
+  but its older solver list and dependency on retired verification maps are
+  historical;
 - V7, V10-a, V10-b, and N64 static droplet failures are structural-contract
   evidence, not tuning targets;
 - pre-projection-native nonuniform density-ratio limits remain experiment
