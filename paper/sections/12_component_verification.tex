@@ -43,6 +43,8 @@ Predictor--PPE--Corrector を含む 7 ステップ統合アルゴリズムの
 ことを格子細分化 / MMS（製造解法~\cite{Roache2002,SalariKnupp2000}）/ 解析参照解との比較によって
 系統的に確認する（Richardson 外挿に基づく観測収束次数の運用については~\cite{Roy2003}）．
 
+本章は最終スキームを構成する各 primitive について，
+式，離散化，観測指標，合格基準を一対一に対応させる精度評価である．
 ここで検証されるのは，各式・離散化・実験指標が一貫した精度主張を支えること，
 および単体実験で観測された限界を次章の統合実験へ持ち越すことである．第~\ref{sec:verification}章
 （統合実験）はここで合格した primitive のみを用いて，
@@ -107,7 +109,7 @@ U2 & I & CCD--Poisson と現行 FVM--PPE Neumann gauge の基礎精度． & V1/V
 U3 & II & 非一様格子 CCD/FCCD と Ridge--Eikonal D1--D4 metric 補正． & V8/V9 の非一様格子診断． \\
 U4 & III & Godunov Eikonal reinit と DGR バンド厚補正． & V10 の reinit/mass-correction 付き CLS 移流． \\
 U5 & III & $H_\varepsilon$ / $\delta_\varepsilon$ のモーメント精度と $\varepsilon=ch$ 感度． & V3/V5/V8/V9/V10 の界面厚み・体積診断． \\
-U6 & IV & DC 緩和 guard と HFE 1D/2D 場延長精度．一括 PPE の高密度比劣化は採用 primitive ではなく，§9/§11 の分相 PPE+HFE へ切り替える設計根拠として本文で扱う． & V6/V7/V9 の pressure-jump 分相 PPE+HFE stack． \\
+U6 & IV & DC 緩和 guard と HFE 1D/2D 場延長精度．一括 PPE の高密度比劣化は保証対象 primitive ではなく，§9/§11 の分相 PPE+HFE を必要とする設計根拠として本文で扱う． & V6/V7/V9 の pressure-jump 分相 PPE+HFE stack． \\
 U7 & V & BF 静止液滴 1-step と face $\mu$ 補間． & V3/V5/V8 の静止液滴・寄生流れ． \\
 U8 & VI & TVD-RK3 / EXT2 / implicit-BDF2 / 3-layer BDF2 の単体時間精度． & V1-b/V7/V10 の時間軸診断． \\
 U9 & VII & DCCD-on-pressure 禁止の否定検証． & V1--V10 全体の圧力勾配 operator policy． \\

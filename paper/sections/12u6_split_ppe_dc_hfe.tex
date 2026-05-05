@@ -10,7 +10,7 @@
 第~\ref{sec:ppe_solve}章および第~\ref{sec:algorithm}章の標準圧力経路は，
 \textbf{pressure-jump 分相 PPE + HFE + DC}である．
 変密度一括 smoothed-Heaviside PPE は低密度比の対照・経路選択診断として残すが，
-高密度比の採用 primitive ではない．したがって本 U6 は，一括 PPE 高密度比 sweep を
+高密度比の保証対象 primitive ではない．したがって本 U6 は，一括 PPE 高密度比 sweep を
 成果サブテストとして数えず，分相 PPE+HFE に渡す二つの前提 primitive：
 (i) defect--correction（DC；§\ref{sec:dc_pure_fccd_convergence}）の
 $\omega$--緩和 guard と，
@@ -22,7 +22,7 @@ $\omega$--緩和 guard と，
   \item[U6-a] DC $\omega$--緩和 guard．$N=64$ 円界面 $R=0.25$，
         $\rho_l \in \{1, 100, 1000\}$，relaxation $\omega \in \{0.2,0.3,0.5,0.7,0.9\}$，
         $k_{\mathrm{DC}} \in \{2,3\}$．低密度比では clean，高密度比では一括 PPE を
-        production primitive と見なさないための guard として stall 判定を記録する．
+        保証対象 primitive と見なさないための guard として stall 判定を記録する．
   \item[U6-b] HFE 単独：1D MMS（外挿ステンシル単体精度），
         2D MMS（$\rho^{-1}\bnabla p$ の界面跨ぎ精度の \textbf{max} と \textbf{med}）．
 \end{description}
@@ -32,7 +32,7 @@ $\omega$--緩和 guard と，
 \begin{table}[!ht]
 \caption{U6-a：DC $\omega$--緩和 guard}
 \label{tab:U6_dc_omega}
-\PaperCaptionNote{$N=64$，円界面 $R=0.25$．$\rho_l = 1$ は $\omega$ 全域 / $k\in\{2,3\}$ で base GMRES 解で 1 補正（$k$ 内ループ break, residual $\!\approx\!5.19\!\times\!10^{-5}$ は DC break tolerance 域；機械精度床ではない）．$\rho_l \ge 100$ では一括 PPE 係数ジャンプが残るため DC が stall し，この経路を高密度比 production primitive としない根拠になる．$\omega$ 増大で残差は改善し，$\rho_l = 1000$, $\omega = 0.9$, $k=3$ のみ例外的に許容床へ到達して \emph{break}（converge）．括弧内は \emph{converged} を示す．}
+\PaperCaptionNote{$N=64$，円界面 $R=0.25$．$\rho_l = 1$ は $\omega$ 全域 / $k\in\{2,3\}$ で base GMRES 解で 1 補正（$k$ 内ループ break, residual $\!\approx\!5.19\!\times\!10^{-5}$ は DC break tolerance 域；機械精度床ではない）．$\rho_l \ge 100$ では一括 PPE 係数ジャンプが残るため DC が stall し，この経路を高密度比保証対象 primitive としない根拠になる．$\omega$ 増大で残差は改善し，$\rho_l = 1000$, $\omega = 0.9$, $k=3$ のみ例外的に許容床へ到達して \emph{break}（converge）．括弧内は \emph{converged} を示す．}
 \centering\small
 \begin{tabular}{r c c c c c}
 \toprule
@@ -87,7 +87,7 @@ $256$ & $0.0039$ & $4.22\times 10^{-13}$ & $5.80\times 10^{-14}$ & $4.55\times 1
         $k_{\mathrm{DC}}=3$ は唯一 converge．$k_{\mathrm{DC}}=3$ は $k=2$ より残差を
         $\omega=0.5$ で $50\%$，$\omega=0.9$ で $90\%$ 削減．
         これは §\ref{sec:dc_pure_fccd_convergence} の $\omega$ 選択指針と整合するが，
-        同時に高密度比の一括 PPE を成果 primitive として採用しないための guard でもある．\checkmark
+        同時に高密度比の一括 PPE を保証対象 primitive としないための guard でもある．\checkmark
   \item U6-b HFE：1D stencil は設計 6 次を完全達成．2D circular band も
         完全テンソル混合微分を用いることで低次化が消える．
         $N=32$ の max は closest-point 幾何の前漸近を含むが，
@@ -96,7 +96,7 @@ $256$ & $0.0039$ & $4.22\times 10^{-13}$ & $5.80\times 10^{-14}$ & $4.55\times 1
 \end{itemize}
 検証対応：
 DC 反復収束は分相 PPE+HFE 経路へ入る前の緩和 guard として測定する．
-高密度比の本番検証は，一括 PPE ではなく V6/V7 の
+高密度比の統合検証は，一括 PPE ではなく V6/V7 の
 FCCD, HFE, pressure-jump 分相 PPE/DC, projection-native face closure,
 affine pressure-history faces を含む stack で行う．
 式~\eqref{eq:hfe_upwind_minus}（HFE 拡張公式）については，1D/2D の外挿誤差を測定する．

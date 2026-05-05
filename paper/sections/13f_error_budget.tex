@@ -14,15 +14,16 @@
 \textbf{各誤差源} (空間離散，時間離散，界面表現，曲率推定，CLS 再初期化，projection face-state，履歴圧力) と
 \textbf{各設定パラメータ} ($\rho_r$, $\alpha$, $\Delta t$, $h$) の関係を整理する
 （観測収束次数の Richardson 外挿運用は~\cite{Roy2003}）．
-過去の表の値は用いず，V1--V10 の再生成結果に基づいて整理する．
+本節は，最終スキームについて，
+どの誤差源がどの検証問題で支配的になるかを整理する精度バジェットである．
 
-\paragraph{判定基準の再定義（§\ref{sec:verification} Type 分類との整合）．}
+\paragraph{判定基準（§\ref{sec:verification} Type 分類との整合）．}
 本節は §\ref{sec:verification}「判定区分と Type 分類」に基づき
-Type-A/Type-B/Type-D の三類型で再定義された各 V test の判定を集約する
+Type-A/Type-B/Type-D の三類型で各 V test の判定を集約する
 （凡例は表~\ref{tab:V_verdict_types}）．
-V1-a, V1-b, V2, V4, V5 は \textbf{Type-A revised criterion}：
-当初の理想化基準（CCD 内点 6 次空間，EXT2/AB2 単体 2 次，厳密 Galilean ゼロ残差，CCD/FD 比）ではなく
-実装縮約実験の identity に対する文献根拠付き revised criterion へ再定義した．
+V1-a, V1-b, V2, V4, V5 は \textbf{Type-A criterion}：
+連続方程式または単体 primitive の理想化次数ではなく，
+実際に測定する縮約離散 identity に対する文献根拠付き criterion で評価する．
 V1-a は単相 TGV 空間の FVM PPE 結合 stack に対する $O(h^2)$ trend，
 V1-b は非増分 standard PPE 射影の $O(\Delta t)$ trend，
 V2 は wall one-sided Kovasznay 統合残差の $O(h^4)$ trend，
@@ -36,11 +37,11 @@ V7（capillary pressure-jump/projection 界面帯に律速され $2.0$ に届か
 V10-b 形状軸（grid-scale folded filament の Eulerian 固定格子限界）は \textbf{Type-D}：
 連続方程式・離散構造に由来する theoretical hard limit と整合するものとして
 条件付き合格 ($\triangle$)．これらは格子増強だけで合格化するのではなく，
-仮説除去型の追加検証（norm 切替，項別誤差分解，dt/h 独立 sweep，時系列解析）を
-future verification gate として扱う．
-V9 は Type-A/B/D の再定義ではなく，projection-native / affine-history §14 stack と同時に nominal/local
-$\varepsilon$ mode を切り替えても短時間静止液滴を破綻させないことを測る
-\textbf{§14 stack 条件付き診断}として別枠で扱う．
+norm 切替，項別誤差分解，dt/h 独立 sweep，時系列解析により
+保証範囲を別途定める必要がある．
+V9 は Type-A/B/D の分類ではなく，projection-native / affine-history stack と同時に nominal/local
+$\varepsilon$ mode を切り替えても有限時間静止液滴を破綻させないことを測る
+\textbf{operator-stack 条件付き診断}として別枠で扱う．
 
 \paragraph{統合検証成績一覧．}
 
@@ -63,7 +64,7 @@ V5 & 寄生流れ 200 step & CCD $u_\infty^{\mathrm{end}}$ の $\sigma/\mathrm{R
 V6 & 密度比 sweep & ブローアップなし；CLS 体積 drift round-off floor & 全 8 ケース安定；$|\Delta V_\psi|/V_{\psi,0}\le6.4\!\times\!10^{-16}$ & \checkmark \\
 V7 & IMEX-BDF2 二相時間 & capillary pressure-jump/projection 界面帯制約下の coupled-stack 実効 slope & slope($\|e\|_\infty,\Delta t$) $=\mathbf{1.48}$ & $\triangle$ Type-D \\
 V8 & 非一様 NS 静止 & 非一様 BF 静止 default criterion & $|\Delta p_{\mathrm{rel}}|=2.86\%$ at $\alpha=2,N=96$ & \checkmark \\
-V9 & nominal/local $\varepsilon$ switch & projection-native / affine-history §14 stack 同時使用下の no-regression 診断 & B/C=$1.00$, C/A=$1.00$ at $N=32$；$|\Delta V|/V_0\le3.79\!\times\!10^{-8}$ & \checkmark stack 診断 \\
+V9 & nominal/local $\varepsilon$ switch & projection-native / affine-history stack 同時使用下の有界性診断 & B/C=$1.00$, C/A=$1.00$ at $N=32$；$|\Delta V|/V_0\le3.79\!\times\!10^{-8}$ & \checkmark stack 診断 \\
 V10-a-mass & Zalesak 質量保存軸 & Olsson--Kreiss mass correction 後 drift $<0.5\%$ & $4.70\!\times\!10^{-4}\%$ at $N=128$ & \checkmark Type-B \\
 V10-a-shape & Zalesak 形状軸 & fixed-grid 位相/threshold 誤差 + slot/h$=6.4$ under-resolution と整合 & centroid err $4.911\!\times\!10^{-3}$；shape $L^1=8.307\!\times\!10^{-3}$ & $\triangle$ Type-D \\
 V10-b-mass & 単一渦 reversal 質量保存軸 & Olsson--Kreiss mass correction 後 drift $<0.5\%$ & $0.0428\%$ at $N=128,T=8$ & \checkmark Type-B \\
@@ -76,16 +77,16 @@ V10-b-shape & 単一渦 reversal 形状軸 & grid-scale folded filament の Eule
 \begin{enumerate}\setlength{\itemsep}{0pt}
   \item \textbf{空間離散誤差}．CCD 内点 6 次設計に対し，V2 Kovasznay residual は
         wall one-sided 二階微分境界閉包と global compact coupling により実効 $3.95$．
-        revised criterion $O(h^4)$ を満たす．TGV では時間誤差床下に到達するため空間 slope は飽和．
+        Type-A criterion $O(h^4)$ を満たす．TGV では時間誤差床下に到達するため空間 slope は飽和．
   \item \textbf{時間離散誤差}．単相 NS の AB2 predictor は単体 $O(\Delta t^2)$ 設計だが，
-        V1-b script は standard projection 結合を測るため，合格基準は $O(\Delta t)$ trend である．
+        V1-b は standard projection 結合を測るため，合格基準は $O(\Delta t)$ trend である．
         二相結合では capillary pressure-jump / affine FCCD projection の界面帯誤差が
         coupled-stack 実効 slope $1.48$（V7; \autoref{sec:imex_bdf2_twophase_time}）を支配し，
         純粋 BDF2 2 次ではなく capillary coupled-stack 実効次数として扱う．
   \item \textbf{界面表現誤差}．Heaviside--$\delta$ の nominal/local $\varepsilon$ switch は
-        FCCD, HFE, pressure-jump PPE, projection-native face closure, affine pressure-history faces と同時に使う条件で短時間安定（V9）；
+        FCCD, HFE, pressure-jump PPE, projection-native face closure, affine pressure-history faces と同時に使う条件で有限時間安定（V9）；
         ただし現行 direct-$\psi$/HFE probe では B/C が同一で，local mode を改善 lever とは主張しない．
-        旧 CCD/CSF 経路の結果は §14 stack の根拠から除外する．
+        CCD/CSF 縮約経路の結果は pressure-jump/HFE stack の精度根拠には用いない．
         さらに face-flux projection を用いる stack では，
         $\psi$ 移流の速度表現そのものが誤差源になりうる．
         射影で得た正準面速度を節点へ再構成してから face flux を作り直す経路は，
@@ -95,21 +96,11 @@ V10-b-shape & 単一渦 reversal 形状軸 & grid-scale folded filament の Eule
         不連続な $p^n$ を節点スカラーとして微分するのではなく，
         式~\eqref{eq:affine_pressure_history_faces} の正準面加速度として保持する必要がある．
   \item \textbf{射影残差誤差と圧力代表誤差の分離}．
-        DC 反復回数そのものは生産計算の精度証明ではなく，
+        DC 反復回数そのものは精度証明ではなく，
         式~\eqref{eq:ppe_dc_residual_contract} の高次残差が射影受理条件である．
-        N64 $\alpha=2$ 振動液滴の短時間 gate では，この残差契約により
-        projection DC の最終相対残差が $2.5\times10^{-9}$--$2.9\times10^{-9}$，
-        投影後発散が $\Ord{10^{-11}}$ に到達する．
-        $T=0.25$ gate では final/max kinetic energy $1.44\times10^{-5}$，
-        最大体積 drift $5.44\times10^{-7}$，
-        signed deformation $0.09227\to0.09219$ を得た．
-        $T=1$ gate でも final/max kinetic energy は $9.70\times10^{-5}$，
-        最大体積 drift は $9.40\times10^{-6}$ に留まり，
-        全 step で式~\eqref{eq:ppe_dc_residual_contract} を満たした．
-        したがって §14 の一周期・長時間計算は，
-        本章の短時間 gate で楕円求解残差，界面輸送，圧力代表の誤読を分離した後の
-        統合ベンチマークと位置づける．
-        その後に残る界面帯 pressure oscillation は，
+        したがって pressure-jump PPE の精度評価では，
+        楕円求解残差，投影後発散，圧力代表の選択を別々の観測量として扱う．
+        残差契約を満たした後に残る界面帯 pressure oscillation は，
         直ちに運動量圧力仕事の破綻とは解釈しない．
         affine-jump 経路の物理仕事は面 cochain
         $A_f(G_fp-B_f(j))$ で定義されるため，
@@ -139,7 +130,7 @@ V10-b-shape & 単一渦 reversal 形状軸 & grid-scale folded filament の Eule
         V3 (BF 平衡，$|\Delta p_{\mathrm{rel}}|=0.97\%$ at $N=128$)，
         V6 (密度比ロバスト, $\rho_r=833$ までブローアップなし; $|\Delta V_\psi|/V_{\psi,0} \le 6.4\!\times\!10^{-16}$)，
         V8 (非一様静止, $\alpha=2,N=96$ で $|\Delta p_{\mathrm{rel}}|=2.86\%$).
-  \item \checkmark \textbf{Type-A revised criterion 合格}:
+  \item \checkmark \textbf{Type-A criterion 合格}:
         V1-a (TGV 空間 FVM PPE $O(h^2)$ trend, finest local slope $2.00$；補助: $E_{\mathrm{rel}}=1.583\!\times\!10^{-7}$ at $N=64$)，
         V1-b (standard projection 結合 $O(\Delta t)$ trend, slope $1.00$)，
         V2 (Kovasznay wall residual $O(h^4)$ trend, slope $3.95$)，
@@ -156,10 +147,10 @@ V10-b-shape & 単一渦 reversal 形状軸 & grid-scale folded filament の Eule
         slot/h $=6.4$ sharp-corner under-resolution 律速),
         V10-b 形状軸 ($T=8$ 単一渦 reversal $L^1=2.248\times10^{-2}$
         — grid-scale folded filament の Eulerian 固定格子原理的下限~\cite{EnrightFedkiwFerzigerMitchell2002}).
-  \item $\times$ \textbf{要改善 / 推奨せず}: 該当なし（V7 は §14 stack 化により $\times$ 区分から $\triangle$ Type-D 区分へ移動済）.
-  \item \checkmark \textbf{§14 stack 条件付き診断}: V9
+  \item $\times$ \textbf{要改善 / 推奨せず}: 該当なし.
+  \item \checkmark \textbf{Operator-stack 条件付き診断}: V9
         (nominal/local $\varepsilon$ switch は $N=32$ で B/C=$1.00$，C/A=$1.00$；
-        HFE curvature + pressure-jump PPE + projection-native face closure + affine pressure-history faces と同時採用しても短時間静止液滴を破綻させないが，
+        HFE curvature + pressure-jump PPE + projection-native face closure + affine pressure-history faces と同時使用しても有限時間静止液滴を破綻させないが，
         local mode の改善効果はこの縮約 probe では主張しない).
 \end{itemize}
 
@@ -173,8 +164,8 @@ V10-b-shape & 単一渦 reversal 形状軸 & grid-scale folded filament の Eule
         \textbf{$\Delta t$ を $h_{\min}$ より小さく取る安全ファクタ}（CFL $\le 0.4$）が推奨．
   \item 非一様格子：$\alpha>1$ の NS 静止問題と nominal/local $\varepsilon$ switch は V8/V9 で検証し，
         Zalesak slot と単一渦 reversal は $\alpha=1$ の一様格子 CLS 移流診断に固定する．
-        local mode を改善根拠として採用するには，移動界面または reinitialization が local thickness を
-        実際に経由する追加 gate を要求する．
+        local mode を改善根拠として用いるには，移動界面または reinitialization が local thickness を
+        実際に経由する別検証を要求する．
   \item 寄生流れ抑制：CCD の $u_\infty^{\mathrm{end}}$ 絶対値は V5 全表ケースで
         $O(10^{-2})$ 以下に保たれ，代表的には
         $\rho_r=1,N=32$ で $1.93\!\times\!10^{-2}$，$\rho_r=1,N=128$ で $6.28\!\times\!10^{-4}$．

@@ -73,7 +73,7 @@ U9   & DCCD-on-pressure 違反   & 差分誤差 $\Ord{h^2}$    & $L_\infty^{\mat
 $\triangle$ の類型——
 \checkmark: 設計精度達成，$\bullet$: negation 成立（規則違反量が予測通り発散；合格扱い），$\times$: 未達（本章では該当なし）．
 本表は Tier 順で配置する（24 サブテスト；U6-b は 1D / 2D で 2 行に分割；U7-a も match / mismatch で 2 行に分割）．
-U6 の一括 PPE 高密度比 sweep は採用 primitive ではないため本成果表から除外し，U6 本文の設計経路説明に退避した．
+U6 の一括 PPE 高密度比 sweep は保証対象 primitive ではないため本成果表から除外し，U6 本文では分相 PPE+HFE を必要とする補助診断として扱う．
 }
 \end{tabularx}
 \end{table}
@@ -135,7 +135,7 @@ U 系列と V 系列の対応は，単なる章番号の継承ではなく
 \begin{table}[!ht]
 \caption{§12 primitive から §13 統合検証への接続}
 \label{tab:U_to_V_bridge}
-\PaperCaptionNote{U 系列は component verification，V 系列は integration verification であり，判定基準は異なる．本表は「未検証の結合効果」を次章の V test に対応付ける橋渡しである．}
+\PaperCaptionNote{U 系列は component verification，V 系列は integration verification であり，判定基準は異なる．本表は単体検証だけでは判定できない結合効果を次章の V test に対応付ける橋渡しである．}
 \centering\small
 \begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.20\linewidth}>{\raggedright\arraybackslash}p{0.31\linewidth}>{\raggedright\arraybackslash}X@{}}
 \toprule
@@ -144,8 +144,8 @@ U 系列と V 系列の対応は，単なる章番号の継承ではなく
 標準 PPE 時間・速度結合 & U2-b, U8 & V1-b（Taylor--Green 渦；standard PPE の $O(\Delta t)$ trend）と V2（Kovasznay 残差）． \\
 BF 圧力--界面バランス & U5, U7, U9 & V3/V5（静止液滴と寄生流れ），V8（非一様静止液滴）． \\
 高密度比 pressure-jump stack & U6, U7, U8 & V6（密度比 sweep）と V7（FCCD, HFE, 分相 PPE/DC, projection-native face closure, affine pressure-history faces を含む coupled-stack 時間精度）． \\
-非一様格子・局所厚み & U3, U5 & V8（非一様 NS 静止）と V9（projection-native / affine-history §14 stack 条件下の nominal/local $\varepsilon$ switch）． \\
-CLS 保存移流 & U4, U5, U8 & V10-a/V10-b（一様格子・NS 非連成 CLS 強変形移流；非一様 moving-interface CLS は future verification gate）． \\
+非一様格子・局所厚み & U3, U5 & V8（非一様 NS 静止）と V9（projection-native / affine-history stack 条件下の nominal/local $\varepsilon$ switch）． \\
+CLS 保存移流 & U4, U5, U8 & V10-a/V10-b（一様格子・NS 非連成 CLS 強変形移流；非一様 moving-interface CLS は本章の保証範囲外）． \\
 \bottomrule
 \end{tabularx}
 \end{table}
