@@ -349,10 +349,10 @@ their curation notes.
 | [WIKI-L-010](code/WIKI-L-010.md) | PPE Solver Architecture: Factory Registry, Template Method, and Legacy Management |
 | [WIKI-L-011](code/WIKI-L-011.md) | CCD Solver Module: Block-Tridiagonal LU, Multi-Axis Design, and Backend Abstraction |
 | [WIKI-L-012](code/WIKI-L-012.md) | Reinitialization Strategy Pattern: Facade, 4 Strategies, and Shared Operations |
-| [WIKI-L-013](code/WIKI-L-013.md) | SOLID Compliance Audit: Scores, Remaining Violations, and Deferred Items (2026-04-10) |
+| [WIKI-L-013](code/WIKI-L-013.md) | [REFERENCE] SOLID Compliance Audit: Scores, Remaining Violations, and Deferred Items (2026-04-10) |
 | [WIKI-L-014](code/WIKI-L-014.md) | [REFERENCE] Config-Driven Experiment Framework: ExperimentConfig, NS Pipeline, Unified Runner |
 | [WIKI-L-015](code/WIKI-L-015.md) | [REFERENCE] CuPy / GPU Backend Unification: xp Dispatch, SciPy Shim, Batched Thomas |
-| [WIKI-L-016](code/WIKI-L-016.md) | CN Advance Strategy Pattern: Viscous Time-Integration Subpackage |
+| [WIKI-L-016](code/WIKI-L-016.md) | [REFERENCE] CN Advance Strategy Pattern: Viscous Time-Integration Subpackage |
 | [WIKI-L-017](code/WIKI-L-017.md) | GPU Experiment Patterns: sparse_solve_2d, to_float, Grid.meshgrid() N+1 Contract |
 | [WIKI-L-018](code/WIKI-L-018.md) | Library Additions: grid_remap, reconstruction, benchmarks.scaling, diagnostics |
 | [WIKI-L-019](code/WIKI-L-019.md) | config_io.py パースバグ: snap_interval / reinit_eps_scale 欠落 |

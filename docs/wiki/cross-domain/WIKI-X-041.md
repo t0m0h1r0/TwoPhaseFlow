@@ -81,6 +81,7 @@ recommendations without the curation note at the top of each page.
 | [[WIKI-P-001]], [[WIKI-P-002]], [[WIKI-P-004]], [[WIKI-P-006]] | Early paper narrative, accuracy, and review snapshots as current status. | Current chapter/appendix traceability in [[WIKI-P-015]] and [[WIKI-P-016]]. |
 | [[WIKI-X-037]] | Previous ResearchArchitect wiki atlas as the active retrieval map. | This card, [[WIKI-X-041]], plus recent digest [[WIKI-X-040]]. |
 | [[WIKI-L-008]], [[WIKI-L-014]], [[WIKI-L-015]], [[WIKI-L-022]] | Old code/module maps as current file-path or implementation policy. | Current code interface map [[WIKI-L-009]], backend boundary [[WIKI-L-037]], and projection-native code cards [[WIKI-L-035]]/[[WIKI-L-036]]. |
+| [[WIKI-L-013]], [[WIKI-L-016]] | April SOLID score and CN strategy snapshot as current code authority. | Current code routing via [[WIKI-L-009]] and timing/projection contracts via [[WIKI-T-147]]/[[WIKI-X-038]]. |
 
 ## Retained Negative Knowledge
 
