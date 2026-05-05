@@ -87,6 +87,9 @@ def test_different_operator_defect_correction_keeps_residual_loop():
     assert base.seen_tolerances[0] == 1.0e-6
     assert operator.apply_calls >= 1
     assert solver.last_residual_history
+    assert solver.last_diagnostics["ppe_dc_converged"] == 1.0
+    assert solver.last_diagnostics["ppe_dc_final_residual_l2"] == 0.0
+    assert solver.last_diagnostics["ppe_dc_iterations"] == 0.0
 
 
 def test_defect_correction_forwards_static_operator_cache():

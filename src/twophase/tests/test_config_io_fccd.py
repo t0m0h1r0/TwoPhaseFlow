@@ -690,6 +690,19 @@ def test_readable_structured_sections_round_trip():
     assert cfg.run.debug_diagnostics is True
 
 
+def test_ale_discrete_gradient_curvature_method_parse():
+    cfg = ExperimentConfig.from_dict(_minimal({
+        "interface": {
+            "geometry": {
+                "curvature": {
+                    "method": "transport_variational_p2_ale_discrete_gradient",
+                },
+            },
+        },
+    }))
+    assert cfg.run.curvature_method == "transport_variational_p2_ale_discrete_gradient"
+
+
 @pytest.mark.parametrize("adv", ["bogus", "ccd"])
 def test_invalid_interface_transport_scheme_rejected(adv: str):
     with pytest.raises(ValueError, match="interface.transport.spatial"):

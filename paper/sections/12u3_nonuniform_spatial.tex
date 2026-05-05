@@ -19,8 +19,7 @@ $\rho_d(\xi) = 1 + (\alpha-1)\exp\!\bigl(-(\psi/\varepsilon)^2\bigr)$
 $\alpha = 1$ で一様格子（密度恒等的に 1），$\alpha = 2$ で
 対角界面 $x + y = 1$（領域中央を通る $45^\circ$ 直線）の周りに
 両軸が同時に集中する設計．これは Heaviside 場 $\psi = H_{\varepsilon}((x-0.5)+(y-0.5))$ を経由して
-\texttt{update\_from\_levelset} に与える経路で実現する（実装:
-\texttt{experiment/ch12/exp\_U3\_nonuniform\_spatial\_suite.py:104}）．
+\texttt{update\_from\_levelset} に与える離散経路で実現する．
 
 \paragraph{設定．}
 \begin{description}\setlength{\itemsep}{0pt}
@@ -42,18 +41,17 @@ $\alpha = 1$ で一様格子（密度恒等的に 1），$\alpha = 2$ で
 \end{description}
 
 \paragraph{D1--D4 の位置づけ．}
-本節の D1--D4 は \textbf{実験スクリプト固有の集約スカラー}であり，
-production API として \texttt{src/twophase} に独立関数として
-公開してはいない（実体は格子量 \texttt{ridge\_sigma\_eff\_field} /
+本節の D1--D4 は \textbf{メトリック補正の活性化を確認する集約スカラー}である
+（実体は格子量 \texttt{ridge\_sigma\_eff\_field} /
 \texttt{eps\_local} / \texttt{dJ\_dxi}（§\ref{sec:ridge_eikonal_nu_grid}）
-の振幅幅 \textit{max-min} を実験側で集計したもの）．
+の振幅幅 \textit{max-min}）．
 これは D1--D4 が「メトリック補正の活性化を一桁単位で確認する診断指標」であって
 量的な収束次数を主張する量ではないためで，
-production 経路では生成過程の各場が
+離散 operator では生成過程の各場が
 \texttt{NonuniformInterfaceGrid.update\_from\_levelset} 内で
 直接 CCD 連鎖律係数として用いられる．
 本実験は『各成分が一様格子で零，非一様で発火する』という
-発火検査として position する．
+発火検査として位置づける．
 
 \paragraph{結果．}
 

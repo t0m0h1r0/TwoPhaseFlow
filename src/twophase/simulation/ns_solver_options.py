@@ -92,6 +92,7 @@ class SolverSchemeOptions:
     cn_viscous: bool = False
     Re: float = 1.0
     surface_tension_scheme: str = "pressure_jump"
+    curvature_method: str = "psi_direct_filtered"
     convection_time_scheme: str = "imex_bdf2"
     advection_scheme: str = "fccd_flux"
     convection_scheme: str = "uccd6"

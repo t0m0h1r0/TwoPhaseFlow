@@ -19,7 +19,11 @@ from .face_projection import (
     zero_face_components,
 )
 from .gradient_operator import IDivergenceOperator
-from ..coupling.interface_stress_closure import signed_pressure_jump_gradient
+from ..coupling.interface_stress_closure import (
+    affine_jump_face_inverse_density,
+    evaluate_interface_face_curvature_lg,
+    signed_pressure_jump_gradient,
+)
 
 if TYPE_CHECKING:
     from ..backend import Backend
@@ -294,6 +298,14 @@ class FCCDDivergenceOperator(IDivergenceOperator):
             )
         if coefficient_scheme == "phase_density" and interface_coupling_scheme != "none":
             raise ValueError("phase_density projection requires interface_coupling='none'")
+        face_curvature_lg = None
+        if interface_coupling_scheme == "affine_jump":
+            face_curvature_lg = evaluate_interface_face_curvature_lg(
+                xp=xp,
+                grid=grid,
+                context=interface_stress_context,
+                fccd=self._fccd,
+            )
         faces = []
         for axis in range(ndim):
             n_cells = grid.N[axis]
@@ -306,6 +318,17 @@ class FCCDDivergenceOperator(IDivergenceOperator):
             rho_lo = rho[sl(0, n_cells)]
             rho_hi = rho[sl(1, n_cells + 1)]
             coeff = 2.0 / (rho_lo + rho_hi)
+            if (
+                coefficient_scheme == "phase_separated"
+                and interface_coupling_scheme == "affine_jump"
+            ):
+                coeff = affine_jump_face_inverse_density(
+                    xp=xp,
+                    grid=grid,
+                    rho=rho,
+                    axis=axis,
+                    context=interface_stress_context,
+                )
             if (
                 coefficient_scheme == "phase_separated"
                 and interface_coupling_scheme != "affine_jump"
@@ -329,6 +352,8 @@ class FCCDDivergenceOperator(IDivergenceOperator):
                     grid=grid,
                     context=interface_stress_context,
                     axis=axis,
+                    face_curvature_lg=face_curvature_lg,
+                    fccd=self._fccd,
                 )
             face = coeff * pressure_face_gradient
             faces.append(face)

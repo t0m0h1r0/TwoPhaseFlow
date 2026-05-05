@@ -68,6 +68,7 @@ class NSSchemeRuntimeState:
     momentum_gradient_scheme: str
     pressure_gradient_scheme: str
     surface_tension_gradient_scheme: str
+    curvature_method: str
     advection_scheme: str
     convection_scheme: str
 
@@ -270,6 +271,9 @@ def normalise_ns_scheme_runtime(options) -> NSSchemeRuntimeState:
         momentum_gradient_scheme=momentum_gradient_scheme,
         pressure_gradient_scheme=pressure_gradient_scheme,
         surface_tension_gradient_scheme=surface_tension_gradient_scheme,
+        curvature_method=str(
+            getattr(options, "curvature_method", "psi_direct_filtered")
+        ).strip().lower(),
         advection_scheme=str(options.advection_scheme),
         convection_scheme=str(options.convection_scheme),
     )

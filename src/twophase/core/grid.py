@@ -171,19 +171,23 @@ class Grid:
                 axes_other = tuple(a for a in range(self.ndim) if a != ax)
                 phi_1d = xp.min(xp.abs(phi), axis=axes_other)
 
-                phi_1d_h = np.asarray(self.backend.to_host(phi_1d))
-                phi_h = np.asarray(self.backend.to_host(phi))
-
                 # Bounded interface indicator ∈ [0, 1].
-                indicator_1d = np.exp(-(phi_1d_h ** 2) / (eps_g ** 2))
-                indicator_1d = np.maximum(
-                    indicator_1d,
-                    self._closure_seed_indicator_1d(phi_h, ax, eps_g),
+                indicator_1d_dev = xp.exp(-(phi_1d * phi_1d) / (eps_g * eps_g))
+                indicator_1d_dev = xp.maximum(
+                    indicator_1d_dev,
+                    self._closure_seed_indicator_1d_backend(
+                        xp,
+                        phi,
+                        ax,
+                        eps_g,
+                    ),
                 )
-                indicator_1d = np.maximum(
-                    indicator_1d,
-                    self._wall_contact_indicator_1d(wall_contacts, ax, eps_g),
-                )
+                indicator_1d = np.asarray(self.backend.to_host(indicator_1d_dev))
+                if wall_contacts:
+                    indicator_1d = np.maximum(
+                        indicator_1d,
+                        self._wall_contact_indicator_1d(wall_contacts, ax, eps_g),
+                    )
                 omega = omega + (alpha_axis - 1.0) * indicator_1d
 
             if wall_active:
@@ -312,6 +316,78 @@ class Grid:
             return indicator
         distance = coords_axis.reshape(-1, 1) - projected.reshape(1, -1)
         return np.max(np.exp(-(distance * distance) / (eps_g * eps_g)), axis=1)
+
+    def _closure_seed_indicator_1d_backend(
+        self,
+        xp,
+        phi,
+        axis: int,
+        eps_g: float,
+    ):
+        """Backend-native closed-interface projection monitor.
+
+        This keeps dynamic fitted-grid rebuilds from transferring the full
+        two-dimensional ``φ`` field to host; only the final 1-D monitor is
+        copied for the host-side equidistribution step.
+        """
+        coords_axis = xp.asarray(self.coords[axis])
+        indicator = xp.zeros_like(coords_axis)
+        if self.ndim != 2:
+            return indicator
+
+        coords_x = xp.asarray(self.coords[0])
+        coords_y = xp.asarray(self.coords[1])
+        eps_sq = xp.asarray(eps_g * eps_g, dtype=xp.asarray(phi).dtype)
+        zero = xp.asarray(0.0, dtype=xp.asarray(phi).dtype)
+        one = xp.asarray(1.0, dtype=xp.asarray(phi).dtype)
+
+        def projected_indicator(projected, mask):
+            distance = coords_axis.reshape((-1,) + (1,) * projected.ndim) - projected
+            contribution = xp.where(
+                mask.reshape((1,) + mask.shape),
+                xp.exp(-(distance * distance) / eps_sq),
+                zero,
+            )
+            return xp.max(contribution, axis=tuple(range(1, contribution.ndim)))
+
+        phi_left = phi[:-1, :]
+        phi_right = phi[1:, :]
+        crossing_mask = (phi_left * phi_right) < zero
+        denom = xp.abs(phi_left) + xp.abs(phi_right)
+        frac = xp.abs(phi_left) / xp.where(denom > zero, denom, one)
+        crossing_x = coords_x[:-1, None] + frac * (
+            coords_x[1:, None] - coords_x[:-1, None]
+        )
+        crossing_y = xp.broadcast_to(coords_y[None, :], crossing_x.shape)
+        indicator = xp.maximum(
+            indicator,
+            projected_indicator(crossing_x if axis == 0 else crossing_y, crossing_mask),
+        )
+
+        phi_down = phi[:, :-1]
+        phi_up = phi[:, 1:]
+        crossing_mask = (phi_down * phi_up) < zero
+        denom = xp.abs(phi_down) + xp.abs(phi_up)
+        frac = xp.abs(phi_down) / xp.where(denom > zero, denom, one)
+        crossing_x = xp.broadcast_to(coords_x[:, None], phi_down.shape)
+        crossing_y = coords_y[None, :-1] + frac * (
+            coords_y[None, 1:] - coords_y[None, :-1]
+        )
+        indicator = xp.maximum(
+            indicator,
+            projected_indicator(crossing_x if axis == 0 else crossing_y, crossing_mask),
+        )
+
+        phi_dtype = xp.asarray(phi).dtype
+        dtype_eps = xp.asarray(xp.finfo(phi_dtype).eps, dtype=phi_dtype)
+        tol = xp.sqrt(dtype_eps) * (one + xp.asarray(eps_g, dtype=phi_dtype))
+        zero_mask = xp.abs(phi) <= tol
+        zero_projection = (
+            xp.broadcast_to(coords_x[:, None], phi.shape)
+            if axis == 0
+            else xp.broadcast_to(coords_y[None, :], phi.shape)
+        )
+        return xp.maximum(indicator, projected_indicator(zero_projection, zero_mask))
 
     def _physical_wall_indicator_1d(
         self,

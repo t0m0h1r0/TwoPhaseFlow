@@ -53,6 +53,15 @@ def _add_snapshot_series(flat: dict, snaps) -> None:
             ],
             axis=0,
         )
+    if "pressure_accel_faces" in snaps[0]:
+        for axis, _ in enumerate(snaps[0]["pressure_accel_faces"]):
+            flat[f"fields/pressure_accel_faces/{axis}"] = np.stack(
+                [
+                    np.asarray(snap["pressure_accel_faces"][axis])
+                    for snap in snaps
+                ],
+                axis=0,
+            )
     if "grid_coords" in snaps[0]:
         for axis, coord in enumerate(snaps[0]["grid_coords"]):
             flat[f"fields/grid_coords/{axis}"] = np.asarray(coord)
@@ -82,6 +91,15 @@ def _snapshots_from_field_series(results: dict) -> list[dict]:
         for field, key in fields.items():
             if key in results:
                 snap[field] = np.asarray(results[key][index])
+        pressure_accel_faces = []
+        axis = 0
+        while f"fields/pressure_accel_faces/{axis}" in results:
+            pressure_accel_faces.append(
+                np.asarray(results[f"fields/pressure_accel_faces/{axis}"][index])
+            )
+            axis += 1
+        if pressure_accel_faces:
+            snap["pressure_accel_faces"] = pressure_accel_faces
         if grid_coords:
             snap["grid_coords"] = [coord.copy() for coord in grid_coords]
         snaps.append(snap)

@@ -21,6 +21,8 @@ from .plot_series_figures import (
 )
 from .plot_snapshot_figures import (
     density_snapshot,
+    pressure_bulk_snapshot,
+    pressure_hodge_snapshot,
     pressure_snapshot,
     snapshot,
     snapshot_series,
@@ -41,6 +43,8 @@ _FIGURE_RENDERERS: dict[str, FigureRenderer] = {
     "deformation_comparison": deformation_comparison,
     "velocity_snapshot": velocity_snapshot,
     "pressure_snapshot": pressure_snapshot,
+    "pressure_bulk_snapshot": pressure_bulk_snapshot,
+    "pressure_hodge_snapshot": pressure_hodge_snapshot,
     "density_snapshot": density_snapshot,
 }
 

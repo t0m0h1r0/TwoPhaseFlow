@@ -25,12 +25,17 @@ from twophase.ppe.defect_correction import PPESolverDefectCorrection
 from twophase.ppe.fccd_matrixfree import PPESolverFCCDMatrixFree
 from twophase.simulation.divergence_ops import FCCDDivergenceOperator
 from twophase.simulation.ns_pipeline import TwoPhaseNSSolver
-from twophase.simulation.ns_step_services import _interface_supported_curvature
+from twophase.simulation.ns_step_state import NSStepState
+from twophase.simulation.ns_step_services import (
+    _capillary_interface_psi,
+    _capillary_interface_psi_previous,
+    _interface_supported_curvature,
+)
 from twophase.levelset.curvature_psi import CurvatureCalculatorPsi
 from twophase.levelset.fccd_advection import FCCDLevelSetAdvection
 from twophase.simulation.config_io import ExperimentConfig
 from twophase.simulation.face_projection import reconstruct_nodes_from_faces
-from twophase.levelset.transport_strategy import PsiDirectTransport
+from twophase.levelset.transport_strategy import PhiPrimaryTransport, PsiDirectTransport
 from twophase.simulation.velocity_reprojector import (
     ConsistentIIMReprojector,
     VariableDensityReprojector,
@@ -144,6 +149,35 @@ def test_fccd_matrixfree_enforces_mixed_periodic_image_rows():
     rhs[-1, :] = 1.0
     solved = np.asarray(ppe.solve(rhs, rho))
     np.testing.assert_allclose(solved[-1, :], solved[0, :], atol=1.0e-14)
+    assert ppe.last_diagnostics["ppe_linear_info"] == pytest.approx(0.0)
+    assert ppe.last_diagnostics["ppe_linear_residual_l2"] == pytest.approx(0.0)
+
+
+def test_fccd_matrixfree_records_true_linear_residual():
+    """PPE diagnostics must report the residual of the actual solved system."""
+    backend = Backend(use_gpu=False)
+    cfg = SimulationConfig(grid=GridConfig(ndim=2, N=(7, 6), L=(1.0, 1.0)))
+    grid = Grid(cfg.grid, backend)
+    ccd = CCDSolver(grid, backend, bc_type="wall")
+    fccd = FCCDSolver(grid, backend, bc_type="wall", ccd_solver=ccd)
+    ppe = PPESolverFCCDMatrixFree(backend, SimulationConfig(), grid, fccd)
+    rng = np.random.default_rng(1732)
+    rhs = rng.standard_normal(grid.shape)
+    rho = 1.0 + 0.2 * rng.random(grid.shape)
+
+    pressure = np.asarray(ppe.solve(rhs, rho))
+    projected_rhs = np.asarray(ppe._project_rhs_compatibility(rhs, record_stats=False))
+    projected_rhs = np.asarray(ppe._zero_periodic_image_rows(projected_rhs))
+    residual = np.asarray(ppe.apply(pressure)) - projected_rhs
+    diagnostics = ppe.last_diagnostics
+
+    assert diagnostics["ppe_linear_info"] == pytest.approx(0.0)
+    assert diagnostics["ppe_linear_converged"] == pytest.approx(1.0)
+    assert diagnostics["ppe_linear_rhs_l2"] > 0.0
+    assert diagnostics["ppe_linear_residual_l2"] == pytest.approx(
+        float(np.linalg.norm(residual.ravel()))
+    )
+    assert diagnostics["ppe_linear_relative_l2"] < 1.0e-7
 
 
 def test_defect_correction_preserves_mixed_periodic_pressure_space():
@@ -352,6 +386,74 @@ def test_psi_direct_transport_uses_projection_native_face_velocity():
     np.testing.assert_allclose(psi_new, psi + 0.25)
 
 
+def test_phi_primary_transport_uses_projection_native_face_velocity():
+    class FaceAdvection:
+        def __init__(self):
+            self.face_velocity_components = None
+            self.dt = None
+
+        def advance(self, phi, velocity, dt, clip_bounds=None):
+            raise AssertionError("nodal velocity path must not be used")
+
+        def advance_with_face_velocity(
+            self,
+            phi,
+            face_velocity_components,
+            dt,
+            clip_bounds=None,
+        ):
+            self.face_velocity_components = face_velocity_components
+            self.dt = dt
+            self.clip_bounds = clip_bounds
+            return phi
+
+    class IdentityReconstruction:
+        def phi_from_psi(self, psi):
+            return psi
+
+        def clip_phi(self, phi):
+            return phi
+
+        def psi_from_phi(self, phi):
+            return phi
+
+    class IdentityReinitializer:
+        def reinitialize(self, psi):
+            return psi
+
+    backend = Backend(use_gpu=False)
+    grid = Grid(GridConfig(ndim=2, N=(2, 2), L=(1.0, 1.0)), backend)
+    advection = FaceAdvection()
+    transport = PhiPrimaryTransport(
+        backend,
+        {"redist_every": 100},
+        IdentityReconstruction(),
+        advection,
+        IdentityReinitializer(),
+        grid,
+    )
+    psi = np.asarray(
+        [
+            [0.0, 0.25, 0.0],
+            [0.25, 0.5, 0.25],
+            [0.0, 0.25, 0.0],
+        ]
+    )
+    face_velocity_components = [np.ones((2, 3)), np.ones((3, 2))]
+
+    psi_new = transport.advance_with_face_velocity(
+        psi,
+        face_velocity_components,
+        0.1,
+        step_index=1,
+    )
+
+    assert advection.face_velocity_components is face_velocity_components
+    assert advection.dt == pytest.approx(0.1)
+    assert advection.clip_bounds is None
+    np.testing.assert_allclose(psi_new, psi)
+
+
 def test_psi_direct_transport_adaptive_reinitializes_on_volume_monitor():
     class SequenceAdvection:
         def __init__(self):
@@ -484,6 +586,105 @@ def test_ns_pipeline_advances_interface_with_projected_face_velocity():
     assert solver._transport.step_index == 4
     assert not solver._transport.nodal_advance_called
     np.testing.assert_allclose(state.psi, psi + 1.0)
+    np.testing.assert_allclose(state.psi_previous, psi)
+
+
+def test_ale_discrete_gradient_previous_surface_energy_is_step_local():
+    """ALE surface energy is only the pre-remap endpoint for a rebuild step."""
+    from types import SimpleNamespace
+
+    class RecordingTransport:
+        def advance(self, psi, velocity, dt, step_index=0):
+            return psi + 0.25
+
+    solver = object.__new__(TwoPhaseNSSolver)
+    solver._transport = RecordingTransport()
+    solver._alpha_grid = 1.0
+    solver._interface_runtime = SimpleNamespace(rebuild_freq=0)
+    solver._curvature_method = "transport_variational_p2_ale_discrete_gradient"
+
+    psi = np.zeros((3, 3))
+    state = NSStepState(
+        psi=psi,
+        u=np.zeros_like(psi),
+        v=np.zeros_like(psi),
+        dt=0.1,
+        rho_l=1000.0,
+        rho_g=1.0,
+        sigma=0.072,
+        mu=0.0,
+        g_acc=0.0,
+        rho_ref=500.5,
+        mu_l=None,
+        mu_g=None,
+        bc_hook=None,
+        step_index=3,
+        transport_variational_previous_surface_energy=np.asarray(12.5),
+    )
+
+    solver._advance_interface_stage(state)
+
+    assert state.transport_variational_previous_surface_energy is None
+    np.testing.assert_allclose(state.psi_previous, psi)
+
+
+def test_p2_midpoint_capillary_interface_uses_temporal_midpoint():
+    """Semi-implicit P2 route must evaluate capillary geometry at ψ^{n+1/2}."""
+    psi_previous = np.asarray([[0.0, 0.2], [0.4, 0.6]])
+    psi_current = np.asarray([[0.4, 0.6], [0.8, 1.0]])
+    state = NSStepState(
+        psi=psi_current,
+        u=np.zeros_like(psi_current),
+        v=np.zeros_like(psi_current),
+        dt=0.1,
+        rho_l=1000.0,
+        rho_g=1.0,
+        sigma=0.072,
+        mu=0.0,
+        g_acc=0.0,
+        rho_ref=500.5,
+        mu_l=None,
+        mu_g=None,
+        bc_hook=None,
+        step_index=1,
+        psi_previous=psi_previous,
+    )
+
+    midpoint = _capillary_interface_psi(
+        xp=np,
+        state=state,
+        curvature_method="transport_variational_p2_midpoint",
+    )
+    current = _capillary_interface_psi(
+        xp=np,
+        state=state,
+        curvature_method="transport_variational_p2",
+    )
+    discrete_current = _capillary_interface_psi(
+        xp=np,
+        state=state,
+        curvature_method="transport_variational_p2_discrete_gradient",
+    )
+    ale_current = _capillary_interface_psi(
+        xp=np,
+        state=state,
+        curvature_method="transport_variational_p2_ale_discrete_gradient",
+    )
+    discrete_previous = _capillary_interface_psi_previous(
+        state=state,
+        curvature_method="transport_variational_p2_discrete_gradient",
+    )
+    ale_previous = _capillary_interface_psi_previous(
+        state=state,
+        curvature_method="transport_variational_p2_ale_discrete_gradient",
+    )
+
+    np.testing.assert_allclose(midpoint, 0.5 * (psi_previous + psi_current))
+    np.testing.assert_allclose(current, psi_current)
+    np.testing.assert_allclose(discrete_current, psi_current)
+    np.testing.assert_allclose(ale_current, psi_current)
+    np.testing.assert_allclose(discrete_previous, psi_previous)
+    np.testing.assert_allclose(ale_previous, psi_previous)
 
 
 @pytest.mark.parametrize(
@@ -1215,13 +1416,115 @@ def test_affine_jump_pressure_stage_stores_history_faces():
         ppe_runtime=ppe_runtime,
     )
 
-    np.testing.assert_allclose(div_op.pressure, 14.0)
+    np.testing.assert_allclose(div_op.pressure, 9.0)
     assert div_op.kwargs["pressure_gradient"] == "fccd"
     assert div_op.kwargs["coefficient_scheme"] == "phase_separated"
     assert div_op.kwargs["interface_coupling_scheme"] == "affine_jump"
     context = div_op.kwargs["interface_stress_context"]
     assert context.sigma == pytest.approx(2.0)
     np.testing.assert_allclose(context.pressure_jump_gas_minus_liquid, -6.0)
+    np.testing.assert_allclose(state.pressure_accel_face_components[0], 2.0)
+    np.testing.assert_allclose(state.pressure_accel_face_components[1], -3.0)
+    np.testing.assert_allclose(state.pressure_correction_face_components[0], 2.0)
+    np.testing.assert_allclose(state.pressure_correction_face_components[1], -3.0)
+
+
+def test_affine_jump_pressure_history_faces_store_full_cochain():
+    """Affine IPC history stores full cochain and corrects by its increment."""
+    from twophase.simulation.ns_step_services import solve_ns_pressure_stage
+    from twophase.simulation.ns_step_state import NSStepState
+
+    shape = (3, 3)
+    arr = np.zeros(shape)
+
+    class AffineFluxRecorder:
+        def divergence(self, components):
+            return np.zeros(shape)
+
+        def divergence_from_faces(self, face_components):
+            self.divergence_faces = [np.array(component, copy=True) for component in face_components]
+            return face_components[0] + face_components[1]
+
+        def pressure_fluxes(self, pressure, rho, **kwargs):
+            self.pressure = np.array(pressure, copy=True)
+            self.kwargs = kwargs
+            return [np.full(shape, 2.0), np.full(shape, -3.0)]
+
+        def reconstruct_nodes(self, face_components):
+            return face_components
+
+    class JumpPressureSolver:
+        def solve(self, rhs, rho, dt=0.0, p_init=None):
+            self.rhs = np.array(rhs, copy=True)
+            self.last_base_pressure = np.full_like(rhs, 4.0)
+            return np.full_like(rhs, 9.0)
+
+        def apply_interface_jump(self, base_pressure):
+            return base_pressure + 10.0
+
+    state = NSStepState(
+        psi=np.array([[1.0, 1.0, 1.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]),
+        u=arr,
+        v=arr,
+        dt=1.0e-3,
+        rho_l=1000.0,
+        rho_g=1.0,
+        sigma=2.0,
+        mu=0.0,
+        g_acc=0.0,
+        rho_ref=500.5,
+        mu_l=None,
+        mu_g=None,
+        bc_hook=None,
+        step_index=1,
+        rho=np.ones(shape),
+        kappa=np.full(shape, 3.0),
+        f_x=np.zeros(shape),
+        f_y=np.zeros(shape),
+        u_star=np.zeros(shape),
+        v_star=np.zeros(shape),
+        previous_base_pressure=np.full(shape, 100.0),
+        previous_pressure_accel_face_components=[
+            np.full(shape, 5.0),
+            np.full(shape, 7.0),
+        ],
+    )
+    backend = type(
+        "BackendStub",
+        (),
+        {"xp": np, "is_gpu": lambda self: False, "to_host": lambda self, arr: arr},
+    )()
+    ppe_runtime = type(
+        "PPERuntime",
+        (),
+        {
+            "ppe_solver_name": "fccd_iterative",
+            "ppe_coefficient_scheme": "phase_separated",
+            "ppe_interface_coupling_scheme": "affine_jump",
+        },
+    )()
+    div_op = AffineFluxRecorder()
+    ppe_solver = JumpPressureSolver()
+
+    state, _, _ = solve_ns_pressure_stage(
+        state,
+        backend=backend,
+        div_op=div_op,
+        ppe_solver=ppe_solver,
+        p_prev_dev=None,
+        surface_tension_scheme="pressure_jump",
+        face_native_predictor_state=True,
+        ppe_runtime=ppe_runtime,
+    )
+
+    np.testing.assert_allclose(div_op.pressure, 9.0)
+    np.testing.assert_allclose(div_op.divergence_faces[0], 5.0)
+    np.testing.assert_allclose(div_op.divergence_faces[1], 7.0)
+    np.testing.assert_allclose(ppe_solver.rhs, 12.0)
+    np.testing.assert_allclose(state.pressure, 14.0)
+    np.testing.assert_allclose(state.pressure_base, 4.0)
+    np.testing.assert_allclose(state.pressure_correction_face_components[0], -3.0)
+    np.testing.assert_allclose(state.pressure_correction_face_components[1], -10.0)
     np.testing.assert_allclose(state.pressure_accel_face_components[0], 2.0)
     np.testing.assert_allclose(state.pressure_accel_face_components[1], -3.0)
 

@@ -33,6 +33,7 @@ from ..core.array_checks import all_arrays_exact_zero
 from ..core.boundary import is_periodic_axis
 from ..coupling.interface_stress_closure import (
     build_young_laplace_interface_stress_context,
+    evaluate_interface_face_curvature_lg,
     interface_stress_context_is_active,
     signed_pressure_jump_gradient,
 )
@@ -195,7 +196,18 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         if not enabled:
             self._prepared_rho_token = None
 
-    def set_interface_jump_context(self, *, psi, kappa, sigma: float) -> None:
+    def set_interface_jump_context(
+        self,
+        *,
+        psi,
+        kappa,
+        sigma: float,
+        psi_previous=None,
+        face_curvature_method: str = "nodal_cut_face",
+        transport_variational_nodal_covector=None,
+        transport_variational_psi=None,
+        transport_variational_previous_surface_energy=None,
+    ) -> None:
         """Store legacy and affine pressure-jump data.
 
         Both legacy ``jump_decomposition`` and affine paths consume the
@@ -208,12 +220,22 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             kappa=kappa,
             sigma=sigma,
         )
-        self._interface_stress_context = build_young_laplace_interface_stress_context(
+        context = build_young_laplace_interface_stress_context(
             xp=self.xp,
             psi=psi,
             kappa_lg=kappa,
             sigma=sigma,
+            psi_previous=psi_previous,
+            face_curvature_method=face_curvature_method,
+            transport_variational_nodal_covector=(
+                transport_variational_nodal_covector
+            ),
+            transport_variational_psi=transport_variational_psi,
+            transport_variational_previous_surface_energy=(
+                transport_variational_previous_surface_energy
+            ),
         )
+        self._interface_stress_context = context
 
     def clear_interface_jump_context(self) -> None:
         """Clear pressure-jump data for PPE solves without interface forcing."""
@@ -346,6 +368,12 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             and interface_stress_context_is_active(self._interface_stress_context)
         ):
             return rhs_dev
+        face_curvature_lg = evaluate_interface_face_curvature_lg(
+            xp=self.xp,
+            grid=self.grid,
+            context=self._interface_stress_context,
+            fccd=self.fccd,
+        )
         affine_rhs = self.xp.zeros_like(rhs_dev)
         for axis in range(self.ndim):
             jump_gradient = signed_pressure_jump_gradient(
@@ -353,6 +381,8 @@ class PPESolverFCCDMatrixFree(IPPESolver):
                 grid=self.grid,
                 context=self._interface_stress_context,
                 axis=axis,
+                face_curvature_lg=face_curvature_lg,
+                fccd=self.fccd,
             )
             self._accumulate_weighted_face_gradient_divergence(
                 affine_rhs,
@@ -384,6 +414,11 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             sol = xp.zeros_like(rhs_dev)
             if not self._uses_phase_mean_gauge():
                 self._pin_flat(sol.ravel(), 0.0)
+            self._record_linear_solve_diagnostics(
+                info=0,
+                residual=xp.zeros_like(rhs_dev),
+                rhs=rhs_dev,
+            )
             self.last_base_pressure = xp.copy(sol)
             if not self._defer_interface_jump:
                 sol = self.apply_interface_jump(sol)
@@ -446,6 +481,13 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         else:
             self._pin_flat(sol.ravel(), 0.0)
         sol = self._sync_periodic_images(sol)
+        linear_residual = xp.asarray(_matvec(sol.ravel())).reshape(self.grid.shape)
+        linear_residual = linear_residual - rhs_dev
+        self._record_linear_solve_diagnostics(
+            info=info,
+            residual=linear_residual,
+            rhs=rhs_dev,
+        )
         self.last_base_pressure = xp.copy(sol)
         if not self._defer_interface_jump:
             sol = self.apply_interface_jump(sol)
@@ -453,6 +495,32 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         if return_host:
             return np.asarray(self.backend.to_host(sol))
         return sol
+
+    def _record_linear_solve_diagnostics(self, *, info: int, residual, rhs) -> None:
+        """Record true PPE residual norms for ``A p = b`` diagnostics."""
+        xp = self.xp
+        residual_flat = xp.asarray(residual).ravel()
+        rhs_flat = xp.asarray(rhs).ravel()
+        residual_l2 = xp.linalg.norm(residual_flat)
+        rhs_l2 = xp.linalg.norm(rhs_flat)
+        if self._to_scalar(rhs_l2) > 0.0:
+            relative_l2 = residual_l2 / rhs_l2
+        else:
+            relative_l2 = residual_l2
+        if residual_flat.size:
+            residual_linf = xp.max(xp.abs(residual_flat))
+        else:
+            residual_linf = xp.asarray(0.0, dtype=rhs_flat.dtype)
+        self.last_diagnostics.update(
+            {
+                "ppe_linear_info": float(info),
+                "ppe_linear_converged": float(info == 0),
+                "ppe_linear_rhs_l2": self._to_scalar(rhs_l2),
+                "ppe_linear_residual_l2": self._to_scalar(residual_l2),
+                "ppe_linear_relative_l2": self._to_scalar(relative_l2),
+                "ppe_linear_residual_linf": self._to_scalar(residual_linf),
+            }
+        )
 
     def apply_interface_jump(self, pressure):
         """Apply the stored sharp-interface pressure jump decomposition."""

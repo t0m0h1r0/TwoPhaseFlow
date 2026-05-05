@@ -95,11 +95,35 @@ class PPESolverDefectCorrection(IPPESolver):
             if callable(setter):
                 setter(enabled)
 
-    def set_interface_jump_context(self, *, psi, kappa, sigma: float) -> None:
+    def set_interface_jump_context(
+        self,
+        *,
+        psi,
+        kappa,
+        sigma: float,
+        psi_previous=None,
+        face_curvature_method: str = "nodal_cut_face",
+        transport_variational_nodal_covector=None,
+        transport_variational_psi=None,
+        transport_variational_previous_surface_energy=None,
+    ) -> None:
         """Forward SP-M pressure-jump context to wrapped PPE components."""
         for solver in (self.base_solver, self.operator):
             if hasattr(solver, "set_interface_jump_context"):
-                solver.set_interface_jump_context(psi=psi, kappa=kappa, sigma=sigma)
+                solver.set_interface_jump_context(
+                    psi=psi,
+                    kappa=kappa,
+                    sigma=sigma,
+                    psi_previous=psi_previous,
+                    face_curvature_method=face_curvature_method,
+                    transport_variational_nodal_covector=(
+                        transport_variational_nodal_covector
+                    ),
+                    transport_variational_psi=transport_variational_psi,
+                    transport_variational_previous_surface_energy=(
+                        transport_variational_previous_surface_energy
+                    ),
+                )
 
     def clear_interface_jump_context(self) -> None:
         """Forward neutral-solve context clearing to wrapped PPE components."""
@@ -203,17 +227,75 @@ class PPESolverDefectCorrection(IPPESolver):
             and all_arrays_exact_zero(xp, (rhs_dev, pressure))
         ):
             self.last_base_pressure = xp.copy(pressure)
-            self.last_diagnostics = initial_diagnostics
+            self.last_residual_history = [0.0]
+            self.last_stalled = False
+            self._record_dc_diagnostics(
+                initial_diagnostics,
+                rhs_norm=0.0,
+                initial_residual_norm=0.0,
+                final_residual_norm=0.0,
+                final_residual_linf=0.0,
+                corrections_applied=0,
+            )
             if hasattr(self.operator, "apply_interface_jump"):
                 pressure = self.operator.apply_interface_jump(pressure)
             return self._enforce_periodic_pressure(pressure)
 
         self._pin_dofs = getattr(self.operator, "_pin_dofs", (self._pin_dof,))
         rhs_flat = rhs_dev.ravel()
+        if self.backend.is_gpu():
+            initial_residual_norm_dev = None
+            for iteration in range(self.max_corrections):
+                residual = rhs_dev - self.operator.apply(pressure)
+                residual = self._enforce_rhs_compatibility(
+                    residual,
+                    record_stats=False,
+                )
+                if iteration == 0:
+                    initial_residual_norm_dev = xp.linalg.norm(residual.ravel())
+                correction = xp.asarray(
+                    self.base_solver.solve(residual, rho, dt=dt, p_init=None)
+                )
+                correction = self._enforce_pressure_gauge(correction)
+                pressure = pressure + self.relaxation * correction
+                pressure = self._enforce_pressure_gauge(pressure)
+            final_residual = rhs_dev - self.operator.apply(pressure)
+            final_residual = self._enforce_rhs_compatibility(
+                final_residual,
+                record_stats=False,
+            )
+            norm_pair = xp.stack([
+                xp.linalg.norm(rhs_flat),
+                initial_residual_norm_dev,
+                xp.linalg.norm(final_residual.ravel()),
+                xp.max(xp.abs(final_residual.ravel())),
+            ])
+            rhs_norm, initial_residual_norm, residual_norm, residual_linf = [
+                float(value) for value in self.backend.asnumpy(norm_pair)
+            ]
+            scale = max(rhs_norm, 1.0)
+            self.last_residual_history = [initial_residual_norm, residual_norm]
+            self.last_stalled = residual_norm > self.tolerance * scale
+            self.last_base_pressure = xp.copy(pressure)
+            self._record_dc_diagnostics(
+                initial_diagnostics,
+                rhs_norm=rhs_norm,
+                initial_residual_norm=initial_residual_norm,
+                final_residual_norm=residual_norm,
+                final_residual_linf=residual_linf,
+                corrections_applied=self.max_corrections,
+            )
+            if hasattr(self.operator, "apply_interface_jump"):
+                pressure = self.operator.apply_interface_jump(pressure)
+            return self._enforce_periodic_pressure(pressure)
+
         rhs_norm = float(self.backend.asnumpy(xp.linalg.norm(rhs_flat)))
         scale = max(rhs_norm, 1.0)
         history: list[float] = []
         broke = False
+        corrections_applied = 0
+        final_residual = xp.zeros_like(rhs_dev)
+        final_residual_norm = 0.0
         for _ in range(self.max_corrections):
             residual = rhs_dev - self.operator.apply(pressure)
             residual = self._enforce_rhs_compatibility(residual, record_stats=False)
@@ -221,6 +303,8 @@ class PPESolverDefectCorrection(IPPESolver):
             history.append(residual_norm)
             if residual_norm <= self.tolerance * scale:
                 broke = True
+                final_residual = residual
+                final_residual_norm = residual_norm
                 break
             correction = xp.asarray(
                 self.base_solver.solve(residual, rho, dt=dt, p_init=None)
@@ -228,13 +312,67 @@ class PPESolverDefectCorrection(IPPESolver):
             correction = self._enforce_pressure_gauge(correction)
             pressure = pressure + self.relaxation * correction
             pressure = self._enforce_pressure_gauge(pressure)
+            corrections_applied += 1
+        if not broke:
+            final_residual = rhs_dev - self.operator.apply(pressure)
+            final_residual = self._enforce_rhs_compatibility(
+                final_residual,
+                record_stats=False,
+            )
+            final_residual_norm = float(
+                self.backend.asnumpy(xp.linalg.norm(final_residual.ravel()))
+            )
+            history.append(final_residual_norm)
+            broke = final_residual_norm <= self.tolerance * scale
+        final_residual_linf = float(
+            self.backend.asnumpy(xp.max(xp.abs(final_residual.ravel())))
+        )
         self.last_residual_history = history
         self.last_stalled = not broke
         self.last_base_pressure = xp.copy(pressure)
-        self.last_diagnostics = initial_diagnostics
+        self._record_dc_diagnostics(
+            initial_diagnostics,
+            rhs_norm=rhs_norm,
+            initial_residual_norm=history[0],
+            final_residual_norm=final_residual_norm,
+            final_residual_linf=final_residual_linf,
+            corrections_applied=corrections_applied,
+        )
         if hasattr(self.operator, "apply_interface_jump"):
             pressure = self.operator.apply_interface_jump(pressure)
         return self._enforce_periodic_pressure(pressure)
+
+    def _record_dc_diagnostics(
+        self,
+        diagnostics: dict[str, float],
+        *,
+        rhs_norm: float,
+        initial_residual_norm: float,
+        final_residual_norm: float,
+        final_residual_linf: float,
+        corrections_applied: int,
+    ) -> None:
+        """Record true defect-correction residual norms for ``L_H p = b``."""
+        if rhs_norm > 0.0:
+            relative_l2 = final_residual_norm / rhs_norm
+        else:
+            relative_l2 = final_residual_norm
+        diagnostics.update(
+            {
+                "ppe_dc_iterations": float(corrections_applied),
+                "ppe_dc_max_corrections": float(self.max_corrections),
+                "ppe_dc_tolerance": float(self.tolerance),
+                "ppe_dc_relaxation": float(self.relaxation),
+                "ppe_dc_rhs_l2": float(rhs_norm),
+                "ppe_dc_initial_residual_l2": float(initial_residual_norm),
+                "ppe_dc_final_residual_l2": float(final_residual_norm),
+                "ppe_dc_final_relative_l2": float(relative_l2),
+                "ppe_dc_final_residual_linf": float(final_residual_linf),
+                "ppe_dc_converged": float(not self.last_stalled),
+                "ppe_dc_stalled": float(self.last_stalled),
+            }
+        )
+        self.last_diagnostics = diagnostics
 
     def _solve_same_operator(self, rhs_dev, rho, *, dt: float, p_init=None):
         """Collapse redundant DC when base and target are the same operator."""

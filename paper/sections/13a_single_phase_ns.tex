@@ -14,9 +14,9 @@
 を CCD 空間離散 (\autoref{sec:ccd_def}) + AB2 predictor (\autoref{ch:time_integration}) +
 PPE 圧力射影 (\autoref{sec:ppe_solve}) で解いた際，閉形 $E(t) = E_0 \exp(-2\nu k^2 t)$
 に対する誤差と非圧縮拘束を確認する．
-旧実装は FFT spectral projection であり CCD/PPE の検証ではなかったため，
-現 V1 は project CCD 微分と FVM PPEBuilder 射影を直接用いる．
-ただし V1-b の時間 sweep は production IPC/rotational projection ではなく，
+FFT spectral projection は CCD/PPE 経路を通らないため，本 V1 の検証対象外である．
+V1 は project CCD 微分と FVM PPEBuilder 射影を直接用いる．
+ただし V1-b の時間 sweep は IPC/rotational projection ではなく，
 非増分 standard projection~\cite{Chorin1968,BrownCortezMinion2001,Guermond2006} を測る
 縮約実験であるため，判定基準は EXT2/AB2 単体の 2 次ではなく
 結合 stack の $O(\Delta t)$ trend とする．
@@ -68,7 +68,7 @@ $1.000\times 10^{-3}$ & $1.583\times 10^{-7}$ & $2.267\times 10^{-6}$ & $2.00$ \
 \includegraphics[width=0.92\linewidth]{figures/ch13_v1_tgv_energy.pdf}
 \caption{V1：TGV エネルギー減衰の収束}
 \label{fig:V1_tgv}
-\PaperCaptionNote{左：CCD/PPE 経路での空間 trend．右：AB2 predictor + PPE projection の時間 trend． 旧 FFT spectral proxy ではなく，実装上の CCD/PPE 結合を直接測るため，観測次数は 空間 $O(h^2)$，時間 $O(\Delta t)$ に留まる．}
+\PaperCaptionNote{左：CCD/PPE 経路での空間 trend．右：AB2 predictor + PPE projection の時間 trend．CCD/PPE 結合を直接測るため，観測次数は 空間 $O(h^2)$，時間 $O(\Delta t)$ に留まる．}
 \end{figure}
 
 \begin{figure}[!ht]
@@ -81,16 +81,16 @@ $1.000\times 10^{-3}$ & $1.583\times 10^{-7}$ & $2.267\times 10^{-6}$ & $2.00$ \
 
 \paragraph{判定と制約条件．}
 \begin{itemize}\setlength{\itemsep}{0pt}
-  \item 現 V1 は FFT spectral projection ではなく，CCD 微分 + PPEBuilder 射影を用いるため，
-        紙面主張と実装 identity は一致した．
+  \item V1 は CCD 微分 + PPEBuilder 射影を用いるため，
+        検証対象の離散 identity と観測量が一致する．
   \item 観測空間 slope は $\mathbf{2.00}$（$N=48\!\to\!64$ finest local；asymptotic
         $1.997$ on $N=32\!\to\!64$）．FVM PPE 射影が支配する結合 stack に対する
-        revised criterion $O(h^2)$ trend に対して合格
-        （V1-a：Type-A revised criterion；表~\ref{tab:V_verdict_types}）．
-  \item 観測時間 slope は $\mathbf{1.00}$．本 script は old pressure を predictor に入れない
+        criterion $O(h^2)$ trend に対して合格
+        （V1-a：Type-A criterion；表~\ref{tab:V_verdict_types}）．
+  \item 観測時間 slope は $\mathbf{1.00}$．本縮約問題は圧力履歴を predictor に入れない
         standard projection であり，EXT2/AB2 + IPC 単体検証ではない．
-        したがって revised criterion は $O(\Delta t)$ trend であり，V1-b は合格
-        （Type-A revised criterion；表~\ref{tab:V_verdict_types}）とする．
+        したがって criterion は $O(\Delta t)$ trend であり，V1-b は合格
+        （Type-A criterion；表~\ref{tab:V_verdict_types}）とする．
   \item 非圧縮残差は $N=64$ で $6.4\times10^{-6}$．機械精度ではないが，
         FVM PPE 射影と CCD 勾配の不一致込みの residual として単調に低下する．
   \item TGV 渦度場 snapshot（\autoref{fig:V1_tgv_vorticity}）は，
@@ -124,7 +124,7 @@ $N \in \{32,64,128,256\}$, wall one-sided CCD boundary．
 \begin{table}[!ht]
 \caption{V2：Kovasznay CCD 空間残差 $\|R\|_\infty$}
 \label{tab:V2_spatial}
-\PaperCaptionNote{slope は $N=64\!\to\!256$ で $3.86\!\to\!3.95$． 真の Kovasznay NS 残差では wall one-sided 二階微分境界閉包，global compact coupling，非線形項により 実効 4 次が基準となる．旧 manufactured periodic proxy ではなく実問題 identity と一致する．}
+\PaperCaptionNote{slope は $N=64\!\to\!256$ で $3.86\!\to\!3.95$． 真の Kovasznay NS 残差では wall one-sided 二階微分境界閉包，global compact coupling，非線形項により 実効 4 次が基準となる．}
 \centering\small
 \begin{tabular}{r r r r}
 \toprule
@@ -158,10 +158,9 @@ $N$ & $h$ & $\|R\|_\infty$ & $\|\nabla\!\cdot u\|_\infty$ \\
 
 \paragraph{判定と制約条件．}
 \begin{itemize}\setlength{\itemsep}{0pt}
-  \item 旧実装は manufactured periodic NS であり Kovasznay ではなかったが，
-        現 V2 は解析 Kovasznay 解そのものを用いる．
-  \item residual slope $\mathbf{3.95}$ → revised criterion $O(h^4)$ に対して合格
-        （Type-A revised criterion；表~\ref{tab:V_verdict_types}）．
+  \item V2 は解析 Kovasznay 解そのものを用いる．
+  \item residual slope $\mathbf{3.95}$ → criterion $O(h^4)$ に対して合格
+        （Type-A criterion；表~\ref{tab:V_verdict_types}）．
         これは CCD 単体の 6 次検証 (U1) ではなく，wall 境界閉包・圧力・非線形項を含む
         Kovasznay 統合 residual の observed order である．
   \item $\|\nabla\!\cdot u\|_\infty$ は $N=256$ で $1.7\times10^{-12}$ まで減少し，

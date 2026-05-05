@@ -15,6 +15,8 @@ from __future__ import annotations
 import numpy as np
 
 from ..ccd.fccd import FCCDSolver
+from ..core.grid_remap import build_grid_remapper
+from ..coupling.transport_variational_capillary import p2_trace_surface_energy_2d
 from ..levelset.reinitialize import Reinitializer
 from ..levelset.wall_contact import WallContactSet
 from .ns_step_state import NSStepInputs, NSStepRequest, NSStepState
@@ -161,6 +163,7 @@ class TwoPhaseNSSolver:
         ppe_dc_tolerance: float = 1.0e-8,
         ppe_dc_relaxation: float = 0.8,
         surface_tension_scheme: str = "pressure_jump",
+        curvature_method: str = "psi_direct_filtered",
         convection_time_scheme: str = "imex_bdf2",
         pressure_gradient_scheme: str | None = "fccd_flux",
         surface_tension_gradient_scheme: str | None = "none",
@@ -265,6 +268,7 @@ class TwoPhaseNSSolver:
                 cn_viscous=cn_viscous,
                 Re=Re,
                 surface_tension_scheme=surface_tension_scheme,
+                curvature_method=curvature_method,
                 convection_time_scheme=convection_time_scheme,
                 advection_scheme=advection_scheme,
                 convection_scheme=convection_scheme,
@@ -733,6 +737,34 @@ class TwoPhaseNSSolver:
         state: NSStepState,
     ) -> NSStepState:
         """Advance the interface transport and optional grid rebuild."""
+        backend = getattr(self, "_backend", None)
+        xp = getattr(backend, "xp", None)
+        if xp is None:
+            xp = np
+        psi_previous = xp.array(state.psi, copy=True)
+        curvature_method = getattr(self, "_curvature_method", "")
+        if curvature_method == "transport_variational_p2_ale_discrete_gradient":
+            state.transport_variational_previous_surface_energy = None
+        rebuild_old_coords = None
+        will_rebuild = (
+            self._alpha_grid > 1.0
+            and self._interface_runtime.rebuild_freq > 0
+            and state.step_index > 0
+            and (state.step_index % self._interface_runtime.rebuild_freq == 0)
+        )
+        if will_rebuild:
+            rebuild_old_coords = [coords.copy() for coords in self._grid.coords]
+            if (
+                curvature_method == "transport_variational_p2_ale_discrete_gradient"
+            ):
+                state.transport_variational_previous_surface_energy = (
+                    p2_trace_surface_energy_2d(
+                        xp=xp,
+                        grid=self._grid,
+                        psi=psi_previous,
+                        sigma=state.sigma,
+                    )
+                )
         advance_face = getattr(self._transport, "advance_with_face_velocity", None)
         if state.face_velocity_components is not None and callable(advance_face):
             state.psi = advance_face(
@@ -745,12 +777,8 @@ class TwoPhaseNSSolver:
             state.psi = self._transport.advance(
                 state.psi, [state.u, state.v], state.dt, step_index=state.step_index
             )
-        if (
-            self._alpha_grid > 1.0
-            and self._interface_runtime.rebuild_freq > 0
-            and state.step_index > 0
-            and (state.step_index % self._interface_runtime.rebuild_freq == 0)
-        ):
+        state.psi_previous = psi_previous
+        if will_rebuild:
             try:
                 state.psi, state.u, state.v = self._rebuild_grid(
                     state.psi,
@@ -764,6 +792,17 @@ class TwoPhaseNSSolver:
                     state.psi,
                     state.u,
                     state.v,
+                )
+            if rebuild_old_coords is not None:
+                remapper = build_grid_remapper(
+                    backend,
+                    rebuild_old_coords,
+                    self._grid.coords,
+                )
+                state.psi_previous = xp.clip(
+                    xp.asarray(remapper.remap(psi_previous)),
+                    xp.asarray(0.0, dtype=state.psi.dtype),
+                    xp.asarray(1.0, dtype=state.psi.dtype),
                 )
             self._projected_face_components = None
         return state
@@ -895,6 +934,7 @@ class TwoPhaseNSSolver:
             bc_type=self.bc_type,
             face_no_slip_boundary_state=self._face_no_slip_boundary_state,
             ppe_runtime=self._ppe_runtime,
+            curvature_method=self._curvature_method,
         )
         self._p_base_prev_dev = state.pressure_base
         self._p_prev_accel_face_components = state.pressure_accel_face_components
@@ -919,6 +959,7 @@ class TwoPhaseNSSolver:
             ppe_runtime=self._ppe_runtime,
             bc_type=self.bc_type,
             apply_velocity_bc=_apply_bc,
+            curvature_method=self._curvature_method,
         )
 
     def _record_step_diagnostics(

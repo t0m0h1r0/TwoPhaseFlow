@@ -14,9 +14,22 @@ from .ns_predictor_assembly import (
 )
 from ..coupling.interface_stress_closure import build_young_laplace_interface_stress_context
 from ..coupling.capillary_geometry import apply_wall_compatible_curvature
+from ..coupling.transport_variational_capillary import (
+    p2_trace_surface_energy_ale_discrete_gradient_2d,
+    p2_trace_surface_energy_discrete_gradient_2d,
+    p2_trace_surface_energy_gradient_2d,
+)
 from .ns_step_state import NSStepState
 
 IMEX_BDF2_PROJECTION_FACTOR = 2.0 / 3.0
+_JUMP_CURVATURE_METHODS = {
+    "face_implicit",
+    "transport_variational",
+    "transport_variational_p2",
+    "transport_variational_p2_midpoint",
+    "transport_variational_p2_discrete_gradient",
+    "transport_variational_p2_ale_discrete_gradient",
+}
 
 
 def _backend_is_gpu(backend) -> bool:
@@ -35,12 +48,124 @@ def _apply_solver_interface_jump(ppe_solver, base_pressure):
     return base_pressure
 
 
+def _capillary_interface_psi(*, xp, state: NSStepState, curvature_method: str):
+    """Return the interface geometry used by the capillary jump operator.
+
+    A3 mapping:
+      Equation: ``g_Γ^{n+1/2}=∂E_{Γ,h}(ψ^{n+1/2})`` with
+      ``ψ^{n+1/2}=(ψ^n+ψ^{n+1})/2`` for the midpoint P2 route.
+      Discretization: ``ψ^n`` is the operation-local previous step state,
+      already remapped to the current grid when the fitted grid rebuilds.
+      Code: pressure-jump and face-corrector contexts receive the same
+      backend-native ``interface_psi`` temporary.
+    """
+    if (
+        curvature_method == "transport_variational_p2_midpoint"
+        and state.psi_previous is not None
+    ):
+        half = xp.asarray(0.5, dtype=xp.asarray(state.psi).dtype)
+        return half * (xp.asarray(state.psi_previous) + xp.asarray(state.psi))
+    return state.psi
+
+
+def _capillary_interface_psi_previous(
+    *, state: NSStepState, curvature_method: str
+):
+    """Return the previous interface state needed by discrete-gradient routes."""
+    if curvature_method in {
+        "transport_variational_p2_discrete_gradient",
+        "transport_variational_p2_ale_discrete_gradient",
+    }:
+        return state.psi_previous
+    return None
+
+
+def _capillary_transport_variational_temporaries(
+    *,
+    xp,
+    state: NSStepState,
+    curvature_method: str,
+    grid,
+    sigma: float,
+) -> dict:
+    """Build operation-local P2 covectors once for GPU pressure-jump work.
+
+    These arrays are step temporaries attached to the jump context; they are
+    not reused after the pressure/corrector operation that requested them.
+    """
+    if grid is None or curvature_method not in {
+        "transport_variational_p2",
+        "transport_variational_p2_midpoint",
+        "transport_variational_p2_discrete_gradient",
+        "transport_variational_p2_ale_discrete_gradient",
+    }:
+        return {}
+    interface_psi = _capillary_interface_psi(
+        xp=xp,
+        state=state,
+        curvature_method=curvature_method,
+    )
+    if curvature_method in {
+        "transport_variational_p2_discrete_gradient",
+        "transport_variational_p2_ale_discrete_gradient",
+    }:
+        previous = _capillary_interface_psi_previous(
+            state=state,
+            curvature_method=curvature_method,
+        )
+        if previous is None:
+            return {}
+        current = xp.asarray(interface_psi)
+        previous = xp.asarray(previous)
+        transport_psi = xp.asarray(0.5, dtype=current.dtype) * (previous + current)
+        if curvature_method == "transport_variational_p2_ale_discrete_gradient":
+            covector = p2_trace_surface_energy_ale_discrete_gradient_2d(
+                xp=xp,
+                grid=grid,
+                psi_previous=previous,
+                psi=current,
+                sigma=float(sigma),
+                previous_surface_energy=(
+                    state.transport_variational_previous_surface_energy
+                ),
+            )
+        else:
+            covector = p2_trace_surface_energy_discrete_gradient_2d(
+                xp=xp,
+                grid=grid,
+                psi_previous=previous,
+                psi=current,
+                sigma=float(sigma),
+            )
+        return {
+            "transport_variational_nodal_covector": covector,
+            "transport_variational_psi": transport_psi,
+            "transport_variational_previous_surface_energy": (
+                state.transport_variational_previous_surface_energy
+            ),
+        }
+    covector = p2_trace_surface_energy_gradient_2d(
+        xp=xp,
+        grid=grid,
+        psi=interface_psi,
+        sigma=float(sigma),
+    )
+    return {
+        "transport_variational_nodal_covector": covector,
+        "transport_variational_psi": interface_psi,
+    }
+
+
 def _pressure_face_flux_kwargs(
     *,
     xp,
     state: NSStepState,
     ppe_runtime,
     interface_sigma: float | None = None,
+    curvature_method: str = "psi_direct_filtered",
+    interface_psi=None,
+    interface_psi_previous=None,
+    transport_variational_temporaries=None,
 ) -> dict:
     """Return face-pressure kwargs for the projection-native pressure law.
 
@@ -67,9 +192,16 @@ def _pressure_face_flux_kwargs(
         kwargs["interface_stress_context"] = (
             build_young_laplace_interface_stress_context(
                 xp=xp,
-                psi=state.psi,
+                psi=state.psi if interface_psi is None else interface_psi,
                 kappa_lg=state.kappa,
                 sigma=sigma,
+                psi_previous=interface_psi_previous,
+                **(transport_variational_temporaries or {}),
+                face_curvature_method=(
+                    curvature_method
+                    if curvature_method in _JUMP_CURVATURE_METHODS
+                    else "nodal_cut_face"
+                ),
             )
         )
     return kwargs
@@ -641,8 +773,18 @@ def solve_ns_pressure_stage(
     bc_type: str = "wall",
     face_no_slip_boundary_state: bool = False,
     ppe_runtime=None,
+    curvature_method: str = "psi_direct_filtered",
 ) -> tuple[NSStepState, object, np.ndarray]:
-    """Solve IPC PPE for δp and accumulate pⁿ⁺¹ = pⁿ + δp."""
+    """Solve IPC PPE and prepare scalar/face pressure history.
+
+    A3 mapping: for affine pressure jumps, the face-native path treats the
+    full face pressure cochain as the pressure-history state.  Because the
+    predictor already subtracts ``a_p^n=A_f(G_f p^n-B_f(j^n))``, the PPE
+    solves the next full cochain by adding ``D_f a_p^n`` to its source, while
+    the corrector applies only the cochain increment
+    ``a_p^{n+1}-a_p^n``.  This is the face-space form of the IPC jump
+    contract and avoids solving a pressure increment with a full jump.
+    """
     xp = backend.xp
     projection_dt = state.projection_dt if state.projection_dt is not None else state.dt
     predictor_faces = None
@@ -668,13 +810,74 @@ def solve_ns_pressure_stage(
     rhs = predictor_rhs + div_op.divergence([state.f_x / state.rho, state.f_y / state.rho])
     if state.debug_scalars is not None:
         state.debug_scalars.append(xp.max(xp.abs(rhs)))
+    transport_variational_temporaries = {}
     if hasattr(ppe_solver, "set_interface_jump_context"):
         jump_sigma = state.sigma if surface_tension_scheme == "pressure_jump" else 0.0
+        interface_psi = _capillary_interface_psi(
+            xp=xp,
+            state=state,
+            curvature_method=curvature_method,
+        )
+        interface_psi_previous = _capillary_interface_psi_previous(
+            state=state,
+            curvature_method=curvature_method,
+        )
+        jump_grid = getattr(ppe_solver, "grid", None)
+        if jump_grid is None:
+            jump_grid = getattr(getattr(ppe_solver, "operator", None), "grid", None)
+        if jump_grid is None:
+            jump_grid = getattr(getattr(div_op, "_fccd", None), "grid", None)
+        transport_variational_temporaries = (
+            _capillary_transport_variational_temporaries(
+                xp=xp,
+                state=state,
+                curvature_method=curvature_method,
+                grid=jump_grid,
+                sigma=jump_sigma,
+            )
+        )
+        state.transport_variational_nodal_covector = (
+            transport_variational_temporaries.get(
+                "transport_variational_nodal_covector"
+            )
+        )
+        state.transport_variational_psi = transport_variational_temporaries.get(
+            "transport_variational_psi"
+        )
         ppe_solver.set_interface_jump_context(
-            psi=state.psi,
+            psi=interface_psi,
             kappa=state.kappa,
             sigma=jump_sigma,
+            psi_previous=interface_psi_previous,
+            **transport_variational_temporaries,
+            face_curvature_method=(
+                curvature_method
+                if curvature_method in _JUMP_CURVATURE_METHODS
+                else "nodal_cut_face"
+            ),
         )
+
+    uses_affine_face_history = (
+        face_native_predictor_state
+        and getattr(ppe_runtime, "ppe_interface_coupling_scheme", "none")
+        == "affine_jump"
+        and hasattr(div_op, "pressure_fluxes")
+        and hasattr(div_op, "reconstruct_nodes")
+    )
+    previous_pressure_accel_faces = None
+    if (
+        uses_affine_face_history
+        and state.previous_pressure_accel_face_components is not None
+    ):
+        if not hasattr(div_op, "divergence_from_faces"):
+            raise RuntimeError(
+                "affine_jump IPC pressure history requires face divergence"
+            )
+        previous_pressure_accel_faces = [
+            xp.asarray(component)
+            for component in state.previous_pressure_accel_face_components
+        ]
+        rhs = rhs + div_op.divergence_from_faces(previous_pressure_accel_faces)
 
     state.pressure_increment = ppe_solver.solve(
         rhs,
@@ -692,27 +895,56 @@ def solve_ns_pressure_stage(
         previous_base = p_prev_dev
     if previous_base is None:
         previous_base = xp.zeros_like(base_increment)
-    state.pressure_base = xp.asarray(previous_base) + xp.asarray(base_increment)
+    state.pressure_base = (
+        xp.asarray(base_increment)
+        if uses_affine_face_history
+        else xp.asarray(previous_base) + xp.asarray(base_increment)
+    )
     state.pressure = _apply_solver_interface_jump(ppe_solver, state.pressure_base)
     state.pressure_accel_face_components = None
-    if (
-        face_native_predictor_state
-        and getattr(ppe_runtime, "ppe_interface_coupling_scheme", "none")
-        == "affine_jump"
-        and hasattr(div_op, "pressure_fluxes")
-        and hasattr(div_op, "reconstruct_nodes")
-    ):
+    state.pressure_correction_face_components = None
+    if uses_affine_face_history:
         jump_sigma = state.sigma if surface_tension_scheme == "pressure_jump" else 0.0
-        state.pressure_accel_face_components = div_op.pressure_fluxes(
-            state.pressure,
-            state.rho,
-            **_pressure_face_flux_kwargs(
-                xp=xp,
-                state=state,
-                ppe_runtime=ppe_runtime,
-                interface_sigma=jump_sigma,
+        interface_psi = _capillary_interface_psi(
+            xp=xp,
+            state=state,
+            curvature_method=curvature_method,
+        )
+        interface_psi_previous = _capillary_interface_psi_previous(
+            state=state,
+            curvature_method=curvature_method,
+        )
+        pressure_flux_kwargs = _pressure_face_flux_kwargs(
+            xp=xp,
+            state=state,
+            ppe_runtime=ppe_runtime,
+            interface_sigma=jump_sigma,
+            curvature_method=curvature_method,
+            interface_psi=interface_psi,
+            interface_psi_previous=interface_psi_previous,
+            transport_variational_temporaries=(
+                transport_variational_temporaries
             ),
         )
+        full_pressure_faces = div_op.pressure_fluxes(
+            state.pressure_increment,
+            state.rho,
+            **pressure_flux_kwargs,
+        )
+        if previous_pressure_accel_faces is None:
+            state.pressure_correction_face_components = [
+                xp.asarray(component) for component in full_pressure_faces
+            ]
+        else:
+            state.pressure_correction_face_components = [
+                xp.asarray(full_face) - previous_face
+                for full_face, previous_face in zip(
+                    full_pressure_faces, previous_pressure_accel_faces
+                )
+            ]
+        state.pressure_accel_face_components = [
+            xp.asarray(component) for component in full_pressure_faces
+        ]
     next_p_prev_dev = xp.copy(state.pressure)
     next_p_prev = (
         None
@@ -737,6 +969,7 @@ def correct_ns_velocity_stage(
     ppe_runtime,
     bc_type: str,
     apply_velocity_bc,
+    curvature_method: str = "psi_direct_filtered",
 ) -> NSStepState:
     """Apply pressure correction and optional face-flux projection."""
     xp = backend.xp
@@ -757,10 +990,44 @@ def correct_ns_velocity_stage(
     if face_flux_projection:
         proj_op = fccd_div_op if fccd_div_op is not None else div_op
         if proj_op is fccd_div_op:
+            interface_psi = _capillary_interface_psi(
+                xp=xp,
+                state=state,
+                curvature_method=curvature_method,
+            )
+            interface_psi_previous = _capillary_interface_psi_previous(
+                state=state,
+                curvature_method=curvature_method,
+            )
+            transport_variational_temporaries = (
+                {
+                    "transport_variational_nodal_covector": (
+                        state.transport_variational_nodal_covector
+                    ),
+                    "transport_variational_psi": state.transport_variational_psi,
+                    "transport_variational_previous_surface_energy": (
+                        state.transport_variational_previous_surface_energy
+                    ),
+                }
+                if state.transport_variational_nodal_covector is not None
+                else _capillary_transport_variational_temporaries(
+                    xp=xp,
+                    state=state,
+                    curvature_method=curvature_method,
+                    grid=getattr(getattr(proj_op, "_fccd", None), "grid", None),
+                    sigma=state.sigma,
+                )
+            )
             project_kwargs = _pressure_face_flux_kwargs(
                 xp=xp,
                 state=state,
                 ppe_runtime=ppe_runtime,
+                curvature_method=curvature_method,
+                interface_psi=interface_psi,
+                interface_psi_previous=interface_psi_previous,
+                transport_variational_temporaries=(
+                    transport_variational_temporaries
+                ),
             )
     if correction_is_zero and (
         not face_flux_projection
@@ -792,10 +1059,17 @@ def correct_ns_velocity_stage(
             and hasattr(proj_op, "face_fluxes")
             and hasattr(proj_op, "reconstruct_nodes")
         ):
-            pressure_faces = proj_op.pressure_fluxes(
-                state.p_corrector,
-                state.rho,
-                **project_kwargs,
+            pressure_faces = (
+                [
+                    xp.asarray(component)
+                    for component in state.pressure_correction_face_components
+                ]
+                if state.pressure_correction_face_components is not None
+                else proj_op.pressure_fluxes(
+                    state.p_corrector,
+                    state.rho,
+                    **project_kwargs,
+                )
             )
             force_faces = proj_op.face_fluxes([state.f_x / state.rho, state.f_y / state.rho])
             state.projected_face_components = [

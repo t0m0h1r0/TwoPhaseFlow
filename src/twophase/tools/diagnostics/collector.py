@@ -14,6 +14,7 @@ deformation           D = (L−B)/(L+B) from second moments of ψ > 0.5 region
 signed_deformation    signed x/y moment deformation for n=2 droplet oscillation
 interface_amplitude   max vertical deviation of ψ = 0.5 isoline from domain centre
 laplace_pressure      |Δp_sim − σ/R| / (σ/R)  (static-droplet only)
+pressure_contrast     phase mean pressure jump <p>_liquid − <p>_gas
 symmetry_error        parity-aware reflection error under x/y mirror. Each
                       sub-key is 0 for a 4-fold symmetric flow:
                         sym_psi_{y,x}  = ‖ψ − flip(ψ)‖∞ / max|ψ|   (ψ even)
@@ -71,6 +72,7 @@ class DiagnosticCollector:
             "signed_deformation",
             "interface_amplitude",
             "laplace_pressure",
+            "pressure_contrast",
             "symmetry_error",
         ]
     )
@@ -194,6 +196,11 @@ class DiagnosticCollector:
         need_ke = "kinetic_energy" in self.metrics
         need_gas_mean = "mean_rise_velocity" in self.metrics
         need_gas_centroid = "bubble_centroid" in self.metrics
+        need_deformation = "deformation" in self.metrics and geometry is not None
+        need_signed_deformation = (
+            "signed_deformation" in self.metrics and geometry is not None
+        )
+        need_pressure_contrast = "pressure_contrast" in self.metrics
 
         scalar_names: list[str] = []
         scalar_values = []
@@ -212,6 +219,52 @@ class DiagnosticCollector:
                 xp.sum(xp.where(gas, X * dV, 0.0)),
                 xp.sum(xp.where(gas, Y * dV, 0.0)),
                 xp.sum(xp.where(gas, v * dV, 0.0)),
+            ])
+        if need_deformation:
+            mask = psi > 0.5
+            n_pts = xp.sum(mask)
+            n_safe = xp.where(n_pts > 0, n_pts, 1.0)
+            rows = geometry.rows
+            cols = geometry.cols
+            if rows is None or cols is None:
+                rows, cols = _deformation_axes(xp, tuple(psi.shape))
+            row_mean = xp.sum(xp.where(mask, rows, 0.0)) / n_safe
+            col_mean = xp.sum(xp.where(mask, cols, 0.0)) / n_safe
+            dy = xp.where(mask, rows - row_mean, 0.0)
+            dx = xp.where(mask, cols - col_mean, 0.0)
+            scalar_names.extend(["def_n", "def_ixx", "def_iyy", "def_ixy"])
+            scalar_values.extend([
+                n_pts,
+                xp.sum(dx * dx) / n_safe,
+                xp.sum(dy * dy) / n_safe,
+                xp.sum(dx * dy) / n_safe,
+            ])
+        if need_signed_deformation:
+            weight = psi * dV
+            volume = xp.sum(weight)
+            volume_safe = xp.where(volume > 0.0, volume, 1.0)
+            xc = xp.sum(X * weight) / volume_safe
+            yc = xp.sum(Y * weight) / volume_safe
+            scalar_names.extend(["signed_volume", "signed_mxx", "signed_myy"])
+            scalar_values.extend([
+                volume,
+                xp.sum((X - xc) ** 2 * weight) / volume_safe,
+                xp.sum((Y - yc) ** 2 * weight) / volume_safe,
+            ])
+        if need_pressure_contrast:
+            liquid = psi > 0.5
+            gas = psi < 0.5
+            scalar_names.extend([
+                "pressure_liquid_weight",
+                "pressure_gas_weight",
+                "pressure_liquid_sum",
+                "pressure_gas_sum",
+            ])
+            scalar_values.extend([
+                xp.sum(xp.where(liquid, dV, 0.0)),
+                xp.sum(xp.where(gas, dV, 0.0)),
+                xp.sum(xp.where(liquid, p * dV, 0.0)),
+                xp.sum(xp.where(gas, p * dV, 0.0)),
             ])
         scalars = {
             name: float(value)
@@ -255,10 +308,30 @@ class DiagnosticCollector:
                 self._data["vc"].append(vc)
 
             elif m == "deformation":
-                self._data[m].append(_deformation(psi, geometry))
+                if "def_n" not in scalars or scalars["def_n"] < 1.0:
+                    self._data[m].append(0.0)
+                else:
+                    Ixx = scalars["def_ixx"]
+                    Iyy = scalars["def_iyy"]
+                    Ixy = scalars["def_ixy"]
+                    disc = max(0.0, 0.25 * (Ixx - Iyy) ** 2 + Ixy ** 2)
+                    eig1 = 0.5 * (Ixx + Iyy) + np.sqrt(disc)
+                    eig2 = 0.5 * (Ixx + Iyy) - np.sqrt(disc)
+                    L = np.sqrt(max(eig1, 1e-30))
+                    B = np.sqrt(max(eig2, 1e-30))
+                    self._data[m].append(
+                        float((L - B) / (L + B)) if (L + B) > 1e-12 else 0.0
+                    )
 
             elif m == "signed_deformation":
-                self._data[m].append(_signed_deformation(psi, dV, geometry))
+                if "signed_volume" not in scalars or scalars["signed_volume"] <= 0.0:
+                    self._data[m].append(0.0)
+                else:
+                    lx = np.sqrt(max(scalars["signed_mxx"], 1e-30))
+                    ly = np.sqrt(max(scalars["signed_myy"], 1e-30))
+                    self._data[m].append(
+                        float((lx - ly) / (lx + ly)) if (lx + ly) > 1e-12 else 0.0
+                    )
 
             elif m == "interface_amplitude":
                 self._data[m].append(
@@ -277,26 +350,36 @@ class DiagnosticCollector:
                     inside = psi > 0.5
                     outside = psi < 0.5
                     raw = xp.stack([
-                        xp.sum(inside),
-                        xp.sum(outside),
-                        xp.sum(xp.where(inside, p, 0.0)),
-                        xp.sum(xp.where(outside, p, 0.0)),
+                        xp.sum(xp.where(inside, dV, 0.0)),
+                        xp.sum(xp.where(outside, dV, 0.0)),
+                        xp.sum(xp.where(inside, p * dV, 0.0)),
+                        xp.sum(xp.where(outside, p * dV, 0.0)),
                     ])
-                    n_in, n_out, p_in_sum, p_out_sum = [
+                    w_in, w_out, p_in_sum, p_out_sum = [
                         float(x) for x in host_array(raw)
                     ]
                     p_in = (
-                        p_in_sum / n_in
-                        if n_in > 0 else 0.0
+                        p_in_sum / w_in
+                        if w_in > 0 else 0.0
                     )
                     p_out = (
-                        p_out_sum / n_out
-                        if n_out > 0 else 0.0
+                        p_out_sum / w_out
+                        if w_out > 0 else 0.0
                     )
                     dp_sim = p_in - p_out
                     dp_th = self.sigma / self.R
                     err = abs(dp_sim - dp_th) / dp_th if dp_th > 0 else 0.0
                     self._data[m].append(err)
+                else:
+                    self._data[m].append(0.0)
+
+            elif m == "pressure_contrast":
+                liquid_weight = scalars.get("pressure_liquid_weight", 0.0)
+                gas_weight = scalars.get("pressure_gas_weight", 0.0)
+                if liquid_weight > 0.0 and gas_weight > 0.0:
+                    liquid_mean = scalars["pressure_liquid_sum"] / liquid_weight
+                    gas_mean = scalars["pressure_gas_sum"] / gas_weight
+                    self._data[m].append(liquid_mean - gas_mean)
                 else:
                     self._data[m].append(0.0)
 

@@ -123,6 +123,7 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             advection_scheme=str(getattr(run, "advection_scheme", "fccd_flux")),
             convection_scheme=str(getattr(run, "convection_scheme", "uccd6")),
             surface_tension_scheme=str(getattr(run, "surface_tension_scheme", "pressure_jump")),
+            curvature_method=str(getattr(run, "curvature_method", "psi_direct_filtered")),
             convection_time_scheme=str(getattr(run, "convection_time_scheme", "imex_bdf2")),
             viscous_spatial_scheme=str(getattr(run, "viscous_spatial_scheme", "ccd_bulk")),
             viscous_time_scheme=str(getattr(run, "viscous_time_scheme", "implicit_bdf2")),

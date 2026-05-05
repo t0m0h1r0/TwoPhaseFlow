@@ -7,6 +7,7 @@ from ..coupling.interface_stress_closure import (
     InterfaceStressContext,
     build_interface_stress_context,
     build_young_laplace_interface_stress_context,
+    evaluate_interface_face_curvature_lg,
     interface_stress_context_is_active,
     signed_pressure_jump_gradient,
 )
@@ -15,6 +16,7 @@ __all__ = [
     "InterfaceStressContext",
     "build_interface_stress_context",
     "build_young_laplace_interface_stress_context",
+    "evaluate_interface_face_curvature_lg",
     "interface_stress_context_is_active",
     "signed_pressure_jump_gradient",
 ]

@@ -81,7 +81,15 @@ _VISCOUS_SPATIAL_ALIASES = {
     "ccd": "ccd_bulk",
     "ccd_legacy": "ccd_stress_legacy",
 }
-_CURVATURE_SCHEMES = ("psi_direct_filtered",)
+_CURVATURE_SCHEMES = (
+    "psi_direct_filtered",
+    "face_implicit",
+    "transport_variational",
+    "transport_variational_p2",
+    "transport_variational_p2_midpoint",
+    "transport_variational_p2_discrete_gradient",
+    "transport_variational_p2_ale_discrete_gradient",
+)
 _CURVATURE_SCHEME_ALIASES = {
     "psi_direct": "psi_direct_filtered",
     "psi_direct_hfe": "psi_direct_filtered",

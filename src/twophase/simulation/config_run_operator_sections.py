@@ -180,7 +180,7 @@ def parse_run_operator_settings(
             surface_tension.get("curvature", "psi_direct_filtered"),
         )
     ).strip().lower()
-    validate_choice(
+    curvature_method = validate_choice(
         _CURVATURE_SCHEME_ALIASES.get(raw_curvature_method, raw_curvature_method),
         _CURVATURE_SCHEMES,
         layout["paths"]["surface_tension_curvature"],
@@ -315,6 +315,7 @@ def parse_run_operator_settings(
         "ppe_dc_relaxation": poisson_settings["ppe_dc_relaxation"],
         "pressure_gradient_scheme": pressure_gradient_scheme,
         "surface_tension_scheme": surface_tension_scheme,
+        "curvature_method": curvature_method,
         "surface_tension_gradient_scheme": surface_tension_gradient_scheme,
         "momentum_gradient_scheme": momentum_gradient_scheme,
         "uccd6_sigma": uccd6_sigma,
