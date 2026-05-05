@@ -24,7 +24,14 @@ import numpy as np
 
 SCHEMA_VERSION = 1
 MAGIC = "twophase.ch14.restart"
-TIME_KEYS = (("run", "T_final"),)
+RESTART_ALLOWED_CONFIG_PATHS = (
+    ("run", "T_final"),
+    ("run", "snap_times"),
+    ("run", "snap_interval"),
+    ("run", "print_every"),
+    ("run", "debug_diagnostics"),
+    ("output",),
+)
 CODE_FINGERPRINT_ROOTS = (
     "src/twophase",
     "experiment/runner",
@@ -143,7 +150,7 @@ def _build_manifest(
         "backend_device": getattr(solver._backend, "device", "unknown"),
         "grid_shape": list(getattr(solver._grid, "shape", ())),
         "config_path": str(config_path),
-        "config_hash_excluding_final_time": config_fingerprint(config_path),
+        "config_hash_excluding_restart_allowed_paths": config_fingerprint(config_path),
         "code_fingerprint": code_fingerprint(_repo_root(config_path)),
         "payload_hash": payload_hash.hexdigest(),
     }
@@ -163,9 +170,14 @@ def _validate_manifest(
             f"unsupported checkpoint schema {manifest.get('schema_version')}"
         )
     expected_config = config_fingerprint(config_path)
-    if manifest.get("config_hash_excluding_final_time") != expected_config:
+    stored_config = manifest.get(
+        "config_hash_excluding_restart_allowed_paths",
+        manifest.get("config_hash_excluding_final_time"),
+    )
+    if stored_config != expected_config:
         raise CheckpointError(
-            "checkpoint config fingerprint differs; only run.T_final may change"
+            "checkpoint config fingerprint differs; only final time and "
+            "visualization/output paths may change"
         )
     expected_code = code_fingerprint(_repo_root(config_path))
     if manifest.get("code_fingerprint") != expected_code:
@@ -188,12 +200,12 @@ def _validate_manifest(
 
 
 def config_fingerprint(config_path: str | pathlib.Path) -> str:
-    """Hash the YAML config after removing only the final-time field."""
+    """Hash YAML after removing restart-safe time/output fields."""
     import yaml
 
     with open(config_path) as fh:
         raw = yaml.safe_load(fh) or {}
-    canonical = _drop_nested(raw, TIME_KEYS)
+    canonical = _drop_nested(raw, RESTART_ALLOWED_CONFIG_PATHS)
     payload = json.dumps(canonical, sort_keys=True, separators=(",", ":"), default=str)
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 

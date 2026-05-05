@@ -76,30 +76,56 @@ def _solver():
     return solver
 
 
-def _write_config(path, *, t_final=0.1, cfl=0.05):
+def _write_config(
+    path,
+    *,
+    t_final=0.1,
+    cfl=0.05,
+    snap_interval=0.05,
+    output_dir="results/a",
+):
     path.write_text(
         "\n".join(
             [
                 "run:",
                 f"  T_final: {t_final}",
                 f"  cfl: {cfl}",
+                "  snap_times: [0.0, 0.1]",
+                f"  snap_interval: {snap_interval}",
+                "  print_every: 10",
+                "  debug_diagnostics: false",
                 "grid:",
                 "  NX: 2",
                 "  NY: 2",
+                "output:",
+                f"  dir: {output_dir}",
+                "  save_npz: true",
+                "  figures:",
+                "    - type: time_series",
+                "      field: kinetic_energy",
             ]
         )
     )
 
 
-def test_config_fingerprint_ignores_only_final_time(tmp_path):
+def test_config_fingerprint_ignores_final_time_and_visualization_paths(tmp_path):
     a = tmp_path / "a.yaml"
     b = tmp_path / "b.yaml"
     c = tmp_path / "c.yaml"
+    d = tmp_path / "d.yaml"
     _write_config(a, t_final=0.1, cfl=0.05)
-    _write_config(b, t_final=0.2, cfl=0.05)
+    _write_config(
+        b,
+        t_final=0.2,
+        cfl=0.05,
+        snap_interval=0.02,
+        output_dir="results/changed",
+    )
     _write_config(c, t_final=0.1, cfl=0.08)
+    d.write_text(a.read_text().replace("field: kinetic_energy", "field: volume"))
 
     assert config_fingerprint(a) == config_fingerprint(b)
+    assert config_fingerprint(a) == config_fingerprint(d)
     assert config_fingerprint(a) != config_fingerprint(c)
 
 

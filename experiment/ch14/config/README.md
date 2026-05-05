@@ -24,10 +24,12 @@ Run them through the unified runner (`experiment/run.py`):
 
 Each normal run writes a restart checkpoint to
 `experiment/ch14/results/<config>/checkpoint_final.npz`. Resume is never
-implicit: pass `--resume-from <path>` explicitly, usually after increasing only
-`run.T_final` in the same YAML. The checkpoint manifest refuses restart if any
-non-final-time YAML parameter or any execution code under `src/twophase/`,
-`experiment/runner/`, or `experiment/run.py` changed. For long runs,
+implicit: pass `--resume-from <path>` explicitly, usually after increasing
+`run.T_final` in the same YAML. The checkpoint manifest ignores restart-safe
+output-only paths (`output.*`, `run.snap_times`, `run.snap_interval`,
+`run.print_every`, and `run.debug_diagnostics`) but refuses restart if any
+physics/numerics/grid/interface/diagnostic parameter or any execution code under
+`src/twophase/`, `experiment/runner/`, or `experiment/run.py` changed. For long runs,
 `--checkpoint-every-steps N` refreshes the same checkpoint atomically every `N`
 completed steps, and `--no-checkpoint-final` disables the final write when a
 read-only dry run is needed. Numerical state is stored as NumPy `.npy` binary
