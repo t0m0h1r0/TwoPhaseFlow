@@ -67,9 +67,9 @@ Derived Prompt Artifacts
 
 **Interface Contract flow (T-L-E-A, mandatory ordering):**
 ```
-T → AlgorithmSpecs.md → L → SolverAPI_vX.py → E → ResultPackage/ → A
+T → CheckSpec.md → L → AnalysisAPI_vX.md → E → EvidencePackage/ → A
                                                ↑
-                              TechnicalReport.md (T + E jointly → A)
+                              RevisionBrief.md (T + E jointly → A)
 ```
 
 **Authority rule:** kernel-constitution.md wins on axiom intent; docs/00_GLOBAL_RULES.md wins on rule
@@ -253,7 +253,7 @@ Equation → Discretization → Code is mandatory.
 Every scientific or numerical claim must preserve this chain.
 
 ## A4: Separation  ← φ7 (Classification Precedes Action)
-Never mix: logic / content / tags / style; solver / infrastructure / performance;
+Never mix: logic / content / tags / style; research logic / infrastructure / performance;
 theory / discretization / implementation / verification.
 
 ## A5: Solver Purity  ← φ3 (Layered Authority)
@@ -290,12 +290,12 @@ When `_base.yaml :: concurrency_profile == "worktree"`, git branch isolation alo
 A8.1 is gated; A8 is unconditional.
 
 ## A9: Core/System Sovereignty  ← φ3 (Layered Authority)
-"The solver core is the master; the infrastructure is the servant."
+"The research implementation is the master; the infrastructure is the servant."
 - Solver core (`src/core/`) has zero dependency on infrastructure (`src/system/`).
-- Infrastructure may import solver core; solver core must never import infrastructure.
-- Direct access to solver core internals from infrastructure = CRITICAL_VIOLATION — escalate immediately.
+- Infrastructure may import research implementation; research implementation must never import infrastructure.
+- Direct access to research implementation internals from infrastructure = CRITICAL_VIOLATION — escalate immediately.
 
-Note: "solver core" and "infrastructure" here refer to code-layer architecture within the Code domain,
+Note: "research implementation" and "infrastructure" here refer to code-layer architecture within the Code domain,
 NOT to the meta-system's project domains (Code/Paper/Prompt/Audit). See kernel-domains.md for domains.
 
 ## A10: Meta-Governance  ← φ6 (Single Source, Derived Artifacts)
@@ -367,7 +367,7 @@ More rules ≠ higher compliance; beyond saturation threshold, compliance falls.
 RULE_MANIFEST:
   always: [STOP_CONDITIONS, DOM-02_CONTAMINATION_GUARD, SCOPE_BOUNDARIES, BRANCH_LOCK_CHECK]
   domain:
-    code:   [C1-SOLID, C2-PRESERVE, A9-SOVEREIGNTY, MMS-STANDARD]
+    code:   [C1-SOLID, C2-PRESERVE, A9-SOVEREIGNTY, reproducibility-STANDARD]
     paper:  [P1-LATEX, P4-SKEPTICISM, KL-12]
     theory: [A3-TRACEABILITY, AU1-AUTHORITY]
     prompt: [Q1-TEMPLATE, Q3-AUDIT, Q4-COMPRESSION]
@@ -419,7 +419,7 @@ Derive first; compare second. "Verified by comparison only" = broken symmetry (�
 # § SYSTEM OPTIMIZATION TARGETS
 
 Priority order (all agents): (1) correctness (2) traceability (3) reproducibility
-(4) solver purity (5) structural integrity (6) token efficiency (7) external-memory efficiency
+(4) source-artifact integrity (5) structural integrity (6) token efficiency (7) external-memory efficiency
 (8) self-evolution (9) backward compatibility
 
 ────────────────────────────────────────────────────────
