@@ -560,6 +560,45 @@ def test_ns_pipeline_advances_interface_with_projected_face_velocity():
     np.testing.assert_allclose(state.psi_previous, psi)
 
 
+def test_ale_discrete_gradient_previous_surface_energy_is_step_local():
+    """ALE surface energy is only the pre-remap endpoint for a rebuild step."""
+    from types import SimpleNamespace
+
+    class RecordingTransport:
+        def advance(self, psi, velocity, dt, step_index=0):
+            return psi + 0.25
+
+    solver = object.__new__(TwoPhaseNSSolver)
+    solver._transport = RecordingTransport()
+    solver._alpha_grid = 1.0
+    solver._interface_runtime = SimpleNamespace(rebuild_freq=0)
+    solver._curvature_method = "transport_variational_p2_ale_discrete_gradient"
+
+    psi = np.zeros((3, 3))
+    state = NSStepState(
+        psi=psi,
+        u=np.zeros_like(psi),
+        v=np.zeros_like(psi),
+        dt=0.1,
+        rho_l=1000.0,
+        rho_g=1.0,
+        sigma=0.072,
+        mu=0.0,
+        g_acc=0.0,
+        rho_ref=500.5,
+        mu_l=None,
+        mu_g=None,
+        bc_hook=None,
+        step_index=3,
+        transport_variational_previous_surface_energy=np.asarray(12.5),
+    )
+
+    solver._advance_interface_stage(state)
+
+    assert state.transport_variational_previous_surface_energy is None
+    np.testing.assert_allclose(state.psi_previous, psi)
+
+
 def test_p2_midpoint_capillary_interface_uses_temporal_midpoint():
     """Semi-implicit P2 route must evaluate capillary geometry at ψ^{n+1/2}."""
     psi_previous = np.asarray([[0.0, 0.2], [0.4, 0.6]])

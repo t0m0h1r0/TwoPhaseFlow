@@ -255,16 +255,16 @@ class DiagnosticCollector:
             liquid = psi > 0.5
             gas = psi < 0.5
             scalar_names.extend([
-                "pressure_liquid_count",
-                "pressure_gas_count",
+                "pressure_liquid_weight",
+                "pressure_gas_weight",
                 "pressure_liquid_sum",
                 "pressure_gas_sum",
             ])
             scalar_values.extend([
-                xp.sum(liquid),
-                xp.sum(gas),
-                xp.sum(xp.where(liquid, p, 0.0)),
-                xp.sum(xp.where(gas, p, 0.0)),
+                xp.sum(xp.where(liquid, dV, 0.0)),
+                xp.sum(xp.where(gas, dV, 0.0)),
+                xp.sum(xp.where(liquid, p * dV, 0.0)),
+                xp.sum(xp.where(gas, p * dV, 0.0)),
             ])
         scalars = {
             name: float(value)
@@ -350,21 +350,21 @@ class DiagnosticCollector:
                     inside = psi > 0.5
                     outside = psi < 0.5
                     raw = xp.stack([
-                        xp.sum(inside),
-                        xp.sum(outside),
-                        xp.sum(xp.where(inside, p, 0.0)),
-                        xp.sum(xp.where(outside, p, 0.0)),
+                        xp.sum(xp.where(inside, dV, 0.0)),
+                        xp.sum(xp.where(outside, dV, 0.0)),
+                        xp.sum(xp.where(inside, p * dV, 0.0)),
+                        xp.sum(xp.where(outside, p * dV, 0.0)),
                     ])
-                    n_in, n_out, p_in_sum, p_out_sum = [
+                    w_in, w_out, p_in_sum, p_out_sum = [
                         float(x) for x in host_array(raw)
                     ]
                     p_in = (
-                        p_in_sum / n_in
-                        if n_in > 0 else 0.0
+                        p_in_sum / w_in
+                        if w_in > 0 else 0.0
                     )
                     p_out = (
-                        p_out_sum / n_out
-                        if n_out > 0 else 0.0
+                        p_out_sum / w_out
+                        if w_out > 0 else 0.0
                     )
                     dp_sim = p_in - p_out
                     dp_th = self.sigma / self.R
@@ -374,11 +374,11 @@ class DiagnosticCollector:
                     self._data[m].append(0.0)
 
             elif m == "pressure_contrast":
-                liquid_count = scalars.get("pressure_liquid_count", 0.0)
-                gas_count = scalars.get("pressure_gas_count", 0.0)
-                if liquid_count > 0.0 and gas_count > 0.0:
-                    liquid_mean = scalars["pressure_liquid_sum"] / liquid_count
-                    gas_mean = scalars["pressure_gas_sum"] / gas_count
+                liquid_weight = scalars.get("pressure_liquid_weight", 0.0)
+                gas_weight = scalars.get("pressure_gas_weight", 0.0)
+                if liquid_weight > 0.0 and gas_weight > 0.0:
+                    liquid_mean = scalars["pressure_liquid_sum"] / liquid_weight
+                    gas_mean = scalars["pressure_gas_sum"] / gas_weight
                     self._data[m].append(liquid_mean - gas_mean)
                 else:
                     self._data[m].append(0.0)

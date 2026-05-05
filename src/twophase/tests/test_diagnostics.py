@@ -219,6 +219,30 @@ def test_pressure_contrast_phase_means():
     assert diag.last("pressure_contrast") == pytest.approx(6.0)
 
 
+def test_pressure_contrast_uses_volume_weighted_phase_means():
+    """Non-uniform grids require phase pressure means weighted by dV."""
+    X, Y = _make_grid()
+    psi = np.zeros_like(X)
+    psi[: N // 2, :] = 1.0
+    u = v = np.zeros_like(psi)
+    pressure = np.zeros_like(psi)
+    pressure[psi > 0.5] = 1.0
+    pressure[0, :] = 5.0
+    pressure[psi < 0.5] = -2.0
+    dV = np.ones_like(psi)
+    dV[0, :] = 3.0
+
+    liquid_weight = np.sum(np.where(psi > 0.5, dV, 0.0))
+    gas_weight = np.sum(np.where(psi < 0.5, dV, 0.0))
+    liquid_mean = np.sum(np.where(psi > 0.5, pressure * dV, 0.0)) / liquid_weight
+    gas_mean = np.sum(np.where(psi < 0.5, pressure * dV, 0.0)) / gas_weight
+
+    diag = DiagnosticCollector(["pressure_contrast"], X, Y, H)
+    diag.collect(0.0, psi, u, v, pressure, dV=dV)
+
+    assert diag.last("pressure_contrast") == pytest.approx(liquid_mean - gas_mean)
+
+
 # ── Test 6: bubble centroid ──────────────────────────────────────────────────
 
 def test_bubble_centroid_centered():

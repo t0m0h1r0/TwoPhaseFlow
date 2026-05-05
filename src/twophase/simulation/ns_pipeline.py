@@ -742,6 +742,8 @@ class TwoPhaseNSSolver:
         if xp is None:
             xp = np
         psi_previous = xp.array(state.psi, copy=True)
+        if self._curvature_method == "transport_variational_p2_ale_discrete_gradient":
+            state.transport_variational_previous_surface_energy = None
         rebuild_old_coords = None
         will_rebuild = (
             self._alpha_grid > 1.0
