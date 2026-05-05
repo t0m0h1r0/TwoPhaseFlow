@@ -76,7 +76,8 @@ def test_run_single_respects_save_npz_false(tmp_path, monkeypatch):
     runner = _load_ns_simulation_runner()
     calls = {"save_results": 0, "generate_figures": 0}
 
-    def fake_run_simulation(cfg):
+    def fake_run_simulation(cfg, **kwargs):
+        assert kwargs["checkpoint_path"] == tmp_path / "checkpoint_final.npz"
         return {"times": np.array([0.0]), "kinetic_energy": np.array([0.0])}
 
     def fake_save_results(path, flat):
@@ -98,6 +99,10 @@ def test_run_single_respects_save_npz_false(tmp_path, monkeypatch):
     cfg = SimpleNamespace(
         physics=SimpleNamespace(sigma=0.072, mu_l=1.0e-3, mu_g=1.8e-5, rho_l=1000.0, rho_g=1.2),
         output=SimpleNamespace(save_npz=False),
+        _checkpoint_path=tmp_path / "checkpoint_final.npz",
+        _checkpoint_every_steps=None,
+        _resume_from=None,
+        _config_path=tmp_path / "cfg.yaml",
     )
 
     results = runner._run_single(cfg, "nosave", tmp_path)
@@ -105,3 +110,40 @@ def test_run_single_respects_save_npz_false(tmp_path, monkeypatch):
     assert results["times"].tolist() == [0.0]
     assert calls == {"save_results": 0, "generate_figures": 1}
     assert not (tmp_path / "data.npz").exists()
+
+
+def test_run_single_passes_explicit_resume_checkpoint_args(tmp_path, monkeypatch):
+    runner = _load_ns_simulation_runner()
+    seen = {}
+
+    def fake_run_simulation(cfg, **kwargs):
+        seen.update(kwargs)
+        return {"times": np.array([0.0]), "kinetic_energy": np.array([0.0])}
+
+    def fake_generate_figures(cfg, results, outdir):
+        pass
+
+    monkeypatch.setattr(
+        "twophase.simulation.ns_pipeline.run_simulation",
+        fake_run_simulation,
+    )
+    monkeypatch.setattr(
+        "twophase.tools.plot_factory.generate_figures",
+        fake_generate_figures,
+    )
+
+    cfg = SimpleNamespace(
+        physics=SimpleNamespace(sigma=0.072, mu_l=1.0e-3, mu_g=1.8e-5, rho_l=1000.0, rho_g=1.2),
+        output=SimpleNamespace(save_npz=False),
+        _resume_from=tmp_path / "checkpoint_old.npz",
+        _checkpoint_path=tmp_path / "checkpoint_final.npz",
+        _checkpoint_every_steps=12,
+        _config_path=tmp_path / "cfg.yaml",
+    )
+
+    runner._run_single(cfg, "resume", tmp_path)
+
+    assert seen["resume_from"] == tmp_path / "checkpoint_old.npz"
+    assert seen["checkpoint_path"] == tmp_path / "checkpoint_final.npz"
+    assert seen["checkpoint_every_steps"] == 12
+    assert seen["config_path"] == tmp_path / "cfg.yaml"
