@@ -101,7 +101,13 @@ def _run_single(cfg, label: str, outdir: pathlib.Path) -> dict:
           f"  ρ_l/ρ_g={ph.rho_l / ph.rho_g:.0f}")
     print(f"[{label}] Running simulation...")
 
-    results = run_simulation(cfg)
+    results = run_simulation(
+        cfg,
+        resume_from=getattr(cfg, "_resume_from", None),
+        checkpoint_path=getattr(cfg, "_checkpoint_path", None),
+        checkpoint_every_steps=getattr(cfg, "_checkpoint_every_steps", None),
+        config_path=getattr(cfg, "_config_path", None),
+    )
 
     if cfg.output.save_npz:
         flat: dict = {}
