@@ -168,17 +168,17 @@ their curation notes.
 
 | REF-ID | Title |
 |--------|-------|
-| [WIKI-X-001](cross-domain/WIKI-X-001.md) | DCCD Usage Map: Three Modes Across the Algorithm |
+| [WIKI-X-001](cross-domain/WIKI-X-001.md) | [REFERENCE] DCCD Usage Map: Three Modes Across the Algorithm |
 | [WIKI-X-002](cross-domain/WIKI-X-002.md) | CCD Dual Role: Differentiator and Elliptic Solver |
 | [WIKI-X-003](cross-domain/WIKI-X-003.md) | Sign Conventions and Variable Definitions: phi, psi, kappa, n_hat |
 | [WIKI-X-004](cross-domain/WIKI-X-004.md) | Pressure Instability in High-Order Two-Phase Flow: Root Causes and Mitigation Survey |
-| [WIKI-X-005](cross-domain/WIKI-X-005.md) | Architectural Decisions: PPE Strategy, Solver Integration, and Verification Hierarchy |
+| [WIKI-X-005](cross-domain/WIKI-X-005.md) | [SUPERSEDED] Architectural Decisions: PPE Strategy, Solver Integration, and Verification Hierarchy |
 | [WIKI-X-006](cross-domain/WIKI-X-006.md) | Zalesak Disk Role in Balanced-Force CLS: Stress Test, Not Performance Benchmark |
 | [WIKI-X-007](cross-domain/WIKI-X-007.md) | CFL Constraint Hierarchy and Stability Budget for Two-Phase CCD-PPE Solver |
 | [WIKI-X-008](cross-domain/WIKI-X-008.md) | Derived Physics Resolution: Non-Dimensional → Physical Parameter Mapping |
 | [WIKI-X-009](cross-domain/WIKI-X-009.md) | PPE Solver Policy: CCD Kronecker+LU Restricted to §11 Component Tests |
 | [WIKI-X-010](cross-domain/WIKI-X-010.md) | Reinitializer Uniform-Grid Assumption: Verification Design Constraint |
-| [WIKI-X-011](cross-domain/WIKI-X-011.md) | Divergence Criterion Gap: Single-Phase FFT-PPE (1e-10) vs Two-Phase CSF (1e-2) |
+| [WIKI-X-011](cross-domain/WIKI-X-011.md) | [REFERENCE] Divergence Criterion Gap: Single-Phase FFT-PPE (1e-10) vs Two-Phase CSF (1e-2) |
 | [WIKI-X-012](cross-domain/WIKI-X-012.md) | CCD Metric Instability on Non-Uniform Grids in NS Simulation |
 | [WIKI-X-013](cross-domain/WIKI-X-013.md) | Couette + Explicit CSF: Fundamental Instability in Predictor-Corrector NS |
 | [WIKI-X-014](cross-domain/WIKI-X-014.md) | Non-Uniform Grid + Dynamic Interface: Stability Map and Recommended Defaults |
@@ -189,10 +189,10 @@ their curation notes.
 | [WIKI-X-019](cross-domain/WIKI-X-019.md) | Topology-Freedom vs Metric-Rigidity: ξ/φ Role Separation as Design Principle (SP-B) |
 | [WIKI-X-020](cross-domain/WIKI-X-020.md) | Unified Interface-Tracking & Sharp-Interface PPE Chain: Ridge-Eikonal → GFM/HFE → IIM (CHK-170) |
 | [WIKI-X-021](cross-domain/WIKI-X-021.md) | N-Scaling of the H-01 Mixed-Metric Residual: 128² Parasitic Blow-up (CHK-173) |
-| [WIKI-X-022](cross-domain/WIKI-X-022.md) | N-Robust BF-Consistent Full-Stack Architecture: 10-Method Role Map (BF/CCD/FCCD/CN/AB2/GFM/HFE/IIM/Ridge-Eikonal/FMM) |
+| [WIKI-X-022](cross-domain/WIKI-X-022.md) | [SUPERSEDED] N-Robust BF-Consistent Full-Stack Architecture: 10-Method Role Map |
 | [WIKI-X-023](cross-domain/WIKI-X-023.md) | UCCD6 Integration Design for Incompressible NS (Skew-Symmetric Advection + Selective Hyperviscosity) |
 | [WIKI-X-024](cross-domain/WIKI-X-024.md) | Balanced-Force Design for Two-Phase UCCD6-NS (Surface Tension ↔ Pressure Gradient Consistency is the Primary Driver) |
-| [WIKI-X-025](cross-domain/WIKI-X-025.md) | Time Integration Design for Two-Phase UCCD6-NS (Capillary Wave Resolution, Semi-Implicit ST, BF Projection) |
+| [WIKI-X-025](cross-domain/WIKI-X-025.md) | [REFERENCE] Time Integration Design for Two-Phase UCCD6-NS |
 | [WIKI-X-026](cross-domain/WIKI-X-026.md) | Stiffness-Based Time Integration Policy for Two-Phase UCCD6-NS (When Each Term Forces Implicit Treatment) |
 | [WIKI-X-027](cross-domain/WIKI-X-027.md) | Reinitialization Semantics: Physical Time vs Pseudo Time, φ/ψ Role Separation, and the Three Meanings of Iteration |
 | [WIKI-X-028](cross-domain/WIKI-X-028.md) | Conservative Momentum Form for Two-Phase UCCD6 (∂ₜ(ρu) + ∇·(ρu⊗u) Under Density Jumps) |
@@ -282,9 +282,9 @@ their curation notes.
 |--------|-------|
 | [WIKI-P-001](paper/WIKI-P-001.md) | Paper Narrative Structure: Sections 4-10 Flow Analysis |
 | [WIKI-P-002](paper/WIKI-P-002.md) | Accuracy Summary: Component-Level Precision Map |
-| [WIKI-P-003](paper/WIKI-P-003.md) | Problem Statement: Four Failure Modes and Three-Pillar Solution |
+| [WIKI-P-003](paper/WIKI-P-003.md) | [SUPERSEDED] Problem Statement: Four Failure Modes and Three-Pillar Solution |
 | [WIKI-P-004](paper/WIKI-P-004.md) | Paper Review S1-S11: Findings and Action Items (2026-04-08) |
-| [WIKI-P-005](paper/WIKI-P-005.md) | §10-§12 Verification Architecture: 27 Component + 13 NS Consistency Tests |
+| [WIKI-P-005](paper/WIKI-P-005.md) | [SUPERSEDED] §10-§12 Verification Architecture: 27 Component + 13 NS Consistency Tests |
 | [WIKI-P-006](paper/WIKI-P-006.md) | Paper Review §11–§13: Findings and Action Items (2026-04-11) |
 | [WIKI-P-007](paper/WIKI-P-007.md) | Ch11 Formal Review Corrections: 9 Factual Errors Fixed (2026-04-15) |
 | [WIKI-P-008](paper/WIKI-P-008.md) | Ch11+Ch12 Review Corrections: 14 Findings Fixed (2026-04-16) |
@@ -337,7 +337,7 @@ their curation notes.
 
 | REF-ID | Title |
 |--------|-------|
-| [WIKI-L-001](code/WIKI-L-001.md) | Algorithm Flow: 7-Step Time Integration Loop |
+| [WIKI-L-001](code/WIKI-L-001.md) | [SUPERSEDED] Algorithm Flow: 7-Step Time Integration Loop |
 | [WIKI-L-002](code/WIKI-L-002.md) | CCD/DCCD Differentiation Verification Scripts (Exp 11-1, 11-2, 11-4, 11-17) |
 | [WIKI-L-003](code/WIKI-L-003.md) | Curvature & Hermite Field Extension Scripts (Exp 11-3, 11-7) |
 | [WIKI-L-004](code/WIKI-L-004.md) | Level-Set Transport & Remapping Scripts (Exp 11-6, 11-8) |
@@ -364,7 +364,7 @@ their curation notes.
 | [WIKI-L-025](code/WIKI-L-025.md) | Ridge-Eikonal Non-Uniform Reinitializer (NonUniformFMM, RidgeExtractor, RidgeEikonalReinitializer) |
 | [WIKI-L-026](code/WIKI-L-026.md) | GPU Matrix-Free FVM PPE Roadmap: Variable-Batched PCR and Device-Resident Krylov |
 | [WIKI-L-027](code/WIKI-L-027.md) | Split-Reinit y-flip Invariance: safe_grad Floor in compute_gradient_normal |
-| [WIKI-L-028](code/WIKI-L-028.md) | Implementation: IIM Jump Decomposition + DC Iteration (LU-Free) |
+| [WIKI-L-028](code/WIKI-L-028.md) | [REFERENCE] Implementation: IIM Jump Decomposition + DC Iteration (LU-Free) |
 | [WIKI-L-029](code/WIKI-L-029.md) | FCCD Weight Staleness after In-Place Grid Rebuild: update_weights() Protocol |
 | [WIKI-L-030](code/WIKI-L-030.md) | FCCD face_value Amplification of Non-Smooth Fields: H²q Hazard |
 | [WIKI-L-031](code/WIKI-L-031.md) | FCCDSolver Face-Jet Primitive and Upwind Taylor-HFE State |

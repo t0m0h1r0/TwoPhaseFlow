@@ -2,7 +2,7 @@
 ref_id: WIKI-X-029
 title: "Balanced-Force Operator Consistency for CCD/FCCD: 7 Design Principles, DCCD Safety Rules, and Rhie-Chow Critique"
 domain: cross-domain
-status: STABLE
+status: ACTIVE
 superseded_by: null
 sources:
   - description: Internal research memo — BF/CCD/FCCD design consistency (2026-04-22)
@@ -30,6 +30,12 @@ compiled_at: "2026-04-22"
 ---
 
 # Balanced-Force Operator Consistency for CCD/FCCD
+
+> Curation note (CHK-RA-WIKI-REVIEW-RECUR-001, 2026-05-05):
+> The operator-location and adjointness principles remain active.  The DCCD
+> safety table and Rhie-Chow discussion are retained as bounded historical
+> guardrails, not as permission to route current CLS, PPE, or capillary work
+> through the retired DCCD/Rhie-Chow stack.
 
 ## §1 The Core Principle
 

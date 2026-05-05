@@ -2,8 +2,8 @@
 ref_id: WIKI-P-003
 title: "Problem Statement: Four Failure Modes and Three-Pillar Solution"
 domain: A
-status: ACTIVE
-superseded_by: null
+status: SUPERSEDED
+superseded_by: WIKI-P-015
 sources:
   - path: paper/sections/01_introduction.tex
     git_hash: 7328bf1
@@ -17,6 +17,12 @@ depends_on: []
 compiled_by: KnowledgeArchitect
 compiled_at: 2026-04-07
 ---
+
+> Curation note (CHK-RA-WIKI-REVIEW-RECUR-001, 2026-05-05):
+> This is the initial paper problem statement from the early CCD+CLS+DCCD
+> narrative.  It is no longer the current paper retrieval entry because the
+> governing story is failure-mode-to-contract traceability and projection-native
+> capillary closure.  Use `WIKI-P-015`, `WIKI-P-016`, and `WIKI-X-041` first.
 
 ## Four Fundamental Numerical Difficulties
 

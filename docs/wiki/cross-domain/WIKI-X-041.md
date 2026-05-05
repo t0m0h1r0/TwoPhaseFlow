@@ -69,6 +69,14 @@ recommendations without the curation note at the top of each page.
 | [[WIKI-X-032]] | Eight-phase WENO5/CN algorithm as the current full step. | Paper §11 one-step algorithm and [[WIKI-T-101]]. |
 | [[WIKI-T-013]] | DCCD as the current preferred CLS transport. | FCCD face-flux CLS transport in paper §6 and §11; WENO5 remains a reference comparator only. |
 | [[WIKI-T-058]] | FD Hessian fallback as an admissible production path. | Direct physical-space nonuniform CCD/FCCD derivative contracts; FD result is a historical CHK-159 probe only. |
+| [[WIKI-L-001]] | Seven-step DCCD/Rhie-Chow/DC-ADI loop as implementation contract. | Paper §11 one-step algorithm, [[WIKI-T-101]], and projection-native face-space routing in [[WIKI-X-040]]. |
+| [[WIKI-X-001]] | DCCD parameter modes as cross-algorithm policy. | Retain only pressure-filter prohibition and historical filter taxonomy; active transport/PPE routes through [[WIKI-X-041]] and [[WIKI-T-101]]. |
+| [[WIKI-X-005]] | DC+LU/DCCD/Rhie-Chow verification architecture and old density-ratio limits. | Current verification reading in [[WIKI-X-040]] and V-series experiment cards. |
+| [[WIKI-X-011]] | FFT-PPE single-phase divergence threshold as a transferable two-phase criterion. | V1/current verification reading in [[WIKI-E-050]] and [[WIKI-X-040]]. |
+| [[WIKI-X-022]] | Ten-method R-1.5/R-1 role map as current full-stack architecture. | Projection-native affine jump and pressure-history face acceleration in [[WIKI-X-039]] and [[WIKI-X-040]]. |
+| [[WIKI-L-028]] | IIM jump decomposition plus ADI defect correction as a selectable PPE fallback. | GPU-resident Krylov/preconditioner roadmap in [[WIKI-L-026]] and algebra-preserving GPU policy in [[WIKI-L-038]]. |
+| [[WIKI-P-003]], [[WIKI-P-005]] | Early paper problem/verification maps with DCCD/CN/CSF as the organizing story. | Paper traceability cards [[WIKI-P-015]] and [[WIKI-P-016]]. |
+| [[WIKI-X-025]] | AB2/CN/semi-implicit-ST Level-2 design as production default. | Startup/projection consistency in [[WIKI-T-147]] and current digest [[WIKI-X-040]]. |
 
 ## Retained Negative Knowledge
 
