@@ -1162,7 +1162,7 @@ def test_defect_correction_can_build_fd_iterative_cg_base_solver():
     assert isinstance(solver._ppe_solver.base_solver, PPESolverFDMatrixFree)
     assert solver._ppe_solver.base_solver.iteration_method == "cg"
     assert solver._ppe_solver.base_solver.preconditioner == "jacobi"
-    assert solver._ppe_solver.base_solver.allow_direct_fallback is False
+    assert not hasattr(solver._ppe_solver.base_solver, "_solve_direct_fallback")
 
 
 def test_phase_separated_fccd_ppe_applies_pressure_jump_context():
