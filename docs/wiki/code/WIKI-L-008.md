@@ -1,13 +1,20 @@
 ---
 id: WIKI-L-008
 title: "Library Architecture: Module Hierarchy, Design Patterns, and Dependency Flow"
-status: ACTIVE
+status: REFERENCE
 created: 2026-04-10
 updated: 2026-04-15
-depends_on: [WIKI-L-001, WIKI-X-005]
+superseded_by: WIKI-L-009
+depends_on: [WIKI-L-009, WIKI-X-041]
 ---
 
 # Library Architecture Overview
+
+> Curation note (CHK-RA-WIKI-REVIEW-RECUR-001, 2026-05-05):
+> This is a historical module map.  Several paths and package boundaries
+> predate the current `src/twophase/` organization and should not be copied as
+> implementation policy.  Use `WIKI-L-009`, `WIKI-L-037`, and
+> `docs/01_PROJECT_MAP.md` for current code routing.
 
 ## Module Hierarchy (chapter-aligned, restructured 2026-04-15)
 

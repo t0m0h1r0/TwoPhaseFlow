@@ -80,6 +80,7 @@ recommendations without the curation note at the top of each page.
 | [[WIKI-X-007]] | Scheme-specific CFL constants as proof of capillary benchmark validity. | Capillary energy/mode and resolution contracts in [[WIKI-E-055]] and [[WIKI-E-056]]. |
 | [[WIKI-P-001]], [[WIKI-P-002]], [[WIKI-P-004]], [[WIKI-P-006]] | Early paper narrative, accuracy, and review snapshots as current status. | Current chapter/appendix traceability in [[WIKI-P-015]] and [[WIKI-P-016]]. |
 | [[WIKI-X-037]] | Previous ResearchArchitect wiki atlas as the active retrieval map. | This card, [[WIKI-X-041]], plus recent digest [[WIKI-X-040]]. |
+| [[WIKI-L-008]], [[WIKI-L-014]], [[WIKI-L-015]], [[WIKI-L-022]] | Old code/module maps as current file-path or implementation policy. | Current code interface map [[WIKI-L-009]], backend boundary [[WIKI-L-037]], and projection-native code cards [[WIKI-L-035]]/[[WIKI-L-036]]. |
 
 ## Retained Negative Knowledge
 

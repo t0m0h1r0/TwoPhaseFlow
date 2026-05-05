@@ -344,21 +344,21 @@ their curation notes.
 | [WIKI-L-005](code/WIKI-L-005.md) | PPE Solver Verification Scripts (Exp 11-9, 11-10, 11-11, 11-12, 11-13) |
 | [WIKI-L-006](code/WIKI-L-006.md) | Time Integration Verification Scripts (Exp 11-14, 11-15) |
 | [WIKI-L-007](code/WIKI-L-007.md) | Rhie-Chow & Young-Laplace Pipeline Scripts (Exp 11-5, 11-16) |
-| [WIKI-L-008](code/WIKI-L-008.md) | Library Architecture: Module Hierarchy, Design Patterns, and Dependency Flow |
+| [WIKI-L-008](code/WIKI-L-008.md) | [REFERENCE] Library Architecture: Module Hierarchy, Design Patterns, and Dependency Flow |
 | [WIKI-L-009](code/WIKI-L-009.md) | Interface Contracts: 6 Abstractions Enabling DIP Throughout the Library |
 | [WIKI-L-010](code/WIKI-L-010.md) | PPE Solver Architecture: Factory Registry, Template Method, and Legacy Management |
 | [WIKI-L-011](code/WIKI-L-011.md) | CCD Solver Module: Block-Tridiagonal LU, Multi-Axis Design, and Backend Abstraction |
 | [WIKI-L-012](code/WIKI-L-012.md) | Reinitialization Strategy Pattern: Facade, 4 Strategies, and Shared Operations |
 | [WIKI-L-013](code/WIKI-L-013.md) | SOLID Compliance Audit: Scores, Remaining Violations, and Deferred Items (2026-04-10) |
-| [WIKI-L-014](code/WIKI-L-014.md) | Config-Driven Experiment Framework: ExperimentConfig, NS Pipeline, Unified Runner |
-| [WIKI-L-015](code/WIKI-L-015.md) | CuPy / GPU Backend Unification: xp Dispatch, SciPy Shim, Batched Thomas |
+| [WIKI-L-014](code/WIKI-L-014.md) | [REFERENCE] Config-Driven Experiment Framework: ExperimentConfig, NS Pipeline, Unified Runner |
+| [WIKI-L-015](code/WIKI-L-015.md) | [REFERENCE] CuPy / GPU Backend Unification: xp Dispatch, SciPy Shim, Batched Thomas |
 | [WIKI-L-016](code/WIKI-L-016.md) | CN Advance Strategy Pattern: Viscous Time-Integration Subpackage |
 | [WIKI-L-017](code/WIKI-L-017.md) | GPU Experiment Patterns: sparse_solve_2d, to_float, Grid.meshgrid() N+1 Contract |
 | [WIKI-L-018](code/WIKI-L-018.md) | Library Additions: grid_remap, reconstruction, benchmarks.scaling, diagnostics |
 | [WIKI-L-019](code/WIKI-L-019.md) | config_io.py パースバグ: snap_interval / reinit_eps_scale 欠落 |
 | [WIKI-L-020](code/WIKI-L-020.md) | GPU最適化: PCR Thomas + D2H同期除去 (merge 362dbd3) |
 | [WIKI-L-021](code/WIKI-L-021.md) | matplotlib Figure Titles: Use English Only — Remote Server Lacks CJK Fonts |
-| [WIKI-L-022](code/WIKI-L-022.md) | G^adj FVM-Consistent Pressure Gradient: Implementation in ns_pipeline.py |
+| [WIKI-L-022](code/WIKI-L-022.md) | [REFERENCE] G^adj FVM-Consistent Pressure Gradient: Implementation in ns_pipeline.py |
 | [WIKI-L-023](code/WIKI-L-023.md) | R-1.5 Implementation Roadmap: Minimal FVM-face ψ Gradient (SPEC, code unchanged) |
 | [WIKI-L-024](code/WIKI-L-024.md) | FCCD Library Module: FCCDSolver, FCCDConvectionTerm, FCCDLevelSetAdvection |
 | [WIKI-L-025](code/WIKI-L-025.md) | Ridge-Eikonal Non-Uniform Reinitializer (NonUniformFMM, RidgeExtractor, RidgeEikonalReinitializer) |
