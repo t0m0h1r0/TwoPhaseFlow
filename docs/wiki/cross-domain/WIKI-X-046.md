@@ -31,7 +31,7 @@ Place the material by chapter role:
 
 - Chapters 4--11: theory and design formulation.
 - Chapters 12--13: verification gates and error-budget acceptance.
-- Chapter 14: demonstrations/benchmarks that assume the preceding gates.
+- Chapter 14: integrated benchmarks that assume the preceding gates.
 
 ## Wiki Filter
 
