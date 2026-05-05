@@ -1,4 +1,4 @@
-# Wiki Index — 317 entries
+# Wiki Index — 326 entries
 
 ## Active Retrieval Gate
 
@@ -8,7 +8,7 @@ research findings.  Older cards remain listed for provenance, but cards marked
 SUPERSEDED or REFERENCE must not be used as current algorithm policy without
 their curation notes.
 
-## Theory (143)
+## Theory (149)
 
 | REF-ID | Title |
 |--------|-------|
@@ -155,8 +155,14 @@ their curation notes.
 | [WIKI-T-141](theory/WIKI-T-141.md) | Delta t_disc Covers Residual Explicit Spectra, Not Projection or Viscous CFL |
 | [WIKI-T-142](theory/WIKI-T-142.md) | HFE Is Direct Hermite Steady Extension, Not a Virtual-Time Solver |
 | [WIKI-T-143](theory/WIKI-T-143.md) | Mixed Derivatives Use Sequential 1D CCD, Not a Separate 2D Stencil |
+| [WIKI-T-144](theory/WIKI-T-144.md) | Eikonal Rigidity Requires a Separate Topology Carrier |
+| [WIKI-T-145](theory/WIKI-T-145.md) | Young-Laplace Sign Convention Is a Global Pressure-Jump Contract |
+| [WIKI-T-146](theory/WIKI-T-146.md) | Balanced-Force Failure Modes Are Five Distinct Discrete Mismatches |
+| [WIKI-T-147](theory/WIKI-T-147.md) | IMEX-BDF2 Startup Is a State-Consistency Contract |
+| [WIKI-T-148](theory/WIKI-T-148.md) | Bootstrap Reinitialization Is Pre-Consistency, Not a Convergence Proof |
+| [WIKI-T-149](theory/WIKI-T-149.md) | Periodic CCD Uses Interior Rows Everywhere |
 
-## Cross-Domain (41)
+## Cross-Domain (42)
 
 | REF-ID | Title |
 |--------|-------|
@@ -201,6 +207,7 @@ their curation notes.
 | [WIKI-X-039](cross-domain/WIKI-X-039.md) | Affine Jump Interface Stress: Oriented Young--Laplace Contract and ch14 Root Cause |
 | [WIKI-X-040](cross-domain/WIKI-X-040.md) | Recent Research Insight Digest: 2026-04-24 to 2026-05-03 |
 | [WIKI-X-041](cross-domain/WIKI-X-041.md) | Curated Wiki Retrieval Map: Active Contracts and Retired Knowledge |
+| [WIKI-X-042](cross-domain/WIKI-X-042.md) | Paper Failure Taxonomy Maps Symptoms to Numerical Contracts |
 
 ## Experiment (54)
 
@@ -262,7 +269,7 @@ their curation notes.
 | [WIKI-E-053](experiment/WIKI-E-053.md) | V7 RCA Localizes the Time-Order Limit to the Capillary Jump Band |
 | [WIKI-E-054](experiment/WIKI-E-054.md) | V8/V9/V10 Preserve Future Gates by Design |
 
-## Paper (14)
+## Paper (16)
 
 | REF-ID | Title |
 |--------|-------|
@@ -280,6 +287,8 @@ their curation notes.
 | [WIKI-P-012](paper/WIKI-P-012.md) | 07b_reinitialization: ξ-SDF, FMM, and ε-Widening Sections (CHK-137..139) |
 | [WIKI-P-013](paper/WIKI-P-013.md) | SP-Core Paper Rewrite (§2–§10) — Phase Dashboard for CHK-182..190 |
 | [WIKI-P-014](paper/WIKI-P-014.md) | Verification Grammar: U-Series Certificates, V-Series Identity Tests, and Type-A/B/D |
+| [WIKI-P-015](paper/WIKI-P-015.md) | Chapters 1-13 Use Failure-Mode to Contract Traceability |
+| [WIKI-P-016](paper/WIKI-P-016.md) | Appendices Are Proof Layers for Main-Text Contracts |
 
 ## Meta (29)
 
@@ -327,7 +336,7 @@ their curation notes.
 | [WIKI-L-006](code/WIKI-L-006.md) | Time Integration Verification Scripts (Exp 11-14, 11-15) |
 | [WIKI-L-007](code/WIKI-L-007.md) | Rhie-Chow & Young-Laplace Pipeline Scripts (Exp 11-5, 11-16) |
 | [WIKI-L-008](code/WIKI-L-008.md) | Library Architecture: Module Hierarchy, Design Patterns, and Dependency Flow |
-| [WIKI-L-009](code/WIKI-L-009.md) | Interface Contracts: 5 Abstractions Enabling DIP Throughout the Library |
+| [WIKI-L-009](code/WIKI-L-009.md) | Interface Contracts: 6 Abstractions Enabling DIP Throughout the Library |
 | [WIKI-L-010](code/WIKI-L-010.md) | PPE Solver Architecture: Factory Registry, Template Method, and Legacy Management |
 | [WIKI-L-011](code/WIKI-L-011.md) | CCD Solver Module: Block-Tridiagonal LU, Multi-Axis Design, and Backend Abstraction |
 | [WIKI-L-012](code/WIKI-L-012.md) | Reinitialization Strategy Pattern: Facade, 4 Strategies, and Shared Operations |
