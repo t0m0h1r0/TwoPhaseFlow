@@ -1400,8 +1400,8 @@ def test_affine_jump_pressure_stage_stores_history_faces():
     np.testing.assert_allclose(state.pressure_correction_face_components[1], -3.0)
 
 
-def test_affine_jump_pressure_history_faces_reuse_corrector_cochain():
-    """Affine IPC history stores the same face cochain used by correction."""
+def test_affine_jump_pressure_history_faces_store_full_cochain():
+    """Affine IPC history stores full cochain and corrects by its increment."""
     from twophase.simulation.ns_step_services import solve_ns_pressure_stage
     from twophase.simulation.ns_step_state import NSStepState
 
@@ -1411,6 +1411,10 @@ def test_affine_jump_pressure_history_faces_reuse_corrector_cochain():
     class AffineFluxRecorder:
         def divergence(self, components):
             return np.zeros(shape)
+
+        def divergence_from_faces(self, face_components):
+            self.divergence_faces = [np.array(component, copy=True) for component in face_components]
+            return face_components[0] + face_components[1]
 
         def pressure_fluxes(self, pressure, rho, **kwargs):
             self.pressure = np.array(pressure, copy=True)
@@ -1422,6 +1426,7 @@ def test_affine_jump_pressure_history_faces_reuse_corrector_cochain():
 
     class JumpPressureSolver:
         def solve(self, rhs, rho, dt=0.0, p_init=None):
+            self.rhs = np.array(rhs, copy=True)
             self.last_base_pressure = np.full_like(rhs, 4.0)
             return np.full_like(rhs, 9.0)
 
@@ -1470,12 +1475,13 @@ def test_affine_jump_pressure_history_faces_reuse_corrector_cochain():
         },
     )()
     div_op = AffineFluxRecorder()
+    ppe_solver = JumpPressureSolver()
 
     state, _, _ = solve_ns_pressure_stage(
         state,
         backend=backend,
         div_op=div_op,
-        ppe_solver=JumpPressureSolver(),
+        ppe_solver=ppe_solver,
         p_prev_dev=None,
         surface_tension_scheme="pressure_jump",
         face_native_predictor_state=True,
@@ -1483,10 +1489,13 @@ def test_affine_jump_pressure_history_faces_reuse_corrector_cochain():
     )
 
     np.testing.assert_allclose(div_op.pressure, 9.0)
+    np.testing.assert_allclose(div_op.divergence_faces[0], 5.0)
+    np.testing.assert_allclose(div_op.divergence_faces[1], 7.0)
+    np.testing.assert_allclose(ppe_solver.rhs, 12.0)
     np.testing.assert_allclose(state.pressure, 14.0)
     np.testing.assert_allclose(state.pressure_base, 4.0)
-    np.testing.assert_allclose(state.pressure_correction_face_components[0], 2.0)
-    np.testing.assert_allclose(state.pressure_correction_face_components[1], -3.0)
+    np.testing.assert_allclose(state.pressure_correction_face_components[0], -3.0)
+    np.testing.assert_allclose(state.pressure_correction_face_components[1], -10.0)
     np.testing.assert_allclose(state.pressure_accel_face_components[0], 2.0)
     np.testing.assert_allclose(state.pressure_accel_face_components[1], -3.0)
 

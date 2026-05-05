@@ -778,11 +778,12 @@ def solve_ns_pressure_stage(
     """Solve IPC PPE and prepare scalar/face pressure history.
 
     A3 mapping: for affine pressure jumps, the face-native path treats the
-    face pressure cochain as the pressure-history state.  The scalar pressure
-    representative is not accumulated because ``G_Γ(p;B)=G(p)-B`` is affine,
-    not linear, in the jump data; accumulating scalar representatives would
-    repeatedly add the jump gauge while the velocity corrector uses one
-    step-local cochain.
+    full face pressure cochain as the pressure-history state.  Because the
+    predictor already subtracts ``a_p^n=A_f(G_f p^n-B_f(j^n))``, the PPE
+    solves the next full cochain by adding ``D_f a_p^n`` to its source, while
+    the corrector applies only the cochain increment
+    ``a_p^{n+1}-a_p^n``.  This is the face-space form of the IPC jump
+    contract and avoids solving a pressure increment with a full jump.
     """
     xp = backend.xp
     projection_dt = state.projection_dt if state.projection_dt is not None else state.dt
@@ -856,18 +857,33 @@ def solve_ns_pressure_stage(
             ),
         )
 
-    state.pressure_increment = ppe_solver.solve(
-        rhs,
-        state.rho,
-        dt=projection_dt,
-        p_init=None,
-    )
     uses_affine_face_history = (
         face_native_predictor_state
         and getattr(ppe_runtime, "ppe_interface_coupling_scheme", "none")
         == "affine_jump"
         and hasattr(div_op, "pressure_fluxes")
         and hasattr(div_op, "reconstruct_nodes")
+    )
+    previous_pressure_accel_faces = None
+    if (
+        uses_affine_face_history
+        and state.previous_pressure_accel_face_components is not None
+    ):
+        if not hasattr(div_op, "divergence_from_faces"):
+            raise RuntimeError(
+                "affine_jump IPC pressure history requires face divergence"
+            )
+        previous_pressure_accel_faces = [
+            xp.asarray(component)
+            for component in state.previous_pressure_accel_face_components
+        ]
+        rhs = rhs + div_op.divergence_from_faces(previous_pressure_accel_faces)
+
+    state.pressure_increment = ppe_solver.solve(
+        rhs,
+        state.rho,
+        dt=projection_dt,
+        p_init=None,
     )
     base_increment = getattr(ppe_solver, "last_base_pressure", state.pressure_increment)
     previous_base = (
@@ -910,14 +926,24 @@ def solve_ns_pressure_stage(
                 transport_variational_temporaries
             ),
         )
-        state.pressure_correction_face_components = div_op.pressure_fluxes(
+        full_pressure_faces = div_op.pressure_fluxes(
             state.pressure_increment,
             state.rho,
             **pressure_flux_kwargs,
         )
+        if previous_pressure_accel_faces is None:
+            state.pressure_correction_face_components = [
+                xp.asarray(component) for component in full_pressure_faces
+            ]
+        else:
+            state.pressure_correction_face_components = [
+                xp.asarray(full_face) - previous_face
+                for full_face, previous_face in zip(
+                    full_pressure_faces, previous_pressure_accel_faces
+                )
+            ]
         state.pressure_accel_face_components = [
-            xp.asarray(component)
-            for component in state.pressure_correction_face_components
+            xp.asarray(component) for component in full_pressure_faces
         ]
     next_p_prev_dev = xp.copy(state.pressure)
     next_p_prev = (
