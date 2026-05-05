@@ -1,4 +1,12 @@
-# Wiki Index — 315 entries
+# Wiki Index — 317 entries
+
+## Active Retrieval Gate
+
+Start with [WIKI-X-041](cross-domain/WIKI-X-041.md) for the curated active
+contract map, then [WIKI-X-040](cross-domain/WIKI-X-040.md) for recent
+research findings.  Older cards remain listed for provenance, but cards marked
+SUPERSEDED or REFERENCE must not be used as current algorithm policy without
+their curation notes.
 
 ## Theory (143)
 
@@ -61,7 +69,7 @@
 | [WIKI-T-055](theory/WIKI-T-055.md) | FCCD Advection Operator: Option B Flux-Divergence and Option C Node-Output (Hermite Reconstructor) |
 | [WIKI-T-056](theory/WIKI-T-056.md) | FCCD Wall BC Option IV: Dirichlet Fields (No-Slip Velocity) via Ghost Mirror with Sign Flip |
 | [WIKI-T-057](theory/WIKI-T-057.md) | σ_eff and ε_local Spatial Scaling for Ridge-Eikonal on Non-Uniform Grids |
-| [WIKI-T-058](theory/WIKI-T-058.md) | Physical-Space Hessian for Ridge Detection; Direct Non-Uniform CCD vs FD Fallback |
+| [WIKI-T-058](theory/WIKI-T-058.md) | Physical-Space Hessian for Ridge Detection; Direct Non-Uniform CCD and Historical FD Probe |
 | [WIKI-T-059](theory/WIKI-T-059.md) | Non-Uniform Fast Marching Method (Physical-Space Eikonal Quadratic + Seeding) |
 | [WIKI-T-060](theory/WIKI-T-060.md) | GPU-Native FVM Projection: Face-Local Matrix-Free Operator and Variable-Batched Line Preconditioner |
 | [WIKI-T-061](theory/WIKI-T-061.md) | Upwind⊕CCD Pedagogical Foundation: Von Neumann Stability and Dissipative Hybrid Derivation |
@@ -148,7 +156,7 @@
 | [WIKI-T-142](theory/WIKI-T-142.md) | HFE Is Direct Hermite Steady Extension, Not a Virtual-Time Solver |
 | [WIKI-T-143](theory/WIKI-T-143.md) | Mixed Derivatives Use Sequential 1D CCD, Not a Separate 2D Stencil |
 
-## Cross-Domain (40)
+## Cross-Domain (41)
 
 | REF-ID | Title |
 |--------|-------|
@@ -192,6 +200,7 @@
 | [WIKI-X-038](cross-domain/WIKI-X-038.md) | Theory-First CFL and Time-Integration Policy: SSPRK3 Scope, AB2 Risk, and IMEX-BDF2 Production Path |
 | [WIKI-X-039](cross-domain/WIKI-X-039.md) | Affine Jump Interface Stress: Oriented Young--Laplace Contract and ch14 Root Cause |
 | [WIKI-X-040](cross-domain/WIKI-X-040.md) | Recent Research Insight Digest: 2026-04-24 to 2026-05-03 |
+| [WIKI-X-041](cross-domain/WIKI-X-041.md) | Curated Wiki Retrieval Map: Active Contracts and Retired Knowledge |
 
 ## Experiment (54)
 
@@ -227,7 +236,7 @@
 | [WIKI-E-028](experiment/WIKI-E-028.md) | Eikonal/ZSP/ξ-SDF/FMM/ε-Widening: Prosperetti Benchmark Results (CHK-136..139) |
 
 | [WIKI-E-029](experiment/WIKI-E-029.md) | exp13_17/16: 物理的水-空気系毛細管波（GFM, ρ=833:1） |
-| [WIKI-E-030](experiment/WIKI-E-030.md) | G^adj 後期ブローアップ: α=1.5 壁面BC 気泡 t≈12.6 の未解明不安定性 [OPEN] |
+| [WIKI-E-030](experiment/WIKI-E-030.md) | G^adj 後期ブローアップ: H-01 BF残差主因を確認した解決済み診断 |
 | [WIKI-E-031](experiment/WIKI-E-031.md) | ch13 Static α=2 Rising-Bubble Diagnosis: Hypothesis Matrix and Verdicts (RESOLVED) |
 | [WIKI-E-032](experiment/WIKI-E-032.md) | ch13 Projection-Closure Trial Synthesis: Failed Hypotheses, Accepted Cause, Clean-Main Validation |
 | [WIKI-E-033](experiment/WIKI-E-033.md) | Negative Knowledge Guards in Chapters 12--13 |

@@ -2,8 +2,8 @@
 ref_id: WIKI-X-020
 title: "Unified Interface-Tracking & Sharp-Interface PPE Chain: Ridge-Eikonal → GFM/HFE → IIM"
 domain: X
-status: PROPOSED
-superseded_by: null
+status: SUPERSEDED
+superseded_by: WIKI-X-041
 sources:
   - path: "docs/memo/short_paper/SP-B_ridge_eikonal_hybrid.md"
     description: "Topological freedom via ξ_ridge, Eikonal recovery via FMM (ridge definition, uniqueness)"
@@ -17,7 +17,7 @@ depends_on:
   - "[[WIKI-T-047]]: Gaussian-ξ Ridge Interface Representation"
   - "[[WIKI-T-048]]: Ridge-Eikonal Hybrid + Uniqueness"
   - "[[WIKI-T-057]]: σ_eff / ε_local Spatial Scaling (Non-uniform)"
-  - "[[WIKI-T-058]]: Physical-Space Hessian (Approach B FD fallback)"
+  - "[[WIKI-T-058]]: Physical-Space Hessian (Approach B historical FD probe)"
   - "[[WIKI-X-014]]: Non-Uniform Grid + Dynamic Interface Configuration"
   - "[[WIKI-X-019]]: Topology/Metric Role Separation"
 consumers:
@@ -31,6 +31,13 @@ chk: CHK-170 (proposed)
 ---
 
 # Unified Interface-Tracking & Sharp-Interface PPE Chain
+
+> Curation note (CHK-RA-WIKI-CURATION-001, 2026-05-05):
+> This proposed chain is retained as historical design context.  It depends on
+> the older `WIKI-X-014` deployment map and `WIKI-T-058` Approach-B FD Hessian
+> probe, both retired from active retrieval.  Current sharp-interface pressure
+> work should start from [[WIKI-X-039]], [[WIKI-X-040]], [[WIKI-X-041]], and
+> the projection-native affine-jump/face-space contract.
 
 ## Executive Summary
 
@@ -402,4 +409,3 @@ On **non-uniform interface-fitted grids**, each layer gains precision:
 The **cascade** ensures that interface-tracking gains (better φ) propagate to curvature accuracy (κ) and ultimately to pressure precision (p), enabling stable simulation of high-σ capillary flows (e.g., water-air, We ~ 0.1).
 
 **CHK-160 validation** (ch13_04 capillary-wave full-stack PASS) provides empirical evidence that the chain works in practice. **CHK-170** (proposed) formalizes the integration theory and validates the joint non-uniform + IIM + Ridge-Eikonal configuration.
-

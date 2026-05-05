@@ -28,6 +28,12 @@ compiled_at: 2026-04-16
 
 # Ch12 Non-Uniform Dynamic Gate (exp12_19--22)
 
+> Curation note (CHK-RA-WIKI-CURATION-001, 2026-05-05):
+> The `rho <= 20` density-ratio limit below is a bound for this older
+> nonuniform-grid gate, not a global limit for the current projection-native /
+> affine-history §14 stack.  Use [[WIKI-X-040]] and [[WIKI-X-041]] for the
+> current density-ratio retrieval path.
+
 Gate criteria for all experiments: no numerical blow-up, $|M-M_0|/|M_0| \le 10^{-2}$,
 $\max|u| \le 10^3$.
 

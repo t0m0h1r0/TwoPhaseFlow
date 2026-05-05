@@ -2,8 +2,8 @@
 ref_id: WIKI-X-032
 title: "Complete 1-Step Time Integration for CLS + Variable-Density CCD NS: Phase Ordering, Geometry Lag Policy, and Operator Splitting Safety"
 domain: cross-domain
-status: STABLE
-superseded_by: null
+status: SUPERSEDED
+superseded_by: WIKI-X-041
 sources:
   - description: Internal research memo — advection, CLS, body force, time integration for two-phase CCD/FCCD NS (2026-04-22)
 depends_on:
@@ -23,6 +23,14 @@ compiled_at: "2026-04-22"
 ---
 
 # Complete 1-Step Time Integration for CLS + Variable-Density CCD NS
+
+> Curation note (CHK-RA-WIKI-CURATION-001, 2026-05-05):
+> This card is retained as a 2026-04-22 design memo.  Its WENO5 Stage-A
+> transport, CN-viscous wording, and eight-phase roadmap are not the current
+> paper algorithm.  Use paper §11, [[WIKI-T-101]], [[WIKI-X-040]], and
+> [[WIKI-X-041]] for the active FCCD face-flux CLS transport, IMEX-BDF2 /
+> defect-corrected stress path, projection-native face closure, and affine
+> pressure-history contract.
 
 ## §1 Phase Ordering Rationale: Interface-First
 

@@ -11,17 +11,25 @@ depends_on:
   - "[[WIKI-X-028]]: Conservative Momentum Form for Variable-Density Two-Phase NS"
   - "[[WIKI-X-029]]: BF Operator Consistency Guide"
   - "[[WIKI-X-030]]: Viscous Term Design Guide"
-  - "[[WIKI-T-013]]: WENO5 vs DCCD: Scheme Selection Benchmarks"
+  - "[[WIKI-T-088]]: FCCD Telescoping Conservation"
+  - "[[WIKI-T-101]]: CLS Transport Uses Projected Velocity"
   - "[[WIKI-T-055]]: FCCD Conservative Flux-Divergence Advection"
 consumers:
   - "[[WIKI-X-032]]: Complete 8-Phase NS+CLS Algorithm"
   - "[[SP-L]]: Advection, CLS, body force, time integration short paper"
-tags: [advection, conservative_form, momentum_flux, velocity_pppe_consistency, scheme_selection, weno, ccd, cfl, dccd, two_phase, design_guide]
+tags: [advection, conservative_form, momentum_flux, velocity_ppe_consistency, scheme_selection, fccd, uccd6, ccd, cfl, dccd, two_phase, design_guide]
 compiled_by: ResearchArchitect
 compiled_at: "2026-04-22"
 ---
 
 # Advection Design Guide for CCD/FCCD Two-Phase NS
+
+> Curation note (CHK-RA-WIKI-CURATION-001, 2026-05-05):
+> The scheme-selection tables have been refreshed from the older WENO5/DCCD
+> design memo to the current paper contract.  CLS transport is FCCD face-flux
+> transport with projected face velocity; momentum transport is conservative
+> flux form with UCCD6/FCCD-family operators where regularity allows.  WENO5 is
+> retained only as a reference/legacy comparator.
 
 ## §1 Conservative vs Non-Conservative Form: Why (u·∇)u Fails
 
@@ -95,9 +103,9 @@ In an explicit (or semi-implicit with explicit advection) scheme:
 
 | Variable | Field character | Recommended scheme | Rationale |
 |----------|----------------|-------------------|-----------|
-| $\psi$ (CLS) | $C^0$ steep profile | **WENO5** everywhere | Monotone near interface; CCD invalid |
-| $u, v$ (momentum, bulk) | $C^\infty$ smooth bulk | **CCD** (bulk) + WENO/upwind (band) | High-order smooth; low-order at interface band |
-| $u, v$ (momentum, interface band) | $C^0$ (velocity continuous) | **WENO5** or 2nd upwind | Interface-crossing CCD produces oscillations |
+| $\psi$ (CLS) | steep bounded phase field | **FCCD face-flux transport** | Current paper path; conservative face flux with projected velocity |
+| $u, v$ (momentum, bulk) | $C^\infty$ smooth bulk | **UCCD6/FCCD-family conservative flux** | High-order smooth-field transport without pressure-path contamination |
+| $u, v$ (momentum, interface band) | low-regularity one-sided fields | **phase-aware / one-sided conservative flux** | Avoid interface-crossing compact stencils on kinked data |
 | $\phi$ (reinit PDE) | signed distance | **WENO-HJ** (Hamilton-Jacobi) | Eikonal equation; standard HJ-WENO appropriate |
 | $p$ (pressure) | smooth bulk, jump at $\Gamma$ | Face-flux (FCCD) + GFM/IIM jump | BF path; not CCD |
 | $\mu$, $\rho$ | jump at $\Gamma$ | Low-order conservative, no CCD | Jump fields; CCD amplifies discontinuity |
@@ -106,8 +114,8 @@ In an explicit (or semi-implicit with explicit advection) scheme:
 
 | Variable | Interface band rule |
 |----------|---------------------|
-| $\psi$ | WENO5 throughout (never CCD) |
-| $u, v$ | Fallback to 2nd-order one-sided or WENO5; band detection same as viscous Layer A (WIKI-X-030 §2) |
+| $\psi$ | FCCD face-flux transport; clamp/mass correction handles boundedness after the conservative flux step |
+| $u, v$ | Phase-aware or one-sided conservative flux; do not cross the interface with a smooth compact stencil |
 | $\phi$ (transport for geometry only) | HJ-WENO; narrow-band only |
 
 ---
@@ -140,7 +148,7 @@ Low dispersion error reduces phase error in the momentum transport, especially f
 
 $$\Delta t \leq C_{\rm CFL}\,\frac{h_{\rm min}}{u_{\rm max}}$$
 
-where $h_{\rm min}$ is the **minimum** cell size in the domain and $u_{\rm max}$ is the maximum velocity magnitude. For typical explicit advection, $C_{\rm CFL} = 0.5$ (WENO5) or $C_{\rm CFL} = 0.3$ (CCD with compact stencil).
+where $h_{\rm min}$ is the **minimum** cell size in the domain and $u_{\rm max}$ is the maximum velocity magnitude. For current explicit FCCD/UCCD-family transport, treat the constant as a measured scheme-specific gate rather than importing the older WENO5/DCCD table.
 
 ### Non-uniform grid: h_min at interface
 
@@ -174,8 +182,8 @@ Rule: DCCD for advection is a numerical stabilizer, not a physical model. If app
 
 | Sub-system | Operator | Scheme |
 |-----------|----------|--------|
-| **CLS transport** ($\psi$) | Flux divergence, TVD-RK3 | WENO5 face flux |
-| **Momentum advection** ($\mathbf{u}$) | Flux divergence | CCD (bulk) + WENO/upwind (band) |
+| **CLS transport** ($\psi$) | Flux divergence, TVD-RK3 | FCCD face flux |
+| **Momentum advection** ($\mathbf{u}$) | Flux divergence | UCCD6/FCCD-family bulk + phase-aware band handling |
 | **Viscous term** | Conservative Layer A/B/C | CCD (bulk) + 2nd (band) |
 | **Pressure-BF sub-system** | Face-flux PPE + corrector | FCCD or 2nd face-flux |
 
