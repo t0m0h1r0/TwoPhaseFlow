@@ -40,7 +40,7 @@ from twophase.simulation.velocity_reprojector import (
     ConsistentIIMReprojector,
     VariableDensityReprojector,
 )
-from twophase.ppe.interfaces import IPPESolver
+from twophase.ppe.interfaces import IPPESolver, MatrixAssemblyUnavailable
 
 
 N = 16
@@ -1957,41 +1957,80 @@ class _ArrayBackend:
         return np.asarray(arr)
 
 
-class _RecordingReprojector:
-    def __init__(self):
-        self.calls = 0
-
-    def reproject(self, psi, u, v, ppe_solver, ccd, backend, rho_l=None, rho_g=None):
-        self.calls += 1
-        return u + 1.0, v + 1.0
-
-
-def test_consistent_iim_reprojector_uses_ppe_matrix_contract():
-    """Matrix-free PPE fallback is driven by IPPESolver.get_matrix contract."""
+def test_consistent_iim_reprojector_fails_closed_without_matrix_contract():
+    """IIM reprojection must not silently switch to a base projection scheme."""
     reprojector = ConsistentIIMReprojector(
         reproj_iim=object(),
         reconstruct_base=object(),
     )
-    delegate = _RecordingReprojector()
-    reprojector._delegate = delegate
 
     psi = np.zeros((4, 4))
     u = np.zeros_like(psi)
     v = np.zeros_like(psi)
-    u_out, v_out = reprojector.reproject(
-        psi,
-        u,
-        v,
-        _NoMatrixPPESolver(),
-        ccd=None,
-        backend=_ArrayBackend(),
-        rho_l=2.0,
-        rho_g=1.0,
-    )
+    with pytest.raises(MatrixAssemblyUnavailable, match="consistent_iim requires"):
+        reprojector.reproject(
+            psi,
+            u,
+            v,
+            _NoMatrixPPESolver(),
+            ccd=None,
+            backend=_ArrayBackend(),
+            rho_l=2.0,
+            rho_g=1.0,
+        )
 
-    assert delegate.calls == 1
-    assert np.all(u_out == 1.0)
-    assert np.all(v_out == 1.0)
+
+class _IdentityPPESolver(IPPESolver):
+    def get_matrix(self, rho):
+        return object()
+
+    def solve(self, rhs, rho, dt: float = 0.0, p_init=None):
+        return np.asarray(rhs)
+
+
+class _IdentityCCD:
+    def first_derivative(self, field, axis):
+        return np.asarray(field)
+
+
+class _PsiIdentity:
+    def phi_from_psi(self, psi):
+        return np.asarray(psi)
+
+
+class _RejectingIIMCorrection:
+    def find_interface_crossings(self, phi):
+        return [object()]
+
+    def compute_correction(self, *args, **kwargs):
+        rho = np.asarray(args[4])
+        return np.ones(rho.size)
+
+
+def test_consistent_iim_reprojector_rejects_instead_of_returning_base():
+    """Rejected IIM candidates are failures, not permission to use base projection."""
+    reprojector = ConsistentIIMReprojector(
+        reproj_iim=_RejectingIIMCorrection(),
+        reconstruct_base=_PsiIdentity(),
+    )
+    psi = np.zeros((4, 4))
+    u = np.zeros_like(psi)
+    v = np.zeros_like(psi)
+
+    with pytest.raises(RuntimeError, match="rejected all IIM correction candidates"):
+        reprojector.reproject(
+            psi,
+            u,
+            v,
+            _IdentityPPESolver(),
+            ccd=_IdentityCCD(),
+            backend=_ArrayBackend(),
+            rho_l=2.0,
+            rho_g=1.0,
+        )
+
+    assert reprojector.stats["iim_rejects"] == 1
+    assert reprojector.stats["iim_fails"] == 0
 
 
 class _ContextRecordingPPESolver(IPPESolver):
