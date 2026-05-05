@@ -28,7 +28,7 @@ Part 2 で導入した数値要素を 1 つの Navier--Stokes 計算手順とし
 タイムステップ制御は §~\ref{sec:dccd_params}，§~\ref{sec:bootstrap}，
 §~\ref{sec:algo_timestep} にまとめる．
 最後に，標準経路の検証済み構成要素を
-シャープ界面極限へ集約する研究構成として，
+シャープ界面極限へ集約する発展的構成として，
 純 FCCD DNS（§~\ref{sec:pure_fccd_dns}）の位置付けと検証範囲を述べる．
 
 % ═════════════════════════════════════════════════════════════════════════════
@@ -354,7 +354,7 @@ $A_L$ は $A_H$ と同じ $\mu,\rho$・境界制約・界面帯を共有し，
 \noindent\textbf{注意（移動界面 $+$ 表面張力での発散）：}
 表面張力あり（$\sigma > 0$）の移動界面では，本段の $-\bnabla p^n$ 項が
 界面の圧力ジャンプ $j_{gl}=-\sigma\kappa_{lg}$ を横断して CCD ステンシル上で
-$\Ord{1}$ の打ち切り誤差を生じ，短時間で発散し得る
+$\Ord{1}$ の打ち切り誤差を生じ，有限時間で不安定化し得る
 （§~\ref{sec:galilean_offset}，§~\ref{sec:interface_crossing}）．
 この場合は分相 PPE 解法（§~\ref{sec:interface_crossing}）と
 HFE による相内延長（§~\ref{sec:hfe}）に加え，
