@@ -284,12 +284,27 @@ def test_ch14_static_droplet_yaml_uses_gpu_static_route():
     assert cfg.grid.bc_type == "periodic"
     assert cfg.grid.grid_rebuild_freq == 1
     assert cfg.run.T_final == pytest.approx(1.0)
-    assert cfg.run.dt_fixed == pytest.approx(0.001235)
+    assert cfg.run.dt_fixed is None
+    assert cfg.run.cfl_policy == "theory_multiplier"
+    assert cfg.run.cfl == pytest.approx(1.0)
     assert cfg.run.interface_tracking_enabled is False
     assert cfg.run.interface_tracking_method == "none"
     assert cfg.run.convection_time_scheme == "ab2"
     assert cfg.run.viscous_time_scheme == "forward_euler"
     assert cfg.run.ppe_defect_correction is True
+
+
+def test_ch14_canonical_yamls_use_theory_cfl_not_fixed_dt():
+    config_dir = (
+        Path(__file__).resolve().parents[3]
+        / "experiment/ch14/config"
+    )
+
+    for path in sorted(config_dir.glob("*.yaml")):
+        cfg = ExperimentConfig.from_yaml(path)
+        assert cfg.run.dt_fixed is None, path.name
+        assert cfg.run.cfl_policy == "theory_multiplier", path.name
+        assert cfg.run.cfl > 0.0, path.name
 
 
 def test_ch14_rising_bubble_yaml_loads_execution_stack():
