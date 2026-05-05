@@ -2,7 +2,7 @@
 ref_id: WIKI-X-029
 title: "Balanced-Force Operator Consistency for CCD/FCCD: 7 Design Principles, DCCD Safety Rules, and Rhie-Chow Critique"
 domain: cross-domain
-status: STABLE
+status: ACTIVE
 superseded_by: null
 sources:
   - description: Internal research memo — BF/CCD/FCCD design consistency (2026-04-22)
@@ -12,7 +12,7 @@ depends_on:
   - "[[WIKI-T-004]]: Balanced-Force Condition: Operator Consistency Principle"
   - "[[WIKI-T-046]]: FCCD: Face-Centered Upwind Combined Compact Difference"
   - "[[WIKI-X-024]]: Balanced-Force Design for Two-Phase UCCD6-NS"
-  - "[[WIKI-X-022]]: N-Robust BF-Consistent Full-Stack Architecture"
+  - "[[WIKI-X-041]]: Active retrieval gate and retired-knowledge map"
   - "[[WIKI-T-017]]: FVM Reference Methods: PPE Face Coefficients, CSF Model, Rhie-Chow"
   - "[[WIKI-T-025]]: C/RC (CCD-Enhanced Rhie-Chow)"
   - "[[WIKI-T-021]]: IIM-CCD"
@@ -30,6 +30,12 @@ compiled_at: "2026-04-22"
 ---
 
 # Balanced-Force Operator Consistency for CCD/FCCD
+
+> Curation note (CHK-RA-WIKI-REVIEW-RECUR-001, 2026-05-05):
+> The operator-location and adjointness principles remain active.  The DCCD
+> safety table and Rhie-Chow discussion are retained as bounded historical
+> guardrails, not as permission to route current CLS, PPE, or capillary work
+> through the retired DCCD/Rhie-Chow stack.
 
 ## §1 The Core Principle
 
@@ -240,7 +246,7 @@ Embed the jump directly into the PPE via GFM/IIM jump conditions. The pressure g
 | [[WIKI-T-046]] | FCCD definition and face-gradient derivation |
 | [[WIKI-T-063]] | FCCD PPE adjoint structure, defect correction, IIM/GFM integration |
 | [[WIKI-X-024]] | BF design applied to UCCD6 momentum convection |
-| [[WIKI-X-022]] | Full-stack architecture with 10-method role map |
+| [[WIKI-X-022]] | Historical full-stack role map; read through [[WIKI-X-041]] curation note |
 | [[WIKI-T-017]] | FVM PPE face coefficients and Rhie–Chow baseline |
 | [[WIKI-T-025]] | C/RC bracket correction (high-order RC variant) |
 | [[WIKI-T-021]] | IIM-CCD for sharp pressure jump |

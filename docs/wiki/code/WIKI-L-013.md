@@ -1,13 +1,19 @@
 ---
 id: WIKI-L-013
 title: "SOLID Compliance Audit: Scores, Remaining Violations, and Deferred Items"
-status: ACTIVE
+status: REFERENCE
 created: 2026-04-10
 updated: 2026-04-10
-depends_on: [WIKI-L-008, WIKI-L-009, WIKI-L-010, WIKI-L-012]
+superseded_by: WIKI-L-009
+depends_on: [WIKI-L-009, WIKI-X-041]
 ---
 
 # SOLID Compliance Audit Results
+
+> Curation note (CHK-RA-WIKI-REVIEW-RECUR-001, 2026-05-05):
+> This is an April 10 audit snapshot.  Its scores, path names, and deferred
+> items are not current code-review authority after later source/test/wiki
+> refactors.  Retain it as historical architecture evidence only.
 
 ## Overall Score: 9.2/10 (after 2nd-pass refactoring)
 

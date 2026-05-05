@@ -3,7 +3,7 @@ id: WIKI-L-017
 title: "GPU Experiment Patterns: sparse_solve_2d, to_float, Grid.meshgrid() N+1 Contract"
 status: ACTIVE
 created: 2026-04-15
-depends_on: [WIKI-L-015]
+depends_on: [WIKI-L-037, WIKI-L-039]
 sources:
   - path: "src/twophase/tools/experiment/gpu.py"
     description: "GPU-friendly helpers for experiment scripts"
@@ -14,6 +14,11 @@ sources:
 ---
 
 # GPU Experiment Patterns
+
+> Curation note (CHK-RA-WIKI-REVIEW-RECUR-001, 2026-05-05):
+> The experiment-side GPU patterns remain useful, but the parent GPU card
+> `WIKI-L-015` is historical.  For current backend boundaries and profiling
+> probe hygiene, read `WIKI-L-037` and `WIKI-L-039`.
 
 [[WIKI-L-015]] covers the production-side GPU unification (`Backend`, `xp`
 dispatch, SciPy shim). This entry documents the **experiment-side** patterns

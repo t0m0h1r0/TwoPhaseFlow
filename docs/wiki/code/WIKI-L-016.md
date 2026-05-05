@@ -1,12 +1,18 @@
 ---
 id: WIKI-L-016
 title: "CN Advance Strategy Pattern: Viscous Time-Integration Subpackage"
-status: ACTIVE
+status: REFERENCE
 created: 2026-04-15
-depends_on: [WIKI-T-033, WIKI-L-008, WIKI-L-001]
+superseded_by: WIKI-T-147
+depends_on: [WIKI-T-147, WIKI-X-038]
 ---
 
 # CN Advance Strategy Pattern
+
+> Curation note (CHK-RA-WIKI-REVIEW-RECUR-001, 2026-05-05):
+> This CN strategy card is a historical viscous-time-integration implementation
+> snapshot.  It must not be used as the current production startup or
+> projection-timing contract; use `WIKI-T-147` and `WIKI-X-038` first.
 
 ## Location
 

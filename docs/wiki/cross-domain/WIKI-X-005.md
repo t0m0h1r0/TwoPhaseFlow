@@ -2,8 +2,8 @@
 ref_id: WIKI-X-005
 title: "Architectural Decisions: PPE Strategy, Solver Integration, and Verification Hierarchy"
 domain: X
-status: ACTIVE
-superseded_by: null
+status: SUPERSEDED
+superseded_by: WIKI-X-041
 sources:
   - path: "docs/memo/改稿_PPE求解の欠陥補正法への転換.md"
     git_hash: e62cd50
@@ -33,6 +33,12 @@ compiled_by: KnowledgeArchitect
 verified_by: null
 compiled_at: 2026-04-08
 ---
+
+> Curation note (CHK-RA-WIKI-REVIEW-RECUR-001, 2026-05-05):
+> This architecture decision card is retained as provenance for the old
+> DC+LU/DCCD/Rhie-Chow planning stage.  Its density-ratio limits, 7-step loop,
+> and split-PPE future-work framing are superseded by the active retrieval map
+> (`WIKI-X-041`) and recent projection-native digest (`WIKI-X-040`).
 
 ## PPE Solver Strategy Decision
 

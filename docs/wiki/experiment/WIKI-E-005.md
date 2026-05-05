@@ -11,12 +11,18 @@ sources:
     description: "AB2 with Euler startup temporal accuracy"
 consumers:
   - domain: L
-    usage: "Validates time stepping in algorithm loop ([[WIKI-L-001]])"
+    usage: "Validates isolated time integrator order; do not infer the retired WIKI-L-001 loop"
 depends_on:
-  - "[[WIKI-L-001]]"
+  - "[[WIKI-X-038]]"
+  - "[[WIKI-T-147]]"
 compiled_by: KnowledgeArchitect
 compiled_at: 2026-04-08
 ---
+
+> Curation note (CHK-RA-WIKI-REVIEW-RECUR-001, 2026-05-05):
+> The component results remain useful for isolated TVD-RK3 and AB2 order
+> checks.  The references to `WIKI-L-001` Steps 1--2/5 are historical and must
+> not be read as the current full-algorithm route.
 
 ## Exp 11-14: TVD-RK3 (Shu-Osher SSP)
 
@@ -38,7 +44,9 @@ Three sub-tests:
 
 Confirms O(dt^3) temporal order is not polluted by spatial discretization.
 
-**Key finding**: TVD-RK3 achieves its design order O(dt^3) in all tests. Parasitic modes are controlled by the SSP property. This is the time integrator for CLS advection (Steps 1–2 in [[WIKI-L-001]]).
+**Key finding**: TVD-RK3 achieves its design order O(dt^3) in all tests.
+Parasitic modes are controlled by the SSP property.  Treat this as an
+isolated component result, not as proof of the retired 7-step algorithm.
 
 ## Exp 11-15: AB2 with Forward Euler Startup
 
@@ -48,7 +56,10 @@ ODE dq/dt = −q, q(0) = 1, T = 1.0:
 |---------|-------|-------|
 | 16–512 | decreasing | **O(dt^2)** — PASS |
 
-**Key finding**: AB2 achieves O(dt^2) despite first-order Euler startup. Parasitic root |ρ_2| = 0.5 decays to negligible levels. Error reaches ~1e-15 at n = 512 steps. This is the time integrator for the predictor step (Step 5 in [[WIKI-L-001]]).
+**Key finding**: AB2 achieves O(dt^2) despite first-order Euler startup.
+Parasitic root |ρ_2| = 0.5 decays to negligible levels. Error reaches
+~1e-15 at n = 512 steps.  Current startup/projection reading belongs to
+`WIKI-T-147`.
 
 ## Cross-cutting Insights
 

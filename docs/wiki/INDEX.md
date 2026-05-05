@@ -1,4 +1,4 @@
-# Wiki Index — 326 entries
+# Wiki Index — 338 entries
 
 ## Active Retrieval Gate
 
@@ -8,7 +8,7 @@ research findings.  Older cards remain listed for provenance, but cards marked
 SUPERSEDED or REFERENCE must not be used as current algorithm policy without
 their curation notes.
 
-## Theory (149)
+## Theory (151)
 
 | REF-ID | Title |
 |--------|-------|
@@ -161,22 +161,24 @@ their curation notes.
 | [WIKI-T-147](theory/WIKI-T-147.md) | IMEX-BDF2 Startup Is a State-Consistency Contract |
 | [WIKI-T-148](theory/WIKI-T-148.md) | Bootstrap Reinitialization Is Pre-Consistency, Not a Convergence Proof |
 | [WIKI-T-149](theory/WIKI-T-149.md) | Periodic CCD Uses Interior Rows Everywhere |
+| [WIKI-T-150](theory/WIKI-T-150.md) | Wall-Contact Ridge-Eikonal Needs Closure Seeds and Pinned Mass |
+| [WIKI-T-151](theory/WIKI-T-151.md) | Axis-Selective Fitting Is a Metric Mask, Not a New Operator |
 
-## Cross-Domain (42)
+## Cross-Domain (44)
 
 | REF-ID | Title |
 |--------|-------|
-| [WIKI-X-001](cross-domain/WIKI-X-001.md) | DCCD Usage Map: Three Modes Across the Algorithm |
+| [WIKI-X-001](cross-domain/WIKI-X-001.md) | [REFERENCE] DCCD Usage Map: Three Modes Across the Algorithm |
 | [WIKI-X-002](cross-domain/WIKI-X-002.md) | CCD Dual Role: Differentiator and Elliptic Solver |
 | [WIKI-X-003](cross-domain/WIKI-X-003.md) | Sign Conventions and Variable Definitions: phi, psi, kappa, n_hat |
 | [WIKI-X-004](cross-domain/WIKI-X-004.md) | Pressure Instability in High-Order Two-Phase Flow: Root Causes and Mitigation Survey |
-| [WIKI-X-005](cross-domain/WIKI-X-005.md) | Architectural Decisions: PPE Strategy, Solver Integration, and Verification Hierarchy |
+| [WIKI-X-005](cross-domain/WIKI-X-005.md) | [SUPERSEDED] Architectural Decisions: PPE Strategy, Solver Integration, and Verification Hierarchy |
 | [WIKI-X-006](cross-domain/WIKI-X-006.md) | Zalesak Disk Role in Balanced-Force CLS: Stress Test, Not Performance Benchmark |
-| [WIKI-X-007](cross-domain/WIKI-X-007.md) | CFL Constraint Hierarchy and Stability Budget for Two-Phase CCD-PPE Solver |
+| [WIKI-X-007](cross-domain/WIKI-X-007.md) | [REFERENCE] CFL Constraint Hierarchy and Stability Budget for Two-Phase CCD-PPE Solver |
 | [WIKI-X-008](cross-domain/WIKI-X-008.md) | Derived Physics Resolution: Non-Dimensional → Physical Parameter Mapping |
 | [WIKI-X-009](cross-domain/WIKI-X-009.md) | PPE Solver Policy: CCD Kronecker+LU Restricted to §11 Component Tests |
 | [WIKI-X-010](cross-domain/WIKI-X-010.md) | Reinitializer Uniform-Grid Assumption: Verification Design Constraint |
-| [WIKI-X-011](cross-domain/WIKI-X-011.md) | Divergence Criterion Gap: Single-Phase FFT-PPE (1e-10) vs Two-Phase CSF (1e-2) |
+| [WIKI-X-011](cross-domain/WIKI-X-011.md) | [REFERENCE] Divergence Criterion Gap: Single-Phase FFT-PPE (1e-10) vs Two-Phase CSF (1e-2) |
 | [WIKI-X-012](cross-domain/WIKI-X-012.md) | CCD Metric Instability on Non-Uniform Grids in NS Simulation |
 | [WIKI-X-013](cross-domain/WIKI-X-013.md) | Couette + Explicit CSF: Fundamental Instability in Predictor-Corrector NS |
 | [WIKI-X-014](cross-domain/WIKI-X-014.md) | Non-Uniform Grid + Dynamic Interface: Stability Map and Recommended Defaults |
@@ -187,10 +189,10 @@ their curation notes.
 | [WIKI-X-019](cross-domain/WIKI-X-019.md) | Topology-Freedom vs Metric-Rigidity: ξ/φ Role Separation as Design Principle (SP-B) |
 | [WIKI-X-020](cross-domain/WIKI-X-020.md) | Unified Interface-Tracking & Sharp-Interface PPE Chain: Ridge-Eikonal → GFM/HFE → IIM (CHK-170) |
 | [WIKI-X-021](cross-domain/WIKI-X-021.md) | N-Scaling of the H-01 Mixed-Metric Residual: 128² Parasitic Blow-up (CHK-173) |
-| [WIKI-X-022](cross-domain/WIKI-X-022.md) | N-Robust BF-Consistent Full-Stack Architecture: 10-Method Role Map (BF/CCD/FCCD/CN/AB2/GFM/HFE/IIM/Ridge-Eikonal/FMM) |
+| [WIKI-X-022](cross-domain/WIKI-X-022.md) | [SUPERSEDED] N-Robust BF-Consistent Full-Stack Architecture: 10-Method Role Map |
 | [WIKI-X-023](cross-domain/WIKI-X-023.md) | UCCD6 Integration Design for Incompressible NS (Skew-Symmetric Advection + Selective Hyperviscosity) |
 | [WIKI-X-024](cross-domain/WIKI-X-024.md) | Balanced-Force Design for Two-Phase UCCD6-NS (Surface Tension ↔ Pressure Gradient Consistency is the Primary Driver) |
-| [WIKI-X-025](cross-domain/WIKI-X-025.md) | Time Integration Design for Two-Phase UCCD6-NS (Capillary Wave Resolution, Semi-Implicit ST, BF Projection) |
+| [WIKI-X-025](cross-domain/WIKI-X-025.md) | [REFERENCE] Time Integration Design for Two-Phase UCCD6-NS |
 | [WIKI-X-026](cross-domain/WIKI-X-026.md) | Stiffness-Based Time Integration Policy for Two-Phase UCCD6-NS (When Each Term Forces Implicit Treatment) |
 | [WIKI-X-027](cross-domain/WIKI-X-027.md) | Reinitialization Semantics: Physical Time vs Pseudo Time, φ/ψ Role Separation, and the Three Meanings of Iteration |
 | [WIKI-X-028](cross-domain/WIKI-X-028.md) | Conservative Momentum Form for Two-Phase UCCD6 (∂ₜ(ρu) + ∇·(ρu⊗u) Under Density Jumps) |
@@ -202,14 +204,16 @@ their curation notes.
 | [WIKI-X-034](cross-domain/WIKI-X-034.md) | Buoyancy-Aware Predictor Assembly Redesign: From Interface-Local Diagnosis to Solver-Side Fix |
 | [WIKI-X-035](cross-domain/WIKI-X-035.md) | Buoyancy-Aware Predictor Redesign Theorem: Minimal Admissible Algorithm for ch13 |
 | [WIKI-X-036](cross-domain/WIKI-X-036.md) | Stage-Split Buoyancy Predictor Redesign: Vertical Assembly Repair and V(u_pred)-Stage Horizontal Coupling |
-| [WIKI-X-037](cross-domain/WIKI-X-037.md) | ResearchArchitect Wiki Knowledge Atlas: Retrieval Map, Invariants, and Open Fronts |
+| [WIKI-X-037](cross-domain/WIKI-X-037.md) | [REFERENCE] ResearchArchitect Wiki Knowledge Atlas: Retrieval Map, Invariants, and Open Fronts |
 | [WIKI-X-038](cross-domain/WIKI-X-038.md) | Theory-First CFL and Time-Integration Policy: SSPRK3 Scope, AB2 Risk, and IMEX-BDF2 Production Path |
 | [WIKI-X-039](cross-domain/WIKI-X-039.md) | Affine Jump Interface Stress: Oriented Young--Laplace Contract and ch14 Root Cause |
 | [WIKI-X-040](cross-domain/WIKI-X-040.md) | Recent Research Insight Digest: 2026-04-24 to 2026-05-03 |
 | [WIKI-X-041](cross-domain/WIKI-X-041.md) | Curated Wiki Retrieval Map: Active Contracts and Retired Knowledge |
 | [WIKI-X-042](cross-domain/WIKI-X-042.md) | Paper Failure Taxonomy Maps Symptoms to Numerical Contracts |
+| [WIKI-X-043](cross-domain/WIKI-X-043.md) | RCA Artifacts Falsify Shortcuts Before Authorizing Fixes |
+| [WIKI-X-044](cross-domain/WIKI-X-044.md) | Test Failure Retention Separates Live Contracts from Stale Probes |
 
-## Experiment (54)
+## Experiment (57)
 
 | REF-ID | Title |
 |--------|-------|
@@ -268,17 +272,20 @@ their curation notes.
 | [WIKI-E-052](experiment/WIKI-E-052.md) | V6 Pressure-Correction Ratio Is Auxiliary, Not Laplace Error |
 | [WIKI-E-053](experiment/WIKI-E-053.md) | V7 RCA Localizes the Time-Order Limit to the Capillary Jump Band |
 | [WIKI-E-054](experiment/WIKI-E-054.md) | V8/V9/V10 Preserve Future Gates by Design |
+| [WIKI-E-055](experiment/WIKI-E-055.md) | Capillary-Wave RCA Requires Energy and Mode Diagnostics, Not Max Deviation Alone |
+| [WIKI-E-056](experiment/WIKI-E-056.md) | Under-Resolved Capillary Droplets Need Resolution Contracts, Not CFL Patches |
+| [WIKI-E-057](experiment/WIKI-E-057.md) | Wall-Contact Capillary Blowup Can Be a Curvature-Closure Energy Defect |
 
 ## Paper (16)
 
 | REF-ID | Title |
 |--------|-------|
-| [WIKI-P-001](paper/WIKI-P-001.md) | Paper Narrative Structure: Sections 4-10 Flow Analysis |
-| [WIKI-P-002](paper/WIKI-P-002.md) | Accuracy Summary: Component-Level Precision Map |
-| [WIKI-P-003](paper/WIKI-P-003.md) | Problem Statement: Four Failure Modes and Three-Pillar Solution |
-| [WIKI-P-004](paper/WIKI-P-004.md) | Paper Review S1-S11: Findings and Action Items (2026-04-08) |
-| [WIKI-P-005](paper/WIKI-P-005.md) | §10-§12 Verification Architecture: 27 Component + 13 NS Consistency Tests |
-| [WIKI-P-006](paper/WIKI-P-006.md) | Paper Review §11–§13: Findings and Action Items (2026-04-11) |
+| [WIKI-P-001](paper/WIKI-P-001.md) | [REFERENCE] Paper Narrative Structure: Sections 4-10 Flow Analysis |
+| [WIKI-P-002](paper/WIKI-P-002.md) | [REFERENCE] Accuracy Summary: Component-Level Precision Map |
+| [WIKI-P-003](paper/WIKI-P-003.md) | [SUPERSEDED] Problem Statement: Four Failure Modes and Three-Pillar Solution |
+| [WIKI-P-004](paper/WIKI-P-004.md) | [REFERENCE] Paper Review S1-S11: Findings and Action Items (2026-04-08) |
+| [WIKI-P-005](paper/WIKI-P-005.md) | [SUPERSEDED] §10-§12 Verification Architecture: 27 Component + 13 NS Consistency Tests |
+| [WIKI-P-006](paper/WIKI-P-006.md) | [REFERENCE] Paper Review §11–§13: Findings and Action Items (2026-04-11) |
 | [WIKI-P-007](paper/WIKI-P-007.md) | Ch11 Formal Review Corrections: 9 Factual Errors Fixed (2026-04-15) |
 | [WIKI-P-008](paper/WIKI-P-008.md) | Ch11+Ch12 Review Corrections: 14 Findings Fixed (2026-04-16) |
 | [WIKI-P-009](paper/WIKI-P-009.md) | 07b_reinitialization: DGR Mass Correction and σ>0 Limitation (CHK-135) |
@@ -290,7 +297,7 @@ their curation notes.
 | [WIKI-P-015](paper/WIKI-P-015.md) | Chapters 1-13 Use Failure-Mode to Contract Traceability |
 | [WIKI-P-016](paper/WIKI-P-016.md) | Appendices Are Proof Layers for Main-Text Contracts |
 
-## Meta (29)
+## Meta (31)
 
 | REF-ID | Title |
 |--------|-------|
@@ -323,39 +330,41 @@ their curation notes.
 | [WIKI-M-027](meta/WIKI-M-027.md) | Persona Prompting Anti-Pattern: Empirical Evidence |
 | [WIKI-M-028](meta/WIKI-M-028.md) | Prompt Caching Architecture for Long-Context Agents |
 | [WIKI-M-029](meta/WIKI-M-029.md) | Visible Extended Thinking × prompts/meta/ Agent Optimization |
+| [WIKI-M-030](meta/WIKI-M-030.md) | Meta-Prompt Evolution Needs Telemetry, Skills, and Tool-Trust Gates |
+| [WIKI-M-031](meta/WIKI-M-031.md) | Review Artifacts Close the Loop with Finding, Fix, and Validation |
 
-## Code (36)
+## Code (39)
 
 | REF-ID | Title |
 |--------|-------|
-| [WIKI-L-001](code/WIKI-L-001.md) | Algorithm Flow: 7-Step Time Integration Loop |
+| [WIKI-L-001](code/WIKI-L-001.md) | [SUPERSEDED] Algorithm Flow: 7-Step Time Integration Loop |
 | [WIKI-L-002](code/WIKI-L-002.md) | CCD/DCCD Differentiation Verification Scripts (Exp 11-1, 11-2, 11-4, 11-17) |
 | [WIKI-L-003](code/WIKI-L-003.md) | Curvature & Hermite Field Extension Scripts (Exp 11-3, 11-7) |
 | [WIKI-L-004](code/WIKI-L-004.md) | Level-Set Transport & Remapping Scripts (Exp 11-6, 11-8) |
 | [WIKI-L-005](code/WIKI-L-005.md) | PPE Solver Verification Scripts (Exp 11-9, 11-10, 11-11, 11-12, 11-13) |
 | [WIKI-L-006](code/WIKI-L-006.md) | Time Integration Verification Scripts (Exp 11-14, 11-15) |
 | [WIKI-L-007](code/WIKI-L-007.md) | Rhie-Chow & Young-Laplace Pipeline Scripts (Exp 11-5, 11-16) |
-| [WIKI-L-008](code/WIKI-L-008.md) | Library Architecture: Module Hierarchy, Design Patterns, and Dependency Flow |
+| [WIKI-L-008](code/WIKI-L-008.md) | [REFERENCE] Library Architecture: Module Hierarchy, Design Patterns, and Dependency Flow |
 | [WIKI-L-009](code/WIKI-L-009.md) | Interface Contracts: 6 Abstractions Enabling DIP Throughout the Library |
 | [WIKI-L-010](code/WIKI-L-010.md) | PPE Solver Architecture: Factory Registry, Template Method, and Legacy Management |
 | [WIKI-L-011](code/WIKI-L-011.md) | CCD Solver Module: Block-Tridiagonal LU, Multi-Axis Design, and Backend Abstraction |
 | [WIKI-L-012](code/WIKI-L-012.md) | Reinitialization Strategy Pattern: Facade, 4 Strategies, and Shared Operations |
-| [WIKI-L-013](code/WIKI-L-013.md) | SOLID Compliance Audit: Scores, Remaining Violations, and Deferred Items (2026-04-10) |
-| [WIKI-L-014](code/WIKI-L-014.md) | Config-Driven Experiment Framework: ExperimentConfig, NS Pipeline, Unified Runner |
-| [WIKI-L-015](code/WIKI-L-015.md) | CuPy / GPU Backend Unification: xp Dispatch, SciPy Shim, Batched Thomas |
-| [WIKI-L-016](code/WIKI-L-016.md) | CN Advance Strategy Pattern: Viscous Time-Integration Subpackage |
+| [WIKI-L-013](code/WIKI-L-013.md) | [REFERENCE] SOLID Compliance Audit: Scores, Remaining Violations, and Deferred Items (2026-04-10) |
+| [WIKI-L-014](code/WIKI-L-014.md) | [REFERENCE] Config-Driven Experiment Framework: ExperimentConfig, NS Pipeline, Unified Runner |
+| [WIKI-L-015](code/WIKI-L-015.md) | [REFERENCE] CuPy / GPU Backend Unification: xp Dispatch, SciPy Shim, Batched Thomas |
+| [WIKI-L-016](code/WIKI-L-016.md) | [REFERENCE] CN Advance Strategy Pattern: Viscous Time-Integration Subpackage |
 | [WIKI-L-017](code/WIKI-L-017.md) | GPU Experiment Patterns: sparse_solve_2d, to_float, Grid.meshgrid() N+1 Contract |
 | [WIKI-L-018](code/WIKI-L-018.md) | Library Additions: grid_remap, reconstruction, benchmarks.scaling, diagnostics |
 | [WIKI-L-019](code/WIKI-L-019.md) | config_io.py パースバグ: snap_interval / reinit_eps_scale 欠落 |
 | [WIKI-L-020](code/WIKI-L-020.md) | GPU最適化: PCR Thomas + D2H同期除去 (merge 362dbd3) |
 | [WIKI-L-021](code/WIKI-L-021.md) | matplotlib Figure Titles: Use English Only — Remote Server Lacks CJK Fonts |
-| [WIKI-L-022](code/WIKI-L-022.md) | G^adj FVM-Consistent Pressure Gradient: Implementation in ns_pipeline.py |
+| [WIKI-L-022](code/WIKI-L-022.md) | [REFERENCE] G^adj FVM-Consistent Pressure Gradient: Implementation in ns_pipeline.py |
 | [WIKI-L-023](code/WIKI-L-023.md) | R-1.5 Implementation Roadmap: Minimal FVM-face ψ Gradient (SPEC, code unchanged) |
 | [WIKI-L-024](code/WIKI-L-024.md) | FCCD Library Module: FCCDSolver, FCCDConvectionTerm, FCCDLevelSetAdvection |
 | [WIKI-L-025](code/WIKI-L-025.md) | Ridge-Eikonal Non-Uniform Reinitializer (NonUniformFMM, RidgeExtractor, RidgeEikonalReinitializer) |
 | [WIKI-L-026](code/WIKI-L-026.md) | GPU Matrix-Free FVM PPE Roadmap: Variable-Batched PCR and Device-Resident Krylov |
 | [WIKI-L-027](code/WIKI-L-027.md) | Split-Reinit y-flip Invariance: safe_grad Floor in compute_gradient_normal |
-| [WIKI-L-028](code/WIKI-L-028.md) | Implementation: IIM Jump Decomposition + DC Iteration (LU-Free) |
+| [WIKI-L-028](code/WIKI-L-028.md) | [REFERENCE] Implementation: IIM Jump Decomposition + DC Iteration (LU-Free) |
 | [WIKI-L-029](code/WIKI-L-029.md) | FCCD Weight Staleness after In-Place Grid Rebuild: update_weights() Protocol |
 | [WIKI-L-030](code/WIKI-L-030.md) | FCCD face_value Amplification of Non-Smooth Fields: H²q Hazard |
 | [WIKI-L-031](code/WIKI-L-031.md) | FCCDSolver Face-Jet Primitive and Upwind Taylor-HFE State |
@@ -364,3 +373,6 @@ their curation notes.
 | [WIKI-L-034](code/WIKI-L-034.md) | ch13 Rising Bubble Closure: Balanced Buoyancy + Ridge-Eikonal FMM |
 | [WIKI-L-035](code/WIKI-L-035.md) | Implementation Roadmap: Projection-Native Capillary Coupling |
 | [WIKI-L-036](code/WIKI-L-036.md) | Phase-Trace Jump Flux Operator for Phase-Separated PPE |
+| [WIKI-L-037](code/WIKI-L-037.md) | Backend Boundary Owns Host, Device, and Scalar Conversion |
+| [WIKI-L-038](code/WIKI-L-038.md) | GPU Utilization Work Must Preserve the Discrete Algebra |
+| [WIKI-L-039](code/WIKI-L-039.md) | GPU Utilization Probes Must Bound Output Without Changing the Route |

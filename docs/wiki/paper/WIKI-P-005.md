@@ -2,8 +2,8 @@
 ref_id: WIKI-P-005
 title: "§10-§12 verification architecture: 27 component tests + 13 NS consistency tests"
 domain: P
-status: ACTIVE
-superseded_by: null
+status: SUPERSEDED
+superseded_by: WIKI-X-040
 sources:
   - path: "paper/sections/10_full_algorithm.tex"
     description: "§10 algorithm specification"
@@ -28,6 +28,12 @@ compiled_at: 2026-04-10
 ---
 
 # §10-§12 Verification Architecture
+
+> Curation note (CHK-RA-WIKI-REVIEW-RECUR-001, 2026-05-05):
+> This verification map is an April snapshot with obsolete section numbers,
+> old test counts, and pre-projection-native DCCD/CN/CSF readings.  Retain it
+> only as provenance.  Current verification retrieval starts from `WIKI-X-040`,
+> `WIKI-X-041`, `WIKI-P-015`, and the V-series experiment cards.
 
 ## Three-Layer Verification Structure
 

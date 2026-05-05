@@ -2,8 +2,8 @@
 ref_id: WIKI-X-001
 title: "DCCD Usage Map: Three Modes Across the Algorithm"
 domain: cross-domain
-status: ACTIVE
-superseded_by: null
+status: REFERENCE
+superseded_by: WIKI-X-041
 sources:
   - path: paper/sections/04d_dissipative_ccd.tex
     git_hash: 7328bf1
@@ -31,6 +31,13 @@ compiled_at: 2026-04-07
 ---
 
 ## Overview
+
+> Curation note (CHK-RA-WIKI-REVIEW-RECUR-001, 2026-05-05):
+> Retain this card only as a record of the original DCCD parameter taxonomy.
+> The cross-algorithm mapping is not current policy: CLS transport now routes
+> through FCCD face fluxes, PPE/corrector work routes through projection-native
+> face-space contracts, and pressure filtering remains prohibited.  Start from
+> `WIKI-X-041` before reusing any DCCD mode listed here.
 
 DCCD (Dissipative CCD) filter appears in 4 chapters with 3 distinct parameter regimes. This entry provides the consolidated cross-algorithm usage map.
 
