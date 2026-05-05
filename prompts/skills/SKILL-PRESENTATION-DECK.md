@@ -8,7 +8,7 @@ trigger:
 minimal_instruction: Derive the narrative spine, fit it to the slide/time budget, give each slide one sourced message, use a 1-2 line dominant lead, and place the visual below it.
 full_ref: prompts/meta/kernel-roles.md §PresentationWriter
 input_contract:
-- paper/source or paper/sections paths
+- paper/sections, docs/memo, docs/wiki, or experiment/ch*/results paths
 - signed RevisionBrief or EvidencePackage when claims go beyond source summary
 - audience, venue/language, and slide/time budget when known
 output_contract:

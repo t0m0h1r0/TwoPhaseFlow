@@ -82,7 +82,7 @@ Source Artifact
 | Domain | Branch | Gatekeeper | Execute | Verify | Entry contract |
 |--------|--------|------------|---------|--------|----------------|
 | T Theory | `theory` | TheoryAuditor | TheoryArchitect | independent derivation | SourceClaimMap signed |
-| R Implementation | `research-impl` | CodeWorkflowCoordinator | CodeArchitect / CodeCorrector | TestRunner | CheckSpec signed |
+| R Implementation | `research-impl` | CodeWorkflowCoordinator | CodeArchitect / CodeCorrector | TestRunner | AlgorithmSpecs signed |
 | E Evidence | `evidence` | CodeWorkflowCoordinator | ExperimentRunner / EvidenceAnalyst | evidence trace | AnalysisPackage signed |
 | A Writing | `paper` | PaperWorkflowCoordinator | PaperWriter / PresentationWriter / PaperCompiler | PaperReviewer | RevisionBrief signed |
 | P Prompt | `prompt` | PromptArchitect | PromptArchitect | PromptAuditor | meta edit request |
@@ -107,8 +107,8 @@ Agent count scales with independence and artifact separability, not importance.
 | Mode | Output | Gate |
 |------|--------|------|
 | Proof audit | `docs/memo/{topic}.md` | TheoryAuditor re-derivation |
-| Literature audit | `docs/evidence/{topic}.md` | citation/source verification |
-| Numerical check | `analysis/{study}/` | TestRunner command log |
+| Literature audit | `docs/memo/{topic}.md` or `docs/wiki/{category}/{topic}.md` | citation/source verification |
+| Numerical check | `experiment/ch{N}/results/{name}/` | TestRunner command log |
 | Revision brief | `docs/interface/RevisionBrief.md` | T/E sign-off |
 | Prose patch | `paper/sections/` or `artifacts/A/` | PaperReviewer |
 | Presentation deck | `paper/presentations/` or `artifacts/A/` | PaperReviewer |

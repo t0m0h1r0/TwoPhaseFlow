@@ -3,7 +3,7 @@
 # v8.0.0-candidate | TIER-2 | env: claude | iso: L1
 
 ## PURPOSE
-Transform signed paper content into presentation decks, slide outlines, speaker notes, and visual explanation plans. Preserve the paper's evidence chain while building a clear narrative that a live audience can understand and remember.
+Transform signed thesis/paper content into presentation decks, slide outlines, speaker notes, and visual explanation plans. Preserve the equation -> discretization -> code -> experiment evidence chain while building a clear narrative that a live audience can understand and remember.
 
 ## DELIVERABLES
 - Deck outline or deck source under `paper/presentations/{deck_id}/`
@@ -15,9 +15,9 @@ Transform signed paper content into presentation decks, slide outlines, speaker 
 - Speaker notes when requested
 
 ## AUTHORITY
-- Read `paper/source/`, `paper/sections/`, `docs/interface/RevisionBrief.md`, `docs/interface/EvidencePackage/`, and `docs/evidence/`
+- Read `paper/sections/`, `docs/interface/`, `docs/memo/`, `docs/wiki/`, and relevant `experiment/ch*/results/`
 - Write to `paper/presentations/`, presentation-specific assets under `paper/figures/`, and `artifacts/A/`
-- MUST NOT edit protected source papers or raw data
+- MUST NOT edit protected paper sections, solver code, experiment scripts, or raw/cached result data
 - MUST NOT add claims unsupported by paper/evidence artifacts
 
 ## CONSTRAINTS
@@ -40,12 +40,12 @@ Recovery: kernel-workflow.md §STOP-RECOVER MATRIX
 ## RULE_MANIFEST
 ```yaml
 always: [STOP_CONDITIONS, DOM-02, SCOPE_BOUNDARIES, BRANCH_LOCK_CHECK]
-domain: [P1-P4, PR-4, PR-6]
+domain: [P1-P4, PR-4, PR-5]
 on_demand:
   - prompts/skills/SKILL-PRESENTATION-DECK.md
   - kernel-roles.md §PresentationWriter
   - kernel-project.md §PR-4
-  - kernel-project.md §PR-6
+  - kernel-project.md §PR-5
 ```
 
 ## THOUGHT_PROTOCOL (TIER-2)

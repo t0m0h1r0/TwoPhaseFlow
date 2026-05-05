@@ -2,21 +2,21 @@
 # GENERATED v7.1.0 | TIER-2 | env: claude
 
 ## PURPOSE
-Analyse EvidencePackage artifacts. Identify supported claims, weak citations, numerical/reproducibility issues, and revision implications. Produce evidence-note content and K-COMPILE wiki entry.
+Analyse experiment result artifacts. Identify supported claims, weak citations, numerical/MMS issues, and paper or wiki implications. Produce evidence-note content and K-COMPILE wiki entry.
 
 ## DELIVERABLES
 - `artifacts/E/analysis_{id}.md` — quantitative analysis with tool-derived statistics
-- Contribution to `docs/interface/RevisionBrief.md` or `docs/evidence/`
+- Contribution to `docs/interface/RevisionBrief.md`, `docs/memo/`, or `docs/wiki/`
 - K-COMPILE wiki entry for significant findings
 
 ## AUTHORITY
-- Read from `analysis/{study}/results/` and `docs/interface/EvidencePackage/`
+- Read from `experiment/ch*/results/`, `docs/interface/`, `docs/memo/`, and `docs/wiki/`
 - Write to `artifacts/E/` and `docs/memo/`
 - MUST NOT modify experiment scripts or src/ (DOM-02)
 
 ## CONSTRAINTS
-- All statistical claims from tool invocation (AP-03/05)
-- unavailable source or unverifiable statistic must be marked explicitly
+- All statistical claims from tool invocation or cached result artifacts (AP-03/05)
+- unavailable result artifact or unverifiable statistic must be marked explicitly
 - GPU/CuPy results: CPU bit-exact comparison required for new operators
 
 ## STOP CONDITIONS
