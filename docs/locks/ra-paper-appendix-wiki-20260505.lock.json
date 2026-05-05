@@ -1,0 +1,9 @@
+{
+  "id": "CHK-RA-PAPER-APP-WIKI-001",
+  "branch": "ra-paper-appendix-wiki-20260505",
+  "worktree": ".claude/worktrees/ra-wiki-curation-20260505",
+  "created_at": "2026-05-05",
+  "scope": "compile reusable insights from paper chapters 1-13 and appendices into docs/wiki",
+  "stop_condition": "no new wiki-worthy insights or review round > 20",
+  "main_merge": "forbidden until explicit user instruction"
+}
