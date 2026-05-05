@@ -13,7 +13,6 @@ Symbol mapping
 
 from __future__ import annotations
 
-import dataclasses
 import hashlib
 import json
 import pathlib
@@ -31,6 +30,12 @@ CODE_FINGERPRINT_ROOTS = (
     "experiment/runner",
     "experiment/run.py",
 )
+WALL_SIDE_CODES = {"lo": 0, "hi": 1}
+WALL_SIDE_VALUES = {value: key for key, value in WALL_SIDE_CODES.items()}
+CONTACT_MODE_CODES = {"pinned_no_slip": 0}
+CONTACT_MODE_VALUES = {value: key for key, value in CONTACT_MODE_CODES.items()}
+ANGLE_MODE_CODES = {"initial": 0, "mirror_neutral": 1, "unspecified": 2}
+ANGLE_MODE_VALUES = {value: key for key, value in ANGLE_MODE_CODES.items()}
 
 
 class CheckpointError(RuntimeError):
@@ -246,7 +251,7 @@ def _capture_solver_state(arrays: dict[str, np.ndarray], solver) -> None:
         ],
         dtype=bool,
     )
-    arrays["solver/wall_contacts_json"] = _encode_json(_wall_contacts_to_data(solver))
+    _capture_wall_contacts(arrays, solver)
 
 
 def _restore_solver_state(solver, arrays: dict[str, np.ndarray]) -> None:
@@ -284,7 +289,7 @@ def _restore_solver_state(solver, arrays: dict[str, np.ndarray]) -> None:
     flags = arrays.get("solver/flags", np.asarray([False, False], dtype=bool))
     solver._conv_ab2_ready = bool(flags[0])
     solver._velocity_bdf2_ready = bool(flags[1])
-    contacts = _wall_contacts_from_data(_decode_json(arrays["solver/wall_contacts_json"]))
+    contacts = _restore_wall_contacts(arrays)
     solver.set_wall_contacts(contacts)
 
 
@@ -386,20 +391,95 @@ def _list_device(arrays: dict[str, np.ndarray], prefix: str, xp):
     return [xp.asarray(arrays[f"{prefix}/{index}"]) for index in range(count)]
 
 
-def _wall_contacts_to_data(solver) -> dict[str, Any]:
+def _capture_wall_contacts(arrays: dict[str, np.ndarray], solver) -> None:
+    """Store wall-contact constraints as numeric arrays, not JSON floats."""
     contacts = getattr(solver, "_wall_contacts", None)
     if contacts is None:
-        return {"contacts": [], "traces": []}
-    return dataclasses.asdict(contacts)
+        contacts = _empty_wall_contacts()
+    contact_rows = []
+    for contact in contacts.contacts:
+        contact_rows.append(
+            [
+                int(contact.wall_axis),
+                WALL_SIDE_CODES[contact.wall_side],
+                int(contact.tangent_axis),
+                float(contact.coordinate),
+                float(contact.orientation),
+                CONTACT_MODE_CODES[contact.mode],
+                ANGLE_MODE_CODES[contact.angle_mode],
+                float(contact.level),
+            ]
+        )
+    arrays["solver/wall_contacts/contacts"] = np.asarray(contact_rows, dtype=np.float64)
+    arrays["solver/wall_contacts/trace_count"] = np.asarray(len(contacts.traces), dtype=np.int64)
+    for index, trace in enumerate(contacts.traces):
+        arrays[f"solver/wall_contacts/traces/{index}/meta"] = np.asarray(
+            [
+                int(trace.wall_axis),
+                WALL_SIDE_CODES[trace.wall_side],
+                int(trace.tangent_axis),
+                float(trace.level),
+            ],
+            dtype=np.float64,
+        )
+        arrays[f"solver/wall_contacts/traces/{index}/tangent_coordinates"] = np.asarray(
+            trace.tangent_coordinates,
+            dtype=np.float64,
+        )
+        arrays[f"solver/wall_contacts/traces/{index}/values"] = np.asarray(
+            trace.values,
+            dtype=np.float64,
+        )
 
 
-def _wall_contacts_from_data(payload: dict[str, Any]):
+def _restore_wall_contacts(arrays: dict[str, np.ndarray]):
     from ..levelset.wall_contact import WallContact, WallContactSet, WallTrace
 
-    return WallContactSet(
-        contacts=tuple(WallContact(**item) for item in payload.get("contacts", [])),
-        traces=tuple(WallTrace(**item) for item in payload.get("traces", [])),
+    contact_rows = np.asarray(
+        arrays.get("solver/wall_contacts/contacts", np.empty((0, 8), dtype=np.float64))
     )
+    contacts = []
+    for row in contact_rows:
+        contacts.append(
+            WallContact(
+                wall_axis=int(row[0]),
+                wall_side=WALL_SIDE_VALUES[int(row[1])],
+                tangent_axis=int(row[2]),
+                coordinate=float(row[3]),
+                orientation=float(row[4]),
+                mode=CONTACT_MODE_VALUES[int(row[5])],
+                angle_mode=ANGLE_MODE_VALUES[int(row[6])],
+                level=float(row[7]),
+            )
+        )
+    trace_count = int(arrays.get("solver/wall_contacts/trace_count", np.asarray(0)))
+    traces = []
+    for index in range(trace_count):
+        meta = arrays[f"solver/wall_contacts/traces/{index}/meta"]
+        tangent_coordinates = arrays[
+            f"solver/wall_contacts/traces/{index}/tangent_coordinates"
+        ]
+        values = arrays[f"solver/wall_contacts/traces/{index}/values"]
+        traces.append(
+            WallTrace(
+                wall_axis=int(meta[0]),
+                wall_side=WALL_SIDE_VALUES[int(meta[1])],
+                tangent_axis=int(meta[2]),
+                tangent_coordinates=tuple(float(v) for v in tangent_coordinates),
+                values=tuple(float(v) for v in values),
+                level=float(meta[3]),
+            )
+        )
+    return WallContactSet(
+        contacts=tuple(contacts),
+        traces=tuple(traces),
+    )
+
+
+def _empty_wall_contacts():
+    from ..levelset.wall_contact import WallContactSet
+
+    return WallContactSet.empty()
 
 
 def _drop_nested(raw: Any, paths: tuple[tuple[str, ...], ...]) -> Any:

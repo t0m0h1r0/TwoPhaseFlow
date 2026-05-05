@@ -30,7 +30,9 @@ non-final-time YAML parameter or any execution code under `src/twophase/`,
 `experiment/runner/`, or `experiment/run.py` changed. For long runs,
 `--checkpoint-every-steps N` refreshes the same checkpoint atomically every `N`
 completed steps, and `--no-checkpoint-final` disables the final write when a
-read-only dry run is needed.
+read-only dry run is needed. Numerical state is stored as NumPy `.npy` binary
+members inside the `.npz`, preserving array dtype bytes losslessly; JSON is used
+only for non-numerical metadata such as the manifest and debug key names.
 
 The four production configs emit periodic snapshots with `psi`, `velocity`,
 and `pressure` fields. The runner stores these in `data.npz` under `fields/psi`,

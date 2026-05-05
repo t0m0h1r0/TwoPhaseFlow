@@ -3,7 +3,7 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
-from twophase.levelset.wall_contact import WallContactSet
+from twophase.levelset.wall_contact import WallContact, WallContactSet, WallTrace
 from twophase.simulation.checkpoint import (
     CheckpointError,
     config_fingerprint,
@@ -53,7 +53,7 @@ class _GridAware:
 
 
 def _solver():
-    return SimpleNamespace(
+    solver = SimpleNamespace(
         _backend=_Backend(),
         _grid=_Grid(),
         _ccd=None,
@@ -71,8 +71,9 @@ def _solver():
         _conv_ab2_ready=True,
         _velocity_bdf2_ready=True,
         _wall_contacts=WallContactSet.empty(),
-        set_wall_contacts=lambda contacts: None,
     )
+    solver.set_wall_contacts = lambda contacts: setattr(solver, "_wall_contacts", contacts)
+    return solver
 
 
 def _write_config(path, *, t_final=0.1, cfl=0.05):
@@ -136,6 +137,65 @@ def test_checkpoint_roundtrip_restores_solver_runtime_state(tmp_path):
     assert state["results"]["times"].tolist() == [0.0, 0.125]
     assert state["snapshots"][0]["t"] == 0.125
     assert state["debug_history"] == [{"kappa_max": 1.0}]
+
+
+def test_checkpoint_wall_contacts_roundtrip_as_binary_float_arrays(tmp_path):
+    config = tmp_path / "cfg.yaml"
+    _write_config(config)
+    path = tmp_path / "checkpoint_final.npz"
+    solver = _solver()
+    coordinate = np.float64(np.pi / 7.0)
+    trace_values = tuple(np.asarray([0.1, 0.5, 0.9], dtype=np.float64))
+    solver._wall_contacts = WallContactSet(
+        contacts=(
+            WallContact(
+                wall_axis=0,
+                wall_side="lo",
+                tangent_axis=1,
+                coordinate=float(coordinate),
+                orientation=-1.0,
+                mode="pinned_no_slip",
+                angle_mode="initial",
+                level=0.5,
+            ),
+        ),
+        traces=(
+            WallTrace(
+                wall_axis=0,
+                wall_side="lo",
+                tangent_axis=1,
+                tangent_coordinates=(0.0, float(coordinate), 1.0),
+                values=tuple(float(v) for v in trace_values),
+                level=0.5,
+            ),
+        ),
+    )
+
+    save_checkpoint(
+        path,
+        solver=solver,
+        psi=np.ones((3, 3)),
+        u=np.ones((3, 3)),
+        v=np.ones((3, 3)),
+        p=np.ones((3, 3)),
+        t=0.1,
+        step=1,
+        config_path=config,
+    )
+
+    with np.load(path, allow_pickle=False) as data:
+        assert "solver/wall_contacts_json" not in data.files
+        assert data["solver/wall_contacts/contacts"].dtype == np.float64
+
+    restored = _solver()
+    load_checkpoint(path, solver=restored, config_path=config)
+
+    contact = restored._wall_contacts.contacts[0]
+    trace = restored._wall_contacts.traces[0]
+    assert np.float64(contact.coordinate).tobytes() == coordinate.tobytes()
+    assert np.asarray(trace.values, dtype=np.float64).tobytes() == np.asarray(
+        trace_values, dtype=np.float64
+    ).tobytes()
 
 
 def test_checkpoint_rejects_non_time_config_drift(tmp_path):
