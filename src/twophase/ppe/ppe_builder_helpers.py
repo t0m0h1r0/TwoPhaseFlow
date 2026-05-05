@@ -244,13 +244,15 @@ def _apply_periodic_row_constraints(builder, data, rows, cols):
     if builder._periodic_image_dofs is None:
         return data, rows, cols
     xp = builder.xp
-    img_dofs = builder._periodic_image_dofs
-    src_dofs = builder._periodic_image_sources
-    keep = ~xp.isin(rows, img_dofs)
+    img_rows = xp.asarray(builder._periodic_image_dofs, dtype=rows.dtype)
+    img_cols = xp.asarray(builder._periodic_image_dofs, dtype=cols.dtype)
+    src_cols = xp.asarray(builder._periodic_image_sources, dtype=cols.dtype)
+    keep = ~xp.isin(rows, img_rows)
     data, rows, cols = data[keep], rows[keep], cols[keep]
-    data = xp.concatenate([data, xp.ones(len(img_dofs)), -xp.ones(len(img_dofs))])
-    rows = xp.concatenate([rows, xp.asarray(img_dofs), xp.asarray(img_dofs)])
-    cols = xp.concatenate([cols, xp.asarray(img_dofs), xp.asarray(src_dofs)])
+    ones = xp.ones(img_rows.shape, dtype=data.dtype)
+    data = xp.concatenate([data, ones, -ones])
+    rows = xp.concatenate([rows, img_rows, img_rows])
+    cols = xp.concatenate([cols, img_cols, src_cols])
     return data, rows, cols
 
 
