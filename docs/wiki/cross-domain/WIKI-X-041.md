@@ -28,7 +28,10 @@ depends_on:
   - "[[WIKI-T-152]]"
   - "[[WIKI-T-153]]"
   - "[[WIKI-T-154]]"
+  - "[[WIKI-T-156]]"
+  - "[[WIKI-T-157]]"
   - "[[WIKI-X-045]]"
+  - "[[WIKI-X-046]]"
 consumers:
   - domain: theory
     usage: "Start here before using older theory cards for derivations"
@@ -55,10 +58,12 @@ algorithm policy.
 | Topic | Use first | Active reading |
 |---|---|---|
 | Projection closure | [[WIKI-T-080]], [[WIKI-X-040]] | PPE, corrector, pressure history, and diagnostics share face-space objects. |
-| CLS transport | [[WIKI-T-088]], [[WIKI-T-101]], paper §6/§11 | Current paper contract is FCCD face-flux CLS transport with projected face velocity. |
+| CLS transport | [[WIKI-T-156]], [[WIKI-T-088]], [[WIKI-T-101]] | Current paper contract is FCCD face-flux CLS transport with projected face velocity. |
 | Capillary jump | [[WIKI-X-039]], [[WIKI-X-040]] | Use oriented affine interface stress and face acceleration, not a regular pressure field. |
 | PPE residual | [[WIKI-T-152]], [[WIKI-E-059]] | Production projection accuracy is the high-order residual contract, not fixed DC iteration count. |
 | Pressure representative | [[WIKI-T-154]], [[WIKI-E-060]] | Raw interface-band pressure is diagnostic; read Hodge/phase representatives and face cochains. |
+| ALE/remap energy | [[WIKI-T-155]], [[WIKI-T-157]] | Variational curvature work needs shared pressure-work pairing and step-local energy endpoints. |
+| Paper/wiki split | [[WIKI-X-046]], [[WIKI-E-061]] | Put successful contracts in the paper; preserve failed controls and trial variants in the wiki. |
 | Negative shortcuts | [[WIKI-X-045]] | Damping/CFL/smoothing/caps/hyperviscosity are retained as rejected detours, not paper success claims. |
 | Verification reading | [[WIKI-E-040]], [[WIKI-X-040]] | V-series labels encode what was certified; stale FFT/CCD-LU/CN readings are historical only. |
 | Density-ratio evidence | [[WIKI-E-053]], [[WIKI-X-040]], paper §13 | Current §14 stack evidence reaches density ratio 833 in V6; older nonuniform-grid gates are not global limits. |
@@ -104,6 +109,8 @@ They are retained with a bounded reading:
   evidence, not tuning targets;
 - N64 oscillating droplet pressure artifacts must separate projection
   underconvergence, face cochains, scalar representatives, and curvature theory;
+- N64 static-grid, `fccdface`, `transportvar`, phase/density variants, and
+  other non-DC probes remain useful controls only with their acceptance gates;
 - rejected shortcuts such as damping, smoothing, curvature caps, hyperviscosity,
   and blind CFL reduction remain negative knowledge, not solver fixes;
 - pre-projection-native nonuniform density-ratio limits remain experiment

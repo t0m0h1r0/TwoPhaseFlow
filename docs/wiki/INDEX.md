@@ -1,4 +1,4 @@
-# Wiki Index — 347 entries
+# Wiki Index — 352 entries
 
 ## Active Retrieval Gate
 
@@ -8,7 +8,7 @@ research findings.  Older cards remain listed for provenance, but cards marked
 SUPERSEDED or REFERENCE must not be used as current algorithm policy without
 their curation notes.
 
-## Theory (155)
+## Theory (157)
 
 | REF-ID | Title |
 |--------|-------|
@@ -167,8 +167,10 @@ their curation notes.
 | [WIKI-T-153](theory/WIKI-T-153.md) | Affine Pressure History Lives as a Face Acceleration Cochain |
 | [WIKI-T-154](theory/WIKI-T-154.md) | Raw Interface-Band Pressure Is Not the Physical Scalar Observable |
 | [WIKI-T-155](theory/WIKI-T-155.md) | Discrete Variational Closure Requires Shared Surface-Energy and Pressure-Work Pairing |
+| [WIKI-T-156](theory/WIKI-T-156.md) | Projection-Native Transport Is a Face-Space Conservation Contract |
+| [WIKI-T-157](theory/WIKI-T-157.md) | ALE Discrete-Gradient Energy Endpoints Are Step-Local |
 
-## Cross-Domain (45)
+## Cross-Domain (46)
 
 | REF-ID | Title |
 |--------|-------|
@@ -217,8 +219,9 @@ their curation notes.
 | [WIKI-X-043](cross-domain/WIKI-X-043.md) | RCA Artifacts Falsify Shortcuts Before Authorizing Fixes |
 | [WIKI-X-044](cross-domain/WIKI-X-044.md) | Test Failure Retention Separates Live Contracts from Stale Probes |
 | [WIKI-X-045](cross-domain/WIKI-X-045.md) | Rejected Shortcuts Preserve the Theory Boundary |
+| [WIKI-X-046](cross-domain/WIKI-X-046.md) | Paper Success Narrative and Wiki Trial Ledger Have Different Filters |
 
-## Experiment (60)
+## Experiment (61)
 
 | REF-ID | Title |
 |--------|-------|
@@ -283,6 +286,7 @@ their curation notes.
 | [WIKI-E-058](experiment/WIKI-E-058.md) | N64 Alpha-2 Long Runs Need Short Projection and Geometry Gates First |
 | [WIKI-E-059](experiment/WIKI-E-059.md) | Projection Underconvergence Was a Real N64 Pressure RCA Component |
 | [WIKI-E-060](experiment/WIKI-E-060.md) | Pressure Oscillation RCA Must Separate Force Cochains from Plot Representatives |
+| [WIKI-E-061](experiment/WIKI-E-061.md) | N64 Non-DC Trial Matrix Separates Contracts from Probes |
 
 ## Paper (16)
 
@@ -341,7 +345,7 @@ their curation notes.
 | [WIKI-M-030](meta/WIKI-M-030.md) | Meta-Prompt Evolution Needs Telemetry, Skills, and Tool-Trust Gates |
 | [WIKI-M-031](meta/WIKI-M-031.md) | Review Artifacts Close the Loop with Finding, Fix, and Validation |
 
-## Code (40)
+## Code (41)
 
 | REF-ID | Title |
 |--------|-------|
@@ -385,3 +389,4 @@ their curation notes.
 | [WIKI-L-038](code/WIKI-L-038.md) | GPU Utilization Work Must Preserve the Discrete Algebra |
 | [WIKI-L-039](code/WIKI-L-039.md) | GPU Utilization Probes Must Bound Output Without Changing the Route |
 | [WIKI-L-040](code/WIKI-L-040.md) | Remote GPU Runs Must Prove the GPU Route Is Active |
+| [WIKI-L-041](code/WIKI-L-041.md) | YAML Route Flags Make Numerical Contracts Auditable |
