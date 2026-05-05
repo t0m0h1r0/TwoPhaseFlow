@@ -2,8 +2,8 @@
 ref_id: WIKI-X-014
 title: "Non-Uniform Grid + Dynamic Interface: Stability Map and Recommended Defaults"
 domain: X
-status: ACTIVE
-superseded_by: null
+status: SUPERSEDED
+superseded_by: WIKI-X-041
 sources:
   - path: "docs/memo/適用戦略_非一様格子動的界面_実問題導入プロトコル.md"
     description: "Real-problem deployment protocol: 3-phase on-boarding"
@@ -31,6 +31,14 @@ compiled_at: 2026-04-16
 ---
 
 # Non-Uniform Grid + Dynamic Interface: Stability Map and Recommended Defaults
+
+> Curation note (CHK-RA-WIKI-CURATION-001, 2026-05-05):
+> This page is retained as pre-projection-native experiment history.  Do not
+> use the `rho <= 20` bound, `legacy` fallback sequence, or `consistent_iim`
+> defaults as current global solver policy.  Current retrieval starts at
+> [[WIKI-X-041]] and [[WIKI-X-040]], where the §14 projection-native /
+> affine-history stack and V6 density-ratio evidence supersede this older
+> nonuniform-grid deployment map.
 
 Cross-cutting reference synthesizing theory ([[WIKI-T-034]], [[WIKI-T-035]]) and
 experiment ([[WIKI-E-023]], [[WIKI-E-024]]) into actionable defaults, monitoring

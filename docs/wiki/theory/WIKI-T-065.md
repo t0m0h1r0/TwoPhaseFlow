@@ -15,17 +15,24 @@ depends_on:
   - "[[WIKI-T-028]]: Reinit pseudo-time PDE for φ"
   - "[[WIKI-T-030]]: Level set geometry: n, κ from φ"
   - "[[WIKI-T-036]]: phi-primary transport path"
-  - "[[WIKI-T-013]]: WENO5 vs DCCD: scheme selection benchmarks"
+  - "[[WIKI-T-088]]: FCCD telescoping conservation before clamp"
+  - "[[WIKI-T-101]]: CLS transport uses projected velocity"
 consumers:
   - "[[WIKI-X-031]]: Advection Design Guide"
   - "[[WIKI-X-032]]: Complete 8-Phase NS+CLS Algorithm"
   - "[[SP-L]]: Advection, CLS, body force, time integration short paper"
-tags: [cls, conservative_level_set, transport, taa_rk3, weno, mass_correction, reinit, psi_phi_mapping, narrow_band, epsilon_management]
+tags: [cls, conservative_level_set, transport, tvd_rk3, fccd, mass_correction, reinit, psi_phi_mapping, narrow_band, epsilon_management]
 compiled_by: ResearchArchitect
 compiled_at: "2026-04-22"
 ---
 
 # CLS Complete 1-Step Algorithm
+
+> Curation note (CHK-RA-WIKI-CURATION-001, 2026-05-05):
+> Stage A has been refreshed from the older WENO/DCCD design memo to the
+> current paper contract: FCCD face-flux CLS transport driven by projected
+> velocity.  WENO5/DCCD remain reference or legacy comparators, not active
+> scheme-selection policy.
 
 ## §1 Three-Responsibility Principle
 
@@ -108,14 +115,18 @@ At face $(i+\tfrac12,j)$ with face velocity $u_{i+1/2,j}$ (from PPE projection):
 
 $$(\psi u)_{i+1/2,j} = u_{i+1/2,j}\,\psi^{\rm upwind}_{i+1/2,j}$$
 
-$\psi^{\rm upwind}$ is reconstructed from the **upwind** side using:
+$\psi$ face values are reconstructed by the current FCCD face-flux path:
 
-| Region | Scheme |
+| Object | Scheme |
 |--------|--------|
-| Bulk ($|\phi| > W_{\rm WENO}$, smooth) | **WENO5** (mandatory for $\psi$) |
-| Interface band ($|\phi| \leq W_{\rm WENO}$) | **WENO5** or monotone MUSCL-Minmod |
+| Face value $P_f\psi$ | **FCCD face value / face jet** |
+| Flux $(P_f\psi)u_f$ | Conservative face flux |
+| Divergence | Telescoping FCCD/FVM divergence before clamp |
 
-**Rule**: CCD must **not** be used for $\psi$ face reconstruction. CCD presupposes $C^\infty$ fields; $\psi$ has a steep but continuous profile near the interface that CCD over-differentiates and destabilizes.
+**Rule**: CLS transport uses the projection-native face velocity and the same
+face-locus conservation contract as the active paper algorithm.  WENO5 is a
+reference comparator; DCCD is legacy/reference for older CLS tests.  Neither is
+the current active scheme-selection rule for $\psi$.
 
 ### Divergence-free velocity requirement
 
