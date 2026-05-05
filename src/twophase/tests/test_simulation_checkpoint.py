@@ -129,6 +129,41 @@ def test_config_fingerprint_ignores_final_time_and_visualization_paths(tmp_path)
     assert config_fingerprint(a) != config_fingerprint(c)
 
 
+def test_config_fingerprint_ignores_nested_run_time_output_paths(tmp_path):
+    a = tmp_path / "a.yaml"
+    b = tmp_path / "b.yaml"
+    c = tmp_path / "c.yaml"
+    a.write_text(
+        "\n".join([
+            "run:",
+            "  time:",
+            "    final: 1.0",
+            "    cfl: 0.2",
+            "    print_every: 200",
+            "  debug:",
+            "    step_diagnostics: false",
+            "output:",
+            "  dir: results/a",
+            "  snapshots:",
+            "    interval: 1.0",
+            "physics:",
+            "  surface_tension: 0.072",
+        ])
+    )
+    b.write_text(
+        a.read_text()
+        .replace("final: 1.0", "final: 2.5")
+        .replace("print_every: 200", "print_every: 50")
+        .replace("step_diagnostics: false", "step_diagnostics: true")
+        .replace("dir: results/a", "dir: results/b")
+        .replace("interval: 1.0", "interval: 0.5")
+    )
+    c.write_text(a.read_text().replace("cfl: 0.2", "cfl: 0.1"))
+
+    assert config_fingerprint(a) == config_fingerprint(b)
+    assert config_fingerprint(a) != config_fingerprint(c)
+
+
 def test_checkpoint_roundtrip_restores_solver_runtime_state(tmp_path):
     config = tmp_path / "cfg.yaml"
     _write_config(config)

@@ -26,10 +26,15 @@ SCHEMA_VERSION = 1
 MAGIC = "twophase.ch14.restart"
 RESTART_ALLOWED_CONFIG_PATHS = (
     ("run", "T_final"),
+    ("run", "time", "final"),
     ("run", "snap_times"),
+    ("run", "snapshots", "times"),
     ("run", "snap_interval"),
+    ("run", "snapshots", "interval"),
     ("run", "print_every"),
+    ("run", "time", "print_every"),
     ("run", "debug_diagnostics"),
+    ("run", "debug", "step_diagnostics"),
     ("output",),
 )
 CODE_FINGERPRINT_ROOTS = (
