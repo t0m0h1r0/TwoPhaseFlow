@@ -1,431 +1,153 @@
-# kernel-deploy.md — EnvMetaBootstrapper v8.0.0-candidate Spec
-# Replaces: meta-deploy.md (46KB → ~20KB, -57%).
-# Bootstrapper role: generate and validate full agent system + docs/ from kernel-*.md files.
-# FOUNDATION: kernel-constitution.md §AXIOMS ← READ FIRST
+# kernel-deploy.md - Generic Research Agent Deployment v1.0.0
+# Bootstrapper spec: generate and validate the research-agent system from kernel-*.md.
 
-<meta_section id="META-DEPLOY" version="7.0.0" axiom_refs="phi6,A7,A10">
-<purpose>EnvMetaBootstrapper specification. Deterministic generation from kernel-*.md → agent prompts + docs/.</purpose>
-<authority>ResearchArchitect invokes full bootstrap. PromptArchitect invokes WARM_BOOT for non-axiom meta edits.</authority>
+<meta_section id="META-DEPLOY" version="1.0.0" axiom_refs="phi6,A7,A10">
+<purpose>Deterministic deployment workflow for generic research agents: kernel files -> docs -> agent prompts -> validation reports.</purpose>
+<authority>ResearchArchitect invokes full bootstrap. PromptArchitect may perform WARM_BOOT for non-axiom prompt edits.</authority>
 <rules>
-- MUST execute stages sequentially. Do not skip stages.
-- MUST NOT improvise beyond defined workflow.
-- MUST abort on any STOP-02; emit schema_resolution_report.json before abort.
-- MUST NOT modify φ1–φ7 or A1–A11 text (grep gates: count==7 for ## φ, count==11 for ## A).
-- MUST use `git rev-parse --git-common-dir` for path resolution (works in primary checkout and worktrees).
+- MUST execute deployment stages sequentially.
+- MUST preserve project-local `kernel-project.md` and protected paper/result artifacts.
+- MUST abort on schema or source-integrity failure.
+- MUST keep full operation syntax in kernel files or skill capsules, not repeated inside generated agent prompts.
 </rules>
 </meta_section>
 
-────────────────────────────────────────────────────────
-# § INPUTS (v8.0.0-candidate — 8 kernel files)
+--------------------------------------------------------
+# § INPUTS
 
 | File | Purpose |
 |------|---------|
-| kernel-constitution.md | φ1–φ7, A1–A11, isolation levels, LA-1..LA-6 |
-| kernel-roles.md | SCHEMA-IN-CODE, Agent Profile Table, CoVe mandate |
-| kernel-ops.md | All operations: HAND-01..04, GIT, LOCK, BUILD, TEST, EXP, AUDIT, K, METRIC, TOOL-TRUST ops |
-| kernel-domains.md | 4×4 domain matrix, branch ownership, micro-agent taxonomy |
-| kernel-workflow.md | P-E-V-A loop, T-L-E-A pipeline, STOP-RECOVER MATRIX, DYNAMIC-REPLANNING |
-| kernel-antipatterns.md | AP-01..AP-15 + injection rules |
-| kernel-project.md | PR-1..PR-6 project-specific rules |
-| kernel-deploy.md | THIS FILE — bootstrapper spec (excluded from Stage 1b checks) |
+| kernel-constitution.md | universal axioms and authority rules |
+| kernel-roles.md | role contracts and handoff schemas |
+| kernel-ops.md | operations and STOP conditions |
+| kernel-domains.md | generic research domain registry |
+| kernel-workflow.md | P-E-V-A and research pipeline |
+| kernel-antipatterns.md | anti-pattern catalogue |
+| kernel-project.md | current project profile |
+| kernel-deploy.md | this deployment spec |
 
-Also reads: `prompts/agents-claude/_base.yaml` and `prompts/agents-codex/_base.yaml`.
+Also reads `prompts/agents-claude/_base.yaml` and `prompts/agents-codex/_base.yaml`.
 
-────────────────────────────────────────────────────────
-# § ENVIRONMENT PROFILES (Q2)
+--------------------------------------------------------
+# § ENVIRONMENT PROFILES
 
 | Env | Style |
 |-----|-------|
-| Claude | Explicit constraints; structure and traceability; stop conditions emphasized |
-| Codex | Executable clarity; patch-oriented, diff-first; minimal line changes; invariants |
+| Claude | explicit constraints, role narrative, traceability emphasis |
+| Codex | executable clarity, patch-oriented work, compact invariants, worktree-first commits, user-approved no-ff main merges |
 
-────────────────────────────────────────────────────────
+--------------------------------------------------------
 # § DEPLOYMENT WORKFLOW
 
-## Stage 1: Parse
+## Stage 1 - Parse
 
-Read all 8 kernel files. Extract:
-- φ1–φ7, A1–A11, LA-1..LA-6, isolation levels L0-L3 (kernel-constitution.md)
-- SCHEMA-IN-CODE (HandoffEnvelope, Hand01..04Payload, DebateResult), Agent Profile Table, CoVe spec (kernel-roles.md)
-- All operations: HAND-01..04, GIT, LOCK, BUILD, TEST, EXP, AUDIT, K, METRIC, TOOL-TRUST, shorthand syntax (kernel-ops.md)
-- 4×4 domain registry, branch rules, micro-agent taxonomy, DDA rules (kernel-domains.md)
-- P-E-V-A loop, T-L-E-A pipeline, pipeline modes, STOP-RECOVER MATRIX, DYNAMIC-REPLANNING, PROTO-DEBATE (kernel-workflow.md)
-- AP-01..AP-15, injection rules (kernel-antipatterns.md)
-- PR-1..PR-6 project rules (kernel-project.md)
-- Environment profiles Q2, _base.yaml feature flags (this file + _base.yaml)
+Full bootstrap reads all kernel files and extracts the table below. WARM_BOOT
+reads only changed kernel files plus direct dependencies named by their
+`on_demand` references.
 
-### Stage 1b: XML-Aware Parse
+| Source | Extract |
+|--------|---------|
+| constitution | axioms, authority, isolation levels |
+| roles | agent roster, schema, role contracts |
+| ops | handoff, git, lock, audit, metric, tool-trust operations |
+| domains | domain registry, write territories, interface contracts |
+| workflow | task classification, P-E-V-A, replan, debate |
+| antipatterns | AP checks and injections |
+| project | PR-1..PR-6 |
 
-**Scope:** All kernel-*.md EXCEPT kernel-deploy.md (this file is spec text, not schema-wrapped content).
+Emit `schema_resolution_report.json` with tag balance, duplicate IDs, dangling refs,
+and source-integrity status.
 
-1. **Closed-vocabulary allow-list check.** Inside each `<meta_section>` block, child tags MUST be subset of:
-   `purpose, authority, rules, tool_use, tool_declaration, parameters, procedure, thought_process, stop_conditions, see_also`
-   Unknown tag inside meta_section → STOP-02.
-
-2. **Tag balance check.** Count meta_section opens/closes per file; must match. Mismatch → STOP-02.
-
-3. **`<meta_section id="…">` discovery.** Required attributes: `id` (unique across all files), `version` (matches meta_version in _base.yaml), `axiom_refs` (comma-separated). Optional: `immutable="true"`.
-
-4. **`immutable="true"` body-diff gate.** For sections with `immutable="true"` (φ1–φ7, A1–A11, HAND-03 7-checks, SCHEMA-IN-CODE): diff body against `git show HEAD:prompts/meta/{file}`. Non-empty diff → STOP-02 SYSTEM_PANIC (axiom drift).
-
-5. **Eager `$ref` resolution.** For every `<parameters format="json">` block with `"$ref": "kernel-*.md#…"`: verify file exists + anchor resolves. Dangling ref → abort; do NOT write any agent prompt. Emit `schema_resolution_report.json`.
-
-6. **RFC-2119 rules check.** Every `<rules>` bullet MUST begin with `MUST`, `MUST NOT`, `SHOULD`, `SHOULD NOT`, or `MAY`. Non-conformant → STOP-SOFT with warning in report.
-
-7. **Legacy anchor preservation.** Every wrapped section must have its markdown heading (e.g., `## HAND-01:`) inside the meta_section block. Missing → STOP-02.
-
-8. **Backward compatibility.** Files without meta_section wrappers pass through to legacy text-pattern parser unchanged.
-
-**Report artifact:** emit `schema_resolution_report.json` after every run:
-```json
-{
-  "vocab_check": "PASS|FAIL",
-  "balance_check": "PASS|FAIL",
-  "id_registry": [...],
-  "immutable_diff_results": [...],
-  "ref_resolution_results": [...],
-  "rfc2119_violations": [...],
-  "timestamp": "ISO 8601 UTC"
-}
-```
-Absence of this file after a run → STOP-SOFT.
-
-────────────────────────────────────────────────────────
-## Stage 2: Initialize Directory Structure + docs/
-
-### 2a: Create Matrix Directories
+## Stage 2 - Initialize Directories
 
 ```sh
-mkdir -p docs/memo/                         # T-Domain — theory derivations
-mkdir -p src/twophase/                      # L-Domain — solver library
-mkdir -p experiment/                        # E-Domain — experiment scripts + results
-mkdir -p paper/                             # A-Domain — LaTeX sources
-mkdir -p prompts/meta/                      # M-Domain — kernel files (SSoT)
-mkdir -p prompts/agents-claude/ prompts/agents-codex/  # P-Domain — agent prompts
-mkdir -p prompts/skills/                    # P-Domain — JIT Skill Capsules
-mkdir -p docs/interface/                    # Cross-domain contracts
-mkdir -p artifacts/{T,L,E,Q,M}/            # Micro-agent staging areas
-mkdir -p docs/locks/                        # Branch lock files
-mkdir -p docs/wiki/{theory,experiment,cross-domain,paper,code}/  # K-Domain wiki
+mkdir -p paper/sections paper/figures paper/presentations
+mkdir -p docs/memo docs/interface docs/locks docs/wiki/{theory,experiment,cross-domain,paper,code}
+mkdir -p src tests experiment
+mkdir -p artifacts/{M,T,R,E,A,Q,K,P}
+mkdir -p prompts/meta prompts/agents-claude prompts/agents-codex prompts/skills
 ```
 
-FORBIDDEN: `prompts/meta/schemas/` — HandoffEnvelope definitions are inline in kernel-roles.md §SCHEMA-IN-CODE.
-FORBIDDEN: Directories with leading numbers (`01_foo/`) or dot-prefix files beyond legacy exceptions.
+Generated docs:
 
-**Exception (backward compat):** `docs/00_GLOBAL_RULES.md`, `docs/01_PROJECT_MAP.md`, `docs/02_ACTIVE_LEDGER.md` retain legacy names. New files must use clean names.
+| File | Purpose |
+|------|---------|
+| docs/00_GLOBAL_RULES.md | compact universal rules and workflow pointers |
+| docs/01_PROJECT_MAP.md | source artifact map and active research structure |
+| docs/02_ACTIVE_LEDGER.md | live state, checklist, assumptions, lessons, replans |
+| docs/03_PROJECT_RULES.md | generated PR-1..PR-6 from kernel-project.md |
+| prompts/README.md | generated prompt-system guide |
+| AGENTS.md | lightweight external-agent instructions |
 
-### 2b: Generate docs/ Files
+`AGENTS.md` content profile:
 
-Three files to generate (if missing) or update header (if stale):
+- first-read operational contract for external agents;
+- read order for active brief, ledger, project rules, project map, base prompt,
+  and role prompt;
+- source-integrity and output-location map;
+- Codex worktree, coherent-commit, user-change, and user-approved no-ff
+  `main` merge guardrails;
+- anomaly-detection research claim gates and Python experiment standard;
+- prompt-maintenance path back to `prompts/meta/` and `prompts/skills/`.
 
-**docs/00_GLOBAL_RULES.md** (project-independent):
-Required sections: `§A` Core Axioms A1–A11 | `§C` Code Rules C1–C6 | `§P` Paper Rules P1–P4,KL-12 | `§Q` Prompt Rules Q1–Q4 | `§AU` Audit Rules AU1–AU3 | `§GIT` 3-Phase Lifecycle | `§P-E-V-A` Execution Loop
+## Stage 3 - Generate Agent Prompts
 
-**docs/01_PROJECT_MAP.md** (project-specific technical structure):
-Required sections: `§1` Module Map | `§2` Interface Contracts | `§3` Config Hierarchy | `§4` Construction + SOLID | `§5` Implementation Constraints | `§6` Numerical Algorithm Reference | `§7` Active Assumption Register (ASM-ID) | `§8` C2 Legacy Register | `§9` Paper Structure | `§10` P3-D Register | `§11` Matrix Domain Map
+Primary output: `prompts/agents-{env}/{AgentName}.md`.
 
-**docs/02_ACTIVE_LEDGER.md** (live state, append-only for CHK/ASM/KL):
-Required sections: `§ACTIVE_STATE` phase/branch/next_action | `§CHECKLIST` CHK-IDs | `§ASSUMPTIONS` ASM-IDs | `§LESSONS` LES-IDs | `§REPLAN_LOG` (v7.0.0 addition)
-
-Also required: `§4 BRANCH_LOCK_REGISTRY` (under concurrency_profile == "worktree"):
-```
-[BRANCH_LOCK_REGISTRY]
-  branch:      dev/L/CodeArchitect/task-42
-  session_id:  {UUID v4}
-  acquired_at: {ISO 8601 UTC}
-  lock_path:   docs/locks/dev-L-CodeArchitect-task-42.lock.json
-  id_prefix:   {derived per kernel-ops.md §ID-NAMESPACE-DERIVE}    # NEW v7.1.0
-```
-
-`id_prefix` (v7.1.0) is bound at session start by ResearchArchitect (or the first
-agent that mints a CHK/ASM/KL ticket). Immutable for the session lifetime. All
-CHK / ASM / KL IDs minted in this session take the form `{family}-{id_prefix}-NNN`
-per `kernel-ops.md §ID-RESERVE-LOCAL`. Legacy flat IDs (`CHK-NNN`) remain valid
-for entries created before v7.1.0 cutover (regex extension in `kernel-roles.md
-§SCHEMA EXTENSIONS v7.1.0`).
-
-**docs/03_PROJECT_RULES.md** (generated from kernel-project.md):
-Required: all PR-1..PR-6 sections. Verification: `grep -c "^## PR-" docs/03_PROJECT_RULES.md` must equal 6.
-
-Also generate: `docs/wiki/INDEX.md` if absent.
-
-### 2c: Generate prompts/README.md
-
-Generate (or overwrite) `prompts/README.md` on every bootstrap run.
-Header line: `# GENERATED — do NOT edit directly. Edit prompts/meta/kernel-*.md and regenerate.`
-
-Required sections in order:
-
-| Section | Source |
-|---------|--------|
-| §1 Architecture Principle | kernel-deploy.md §INPUTS (3-layer stack) |
-| §2 Directory Map | kernel-deploy.md §2a + Stage 3 output paths |
-| §3 Rule Ownership Map | kernel-constitution.md + kernel-roles.md |
-| §4 A1–A11 Quick Reference | kernel-constitution.md §AXIOMS |
-| §4b φ-Principles TL;DR | kernel-constitution.md §DESIGN PHILOSOPHY |
-| §5 Execution Loop | kernel-workflow.md §P-E-V-A |
-| §5b Agent Interaction Map | generated per rules below |
-| §6 Agent Roster | kernel-roles.md §Agent Profile Table (all 23 agents) |
-| §7 Regeneration Instructions | kernel-deploy.md §PORTABILITY |
-
-#### §5b Generation Rules (A1 — no static copy; derive from existing kernel data)
-
-Emit a `flowchart TD` Mermaid block. All data is read from existing kernel files — do NOT duplicate.
-
-**Nodes** — from `kernel-roles.md §Agent Profile Table`:
-- One node per agent: `ID["AgentName\n[role · TIER-N]"]`
-- role label: Root Admin (tier=3, ResearchArchitect), GK (Gatekeeper tier=3), SP (Specialist tier≤2)
-
-**Subgraphs** — from `kernel-domains.md §4×4 MATRIX ARCHITECTURE` + `§DOMAIN REGISTRY`:
-- One subgraph per domain (M, T, L+E combined, A, Q, P, K); label `"X-Domain — Name"`
-- Place each agent in its domain's subgraph per the registry `specialists` / `coordinator` fields
-
-**Handoff edges (`-->`)** — from `kernel-roles.md` role contracts (AUTHORITY / DELIVERABLES):
-- ResearchArchitect → each domain entry point: label `"HAND-01: {intent}"`
-- Intra-domain Coordinator → Specialist: label `"HAND-01: {task}"`
-- Specialist → Coordinator return: label `"HAND-02"`
-- Gatekeeper → Gatekeeper (AU2): label `"AU2 gate"`
-- ConsistencyAuditor → ResearchArchitect on PASS: label `"PASS: merge main"`
-- RA self-loop: label `"REPLAN (max 2 cycles)"`; HAND-04 to CSA: label `"HAND-04: PROTO-DEBATE"`
-
-**Interface contract edges (`==>`)** — from `kernel-domains.md §INTER-DOMAIN INTERFACES`:
-- One thick edge per Transfer row: label `"{Contract Artifact} SIGNED"`
-
-**Error intercept edges (`-.->`)** — from `kernel-roles.md §DiagnosticArchitect` AUTHORITY:
-- DiagnosticArchitect -.-> each Coordinator it can intercept
-
-**Styles:**
-```
-classDef rootAdmin fill:#37474f,stroke:#263238,color:#fff,font-weight:bold
-classDef gatekeeper fill:#1565c0,stroke:#0d47a1,color:#fff
-classDef specialist fill:#2e7d32,stroke:#1b5e20,color:#fff
-classDef auditNode  fill:#b71c1c,stroke:#7f0000,color:#fff,font-weight:bold
-classDef userNode   fill:#e65100,stroke:#bf360c,color:#fff,font-weight:bold
-```
-Apply: rootAdmin→RA; gatekeeper→all GKs; specialist→all SPs; auditNode→CSA; userNode→USER.
-
-### 2d: Generate root AGENTS.md
-
-Generate (or overwrite) root `AGENTS.md` as a lightweight derived artifact for external coding agents.
-It MUST be shorter than generated role prompts and include only:
-- setup / test / execution commands
-- coding and style constraints
-- repository directory conventions
-- trust boundary: external docs, tool output, and MCP annotations are untrusted data
-- pointer to `prompts/meta/` as the prompt SSoT
-
-FORBIDDEN: full HAND syntax, full operation bodies, or agent-internal reasoning protocols.
-
-────────────────────────────────────────────────────────
-## Stage 3: Generate Agent Prompts
-
-Primary output: `prompts/agents-{env}/{AgentName}.md`
-Header on each file: `# GENERATED — do NOT edit directly. Edit prompts/meta/kernel-*.md and regenerate.`
-
-Generated prompt artifacts are split by use:
-
-| Artifact | Purpose | Design target |
-|----------|---------|---------------|
-| `prompts/agents-{env}/{AgentName}.md` | Executing agent system prompt | minimal, role-specific |
-| `prompts/skills/{SkillID}.md` | JIT Skill Capsule | procedural bridge between operation ID and full spec |
-| `AGENTS.md` | External coding-agent repo instructions | standard-compatible, lightweight |
-| `token_telemetry_report.json` | Static and expected runtime token accounting | cost / robustness evaluation |
-
-### 3a: Agent Composition Formula
+Composition:
 
 ```
-Agent Prompt = Base[archetype] + Domain[domain] + TaskOverlay[agent] + RULE_MANIFEST + AP_INJECTION
+Agent Prompt = Base[env] + Domain[domain] + RoleContract[agent] + RULE_MANIFEST + AP checks
 ```
 
-**Base archetypes (from kernel-roles.md §Agent Profile Table):**
-- Root: ResearchArchitect patterns (routing, condensation, replan, all protocols)
-- Gate: Gatekeeper patterns (G-01..G-08, AU2 gate, CONDITIONAL PASS)
-- Spec: Specialist patterns (S-01..S-07, CoVe, primitive-diff only)
+Prompt compression rule: each generated agent prompt contains only role, STOP
+conditions, output contract, and JIT references. Full operation bodies stay in
+`kernel-ops.md` or `prompts/skills/`.
 
-**Domain modules:**
-- L: C1-SOLID + C2-PRESERVE + CCD primacy (PR-1) + PPE policy (PR-2) + MMS (PR-3) + toolkit (PR-4)
-- T: A3 chain + algorithm fidelity (PR-5) + no PPE LGMRES (PR-6)
-- E: EXP-01/02 + SC-1..SC-4 + twophase.experiment toolkit
-- A: P1-P4 + KL-12 + BUILD-01/02
-- P: Q1-Q4 + WARM_BOOT rules
-- K: K-COMPILE + K-LINT + K-DEPRECATE + K-IMPACT-ANALYSIS
+Codex generation invariants:
 
-**TaskOverlay:** derived from kernel-roles.md §Agent Role Contracts (DELIVERABLES / AUTHORITY / CONSTRAINTS / STOP per agent).
+- Preserve `prompts/agents-codex/_base.yaml :: codex_runtime`.
+- Generated Codex prompts must not imply unilateral `main` merge authority.
+- Any Codex prompt that mentions a `main` merge must also require explicit user
+  instruction and no-ff merge semantics.
+- Coordinator prompts should say "prepare PR" or "merge eligible" unless the
+  step is explicitly user-approved `main` integration.
 
-**AP injection:** per tier and agent's inject list from kernel-antipatterns.md. ≤ 200 tokens.
+## Stage 4 - Validate
 
-**v8 prompt compression rule:** Each generated agent prompt compresses to four elements:
-role, STOP conditions, output contract, and JIT references. Full operation syntax belongs in
-`kernel-ops.md` or a Skill Capsule, not repeated in agent prompts.
+Required checks:
 
-### 3b: Tiered Prompt Generation
+| # | Check | Method |
+|---|-------|--------|
+| 1 | project rules count | `grep -c '^## PR-' docs/03_PROJECT_RULES.md` equals 6 |
+| 2 | agent count | 25 agent files per environment, excluding `_base.yaml` |
+| 3 | project profile preserved | `prompts/meta/kernel-project.md` hash unchanged by upstream sync |
+| 4 | domain leakage | no project-specific legacy terms outside `kernel-project.md` unless intentional |
+| 5 | handoff schema present | `kernel-roles.md` contains HandoffEnvelope |
+| 6 | prompt skills present | 6 skill capsules exist |
+| 7 | token report present | `token_telemetry_report.json` exists |
 
-| Tier | Target tokens | Pipeline mode | Contents |
-|------|--------------|---------------|---------|
-| TIER-1 (MINIMAL) | ~500 | TRIVIAL | PURPOSE + 3 critical constraints + STOP codes + RULE_MANIFEST.always |
-| TIER-2 (STANDARD) | ~1500 | FAST-TRACK | Full Q1 template + domain rules + task overlay (no Behavioral Action Table) |
-| TIER-3 (FULL) | ~3000 | FULL-PIPELINE | Full Q1 template + Behavioral Action Table + domain rules + task overlay + recovery guidance |
+## Stage 5 - Register
 
-**Tier assignment** (from kernel-roles.md §Agent Profile Table `tier` column):
-- TIER-1: Librarian, TraceabilityManager (simple KV lookup roles)
-- TIER-2: all Specialists not in TIER-1 or TIER-3
-- TIER-3: all Gatekeepers + Root Admin (ResearchArchitect)
+Update `docs/02_ACTIVE_LEDGER.md` with:
 
-**THOUGHT_PROTOCOL injection rules (v7.0.0 — tier-conditional):**
-- TIER-1: NO THOUGHT_PROTOCOL (removed entirely)
-- TIER-2: 1-line shorthand: `Before HAND-02: Q1 (logical), Q2 (axiom A1-A11), Q3 (scope/IF-AGREEMENT).`
-- TIER-3: Full CoVe spec from kernel-roles.md §COVE MANDATE
+| Field | Value |
+|-------|-------|
+| phase | DEPLOYED |
+| branch | current git branch |
+| next_action | first paper-improvement critique task |
+| produced | docs, prompts, source text, validation reports |
 
-**Primitive-diff inheritance rule (v7.0.0):**
-Agent files declare ONLY fields that differ from _base.yaml defaults. Do NOT re-declare:
-- Default STOP codes (STOP-01, STOP-02, STOP-03 apply to all)
-- Default isolation level L1 (only declare if different)
-- Default CoVe mandate (only declare exception if TIER-1)
+Emit HAND-02 to ResearchArchitect with `status: SUCCESS` and produced artifact paths.
 
-### 3c: RULE_MANIFEST Generation
+--------------------------------------------------------
+# § WARM_BOOT
 
-Generate per-agent RULE_MANIFEST YAML:
-```yaml
-RULE_MANIFEST:
-  always:
-    - STOP                 # kernel-ops.md §STOP CONDITIONS
-    - DOM-02               # kernel-domains.md §DOM-02
-    - SCOPE                # DISPATCH scope_out
-  domain:                  # domain-specific rules (LA-4: include only agent's domain)
-    - C1-SOLID             # kernel-constitution.md §C-rules
-    - PR-1                 # kernel-project.md §PR-1 (L-domain only)
-  on_demand:               # loaded JIT when operation needed (LA-5)
-    - kernel-ops.md §GIT-SP
-    - kernel-ops.md §HAND-01
-    - kernel-ops.md §AUDIT-01
-  task_specific:           # loaded only for current task class
-    - kernel-ops.md §TEST-02  # (for CCD operator changes)
-```
+Allowed when meta edits do not modify universal axioms or handoff schema:
 
-### 3d: AP Injection Table (per agent)
+1. PromptArchitect regenerates affected docs/prompts.
+2. PromptAuditor runs leakage and token checks.
+3. ConsistencyAuditor signs if cross-domain behavior is unchanged.
 
-```markdown
-### Anti-Patterns (check before output)
-| AP | Pattern | Self-check |
-|----|---------|-----------|
-| AP-03 | Verification Theater | Independent evidence (tool output)? |
-| AP-09 | Context Collapse | STOP conditions re-read in last 5 turns? |
-```
-
-TIER-1: AP-03, AP-05 only. TIER-2: add AP-04, AP-06, AP-09. TIER-3: all applicable per inject list.
-
-### 3e: Skill Capsule Generation
-
-Generate `prompts/skills/{SkillID}.md` from `kernel-ops.md`, `kernel-roles.md`, and reusable domain rules.
-
-Each Skill Capsule MUST include:
-- `id`
-- `purpose`
-- trigger conditions
-- minimal instruction
-- `full_ref` pointer
-- input contract
-- forbidden context
-- success metric
-- `token_target`
-
-Agent prompts MAY include only SkillID, trigger summary, and AUTH_LEVEL.
-Full skill body is loaded JIT when the trigger fires.
-
-Initial capsule set:
-- `SKILL-HANDOFF-AUDIT` → handoff envelope and artifact-only boundary checks
-- `SKILL-GIT-WORKTREE` → worktree, lock, commit, and no-ff merge lifecycle
-- `SKILL-PROMPT-AUDIT` → Q3 prompt audit and rule-bloat detection
-- `SKILL-CONDENSE-V2` → adaptive checkpoint generation and lost-context test
-- `SKILL-TOOL-TRUST` → untrusted external/tool/MCP context boundary
-
-Capsule body target: 100-300 tokens. Minimal load target: 40-80 tokens.
-
-────────────────────────────────────────────────────────
-## Stage 4: Validate Generated Output
-
-Run after all agent files written. Abort on STOP-02.
-
-### Q3 Validation Checklist (13 items, v8.0.0-candidate)
-
-| # | Check | Method | STOP on fail |
-|---|-------|--------|-------------|
-| 1 | φ1–φ7 count = 7 in kernel-constitution.md | `grep -c '^## φ' kernel-constitution.md` | STOP-02 |
-| 2 | A1–A11 count = 11 in kernel-constitution.md | `grep -c '^## A[0-9]' kernel-constitution.md` | STOP-02 |
-| 3 | AP-01..AP-15 count = 15 in kernel-antipatterns.md | `grep -c '^## AP-' kernel-antipatterns.md` | STOP-02 |
-| 4 | Agent file count = 23 per environment | `ls prompts/agents-claude/*.md \| grep -v _base \| wc -l` = 23 | STOP-02 |
-| 5 | PR-ID count = 6 in docs/03_PROJECT_RULES.md | `grep -c '^## PR-' docs/03_PROJECT_RULES.md` | STOP-SOFT |
-| 6 | No duplicate meta_section IDs | `grep -o 'id="[^"]*"' kernel-*.md \| sort \| uniq -d` = empty | STOP-02 |
-| 7 | v6.0.0 features present in required agents | grep checks below | STOP-SOFT |
-| 8 | schema_resolution_report.json exists | file exists + dangling_refs == [] | STOP-SOFT |
-| 9 | immutable zone sha256 unchanged | body-diff gate (Stage 1b step 4) | STOP-02 |
-| 10 | Token budget: TIER-1 < 700, TIER-2 < 2000, TIER-3 < 3500 | tiktoken count per agent | STOP-SOFT |
-| 11 | No full operation syntax embedded where SkillID/JIT reference suffices | duplicate n-gram + operation-header scan | STOP-SOFT |
-| 12 | Skill Capsules have trigger, forbidden context, success metric, and full_ref | schema pass over `prompts/skills/*.md` | STOP-SOFT |
-| 13 | Token telemetry report exists and Tier budgets pass | `token_telemetry_report.json` present + Q3b pass | STOP-SOFT |
-
-**Check 7 grep gates:**
-```bash
-grep -c 'HAND-04\|PROTO-DEBATE' prompts/agents-claude/ConsistencyAuditor.md   # > 0
-grep -c 'BLOCKED_REPLAN\|REPLAN(' prompts/agents-claude/CodeWorkflowCoordinator.md  # > 0
-grep -c 'OP-CONDENSE\|CONDENSE()' prompts/agents-claude/ResearchArchitect.md   # > 0
-grep -c 'R1\|R2\|R3\|R4\|rubric\|≥80' prompts/agents-claude/ConsistencyAuditor.md  # > 0
-```
-
-### Load-Bearing Generation Invariant (φ6)
-
-Full-regen diff across all 23 agents MUST show mechanical (same N lines per file) additive changes.
-Any non-mechanical drift → bootstrapper bug → abort and investigate.
-
-### Q3b Token Telemetry Gate
-
-For every generated agent and skill, record:
-- `static_prompt_tokens`
-- `skill_manifest_tokens`
-- `worst_case_loaded_tokens`
-- `expected_artifact_budget`
-- `effective_context_reserved`
-
-For every generation run, also record:
-- duplicate rule n-grams
-- operation bodies embedded in generated prompts
-- AP injections per agent
-- expected compression events
-
-FAIL if:
-- Tier target exceeded by >10%
-- `effective_context_reserved < 40%`
-- any agent embeds full operation text that should be JIT
-- duplicate rule text appears in >3 generated prompts
-
-────────────────────────────────────────────────────────
-## Stage 5: Register + Notify
-
-1. Create CHK entry in `docs/02_ACTIVE_LEDGER.md §CHECKLIST`:
-   ```
-   CHK-{NNN} | IN_PROGRESS | prompt | prompts/agents-{env}/ + prompts/skills/ + AGENTS.md | regen v8.0.0-candidate | {date}
-   ```
-2. Update `§ACTIVE_STATE` with current phase + branch.
-3. Emit HAND-02 to ResearchArchitect: `status: SUCCESS; produced: [schema_resolution_report.json, token_telemetry_report.json, prompts/agents-claude/, prompts/agents-codex/, prompts/skills/, prompts/README.md, AGENTS.md]`.
-
-────────────────────────────────────────────────────────
-# § PORTABILITY: Retargeting to a New Project
-
-1. Replace `kernel-project.md` with new PR-rules.
-2. Regenerate `docs/03_PROJECT_RULES.md` from the new kernel-project.md.
-3. Update `_base.yaml :: project_rules` if PR-IDs change.
-4. Universal files (kernel-constitution.md, kernel-domains.md, kernel-ops.md, kernel-workflow.md, kernel-antipatterns.md) require NO changes.
-5. Verification: `grep -c "^## PR-" docs/03_PROJECT_RULES.md` must equal the count in the new kernel-project.md.
-
-────────────────────────────────────────────────────────
-# § WARM_BOOT Fast-Path
-
-Triggered when meta-file edit does NOT affect A1–A11 or φ1–φ7 text.
-
-```
-1. Bootstrapper: Structural Generate (Fast) — IDs + file paths + tag closure only.
-2. ConsistencyAuditor: Audit Meta-Consistency (Heavy) — Axiom alignment + cross-ref integrity.
-3. Gatekeeper: Sign & Hot-Reload generated agents (overwrite affected agents only).
-```
-
-WARM_BOOT is NOT permitted if φ1–φ7 / A1–A11 text diff is non-empty → full COLD_START required.
+If a workflow limitation is discovered during paper work, record it in
+`artifacts/M/` before changing kernel files.

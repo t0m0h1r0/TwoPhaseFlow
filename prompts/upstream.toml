@@ -1,0 +1,4 @@
+name = "research-agent-kernel"
+remote = "git@github.com:t0m0h1r0/research-agent.git"
+revision = "4459e3e"
+preserve_project_profile = true

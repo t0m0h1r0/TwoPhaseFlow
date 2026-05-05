@@ -3,7 +3,7 @@
 SHELL := /bin/bash
 .DEFAULT_GOAL := help
 
-.PHONY: help check push pull setup run run-all ssh cycle plot run-local cycle-local test test-local lint-ids lint-id-refs
+.PHONY: help check push pull setup run run-all ssh cycle plot run-local cycle-local test test-local lint-ids lint-id-refs sync-research-agent
 
 help:
 	@echo "Experiment execution — remote server '$$(grep ^REMOTE_HOST remote.conf | cut -d= -f2 | tr -d '\"')'"
@@ -29,6 +29,7 @@ help:
 	@echo "Meta-prompt ID lints (v7.1.0):"
 	@echo "  make lint-ids               No duplicate v7.1.0-namespaced IDs in ledger"
 	@echo "  make lint-id-refs           All CHK/ASM/KL refs are defined in ledger"
+	@echo "  make sync-research-agent    Download shared prompt kernel from research-agent"
 	@echo ""
 	@echo "Variables:"
 	@echo "  EXP=<path>                  Experiment script path"
@@ -123,3 +124,6 @@ lint-id-refs:
 		echo "$$missing" >&2; exit 1; \
 	fi; \
 	echo "OK: all CHK/ASM/KL refs are defined in $(LEDGER)"
+
+sync-research-agent:
+	.venv/bin/python3 scripts/sync_research_agent.py --target .
