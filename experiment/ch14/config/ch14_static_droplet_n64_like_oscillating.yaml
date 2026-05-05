@@ -3,6 +3,9 @@
 # viscous/convection stack as ch14_oscillating_droplet_n64.yaml, but replaces
 # the elliptic Rayleigh-Lamb initial interface by the static benchmark circle
 # of radius R=0.25.
+# This is an oscillating-stack differential control, not the paper static
+# Young--Laplace/BF equilibrium gate. For that gate, use ch14_static_droplet.yaml
+# or an untracked short copy of it.
 
 experiment:
   type: circle

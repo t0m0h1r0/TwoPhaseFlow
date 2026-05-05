@@ -2,6 +2,8 @@
 # This is a theory control for pressure oscillations: it preserves the alpha-2
 # static-droplet physics/numerics but changes the fitted-grid schedule from
 # every-step rebuild to a fixed initially fitted grid. It is not a proposed fix.
+# It is also not the paper static Young--Laplace/BF equilibrium gate; use
+# ch14_static_droplet.yaml or an untracked short copy of it for that check.
 
 experiment:
   type: circle

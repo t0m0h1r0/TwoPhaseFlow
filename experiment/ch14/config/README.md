@@ -344,6 +344,11 @@ Cadence differences across YAMLs:
   and `viscosity.time_integrator: forward_euler`; this frozen-interface
   reference route avoids BDF2/PPE coefficient rebuilds while preserving the
   pressure-jump projection stack.
+- N64 files whose names end in `like_oscillating` are oscillating-route
+  differential controls, not the paper static-equilibrium gate. They
+  deliberately retain the dynamic IMEX-BDF2 / implicit-BDF2 stack to compare
+  against the oscillating droplet route. Use `ch14_static_droplet.yaml` or an
+  untracked short copy of it for static Young--Laplace / BF pass-fail checks.
 - Rising-bubble & RT: `every_steps: 4` (faster geometry change).
 
 ## PPE Solver Semantics

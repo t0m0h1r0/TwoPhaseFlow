@@ -2,6 +2,9 @@
 # This keeps the same physics, capillary CFL, pressure-jump PPE, and
 # viscous/convection stack as ch14_static_droplet_n64_like_oscillating.yaml,
 # but weakens the fitted-grid interface monitor from alpha=4 to alpha=2.
+# This is an oscillating-stack differential control, not the paper static
+# Young--Laplace/BF equilibrium gate. For that gate, use ch14_static_droplet.yaml
+# or an untracked short copy of it.
 
 experiment:
   type: circle
