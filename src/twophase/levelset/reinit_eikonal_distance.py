@@ -23,8 +23,8 @@ def xi_sdf_phi(xp, phi_dev):
     px = phi_dev[:-1, :]
     px1 = phi_dev[1:, :]
     xi_mask = (px * px1) < 0.0
-    if xp.any(xi_mask):
-        ii, jj = xp.where(xi_mask)
+    ii, jj = xp.where(xi_mask)
+    if ii.size > 0:
         denom = xp.abs(px[ii, jj]) + xp.abs(px1[ii, jj])
         alpha = xp.abs(px[ii, jj]) / xp.where(denom > 0, denom, 1.0)
         crossing_parts.append(
@@ -40,8 +40,8 @@ def xi_sdf_phi(xp, phi_dev):
     py = phi_dev[:, :-1]
     py1 = phi_dev[:, 1:]
     eta_mask = (py * py1) < 0.0
-    if xp.any(eta_mask):
-        ii, jj = xp.where(eta_mask)
+    ii, jj = xp.where(eta_mask)
+    if ii.size > 0:
         denom = xp.abs(py[ii, jj]) + xp.abs(py1[ii, jj])
         alpha = xp.abs(py[ii, jj]) / xp.where(denom > 0, denom, 1.0)
         crossing_parts.append(
