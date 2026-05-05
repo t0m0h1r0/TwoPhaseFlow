@@ -72,15 +72,20 @@ class BlockTridiagSolver:
         U_store = [upper[i].copy() for i in range(n)]
 
         LU[0] = diag[0].copy()
+        _require_nonsingular_pivot(LU[0], index=0)
         for i in range(1, n):
             # L_store[i] = lower[i] @ inv(LU[i-1])
             try:
                 Linv = np.linalg.solve(LU[i - 1].T, lower[i].T).T
-            except np.linalg.LinAlgError:
-                # Fallback: pseudo-inverse
-                Linv = lower[i] @ np.linalg.pinv(LU[i - 1])
+            except np.linalg.LinAlgError as exc:
+                raise np.linalg.LinAlgError(
+                    "CCD block-tridiagonal factorization encountered a "
+                    f"singular pivot at block {i - 1}; pseudo-inverse "
+                    "fallback is prohibited by paper-exact policy."
+                ) from exc
             L_store[i] = Linv
             LU[i] = diag[i] - Linv @ U_store[i - 1]
+            _require_nonsingular_pivot(LU[i], index=i)
 
         # Stack into (n, 2, 2) host arrays. L_store[0] is unused by solve();
         # fill with zeros so indexing is uniform.
@@ -152,11 +157,18 @@ def _solve2x2_batch(xp, A, b):
     a00 = A[0, 0]; a01 = A[0, 1]
     a10 = A[1, 0]; a11 = A[1, 1]
     det = a00 * a11 - a01 * a10
-    # Guard against near-singular (shouldn't happen with CCD coefficients)
-    det = xp.where(xp.abs(det) < 1e-300,
-                   xp.sign(det) * 1e-300, det)
     inv_det = 1.0 / det
     x = xp.empty_like(b)
     x[0] = inv_det * (a11 * b[0] - a01 * b[1])
     x[1] = inv_det * (a00 * b[1] - a10 * b[0])
     return x
+
+
+def _require_nonsingular_pivot(A: np.ndarray, *, index: int) -> None:
+    det = float(A[0, 0] * A[1, 1] - A[0, 1] * A[1, 0])
+    if not np.isfinite(det) or abs(det) < 1e-300:
+        raise np.linalg.LinAlgError(
+            "CCD block-tridiagonal factorization encountered a singular "
+            f"pivot at block {index}; no pseudo-inverse or determinant clamp "
+            "is permitted."
+        )

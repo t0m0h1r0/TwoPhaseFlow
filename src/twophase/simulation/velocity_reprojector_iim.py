@@ -21,8 +21,6 @@ if TYPE_CHECKING:
 class ConsistentIIMReprojector(IVelocityReprojector):
     """Immersed Interface Method (IIM) reprojector with backtracking."""
 
-    scheme_names = ("iim", "consistent_iim")
-
     @classmethod
     def _build(cls, name: str, ctx: "ReprojectorBuildCtx") -> "ConsistentIIMReprojector":
         return cls(ctx.iim_stencil_corrector, ctx.reconstruct_base)

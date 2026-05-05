@@ -1,4 +1,5 @@
 import numpy as np
+import pytest
 
 from twophase.ppe.defect_correction import PPESolverDefectCorrection
 from twophase.ppe.interfaces import IPPESolver
@@ -68,6 +69,24 @@ def test_same_operator_defect_correction_is_rejected():
         raise AssertionError("same-operator defect correction must be rejected")
 
 
+def test_same_operator_defect_correction_is_rejected_without_affine_jump():
+    grid = object()
+    base = _SameOperatorStub(grid, coefficient_scheme="phase_density")
+    operator = _SameOperatorStub(grid, coefficient_scheme="phase_density")
+    base.interface_coupling_scheme = "none"
+    operator.interface_coupling_scheme = "none"
+
+    with pytest.raises(ValueError, match="distinct low-order base solver"):
+        PPESolverDefectCorrection(
+            _BackendStub(),
+            grid,
+            base,
+            operator,
+            max_corrections=3,
+            tolerance=1.0e-8,
+        )
+
+
 def test_different_operator_defect_correction_keeps_residual_loop():
     grid = object()
     base = _SameOperatorStub(grid)
@@ -90,6 +109,24 @@ def test_different_operator_defect_correction_keeps_residual_loop():
     assert solver.last_diagnostics["ppe_dc_converged"] == 1.0
     assert solver.last_diagnostics["ppe_dc_final_residual_l2"] == 0.0
     assert solver.last_diagnostics["ppe_dc_iterations"] == 0.0
+
+
+def test_defect_correction_collapse_branch_fails_closed():
+    grid = object()
+    base = _SameOperatorStub(grid)
+    operator = _DifferentOperatorStub(grid)
+    solver = PPESolverDefectCorrection(
+        _BackendStub(),
+        grid,
+        base,
+        operator,
+        max_corrections=2,
+        tolerance=1.0e-8,
+    )
+    solver._collapse_same_operator = True
+
+    with pytest.raises(RuntimeError, match="same-operator defect-correction collapse"):
+        solver.solve(np.ones((2, 2)), np.ones((2, 2)), dt=1.0)
 
 
 def test_defect_correction_forwards_static_operator_cache():

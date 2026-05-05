@@ -127,11 +127,17 @@ class FieldExtender(IFieldExtension):
         # Advection velocity per axis
         a = [sign_phi * n_hat[ax] for ax in range(ndim)]
 
-        # Sanitize: NaN/Inf in q (either phase) causes upwind NaN propagation
-        # at interface-adjacent cells.  Source-phase NaN should not occur in
-        # normal use; 0 is a safe fallback.  Target-phase NaN is replaced by 0
-        # because target values are fully overwritten by the extension anyway.
-        q_safe = xp.where(xp.isfinite(q), q, xp.zeros_like(q))
+        nonfinite_source = (~xp.isfinite(q)) & freeze
+        if bool(xp.any(nonfinite_source)):
+            raise ValueError(
+                "FieldExtender source phase contains non-finite values; "
+                "refusing to replace physical source data with a fallback."
+            )
+
+        # Target-phase values are placeholders overwritten by the extension PDE.
+        # Keep the paper source phase exact while preventing target NaNs from
+        # entering the upwind stencil before enough pseudo-time has elapsed.
+        q_safe = xp.where((~freeze) & (~xp.isfinite(q)), xp.zeros_like(q), q)
         q_ext = xp.copy(q_safe)
 
         for _ in range(self.n_iter):

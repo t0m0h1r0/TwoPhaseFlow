@@ -19,6 +19,7 @@ from twophase.backend import Backend
 from twophase.config import SimulationConfig, GridConfig
 from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
+from twophase.ccd.block_tridiag import BlockTridiagSolver
 
 
 # ── Fixtures ─────────────────────────────────────────────────────────────
@@ -45,6 +46,20 @@ def test_wall_ccd_rejects_lower_order_eqii_fallback(backend):
     field = np.zeros(grid.shape)
     with pytest.raises(ValueError, match="n_pts >= 6"):
         ccd.differentiate(field, axis=0)
+
+
+def test_block_tridiag_rejects_pseudoinverse_fallback():
+    """CCD block solve must fail closed instead of switching to pinv."""
+    solver = BlockTridiagSolver(np)
+    diag = [
+        np.array([[1.0, 2.0], [2.0, 4.0]]),
+        np.eye(2),
+    ]
+    lower = [np.zeros((2, 2)), np.eye(2)]
+    upper = [np.eye(2), np.zeros((2, 2))]
+
+    with pytest.raises(np.linalg.LinAlgError, match="pseudo-inverse"):
+        solver.factorize(diag, lower, upper)
 
 
 def test_periodic_ccd_uses_unique_cyclic_nodes(backend):

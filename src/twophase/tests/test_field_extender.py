@@ -115,6 +115,21 @@ def test_extend_nan_in_target_phase(setup_2d):
     assert not np.any(np.isinf(q_ext)), "Inf must not appear after extension"
 
 
+def test_extend_rejects_nonfinite_source_phase(setup_2d):
+    """Source values are physical data and must not be replaced by fallback."""
+    from twophase.levelset.field_extender import FieldExtender
+
+    N, grid, ccd, X, Y = setup_2d
+    ext = FieldExtender(Backend(use_gpu=False), grid, ccd, n_iter=5)
+
+    phi = X - 0.5
+    q = np.where(X < 0.5, 4.0, 0.0)
+    q[phi < -0.25] = np.nan
+
+    with pytest.raises(ValueError, match="source phase contains non-finite"):
+        ext.extend(q, phi)
+
+
 # ── Test 5: Builder integration with n_extend ────────────────────────────
 
 def test_builder_with_extension():
