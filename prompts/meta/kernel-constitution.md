@@ -36,7 +36,7 @@ cross-domain consistency. Finding a contradiction = high-value success, not fail
 Default when uncertain: one level higher.
 
 ────────────────────────────────────────────────────────
-# § SYSTEM STRUCTURE (v8.0.0-candidate — 8-file Lean Kernel + derived prompt artifacts)
+# § SYSTEM STRUCTURE (v8.0.0-candidate — 8-file Lean Kernel + project-local derived prompt artifacts)
 
 **3-Layer Architecture (one-way dependency — lower layers MUST NOT reference upper):**
 
@@ -59,17 +59,19 @@ Layer P — Project Profile (swappable per project)
 Layer S — Safety
   kernel-antipatterns.md — AP-01..AP-15 compact catalogue
 
-Derived Prompt Artifacts
-  prompts/agents-{env}/ — executable role prompts
-  prompts/skills/       — JIT Skill Capsules
-  AGENTS.md             — external coding-agent repo instructions
+Project-Local Derived Prompt-System Artifacts
+  prompts/agents-{env}/ — executable role prompts generated in each receiving project
+  prompts/skills/       — JIT Skill Capsules generated in each receiving project
+  templates/            — optional project-local templates generated from kernel-deploy.md
+  scripts/              — optional project-local deploy/audit helpers generated locally
+  AGENTS.md             — external coding-agent repo instructions generated locally
 ```
 
 **Interface Contract flow (T-L-E-A, mandatory ordering):**
 ```
 T -> AlgorithmSpecs.md -> L -> SolverAPI_vX.py -> E -> ResultPackage/ -> A
                                                ↑
-                              RevisionBrief.md (T + E jointly → A)
+                               RevisionBrief.md (T + E jointly → A)
 ```
 
 **Authority rule:** kernel-constitution.md wins on axiom intent; docs/00_GLOBAL_RULES.md wins on rule
@@ -185,7 +187,7 @@ is applied at the right moments, with full evidence.
 ────────────────────────────────────────────────────────
 
 ## φ6: Single Source, Derived Artifacts
-> **TL;DR:** Change the source in prompts/meta/; never patch a derived artifact directly.
+> **TL;DR:** Change the source in prompts/meta/ or upstream kernel/; never patch a derived artifact directly.
 
 Every rule has exactly one canonical home. Derived files are outputs, not inputs.
 Change the source; regenerate the derivative. Never patch a derivative directly.
@@ -196,7 +198,9 @@ overwrite the patch, destroying the fix without notice.
 
 **Expresses:** A10 (Meta-Governance).
 **Authority order:** prompts/meta/ > docs/00_GLOBAL_RULES.md > prompts/agents-{env}/.
-**Corollary:** If a rule needs to change, find its home in prompts/meta/ and change it there.
+**Corollary:** If a rule needs to change, find its home in the pulled metaprompt
+source (`prompts/meta/` in a project, `kernel/` in this upstream repo) and
+change it there. Then regenerate local derived artifacts.
 
 ────────────────────────────────────────────────────────
 
@@ -284,7 +288,7 @@ When `_base.yaml :: concurrency_profile == "worktree"`, git branch isolation alo
 - Branch-level ownership: one session at a time per branch, enforced by `docs/locks/{branch_slug}.lock.json` (O_EXCL atomic create) + canonical audit row in `docs/02_ACTIVE_LEDGER.md §4 BRANCH_LOCK_REGISTRY`.
 - Filesystem-level isolation: writes happen inside `../wt/{session_id}/{branch_slug}` (repo-external sibling), never at the primary checkout.
 - Remote safety: `git push` is replaced by `GIT-ATOMIC-PUSH` (fetch + rebase + push); rebase conflicts = STOP-SOFT, not panic.
-- New STOP codes: **STOP-09** (base-directory destruction), **STOP-10** (foreign branch-lock force / ledger-file divergence), **STOP-11** (atomic-push rebase conflict). See `kernel-ops.md § STOP CONDITIONS`.
+- STOP code authority remains `kernel-ops.md §STOP CONDITIONS`. Worktree failures map to STOP-03 (missing lock), STOP-10 (schema/lock-state invalid), or STOP-11 (lock conflict). New STOP numbers MUST NOT be introduced outside `kernel-ops.md`.
 - Backward compatibility: when `concurrency_profile == "legacy"`, A8.1 is dormant and classic A8 applies verbatim.
 
 A8.1 is gated; A8 is unconditional.
@@ -299,10 +303,11 @@ Note: "research implementation" and "infrastructure" here refer to code-layer ar
 NOT to the meta-system's project domains (Code/Paper/Prompt/Audit). See kernel-domains.md for domains.
 
 ## A10: Meta-Governance  ← φ6 (Single Source, Derived Artifacts)
-- `prompts/meta/` is the SINGLE SOURCE OF TRUTH for all system rules and axioms.
-- `docs/` files are DERIVED outputs — never edit docs/ directly to change a rule.
-- Reconstruction of docs/ from prompts/meta/ alone must always be possible.
-- Rule change → edit prompts/meta/ first → regenerate docs/ via EnvMetaBootstrapper (kernel-deploy.md).
+- Upstream repository SSoT: `kernel/` contains shared metaprompt rules and axioms.
+- Receiving-project SSoT: `prompts/meta/` is the local materialization of pulled `kernel/` plus project-local `kernel-project.md`.
+- `docs/`, `prompts/agents-*`, `prompts/skills/`, project templates, and project scripts are DERIVED outputs — never edit them directly to change a rule.
+- Reconstruction of derived prompt-system artifacts from metaprompt sources must always be possible.
+- Rule change → edit upstream `kernel/` or project-local `prompts/meta/kernel-project.md` first → regenerate derived docs/prompts/skills/templates/scripts via EnvMetaBootstrapper (kernel-deploy.md).
 
 **Expresses:** φ6 (Single Source, Derived Artifacts).
 

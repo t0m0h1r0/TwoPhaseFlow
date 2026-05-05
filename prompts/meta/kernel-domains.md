@@ -124,7 +124,7 @@ branch: prompt
 coordinator: PromptArchitect
 specialists: [PromptAuditor]
 write: [prompts/agents-claude/, prompts/agents-codex/, prompts/skills/, artifacts/P/]
-read: [prompts/meta/kernel-*.md, docs/02_ACTIVE_LEDGER.md]
+read: [prompts/meta/kernel-*.md, prompts/meta/kernel-project.md, docs/02_ACTIVE_LEDGER.md]
 forbidden: [paper/sections/, src/, experiment/, paper/presentations/]
 rules: [Q1-Q4, PR-1]
 lifecycle: DRAFT -> REVIEWED(PromptAuditor Q3 PASS) -> VALIDATED
@@ -153,20 +153,20 @@ lifecycle: DRAFT -> REVIEWED(K-LINT) -> VALIDATED
 # § ARTIFACT & DIRECTORY CONVENTIONS
 
 ```
-paper/sections/    Thesis/paper LaTeX sections
+paper/sections/    Proposed manuscript sections or patches
 paper/figures/     Curated figures for manuscript or presentation use
 paper/presentations/  Paper-grounded slide decks, deck outlines, and presentation assets
 docs/memo/         Mathematical and conceptual audits
-experiment/ch*/results/ Cached experiment evidence and generated figures
 docs/interface/    Signed cross-domain contracts
 docs/wiki/         Compiled reusable knowledge
 artifacts/K/       Wiki candidates, K-domain audits, and compilation logs
 src/twophase/      Reusable TwoPhaseFlow solver code
 experiment/        Reproducible experiment scripts and outputs
+experiment/ch*/results/ Cached experiment evidence and generated figures
 artifacts/{M,T,R,E,A,Q,K,P}/  Agent intermediate artifacts
-prompts/meta/      Kernel source of truth
-prompts/agents-*/  Generated executable agent prompts
-prompts/skills/    JIT skill capsules
+prompts/meta/      Local materialization of pulled metaprompt source plus kernel-project.md
+prompts/agents-*/  Project-local generated executable agent prompts
+prompts/skills/    Project-local generated JIT skill capsules
 ```
 
 --------------------------------------------------------

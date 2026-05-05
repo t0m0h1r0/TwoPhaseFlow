@@ -172,12 +172,12 @@ must let a resumed agent continue from external artifacts alone.
 --------------------------------------------------------
 # § BOOTSTRAP PIPELINE
 
-For deploying a generic research-agent kernel:
+For deploying a generic research-agent kernel after a git metaprompt pull:
 
 | Step | Agent | Output | Gate |
 |------|-------|--------|------|
-| 1 Kernel retarget | PromptArchitect | generic `kernel-*.md` | PromptAuditor leakage scan |
-| 2 Project profile | ResearchArchitect | `kernel-project.md` + docs | PR count and traceability |
-| 3 Agent generation | PromptArchitect | `prompts/agents-*` | Q3 validation |
+| 1 Metaprompt intake | PromptArchitect | pulled `kernel-*.md` | upstream revision recorded |
+| 2 Project profile | ResearchArchitect | local `kernel-project.md` + docs | PR count and traceability |
+| 3 Local support + agent generation | PromptArchitect | local `prompts/skills/`, templates/scripts policy, `prompts/agents-*` | Q3 validation |
 | 4 Source registration | TaskPlanner | `docs/01_PROJECT_MAP.md` | source immutability |
 | 5 First critique task | ResearchArchitect | HAND-01 for proof/lit audit | P-E-V-A |

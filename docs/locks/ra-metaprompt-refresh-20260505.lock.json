@@ -1,0 +1,11 @@
+{
+  "branch": "ra-metaprompt-refresh-20260505",
+  "branch_slug": "ra-metaprompt-refresh-20260505",
+  "id_prefix": "RA-META-REFRESH",
+  "session_id": "RA-META-REFRESH-20260505-CODEX",
+  "worktree_path": ".claude/worktrees/ra-metaprompt-refresh-20260505",
+  "holder_agent": "ResearchArchitect",
+  "acquired_at": "2026-05-05T10:46:26Z",
+  "expires_at": "2026-05-06T10:46:26Z",
+  "meta_version": "external-research-agent-git-distribution"
+}

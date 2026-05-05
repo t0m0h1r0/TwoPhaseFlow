@@ -1,0 +1,16 @@
+{
+  "managed_paths": [
+    "prompts/REDEPLOY_REQUIRED.md",
+    "prompts/meta/kernel-antipatterns.md",
+    "prompts/meta/kernel-constitution.md",
+    "prompts/meta/kernel-deploy.md",
+    "prompts/meta/kernel-domains.md",
+    "prompts/meta/kernel-ops.md",
+    "prompts/meta/kernel-roles.md",
+    "prompts/meta/kernel-workflow.md",
+    "prompts/upstream-managed.json",
+    "prompts/upstream.toml"
+  ],
+  "name": "research-agent-metaprompt",
+  "revision": "8abd3a7"
+}

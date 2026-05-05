@@ -1,6 +1,6 @@
 # kernel-antipatterns.md — Anti-Pattern Library v8.0.0-candidate
 # Replaces: meta-antipatterns.md (24KB → ~10KB, -58%).
-# AP-01..AP-15 in compact 4-line format (detect/mitigate/severity/inject).
+# AP-01..AP-15 in compact format (detect/mitigate/severity/inject).
 # FOUNDATION: kernel-constitution.md §AXIOMS ← READ FIRST
 #
 # Injection rules: kernel-deploy.md §Stage 3 AP injection.

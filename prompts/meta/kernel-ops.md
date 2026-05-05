@@ -231,7 +231,7 @@ DEBATE → {instance_A} ↔ {instance_B}
 <rules>
 - topic MUST be falsifiable (not preference-based).
 - round_limit MUST be ≤ 5; arbiter terminates debate and issues DebateResult when reached.
-- SPLIT verdict → arbiter escalates to ResearchArchitect via HAND-02 with stop_code: STOP-SOFT.
+- SPLIT verdict → arbiter escalates to ResearchArchitect via HAND-02 with stop_code: STOP-08.
 - ESCALATE verdict → pauses pipeline; ResearchArchitect decides.
 - Instances A and B MUST NOT share session context (isolation L2 minimum).
 </rules>
@@ -405,7 +405,8 @@ git push origin --tags
 ```
 
 ## GIT-ATOMIC-PUSH
-For concurrent worktree environments — use `scripts/atomic_push.py`:
+For concurrent worktree environments — use the generated project-local
+`scripts/atomic_push.py` or an equivalent local helper:
 ```bash
 python scripts/atomic_push.py --branch {branch} --session {session_id}
 ```
@@ -416,7 +417,7 @@ Handles lock verification before push; aborts if session_id mismatch.
 
 ## LOCK-ACQUIRE
 Semantic: acquire exclusive branch lock before any write.
-Implementation: `python scripts/lock.py acquire --branch {branch} --session {session_id}`
+Implementation: generated project-local `python scripts/lock.py acquire --branch {branch} --session {session_id}`
 
 Returns: `{lock_path}` on success; raises `LockConflictError` if held.
 
@@ -427,7 +428,7 @@ python scripts/lock.py force-release --branch {branch} --reason "stale"
 
 ## LOCK-RELEASE
 Semantic: release branch lock after write completes or on FAIL.
-Implementation: `python scripts/lock.py release --branch {branch} --session {session_id}`
+Implementation: generated project-local `python scripts/lock.py release --branch {branch} --session {session_id}`
 
 Verifies `session_id` matches lock file before release; raises `LockOwnershipError` if mismatch.
 

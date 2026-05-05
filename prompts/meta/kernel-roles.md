@@ -82,10 +82,16 @@ No external schema file (`schemas/hand_schema.json`) is loaded at runtime — th
 
 ```typescript
 /** v6.0.0: HandoffEnvelope.hand_type extended union */
-type HandType = "HAND-01" | "HAND-02" | "HAND-03" | "HAND-04";
+type HandTypeV600 = "HAND-01" | "HAND-02" | "HAND-03" | "HAND-04";
 
 /** v6.0.0: Hand02Payload.status extended union */
 type Hand02Status = "SUCCESS" | "FAIL" | "REJECT" | "BLOCKED_REPLAN_REQUIRED";
+
+/** v6.0.0: HAND-02 return payload after replan support */
+interface Hand02PayloadV600 extends Omit<Hand02Payload, "status"> {
+  status:          Hand02Status;
+  replan_context?: string;  // REQUIRED when status == "BLOCKED_REPLAN_REQUIRED"
+}
 
 /** v6.0.0: HAND-04 PROTO-DEBATE — Specialist counter-challenge after REJECT */
 interface Hand04Payload {
@@ -103,9 +109,15 @@ interface DebateResult {
   round_closed:   1 | 2;
   debate_id:      string;    // matches Hand04Payload.debate_id
 }
+
+/** v6.0.0: additive envelope used by v6+ prompt generators */
+interface HandoffEnvelopeV600 extends Omit<HandoffEnvelope, "hand_type" | "payload"> {
+  hand_type: HandTypeV600;
+  payload:   Hand01Payload | Hand02PayloadV600 | Hand03Payload | Hand04Payload;
+}
 ```
 
-**PROTO-DEBATE rules:** evidence[] MUST be non-empty (empty = AP-12 auto-SUSTAIN). Round 2 evidence
+**PROTO-DEBATE rules:** evidence[] MUST be non-empty (empty = schema REJECT). Round 2 evidence
 MUST differ from round 1. Gatekeeper response is binding. After 2 SUSTAIN rounds → ConsistencyAuditor
 escalation. HAND-03 still runs on HAND-04 receipt (check C7 uses `hand_type: "HAND-04"`).
 
@@ -121,8 +133,13 @@ interface Hand01PayloadV710 extends Hand01Payload {
 }
 
 /** v7.1.0: Hand02Payload — id_prefix echoed back for audit chain */
-interface Hand02PayloadV710 extends Hand02Payload {
+interface Hand02PayloadV710 extends Hand02PayloadV600 {
   id_prefix?: string;    // MUST match the dispatching HAND-01 payload's id_prefix
+}
+
+/** v7.1.0: additive envelope used by v7.1+ prompt generators */
+interface HandoffEnvelopeV710 extends Omit<HandoffEnvelopeV600, "payload"> {
+  payload: Hand01PayloadV710 | Hand02PayloadV710 | Hand03Payload | Hand04Payload;
 }
 
 /** v7.1.0: chk_id regex extended to accept both legacy and prefixed forms.
@@ -154,7 +171,7 @@ type TicketIdV710 = string;
 # § SCHEMA EXTENSIONS v8.0.0-candidate (Additive — immutable zone above unchanged)
 
 ```typescript
-/** v8.0.0-candidate: optional token telemetry carried in HAND-02 detail */
+/** v8.0.0-candidate: optional token telemetry carried in HAND-02 payload */
 interface TokenTelemetryV800 {
   static_prompt_tokens?: number;
   loaded_rule_tokens?: number;
@@ -171,6 +188,11 @@ interface TokenTelemetryV800 {
 
 interface Hand02PayloadV800 extends Hand02PayloadV710 {
   token_telemetry?: TokenTelemetryV800;
+}
+
+/** v8.0.0-candidate: additive envelope used by v8+ prompt generators */
+interface HandoffEnvelopeV800 extends Omit<HandoffEnvelopeV710, "payload"> {
+  payload: Hand01PayloadV710 | Hand02PayloadV800 | Hand03Payload | Hand04Payload;
 }
 ```
 
@@ -517,9 +539,9 @@ Does NOT produce content. M-Domain Protocol Enforcer (Root Admin archetype).
 
 | Section | Content |
 |---------|---------|
-| DELIVERABLES | Generated agent prompts, Skill Capsule manifests, Token Telemetry report, root AGENTS.md derived repo instruction file |
-| AUTHORITY | [Gatekeeper] Write IF-AGREEMENT; merge dev/→prompt; read affected kernel files (full bootstrap may read all); write agents-claude/, agents-codex/, prompts/skills/, prompts/README.md, AGENTS.md |
-| CONSTRAINTS | Compose from kernel files only; verify A1-A11 preserved; Q1-Q4 apply; prefer SkillID/JIT reference over full operation text; reject low-ROI prompt text that raises token cost without changing behavior |
+| DELIVERABLES | Project-local generated agent prompts, Skill Capsule manifests, Token Telemetry report, root AGENTS.md derived repo instruction file |
+| AUTHORITY | [Gatekeeper] Write IF-AGREEMENT; merge dev/→prompt; read affected metaprompt files (full bootstrap may read all); write project-local prompts/agents-claude/, prompts/agents-codex/, prompts/skills/, prompts/README.md, AGENTS.md |
+| CONSTRAINTS | Compose from metaprompt files only; verify A1-A11 preserved; Q1-Q4 apply; prefer SkillID/JIT reference over full operation text; reject low-ROI prompt text that raises token cost without changing behavior; never import generated agent prompts from upstream |
 | STOP | Axiom conflict in generated prompt → STOP; required kernel file missing → STOP |
 
 ## PromptAuditor

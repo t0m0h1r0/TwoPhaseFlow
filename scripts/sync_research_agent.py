@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Download and sync the shared research-agent prompt kernel.
+"""Download and sync the shared research-agent metaprompt kernel.
 
 The upstream repository owns reusable prompt assets. This project keeps
 ``prompts/meta/kernel-project.md`` local, so normal sync must preserve it and
-then run project-local redeploy/audit checks before the agents are used.
+then run project-local redeploy/audit checks before generated agents are used.
 """
 
 from __future__ import annotations
@@ -61,7 +61,7 @@ def main() -> int:
     parser.add_argument("--fallback", default=DEFAULT_FALLBACK)
     parser.add_argument(
         "--groups",
-        default="kernel,skills,agents-codex,agents-claude",
+        default="kernel",
         help="Comma-separated upstream groups passed to scripts/sync_to_project.py",
     )
     parser.add_argument("--dry-run", action="store_true")
@@ -84,7 +84,7 @@ def main() -> int:
     run(cmd)
 
     print()
-    print("Next: run project-local redeploy/audit checks.")
+    print("Next: run project-local agent redeploy/audit checks.")
     print("Guard: prompts/meta/kernel-project.md must remain unchanged.")
     return 0
 

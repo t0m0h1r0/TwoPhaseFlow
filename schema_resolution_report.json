@@ -1,7 +1,7 @@
 {
-  "report_id": "CHK-RA-META-V8-002",
-  "generated_at": "2026-05-03",
-  "target": "codex",
+  "report_id": "CHK-RA-META-REFRESH-001",
+  "generated_at": "2026-05-05",
+  "target": "codex+claude",
   "bootstrapper_spec": "prompts/meta/kernel-deploy.md",
   "status": "PASS",
   "inputs": [
@@ -13,10 +13,14 @@
     "prompts/meta/kernel-antipatterns.md",
     "prompts/meta/kernel-project.md",
     "prompts/meta/kernel-deploy.md",
-    "prompts/agents-codex/_base.yaml"
+    "prompts/agents-codex/_base.yaml",
+    "prompts/agents-claude/_base.yaml",
+    "prompts/upstream.toml"
   ],
   "outputs": [
     "prompts/agents-codex/",
+    "prompts/agents-claude/",
+    "prompts/skills/",
     "prompts/README.md",
     "schema_resolution_report.json",
     "token_telemetry_report.json"
@@ -27,12 +31,14 @@
     "hand_schema_v800": "prompts/meta/kernel-roles.md §SCHEMA EXTENSIONS v8.0.0-candidate",
     "metric_01": "prompts/meta/kernel-ops.md §METRIC-01",
     "tool_trust_01": "prompts/meta/kernel-ops.md §TOOL-TRUST-01",
-    "skill_capsules": "prompts/skills/"
+    "skill_capsules": "prompts/skills/",
+    "upstream_distribution_boundary": "prompts/meta/kernel-deploy.md §Stage 3"
   },
   "counts": {
-    "codex_agent_prompts": 23,
+    "codex_agent_prompts": 25,
+    "claude_agent_prompts": 25,
     "anti_patterns": 15,
-    "skill_capsules": 5
+    "skill_capsules": 6
   },
   "dangling_refs": []
 }
