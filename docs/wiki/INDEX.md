@@ -1,4 +1,4 @@
-# Wiki Index — 338 entries
+# Wiki Index — 347 entries
 
 ## Active Retrieval Gate
 
@@ -8,7 +8,7 @@ research findings.  Older cards remain listed for provenance, but cards marked
 SUPERSEDED or REFERENCE must not be used as current algorithm policy without
 their curation notes.
 
-## Theory (151)
+## Theory (155)
 
 | REF-ID | Title |
 |--------|-------|
@@ -163,8 +163,12 @@ their curation notes.
 | [WIKI-T-149](theory/WIKI-T-149.md) | Periodic CCD Uses Interior Rows Everywhere |
 | [WIKI-T-150](theory/WIKI-T-150.md) | Wall-Contact Ridge-Eikonal Needs Closure Seeds and Pinned Mass |
 | [WIKI-T-151](theory/WIKI-T-151.md) | Axis-Selective Fitting Is a Metric Mask, Not a New Operator |
+| [WIKI-T-152](theory/WIKI-T-152.md) | PPE Defect Correction Accuracy Is a Residual Contract, Not a Fixed k |
+| [WIKI-T-153](theory/WIKI-T-153.md) | Affine Pressure History Lives as a Face Acceleration Cochain |
+| [WIKI-T-154](theory/WIKI-T-154.md) | Raw Interface-Band Pressure Is Not the Physical Scalar Observable |
+| [WIKI-T-155](theory/WIKI-T-155.md) | Discrete Variational Closure Requires Shared Surface-Energy and Pressure-Work Pairing |
 
-## Cross-Domain (44)
+## Cross-Domain (45)
 
 | REF-ID | Title |
 |--------|-------|
@@ -212,8 +216,9 @@ their curation notes.
 | [WIKI-X-042](cross-domain/WIKI-X-042.md) | Paper Failure Taxonomy Maps Symptoms to Numerical Contracts |
 | [WIKI-X-043](cross-domain/WIKI-X-043.md) | RCA Artifacts Falsify Shortcuts Before Authorizing Fixes |
 | [WIKI-X-044](cross-domain/WIKI-X-044.md) | Test Failure Retention Separates Live Contracts from Stale Probes |
+| [WIKI-X-045](cross-domain/WIKI-X-045.md) | Rejected Shortcuts Preserve the Theory Boundary |
 
-## Experiment (57)
+## Experiment (60)
 
 | REF-ID | Title |
 |--------|-------|
@@ -275,6 +280,9 @@ their curation notes.
 | [WIKI-E-055](experiment/WIKI-E-055.md) | Capillary-Wave RCA Requires Energy and Mode Diagnostics, Not Max Deviation Alone |
 | [WIKI-E-056](experiment/WIKI-E-056.md) | Under-Resolved Capillary Droplets Need Resolution Contracts, Not CFL Patches |
 | [WIKI-E-057](experiment/WIKI-E-057.md) | Wall-Contact Capillary Blowup Can Be a Curvature-Closure Energy Defect |
+| [WIKI-E-058](experiment/WIKI-E-058.md) | N64 Alpha-2 Long Runs Need Short Projection and Geometry Gates First |
+| [WIKI-E-059](experiment/WIKI-E-059.md) | Projection Underconvergence Was a Real N64 Pressure RCA Component |
+| [WIKI-E-060](experiment/WIKI-E-060.md) | Pressure Oscillation RCA Must Separate Force Cochains from Plot Representatives |
 
 ## Paper (16)
 
@@ -333,7 +341,7 @@ their curation notes.
 | [WIKI-M-030](meta/WIKI-M-030.md) | Meta-Prompt Evolution Needs Telemetry, Skills, and Tool-Trust Gates |
 | [WIKI-M-031](meta/WIKI-M-031.md) | Review Artifacts Close the Loop with Finding, Fix, and Validation |
 
-## Code (39)
+## Code (40)
 
 | REF-ID | Title |
 |--------|-------|
@@ -376,3 +384,4 @@ their curation notes.
 | [WIKI-L-037](code/WIKI-L-037.md) | Backend Boundary Owns Host, Device, and Scalar Conversion |
 | [WIKI-L-038](code/WIKI-L-038.md) | GPU Utilization Work Must Preserve the Discrete Algebra |
 | [WIKI-L-039](code/WIKI-L-039.md) | GPU Utilization Probes Must Bound Output Without Changing the Route |
+| [WIKI-L-040](code/WIKI-L-040.md) | Remote GPU Runs Must Prove the GPU Route Is Active |

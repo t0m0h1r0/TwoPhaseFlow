@@ -75,7 +75,7 @@ DCCD 散逸によりチェッカーボード不安定を抑制する．
 \node[method=orange2, below=5mm of T1] (S1)
   {CCD（$D^{(1)}$）\\EXT2（$\Ord{\Delta t^2}$）\\陽的};
 \node[method=midblue, below=5mm of T2] (S2)
-  {欠陥補正法 PPE\\（DC，k=3）\\+ CCD 勾配\\投影法};
+  {欠陥補正法 PPE\\（DC 残差契約）\\+ CCD 勾配\\投影法};
 \node[method=teal2, below=5mm of T3] (S3)
   {CCD 全応力\\粘性 Helmholtz\\陰的 BDF2 + DC};
 \node[method=darkgray, below=5mm of T4] (S4)
@@ -89,7 +89,7 @@ DCCD 散逸によりチェッカーボード不安定を抑制する．
 \end{tikzpicture}
 \caption{NS 方程式の各項と対応する離散演算子の概要}
 \label{fig:ns_operator_map}
-\PaperCaptionNote{対流項は IMEX-BDF2 の EXT2 外挿で陽的に評価し，粘性項は陰的 BDF2 の全応力 Helmholtz 系を欠陥補正（DC）で閉じる．圧力項は欠陥補正法 PPE（DC，$k{=}3$）+ 勾配演算子 $\mathcal{G}$（均一格子: CCD；非一様格子+壁面境界条件: $\mathcal{G}^\text{adj}$，§~\ref{sec:fvm_ccd_corrector}）による投影法~\cite{Chorin1968,vanKan1986}で扱う．重力は釣合い浮力分解の面残差として予測段階に入れる．表面張力は一括 PPE 経路では CSF 体積力として予測段階に含め，高密度比・高粘性比・低 We の分相 PPE 経路では第6段の圧力ジャンプ条件へ移す．分相 affine-jump IPC では，既知圧力履歴を節点勾配ではなく式~\eqref{eq:affine_pressure_history_faces} の正準面加速度として持ち越し，投影後の正準面速度を式~\eqref{eq:projection_native_psi_transport} の CLS フラックスへ直接渡す．}
+\PaperCaptionNote{対流項は IMEX-BDF2 の EXT2 外挿で陽的に評価し，粘性項は陰的 BDF2 の全応力 Helmholtz 系を欠陥補正（DC）で閉じる．圧力項は欠陥補正法 PPE（DC 残差契約~\eqref{eq:ppe_dc_residual_contract}）+ 勾配演算子 $\mathcal{G}$（均一格子: CCD；非一様格子+壁面境界条件: $\mathcal{G}^\text{adj}$，§~\ref{sec:fvm_ccd_corrector}）による投影法~\cite{Chorin1968,vanKan1986}で扱う．重力は釣合い浮力分解の面残差として予測段階に入れる．表面張力は一括 PPE 経路では CSF 体積力として予測段階に含め，高密度比・高粘性比・低 We の分相 PPE 経路では第6段の圧力ジャンプ条件へ移す．分相 affine-jump IPC では，既知圧力履歴を節点勾配ではなく式~\eqref{eq:affine_pressure_history_faces} の正準面加速度として持ち越し，投影後の正準面速度を式~\eqref{eq:projection_native_psi_transport} の CLS フラックスへ直接渡す．}
 \end{figure}
 
 DCCD フィルタの散逸パラメータ $\varepsilon_d$ は用途ごとに異なる値を取る
@@ -430,17 +430,18 @@ $p^n_{\mathrm{ext}}$ の節点勾配を再び作るのではなく，
 CCD 発散から構成される．以下，この右辺ベクトルを $b_p$ と書く．
 境界条件：$\partial(\delta p)/\partial n = 0$（ノイマン条件）．
 
-\noindent\textbf{DC $k\leq3$ 残差監視反復概要（第6.0--6.5小段；構造は両経路共通，
+\noindent\textbf{DC 残差監視反復概要（第6.0--6.5小段；構造は両経路共通，
 オペレータ $L_H/L_L$ の中身が PPE 経路別に置換される）：}
 \begin{enumerate}[leftmargin=2em,noitemsep]
   \item 第6.0小段：初期化 $\delta p^{(0)} = 0$．
-  \item 第6.1小段：$k=1,2,3$ で欠陥 $d^{(k)} = b_p - L_H\,\delta p^{(k-1)}$ を CCD で評価．
+  \item 第6.1小段：$k=1,\ldots,k_{\max}$ で欠陥 $d^{(k)} = b_p - L_H\,\delta p^{(k-1)}$ を CCD/FCCD で評価．
   \item 第6.2小段：補正方程式 $L_L\,\eta^{(k)} = d^{(k)}$ を低次補正問題として解く（§~\ref{sec:dc_sweep}）．
   \item 第6.3小段：緩和更新 $\delta p^{(k)} = \delta p^{(k-1)} + \omega\,\eta^{(k)}$（$\omega \in \{0.3,0.5,0.7\}$）．
-  \item 第6.4小段：収束判定 $\|d^{(k)}\|_\infty < \varepsilon_\mathrm{tol}$（許容値 $10^{-10}$）．満たした時点で受理する．
+  \item 第6.4小段：収束判定は式~\eqref{eq:ppe_dc_residual_contract} の
+        $\eta_{\mathrm{DC}}^{(k)}\le\varepsilon_{\mathrm{PPE}}$ とし，満たした時点で受理する．
   \item 第6.5小段：最終値 $\delta p \leftarrow \delta p^{(k_\mathrm{acc})}$．ここで
-        $k_\mathrm{acc}$ は受理された最後の反復であり，$k=3$ 到達時にも
-        $L_H$ 残差が下がらない一括 PPE は経路選択上の診断対象とする．
+        $k_\mathrm{acc}$ は受理された反復であり，$k_{\max}$ 到達時にも
+        $L_H$ 残差が下がらない場合は経路選択上または閉包上の診断対象とする．
 \end{enumerate}
 
 \noindent\textbf{PPE 経路別の $L_H, L_L$ 定義：}
@@ -465,6 +466,8 @@ CCD 発散から構成される．以下，この右辺ベクトルを $b_p$ と
 §~\ref{sec:split_ppe_recovery} では，分相 PPE + DC $k{=}3$ が
 液相内部 Dirichlet 評価で $\rho_l/\rho_g = 1$--$1000$ に対し
 密度比に依存しない $\Ord{h^7}$ 超収束を示すことを実証した．
+これは相内 Poisson の成分証明であり，生産計算の受理は
+式~\eqref{eq:ppe_dc_residual_contract} の高次残差契約で行う．
 Neumann 境界では §~\ref{sec:verify_ppe_neumann} の境界精度により
 $\Ord{h^5}$ が上界であり，界面近傍の精度は HFE とジャンプ条件閉包に依存する．
 

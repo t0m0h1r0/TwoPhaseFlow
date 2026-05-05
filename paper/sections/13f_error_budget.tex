@@ -94,6 +94,17 @@ V10-b-shape & 単一渦 reversal 形状軸 & grid-scale folded filament の Eule
         同じ理由で，affine-jump IPC の履歴圧力項も
         不連続な $p^n$ を節点スカラーとして微分するのではなく，
         式~\eqref{eq:affine_pressure_history_faces} の正準面加速度として保持する必要がある．
+  \item \textbf{射影残差誤差と圧力代表誤差の分離}．
+        DC 反復回数そのものは生産計算の精度証明ではなく，
+        式~\eqref{eq:ppe_dc_residual_contract} の高次残差が射影受理条件である．
+        N64 $\alpha=2$ 振動液滴の短時間 gate では，この残差契約により
+        projection DC の最終相対残差が $2.5\times10^{-9}$--$2.9\times10^{-9}$，
+        投影後発散が $\Ord{10^{-11}}$ に到達する．
+        その後に残る界面帯 pressure oscillation は，
+        直ちに運動量圧力仕事の破綻とは解釈しない．
+        affine-jump 経路の物理仕事は面 cochain
+        $A_f(G_fp-B_f(j))$ で定義されるため，
+        diffuse band の raw 節点圧力は Hodge 代表または相内代表に写してから読む．
   \item \textbf{曲率推定誤差}．V5 では CSF $\kappa_{lg}$ + CCD 勾配の
         $u_\infty^{\mathrm{end}}$ 絶対値が全表ケースで $2\times10^{-2}$ 以下に保たれ，
         参照として FD 値を全条件で下回る．
