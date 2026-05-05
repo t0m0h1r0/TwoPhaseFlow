@@ -5,5 +5,22 @@
   "created_at": "2026-05-05",
   "scope": "compile reusable insights from docs/memo and artifacts into docs/wiki",
   "stop_condition": "no new wiki-worthy insights or review round > 20",
-  "main_merge": "forbidden until explicit user instruction"
+  "main_merge": "forbidden until explicit user instruction",
+  "completed_at": "2026-05-05",
+  "status": "DONE",
+  "outputs": [
+    "docs/wiki/code/WIKI-L-037.md",
+    "docs/wiki/code/WIKI-L-038.md",
+    "docs/wiki/code/WIKI-L-039.md",
+    "docs/wiki/cross-domain/WIKI-X-043.md",
+    "docs/wiki/cross-domain/WIKI-X-044.md",
+    "docs/wiki/experiment/WIKI-E-055.md",
+    "docs/wiki/experiment/WIKI-E-056.md",
+    "docs/wiki/experiment/WIKI-E-057.md",
+    "docs/wiki/meta/WIKI-M-030.md",
+    "docs/wiki/meta/WIKI-M-031.md",
+    "docs/wiki/theory/WIKI-T-150.md",
+    "docs/wiki/theory/WIKI-T-151.md",
+    "artifacts/A/review_CHK-RA-MEMO-ARTIFACT-WIKI-001.md"
+  ]
 }
