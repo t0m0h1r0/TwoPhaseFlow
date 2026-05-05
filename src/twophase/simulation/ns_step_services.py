@@ -775,7 +775,15 @@ def solve_ns_pressure_stage(
     ppe_runtime=None,
     curvature_method: str = "psi_direct_filtered",
 ) -> tuple[NSStepState, object, np.ndarray]:
-    """Solve IPC PPE for δp and accumulate pⁿ⁺¹ = pⁿ + δp."""
+    """Solve IPC PPE and prepare scalar/face pressure history.
+
+    A3 mapping: for affine pressure jumps, the face-native path treats the
+    face pressure cochain as the pressure-history state.  The scalar pressure
+    representative is not accumulated because ``G_Γ(p;B)=G(p)-B`` is affine,
+    not linear, in the jump data; accumulating scalar representatives would
+    repeatedly add the jump gauge while the velocity corrector uses one
+    step-local cochain.
+    """
     xp = backend.xp
     projection_dt = state.projection_dt if state.projection_dt is not None else state.dt
     predictor_faces = None
@@ -801,6 +809,7 @@ def solve_ns_pressure_stage(
     rhs = predictor_rhs + div_op.divergence([state.f_x / state.rho, state.f_y / state.rho])
     if state.debug_scalars is not None:
         state.debug_scalars.append(xp.max(xp.abs(rhs)))
+    transport_variational_temporaries = {}
     if hasattr(ppe_solver, "set_interface_jump_context"):
         jump_sigma = state.sigma if surface_tension_scheme == "pressure_jump" else 0.0
         interface_psi = _capillary_interface_psi(
@@ -853,6 +862,13 @@ def solve_ns_pressure_stage(
         dt=projection_dt,
         p_init=None,
     )
+    uses_affine_face_history = (
+        face_native_predictor_state
+        and getattr(ppe_runtime, "ppe_interface_coupling_scheme", "none")
+        == "affine_jump"
+        and hasattr(div_op, "pressure_fluxes")
+        and hasattr(div_op, "reconstruct_nodes")
+    )
     base_increment = getattr(ppe_solver, "last_base_pressure", state.pressure_increment)
     previous_base = (
         state.previous_base_pressure
@@ -863,16 +879,15 @@ def solve_ns_pressure_stage(
         previous_base = p_prev_dev
     if previous_base is None:
         previous_base = xp.zeros_like(base_increment)
-    state.pressure_base = xp.asarray(previous_base) + xp.asarray(base_increment)
+    state.pressure_base = (
+        xp.asarray(base_increment)
+        if uses_affine_face_history
+        else xp.asarray(previous_base) + xp.asarray(base_increment)
+    )
     state.pressure = _apply_solver_interface_jump(ppe_solver, state.pressure_base)
     state.pressure_accel_face_components = None
-    if (
-        face_native_predictor_state
-        and getattr(ppe_runtime, "ppe_interface_coupling_scheme", "none")
-        == "affine_jump"
-        and hasattr(div_op, "pressure_fluxes")
-        and hasattr(div_op, "reconstruct_nodes")
-    ):
+    state.pressure_correction_face_components = None
+    if uses_affine_face_history:
         jump_sigma = state.sigma if surface_tension_scheme == "pressure_jump" else 0.0
         interface_psi = _capillary_interface_psi(
             xp=xp,
@@ -883,22 +898,27 @@ def solve_ns_pressure_stage(
             state=state,
             curvature_method=curvature_method,
         )
-        state.pressure_accel_face_components = div_op.pressure_fluxes(
-            state.pressure,
-            state.rho,
-            **_pressure_face_flux_kwargs(
-                xp=xp,
-                state=state,
-                ppe_runtime=ppe_runtime,
-                interface_sigma=jump_sigma,
-                curvature_method=curvature_method,
-                interface_psi=interface_psi,
-                interface_psi_previous=interface_psi_previous,
-                transport_variational_temporaries=(
-                    transport_variational_temporaries
-                ),
+        pressure_flux_kwargs = _pressure_face_flux_kwargs(
+            xp=xp,
+            state=state,
+            ppe_runtime=ppe_runtime,
+            interface_sigma=jump_sigma,
+            curvature_method=curvature_method,
+            interface_psi=interface_psi,
+            interface_psi_previous=interface_psi_previous,
+            transport_variational_temporaries=(
+                transport_variational_temporaries
             ),
         )
+        state.pressure_correction_face_components = div_op.pressure_fluxes(
+            state.pressure_increment,
+            state.rho,
+            **pressure_flux_kwargs,
+        )
+        state.pressure_accel_face_components = [
+            xp.asarray(component)
+            for component in state.pressure_correction_face_components
+        ]
     next_p_prev_dev = xp.copy(state.pressure)
     next_p_prev = (
         None
@@ -1013,10 +1033,17 @@ def correct_ns_velocity_stage(
             and hasattr(proj_op, "face_fluxes")
             and hasattr(proj_op, "reconstruct_nodes")
         ):
-            pressure_faces = proj_op.pressure_fluxes(
-                state.p_corrector,
-                state.rho,
-                **project_kwargs,
+            pressure_faces = (
+                [
+                    xp.asarray(component)
+                    for component in state.pressure_correction_face_components
+                ]
+                if state.pressure_correction_face_components is not None
+                else proj_op.pressure_fluxes(
+                    state.p_corrector,
+                    state.rho,
+                    **project_kwargs,
+                )
             )
             force_faces = proj_op.face_fluxes([state.f_x / state.rho, state.f_y / state.rho])
             state.projected_face_components = [

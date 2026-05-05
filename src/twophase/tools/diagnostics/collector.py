@@ -14,6 +14,7 @@ deformation           D = (L−B)/(L+B) from second moments of ψ > 0.5 region
 signed_deformation    signed x/y moment deformation for n=2 droplet oscillation
 interface_amplitude   max vertical deviation of ψ = 0.5 isoline from domain centre
 laplace_pressure      |Δp_sim − σ/R| / (σ/R)  (static-droplet only)
+pressure_contrast     phase mean pressure jump <p>_liquid − <p>_gas
 symmetry_error        parity-aware reflection error under x/y mirror. Each
                       sub-key is 0 for a 4-fold symmetric flow:
                         sym_psi_{y,x}  = ‖ψ − flip(ψ)‖∞ / max|ψ|   (ψ even)
@@ -71,6 +72,7 @@ class DiagnosticCollector:
             "signed_deformation",
             "interface_amplitude",
             "laplace_pressure",
+            "pressure_contrast",
             "symmetry_error",
         ]
     )
@@ -198,6 +200,7 @@ class DiagnosticCollector:
         need_signed_deformation = (
             "signed_deformation" in self.metrics and geometry is not None
         )
+        need_pressure_contrast = "pressure_contrast" in self.metrics
 
         scalar_names: list[str] = []
         scalar_values = []
@@ -247,6 +250,21 @@ class DiagnosticCollector:
                 volume,
                 xp.sum((X - xc) ** 2 * weight) / volume_safe,
                 xp.sum((Y - yc) ** 2 * weight) / volume_safe,
+            ])
+        if need_pressure_contrast:
+            liquid = psi > 0.5
+            gas = psi < 0.5
+            scalar_names.extend([
+                "pressure_liquid_count",
+                "pressure_gas_count",
+                "pressure_liquid_sum",
+                "pressure_gas_sum",
+            ])
+            scalar_values.extend([
+                xp.sum(liquid),
+                xp.sum(gas),
+                xp.sum(xp.where(liquid, p, 0.0)),
+                xp.sum(xp.where(gas, p, 0.0)),
             ])
         scalars = {
             name: float(value)
@@ -352,6 +370,16 @@ class DiagnosticCollector:
                     dp_th = self.sigma / self.R
                     err = abs(dp_sim - dp_th) / dp_th if dp_th > 0 else 0.0
                     self._data[m].append(err)
+                else:
+                    self._data[m].append(0.0)
+
+            elif m == "pressure_contrast":
+                liquid_count = scalars.get("pressure_liquid_count", 0.0)
+                gas_count = scalars.get("pressure_gas_count", 0.0)
+                if liquid_count > 0.0 and gas_count > 0.0:
+                    liquid_mean = scalars["pressure_liquid_sum"] / liquid_count
+                    gas_mean = scalars["pressure_gas_sum"] / gas_count
+                    self._data[m].append(liquid_mean - gas_mean)
                 else:
                     self._data[m].append(0.0)
 

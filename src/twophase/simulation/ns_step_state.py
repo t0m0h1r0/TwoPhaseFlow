@@ -61,6 +61,7 @@ class NSStepState:
     pressure: Any = None
     pressure_base: Any = None
     pressure_accel_face_components: list[Any] | None = None
+    pressure_correction_face_components: list[Any] | None = None
     pressure_increment: Any = None
     p_corrector: Any = None
     psi_previous: Any = None

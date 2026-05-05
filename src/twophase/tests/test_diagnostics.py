@@ -203,6 +203,22 @@ def test_collect_dV_none_backward_compat():
     assert len(diag.times) == 2
 
 
+def test_pressure_contrast_phase_means():
+    """pressure_contrast = mean(p_liquid) - mean(p_gas)."""
+    X, Y = _make_grid()
+    psi = np.zeros_like(X)
+    psi[: N // 2, :] = 1.0
+    u = v = np.zeros_like(psi)
+    pressure = np.zeros_like(psi)
+    pressure[psi > 0.5] = 4.0
+    pressure[psi < 0.5] = -2.0
+
+    diag = DiagnosticCollector(["pressure_contrast"], X, Y, H)
+    diag.collect(0.0, psi, u, v, pressure)
+
+    assert diag.last("pressure_contrast") == pytest.approx(6.0)
+
+
 # ── Test 6: bubble centroid ──────────────────────────────────────────────────
 
 def test_bubble_centroid_centered():

@@ -152,6 +152,15 @@ output:
       yscale: log
       file: kinetic_energy.pdf
 
+    - type: time_series
+      title: "Rayleigh-Lamb n=2 droplet alpha-2 one-period: pressure contrast"
+      x: times
+      y: [pressure_contrast]
+      labels: ["$\\langle p\\rangle_l-\\langle p\\rangle_g$"]
+      xlabel: "$t$"
+      ylabel: "$\\Delta p$"
+      file: pressure_contrast.pdf
+
     - type: snapshot_series
       field: psi
       file_prefix: psi_t
@@ -164,7 +173,7 @@ output:
       field: pressure
       file_prefix: pressure_t
 
-diagnostics: [volume_conservation, kinetic_energy, deformation, signed_deformation]
+diagnostics: [volume_conservation, kinetic_energy, deformation, signed_deformation, pressure_contrast]
 
 initial_condition:
   background_phase: gas
