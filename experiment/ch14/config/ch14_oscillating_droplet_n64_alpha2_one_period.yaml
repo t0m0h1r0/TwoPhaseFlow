@@ -105,7 +105,7 @@ numerics:
       solver:
         kind: defect_correction
         corrections:
-          max_iterations: 3
+          max_iterations: 12
           tolerance: 1.0e-8
           relaxation: 0.7
         base_solver:
