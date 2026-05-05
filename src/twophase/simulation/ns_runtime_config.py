@@ -125,12 +125,11 @@ def normalise_ns_interface_runtime(options) -> NSInterfaceRuntimeState:
 
     reproject_mode = str(options.reproject_mode).strip().lower()
     if reproject_mode not in {
-        "legacy", "variable_density_only", "iim", "gfm",
-        "consistent_iim", "consistent_gfm",
+        "legacy", "variable_density_only", "gfm", "consistent_gfm",
     }:
         raise ValueError(
             f"Unsupported reproject_mode='{options.reproject_mode}'. "
-            "Use legacy|variable_density_only|gfm|iim."
+            "Use legacy|variable_density_only|gfm|consistent_gfm."
         )
     if reproject_variable_density and reproject_mode == "legacy":
         reproject_mode = "variable_density_only"

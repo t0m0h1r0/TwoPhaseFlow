@@ -28,7 +28,6 @@ from .surface_tension_strategy import (
 )
 from .velocity_reprojector import (
     ConsistentGFMReprojector,
-    ConsistentIIMReprojector,
     LegacyReprojector,
     VariableDensityReprojector,
 )
@@ -61,7 +60,6 @@ __all__ = [
     "LegacyReprojector",
     "VariableDensityReprojector",
     "ConsistentGFMReprojector",
-    "ConsistentIIMReprojector",
     "ExplicitViscousPredictor",
     "CNViscousPredictor",
     "ImplicitBDF2ViscousPredictor",

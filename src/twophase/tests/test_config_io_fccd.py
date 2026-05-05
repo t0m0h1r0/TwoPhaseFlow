@@ -642,7 +642,7 @@ def test_readable_structured_sections_round_trip():
                 },
             },
             "projection": {
-                "mode": "iim",
+                "mode": "variable_density",
                 "face_flux_projection": True,
                 "preserve_projected_faces": True,
                 "projection_consistent_buoyancy": True,
@@ -668,7 +668,7 @@ def test_readable_structured_sections_round_trip():
     assert cfg.run.reinit_eps_scale == 1.4
     assert cfg.run.ridge_sigma_0 == 2.5
     assert cfg.run.interface_tracking_method == "phi_primary"
-    assert cfg.run.reproject_mode == "iim"
+    assert cfg.run.reproject_mode == "variable_density_only"
     assert cfg.run.face_flux_projection is True
     assert cfg.run.preserve_projected_faces is True
     assert cfg.run.projection_consistent_buoyancy is True
@@ -725,6 +725,15 @@ def test_invalid_ppe_solver_kind_rejected():
         ExperimentConfig.from_dict(_minimal({
             "numerics": {
                 "projection": {"poisson": {"solver": {"kind": "ccd_lu"}}},
+            },
+        }))
+
+
+def test_retired_iim_projection_mode_rejected():
+    with pytest.raises(ValueError, match="numerics.projection.mode"):
+        ExperimentConfig.from_dict(_minimal({
+            "numerics": {
+                "projection": {"mode": "iim"},
             },
         }))
 

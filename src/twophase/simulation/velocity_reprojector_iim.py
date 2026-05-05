@@ -17,6 +17,7 @@ if TYPE_CHECKING:
     from .scheme_build_ctx import ReprojectorBuildCtx
 
 
+# DO NOT DELETE: C2-retained direct-import IIM reprojection reference; see docs/01_PROJECT_MAP.md §8.
 class ConsistentIIMReprojector(IVelocityReprojector):
     """Immersed Interface Method (IIM) reprojector with backtracking."""
 

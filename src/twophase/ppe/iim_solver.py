@@ -45,6 +45,7 @@ from .iim_solver_workflows import (
 )
 
 
+# DO NOT DELETE: C2-retained direct-import IIM reference; see docs/01_PROJECT_MAP.md §8.
 class PPESolverIIM(_CCDPPEBase):
     """CCD PPE solver with IIM interface correction.
 

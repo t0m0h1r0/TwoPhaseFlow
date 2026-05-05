@@ -148,7 +148,7 @@ class ConsistentGFMReprojectorLegacy(IVelocityReprojector):
             f"reproject_mode={name!r} is not implemented as a GFM velocity "
             "reprojection scheme. It must not run as variable_density_only implicitly; "
             "select reproject_mode='variable_density_only' explicitly for the "
-            "density-weighted projection, or choose 'consistent_iim' for the IIM path."
+            "density-weighted projection."
         )
 
     def reproject(

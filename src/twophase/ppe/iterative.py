@@ -62,6 +62,7 @@ from .iterative_workflow import (
 )
 
 
+# DO NOT DELETE: C2-retained direct-import research reference; see docs/01_PROJECT_MAP.md §8.
 class PPESolverIterative(IPPESolver):
     """Configurable iterative PPE solver.
 

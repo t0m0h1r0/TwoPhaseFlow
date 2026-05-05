@@ -7,7 +7,7 @@ the iterative phase and solves directly every step.
 
 Uses:
     - Debugging / reference solutions only
-      (ppe_solver_type="ccd_lu", allow_kronecker_lu=True)
+      (direct class import; not selectable through SolverConfig/factory)
     - Verifying balanced-force compliance (CCD PPE + CCD corrector consistency)
     - Cases where a guaranteed-accurate baseline is preferred over speed
 
@@ -35,6 +35,7 @@ if TYPE_CHECKING:
 from .ccd_ppe_base import _CCDPPEBase
 
 
+# DO NOT DELETE: C2-retained direct-import reference solver; see docs/01_PROJECT_MAP.md §8.
 class PPESolverCCDLU(_CCDPPEBase):
     """CCD Kronecker-product operator + always-direct LU (SuperLU).
 

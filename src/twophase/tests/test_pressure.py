@@ -214,10 +214,7 @@ def test_ccd_ppe_convergence_order(backend):
     for N in Ns:
         cfg = SimulationConfig(
             grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
-            solver=SolverConfig(
-                ppe_solver_type="ccd_lu",
-                allow_kronecker_lu=True,
-            ),
+            solver=SolverConfig(),
         )
         grid = Grid(cfg.grid, backend)
         ccd = CCDSolver(grid, backend)
@@ -323,10 +320,7 @@ def test_ccd_ppe_variable_density_convergence_order(backend):
     for N in Ns:
         cfg = SimulationConfig(
             grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
-            solver=SolverConfig(
-                ppe_solver_type="ccd_lu",
-                allow_kronecker_lu=True,
-            ),
+            solver=SolverConfig(),
         )
         grid = Grid(cfg.grid, backend)
         ccd = CCDSolver(grid, backend)

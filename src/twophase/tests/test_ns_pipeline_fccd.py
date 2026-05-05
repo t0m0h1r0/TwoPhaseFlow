@@ -37,10 +37,10 @@ from twophase.simulation.config_io import ExperimentConfig
 from twophase.simulation.face_projection import reconstruct_nodes_from_faces
 from twophase.levelset.transport_strategy import PhiPrimaryTransport, PsiDirectTransport
 from twophase.simulation.velocity_reprojector import (
-    ConsistentIIMReprojector,
     IVelocityReprojector,
     VariableDensityReprojector,
 )
+from twophase.simulation.velocity_reprojector_iim import ConsistentIIMReprojector
 from twophase.simulation.scheme_build_ctx import ReprojectorBuildCtx
 from twophase.ppe.interfaces import IPPESolver, MatrixAssemblyUnavailable
 

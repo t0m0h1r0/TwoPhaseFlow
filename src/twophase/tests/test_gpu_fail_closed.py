@@ -5,7 +5,7 @@ from __future__ import annotations
 import pytest
 
 from twophase.config import SimulationConfig
-from twophase.ppe import PPESolverIIM
+from twophase.ppe.iim_solver import PPESolverIIM
 from twophase.ppe.iterative import PPESolverIterative
 from twophase.simulation.velocity_reprojector_iim import ConsistentIIMReprojector
 

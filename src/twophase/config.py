@@ -322,20 +322,20 @@ class NumericsConfig:
 class SolverConfig:
     """PPEソルバーのパラメータ。"""
 
-    # Solver type: "fd_direct" / "fd_iterative" / "fvm_iterative" (default) / "fvm_direct" / "iim" / "iterative";
-    # "ccd_lu" is restricted to explicit component/reference use.
+    # Solver type: "fd_direct" / "fd_iterative" / "fvm_iterative" (default) / "fvm_direct".
+    # Retired reference solvers live in their modules and are not selectable here.
     ppe_solver_type: str = "fvm_iterative"
     allow_kronecker_lu: bool = False
-    # Solver tolerances (used by iterative FVM, iim, iterative)
+    # Solver tolerances (used by iterative FVM/FD routes)
     pseudo_tol: float = 1e-8
     pseudo_maxiter: int = 500
     pseudo_c_tau: float = 2.0
 
-    # ppe_solver_type="iterative" 用: 離散化 × 反復法の組合せ
+    # Legacy PPESolverIterative reference fields; not used by active factory routes.
     ppe_discretization: str = "ccd"        # "ccd" (O(h⁶)) or "3pt" (O(h²))
     ppe_iteration_method: str = "adi"      # "explicit", "gauss_seidel", "adi"
 
-    # ppe_solver_type="iim" 用: IIM correction mode + solve backend
+    # Legacy PPESolverIIM reference fields; not used by active factory routes.
     iim_mode: str = "hermite"    # "nearest" (C_0 only) or "hermite" (C_0,C_1,C_2)
     iim_backend: str = "decomp"  # "decomp" (jump decomposition) / "lu" / "dc"
 
@@ -350,34 +350,11 @@ class SolverConfig:
         self.ppe_solver_type = _aliases.get(self.ppe_solver_type, self.ppe_solver_type)
         _valid_types = (
             "fd_direct", "fd_iterative", "fvm_iterative", "fvm_direct",
-            "iim", "iterative", "ccd_lu",
         )
         assert self.ppe_solver_type in _valid_types, (
             f"ppe_solver_type must be one of {_valid_types}: "
             f"'{self.ppe_solver_type}'"
         )
-        if self.ppe_solver_type == "ccd_lu":
-            assert self.allow_kronecker_lu, (
-                "ppe_solver_type='ccd_lu' is restricted to explicit "
-                "Kronecker-LU reference/component use. Set "
-                "allow_kronecker_lu=True only when that is intentional."
-            )
-        if self.ppe_solver_type == "iterative":
-            assert self.ppe_discretization in ("ccd", "3pt"), (
-                f"ppe_discretization must be 'ccd' or '3pt': "
-                f"'{self.ppe_discretization}'"
-            )
-            assert self.ppe_iteration_method in ("explicit", "gauss_seidel", "adi"), (
-                f"ppe_iteration_method must be 'explicit', 'gauss_seidel', or 'adi': "
-                f"'{self.ppe_iteration_method}'"
-            )
-        if self.ppe_solver_type == "iim":
-            assert self.iim_mode in ("nearest", "hermite"), (
-                f"iim_mode must be 'nearest' or 'hermite': '{self.iim_mode}'"
-            )
-            assert self.iim_backend in ("decomp", "lu", "dc"), (
-                f"iim_backend must be 'decomp', 'lu', or 'dc': '{self.iim_backend}'"
-            )
 
 
 # ── メイン設定クラス ─────────────────────────────────────────────────────────
