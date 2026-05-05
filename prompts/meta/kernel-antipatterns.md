@@ -1,6 +1,6 @@
 # kernel-antipatterns.md — Anti-Pattern Library v8.0.0-candidate
 # Replaces: meta-antipatterns.md (24KB → ~10KB, -58%).
-# AP-01..AP-15 in compact 4-line format (detect/mitigate/severity/inject).
+# AP-01..AP-15 in compact format (detect/mitigate/severity/inject).
 # FOUNDATION: kernel-constitution.md §AXIOMS ← READ FIRST
 #
 # Injection rules: kernel-deploy.md §Stage 3 AP injection.
@@ -24,14 +24,14 @@
 **detect:** Reviewer cites a specific line/equation but has NOT read the file in the current turn; uses "likely", "probably", "I recall" without file evidence.
 **mitigate:** Read the actual file in same turn; quote exact text being criticized; every error = file path + line + quote.
 **severity:** HIGH
-**inject:** PaperReviewer, ConsistencyAuditor, TheoryAuditor, PromptAuditor
+**inject:** PaperReviewer, PresentationWriter, ConsistencyAuditor, TheoryAuditor, PromptAuditor
 
 ────────────────────────────────────────────────────────
 ## AP-02: Scope Creep Through Helpfulness
 **detect:** About to modify a file not listed in DISPATCH scope_out; thinking "while I'm here, I should also…"; diff contains changes to lines unrelated to dispatched task.
 **mitigate:** Before every file write: check DISPATCH scope. Adjacent issue → log in RETURN issues[], do NOT fix.
 **severity:** MEDIUM
-**inject:** CodeArchitect, CodeCorrector, PaperWriter
+**inject:** CodeArchitect, CodeCorrector, PaperWriter, PresentationWriter
 
 ────────────────────────────────────────────────────────
 ## AP-03: Verification Theater *(CRITICAL)*
@@ -50,18 +50,18 @@
 
 ────────────────────────────────────────────────────────
 ## AP-05: Convergence Fabrication *(CRITICAL)*
-**detect:** Convergence table produced but no pytest/simulation command executed; numerical values not in any tool output; error norms are suspiciously clean (exact integers, perfect orders).
+**detect:** Convergence table produced but no test or analysis command executed; numerical values not in any tool output; error norms are suspiciously clean (exact integers, perfect orders).
 **mitigate:** ALL numerical results MUST come from tool output (LA-1). Every number traceable to specific log line. Cannot run tests → report BLOCKED; never fabricate.
 **Gatekeeper enforcement:** Reject HAND-02 where produced[] contains numerical data but tool_evidence[] absent.
 **severity:** CRITICAL
-**inject:** TestRunner, ExperimentRunner, SimulationAnalyst, ConsistencyAuditor
+**inject:** TestRunner, ExperimentRunner, EvidenceAnalyst, ConsistencyAuditor
 
 ────────────────────────────────────────────────────────
 ## AP-06: Context Contamination via Summary
 **detect:** First action after HAND-03 is NOT reading the artifact file; basing work on conversation description rather than file; DISPATCH inputs contains prose descriptions not file paths; agent says "based on the above" or "as described earlier".
 **mitigate:** First action: read artifact file(s) from DISPATCH inputs. Ignore conversation text describing artifact. No artifact path → request it; do NOT proceed on summaries. Isolation ≥ L1.
 **severity:** HIGH
-**inject:** ConsistencyAuditor, TheoryAuditor, PaperReviewer, CodeWorkflowCoordinator, PaperWorkflowCoordinator
+**inject:** ConsistencyAuditor, TheoryAuditor, PaperReviewer, PresentationWriter, CodeWorkflowCoordinator, PaperWorkflowCoordinator
 
 ────────────────────────────────────────────────────────
 ## AP-07: Premature Classification
@@ -96,7 +96,7 @@
 **detect:** Attempt_Count > 2 AND primary metric shows no improvement; fix logic = "minor parameter tweak" after major convergence failure; two consecutive runs < 1% delta; results contradict T-Domain theoretical assumption.
 **mitigate:** MAX_EXP_RETRIES = 2. After Attempt 3 with no convergence: emit ResourceLimitEscalation to user. Abandonment triggers (any one → STOP): Zero-Convergence (< 1% delta ×2), Hypothesis-Collapse (contradicts T-Domain assumption), Cost-Exceedance (next fix > 50% session budget).
 **severity:** HIGH
-**inject:** ExperimentRunner, DiagnosticArchitect, SimulationAnalyst
+**inject:** ExperimentRunner, DiagnosticArchitect, EvidenceAnalyst
 
 ────────────────────────────────────────────────────────
 ## AP-12: REPLAN Escalation Avoidance *(v7.0.0)*

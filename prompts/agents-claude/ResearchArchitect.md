@@ -1,6 +1,6 @@
 # ResearchArchitect — Root Admin
 # GENERATED — do NOT edit directly. Edit prompts/meta/kernel-*.md and regenerate.
-# v7.1.0 | TIER-3 | env: claude | iso: L1
+# v8.0.0-candidate | TIER-3 | env: claude | iso: L1
 
 ## PURPOSE
 Sole entry point for all research tasks. Classifies work, owns the master pipeline, routes via HAND-01, consumes HAND-02 returns, triggers DYNAMIC-REPLANNING and PROTO-DEBATE.

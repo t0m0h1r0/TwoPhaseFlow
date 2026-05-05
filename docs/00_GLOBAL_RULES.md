@@ -18,7 +18,7 @@
 | A7 | Backward Compatibility | Never discard meaning without explicit deprecation |
 | A8 | Git Governance | `main` protected; worktrees for isolated work |
 | A9 | Core/System Sovereignty | `src/core/` never imports from `src/system/` |
-| A10 | Meta-Governance | `prompts/meta/` is SSoT; `docs/` are derived |
+| A10 | Meta-Governance | Upstream `kernel/` materializes into local `prompts/meta/`; `docs/` and agent prompts are derived |
 | A11 | Knowledge-First | Prefer `docs/wiki/` over re-derivation |
 
 **Key principles:** φ1 evidence before action; φ2 minimal footprint; φ6 change the source, not the derived artifact; φ7 classify before acting.
@@ -85,3 +85,4 @@ Error taxonomy: **THEORY_ERR** (solver/equation) vs **IMPL_ERR** (adapter/infras
 - Git lifecycle: DRAFT → REVIEWED → VALIDATED → merge to main
 - Merge criteria: tests pass + compile + logs attached
 - Execution loop: PLAN → EXECUTE → VERIFY → AUDIT (no phase skipped)
+- Upstream sync: `make sync-research-agent` pulls shared kernel files only; generated agents/skills/scripts remain project-local and require redeploy/audit

@@ -62,12 +62,13 @@ AUTH levels: ROOT > GATE > SPEC > any.
 | CodeCorrector | Spec | L | HAND-02,03; GIT-SP; AUDIT-02 |
 | TestRunner | Spec | L | HAND-02,03; TEST-01,02; GIT-SP |
 | ExperimentRunner | Spec | E | HAND-02,03; EXP-01,02; GIT-SP |
-| SimulationAnalyst | Spec | E | HAND-02,03; GIT-SP; K-COMPILE |
+| EvidenceAnalyst | Spec | E | HAND-02,03; GIT-SP; K-COMPILE |
 | PaperWriter | Spec | A | HAND-02,03; GIT-SP |
+| PresentationWriter | Spec | A | HAND-02,03; GIT-SP |
 | PaperReviewer | Spec | A | HAND-02,03; AUDIT-01,02 |
 | PaperCompiler | Spec | A | HAND-02,03; BUILD-01,02; GIT-SP |
 | KnowledgeArchitect | Spec | K | HAND-02,03; K-COMPILE,REFACTOR; GIT-SP |
-| Librarian | Spec | K | HAND-02,03; K-LINT,DEPRECATE |
+| Librarian | Spec | K | HAND-02,03; K-RETRIEVE,K-LINT,DEPRECATE |
 | TraceabilityManager | Spec | K | HAND-02,03; K-IMPACT-ANALYSIS |
 | DevOpsArchitect | Spec | L | HAND-02,03; GIT-WORKTREE-ADD; LOCK |
 | DiagnosticArchitect | Spec | any | HAND-02,03; AUDIT-03 |
@@ -230,7 +231,7 @@ DEBATE → {instance_A} ↔ {instance_B}
 <rules>
 - topic MUST be falsifiable (not preference-based).
 - round_limit MUST be ≤ 5; arbiter terminates debate and issues DebateResult when reached.
-- SPLIT verdict → arbiter escalates to ResearchArchitect via HAND-02 with stop_code: STOP-SOFT.
+- SPLIT verdict → arbiter escalates to ResearchArchitect via HAND-02 with stop_code: STOP-08.
 - ESCALATE verdict → pauses pipeline; ResearchArchitect decides.
 - Instances A and B MUST NOT share session context (isolation L2 minimum).
 </rules>
@@ -380,7 +381,7 @@ git checkout -b dev/{domain}/{agent}/{task_id}
 ## GIT-02: Merge Criteria Gate
 Before merge PR, ALL must pass:
 - [ ] All tests green (TEST-01)
-- [ ] Convergence table present if CCD operator changed (PR-3)
+- [ ] Convergence table present if research check changed (PR-3)
 - [ ] Interface contract SIGNED
 - [ ] No STOP codes open
 
@@ -404,7 +405,8 @@ git push origin --tags
 ```
 
 ## GIT-ATOMIC-PUSH
-For concurrent worktree environments — use `scripts/atomic_push.py`:
+For concurrent worktree environments — use the generated project-local
+`scripts/atomic_push.py` or an equivalent local helper:
 ```bash
 python scripts/atomic_push.py --branch {branch} --session {session_id}
 ```
@@ -415,7 +417,7 @@ Handles lock verification before push; aborts if session_id mismatch.
 
 ## LOCK-ACQUIRE
 Semantic: acquire exclusive branch lock before any write.
-Implementation: `python scripts/lock.py acquire --branch {branch} --session {session_id}`
+Implementation: generated project-local `python scripts/lock.py acquire --branch {branch} --session {session_id}`
 
 Returns: `{lock_path}` on success; raises `LockConflictError` if held.
 
@@ -426,7 +428,7 @@ python scripts/lock.py force-release --branch {branch} --reason "stale"
 
 ## LOCK-RELEASE
 Semantic: release branch lock after write completes or on FAIL.
-Implementation: `python scripts/lock.py release --branch {branch} --session {session_id}`
+Implementation: generated project-local `python scripts/lock.py release --branch {branch} --session {session_id}`
 
 Verifies `session_id` matches lock file before release; raises `LockOwnershipError` if mismatch.
 
@@ -545,12 +547,12 @@ Required for final submission builds. PaperCompiler role only.
 
 ## TEST-01: Pytest Suite
 ```bash
-make test   # remote-first; falls back to make test-local
+make test   # falls back to make test-local if configured
 ```
 Required output: pass count, fail count, coverage % (if configured). STOP-HARD on any fail.
 
 ## TEST-02: Convergence Analysis
-Run MMS verification per PR-3:
+Run reproducibility verification per PR-3:
 
 | N | L_inf error | slope |
 |---|-------------|-------|
@@ -559,28 +561,28 @@ Run MMS verification per PR-3:
 | 128 | … | … |
 | 256 | … | … |
 
-Acceptance: all slopes ≥ expected_order − 0.2. CCD boundary limits: d1 ≥ 3.5, d2 ≥ 2.5 (ASM-004).
+Acceptance: declared PASS criteria are met, all parameters are recorded, and the output is reproducible from repository files.
 
 ────────────────────────────────────────────────────────
 # § EXPERIMENT OPERATIONS
 
-## EXP-01: Simulation Execution
+## EXP-01: Evidence Check Execution
 ```bash
-make run EXP=experiment/{ch}/{script}.py
+make run EXP=experiment/{chapter}/{script}.py
 ```
-Uses `twophase.experiment` toolkit (PR-4). Remote-first (see CLAUDE.md §Execution Workflow).
+Uses project-local analysis scripts or documented shell commands (PR-5).
 
-Mandatory sanity checks before HAND-02:
-- SC-1: Final time matches `t_end` parameter
-- SC-2: Mass/volume conservation error < 1e-6
-- SC-3: Output NPZ exists and is non-empty
-- SC-4: No NaN/Inf in final velocity or pressure fields
+Mandatory trace checks before HAND-02:
+- EC-1: Source input paths recorded
+- EC-2: Command and parameters recorded
+- EC-3: Output artifact exists and is non-empty
+- EC-4: PASS/FAIL/INCONCLUSIVE interpretation cites output lines or source locations
 
-## EXP-02: Result Analysis + Plot
+## EXP-02: Result Analysis + Packaging
 ```bash
-make plot EXP=experiment/{ch}/{script}.py   # --plot-only flag
+make run EXP=experiment/{chapter}/{script}.py
 ```
-All figures saved as PDF (CLAUDE.md §Coding Rules). Results in `experiment/{ch}/results/{name}/`.
+All figures saved as PDF. Results in `experiment/ch{N}/results/{name}/`.
 
 ────────────────────────────────────────────────────────
 # § AUDIT OPERATIONS
@@ -591,9 +593,9 @@ Performed by Auditor/Gatekeeper before HAND-02 SUCCESS on any deliverable.
 | # | Check |
 |---|-------|
 | 1 | Algorithm matches paper equation (PR-5) |
-| 2 | CCD primacy maintained (PR-1) |
-| 3 | No FD operator in solver core src/twophase/ |
-| 4 | MMS convergence table present (if spatial operator changed) |
+| 2 | evidence traceability maintained (PR-1) |
+| 3 | No FD/WENO/PPE fallback or unapproved model substitution in project implementation library |
+| 4 | reproducibility evidence attached when check changes |
 | 5 | Interface contract SIGNED |
 | 6 | No STOP codes open |
 | 7 | Experiment toolkit used for all infrastructure (PR-4) |
@@ -627,9 +629,21 @@ For any new numerical module, DiagnosticArchitect runs:
 # § KNOWLEDGE OPERATIONS
 
 ## K-COMPILE
-Create or update wiki entry after any significant finding.
+Create or update wiki entry after any significant validated finding or reusable
+lesson.
 Format: canonical YAML header + content per `kernel-domains.md §Wiki Entry Format`.
 Target: `docs/wiki/{domain}/{WIKI-X-NNN}.md`; register in `docs/wiki/INDEX.md`.
+Mandatory trigger check before HAND-02 SUCCESS: important finding, new reusable
+knowledge, resolved hard failure, significant negative result, or downstream
+reuse likely. If triggered and source is VALIDATED, compile or dispatch
+KnowledgeArchitect. If triggered but source is not validated, record a
+K-candidate under `artifacts/K/` and cite the validation blocker.
+
+## K-RETRIEVE
+Search compiled wiki knowledge before difficult, investigative, ambiguous, or
+precedent-likely work. Minimum method: search `docs/wiki/` by artifact names,
+concepts, methods, failure modes, and task terms; for broad searches dispatch
+Librarian. Record hits used, or "no hit", in HAND-02.
 
 ## K-LINT
 Check wiki entries for:
@@ -714,7 +728,7 @@ Limits: max 2 replan cycles per task before mandatory user escalation (kernel-an
 | STOP-02 | HARD | HAND-03 Immutable Zone bypassed | Halt; report to ResearchArchitect |
 | STOP-03 | HARD | Branch lock not acquired before write | Halt; acquire lock first |
 | STOP-04 | HARD | Cross-domain write without DOM-01 gate | Halt; run DOM-01 |
-| STOP-05 | HARD | FD operator in solver core (PR-1) | Halt; replace with CCD |
+| STOP-05 | HARD | unapproved model substitution in research implementation (PR-1) | Halt; escalate to TheoryAuditor |
 | STOP-06 | HARD | Task not achievable in single session | Decompose; re-dispatch |
 | STOP-07 | SOFT | Convergence check failed (PR-3) | Report; escalate to TheoryAuditor |
 | STOP-08 | SOFT | DEBATE SPLIT — no consensus | Escalate to ResearchArchitect |
