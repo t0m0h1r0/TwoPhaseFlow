@@ -8,5 +8,10 @@
   "scope": "add explicit safe resume support for ch14 YAML experiments, including complete compute-state checkpoints, GPU-aware serialization, and manifest guards against parameter/code drift",
   "stop_condition": "ch14 YAML experiments can resume only with an explicit command flag and only when checkpoint manifests match current code and non-time parameters",
   "main_merge": "forbidden until explicit user instruction",
-  "status": "IN_PROGRESS"
+  "completed_at": "2026-05-05",
+  "status": "DONE",
+  "commits": [
+    "04b479e5",
+    "755ac06b"
+  ]
 }
