@@ -46,6 +46,8 @@ SURFACE_TENSION = 0.072
 EXPECTED_JUMP = SURFACE_TENSION / EXPECTED_RADIUS
 ANGULAR_MODES = (2, 4, 8, 16)
 
+# Historical result directories. The source controls are now built from the
+# canonical YAMLs by config_variants.py instead of being checked in as YAMLs.
 CASES = {
     "static_alpha2": "ch14_static_droplet_n64_alpha2_like_oscillating",
     "static_alpha2_staticgrid": "ch14_static_droplet_n64_alpha2_staticgrid_pressure_probe",

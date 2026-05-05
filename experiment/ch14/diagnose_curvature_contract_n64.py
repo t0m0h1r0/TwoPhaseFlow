@@ -3,17 +3,16 @@
 
 from __future__ import annotations
 
-import copy
 import pathlib
 import sys
 from contextlib import contextmanager
 
 import numpy as np
-import yaml
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
+from config_variants import n64_static_like_oscillating  # noqa: E402
 import twophase.simulation.ns_pipeline as ns_pipeline  # noqa: E402
 from twophase.core.boundary import sync_periodic_image_nodes  # noqa: E402
 from twophase.simulation.config_models import ExperimentConfig  # noqa: E402
@@ -21,10 +20,6 @@ from twophase.time_integration.tvd_rk3 import tvd_rk3  # noqa: E402
 from twophase.tools.experiment import experiment_argparser, experiment_dir, save_results  # noqa: E402
 
 
-BASE_CONFIG = ROOT / "experiment/ch14/config/ch14_static_droplet_n64_alpha2_like_oscillating.yaml"
-STATIC_GRID_CONFIG = (
-    ROOT / "experiment/ch14/config/ch14_static_droplet_n64_alpha2_staticgrid_pressure_probe.yaml"
-)
 TARGET_FINAL = 0.40
 EXPECTED_KAPPA = 4.0
 SURFACE_TENSION = 0.072
@@ -44,10 +39,10 @@ def _build_config(
     filter_C: float | None,
     freeze_interface: bool,
 ) -> ExperimentConfig:
-    config_path = STATIC_GRID_CONFIG if static_grid else BASE_CONFIG
-    with open(config_path) as file:
-        raw = yaml.safe_load(file)
-    raw = copy.deepcopy(raw)
+    raw = n64_static_like_oscillating(
+        static_grid=static_grid,
+        output_name="ch14_curvature_contract_n64",
+    )
     raw["run"]["time"]["final"] = TARGET_FINAL
     raw["run"]["time"]["print_every"] = 200
     suffix = "static_grid" if static_grid else "baseline"

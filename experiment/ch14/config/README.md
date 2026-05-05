@@ -9,10 +9,10 @@ stack. Five production YAML files are checked in:
 - `ch14_rising_bubble.yaml` — rising-bubble benchmark.
 - `ch14_rayleigh_taylor.yaml` — Rayleigh–Taylor instability benchmark.
 
-The capillary-wave route intentionally has a single checked-in YAML:
-`ch14_capillary.yaml`.  Short, bounded, or GPU profiling variants should be
-created as untracked local run copies or reproduced through command-line
-overrides, not checked in as additional capillary YAMLs.
+Each experiment type intentionally has exactly one checked-in YAML. Short,
+bounded, diagnostic, resolution, one-period, and GPU-profiling variants should
+be created as untracked local run copies, command-line overrides, or in-memory
+diagnostic configs. They must not be checked in as additional ch14 YAMLs.
 Run them through the unified runner (`experiment/run.py`):
 
 - `python experiment/run.py --config ch14_capillary`
@@ -36,7 +36,7 @@ read-only dry run is needed. Numerical state is stored as NumPy `.npy` binary
 members inside the `.npz`, preserving array dtype bytes losslessly; JSON is used
 only for non-numerical metadata such as the manifest and debug key names.
 
-The four production configs emit periodic snapshots with `psi`, `velocity`,
+The five production configs emit periodic snapshots with `psi`, `velocity`,
 and `pressure` fields. The runner stores these in `data.npz` under `fields/psi`,
 `fields/velocity`, and `fields/pressure` (plus compatibility fields
 `fields/u`, `fields/v`, and `fields/p`).
@@ -344,11 +344,6 @@ Cadence differences across YAMLs:
   and `viscosity.time_integrator: forward_euler`; this frozen-interface
   reference route avoids BDF2/PPE coefficient rebuilds while preserving the
   pressure-jump projection stack.
-- N64 files whose names end in `like_oscillating` are oscillating-route
-  differential controls, not the paper static-equilibrium gate. They
-  deliberately retain the dynamic IMEX-BDF2 / implicit-BDF2 stack to compare
-  against the oscillating droplet route. Use `ch14_static_droplet.yaml` or an
-  untracked short copy of it for static Young--Laplace / BF pass-fail checks.
 - Rising-bubble & RT: `every_steps: 4` (faster geometry change).
 
 ## PPE Solver Semantics

@@ -24,11 +24,11 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 
 import numpy as np
-import yaml
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
+from config_variants import n64_static_like_oscillating  # noqa: E402
 import twophase.simulation.ns_pipeline as ns_pipeline  # noqa: E402
 from twophase.coupling.interface_stress_closure import (  # noqa: E402
     build_young_laplace_interface_stress_context,
@@ -43,7 +43,6 @@ from twophase.tools.experiment import (  # noqa: E402
 )
 
 
-BASE_CONFIG = ROOT / "experiment/ch14/config/ch14_static_droplet_n64_alpha2_like_oscillating.yaml"
 TARGET_FINAL = 0.40
 
 
@@ -345,8 +344,7 @@ def main() -> None:
         _print_summary(_load_summary(npz_path))
         return
 
-    with open(BASE_CONFIG) as file:
-        raw_base = yaml.safe_load(file)
+    raw_base = n64_static_like_oscillating()
 
     selected = set(args.case or [])
     cases = [case for case in _cases() if not selected or case.label in selected]

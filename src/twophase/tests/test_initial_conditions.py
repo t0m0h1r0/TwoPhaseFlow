@@ -435,7 +435,7 @@ def test_ch14_yaml_initial_conditions_use_object_specs():
         "ch14_static_droplet.yaml",
     }
 
-    assert canonical_names <= {path.name for path in paths}
+    assert {path.name for path in paths} == canonical_names
     for path in paths:
         cfg = ExperimentConfig.from_yaml(path)
         assert "objects" in cfg.initial_condition, path.name

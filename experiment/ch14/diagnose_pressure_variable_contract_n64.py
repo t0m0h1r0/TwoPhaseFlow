@@ -3,17 +3,16 @@
 
 from __future__ import annotations
 
-import copy
 import pathlib
 import sys
 from contextlib import contextmanager
 
 import numpy as np
-import yaml
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
+from config_variants import n64_static_like_oscillating  # noqa: E402
 import twophase.simulation.ns_pipeline as ns_pipeline  # noqa: E402
 from twophase.coupling.interface_stress_closure import (  # noqa: E402
     build_young_laplace_interface_stress_context,
@@ -22,17 +21,15 @@ from twophase.simulation.config_models import ExperimentConfig  # noqa: E402
 from twophase.tools.experiment import experiment_argparser, experiment_dir, save_results  # noqa: E402
 
 
-BASE_CONFIG = ROOT / "experiment/ch14/config/ch14_static_droplet_n64_alpha2_like_oscillating.yaml"
 TARGET_FINAL = 0.01
 
 
 def _build_config() -> ExperimentConfig:
-    with open(BASE_CONFIG) as file:
-        raw = yaml.safe_load(file)
-    raw = copy.deepcopy(raw)
+    raw = n64_static_like_oscillating(
+        output_name="ch14_pressure_variable_contract_n64"
+    )
     raw["run"]["time"]["final"] = TARGET_FINAL
     raw["run"]["time"]["print_every"] = 100000
-    raw["output"]["dir"] = "results/ch14_pressure_variable_contract_n64"
     raw["output"]["snapshots"]["interval"] = TARGET_FINAL
     raw["output"]["figures"] = []
     return ExperimentConfig.from_dict(raw)

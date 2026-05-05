@@ -12,11 +12,11 @@ from collections.abc import Callable
 from dataclasses import dataclass
 
 import numpy as np
-import yaml
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "src"))
 
+from config_variants import n64_oscillating_droplet  # noqa: E402
 from twophase.simulation.config_models import ExperimentConfig  # noqa: E402
 from twophase.simulation.ns_pipeline import run_simulation  # noqa: E402
 from twophase.tools.experiment import (  # noqa: E402
@@ -27,7 +27,6 @@ from twophase.tools.experiment import (  # noqa: E402
 )
 
 
-BASE_CONFIG = ROOT / "experiment/ch14/config/ch14_oscillating_droplet_n64.yaml"
 TARGET_FINAL = 0.02
 
 
@@ -292,8 +291,7 @@ def main() -> None:
         _print_summary(_load_summary(npz_path))
         return
 
-    with open(BASE_CONFIG) as fh:
-        base = yaml.safe_load(fh)
+    base = n64_oscillating_droplet()
 
     selected = set(args.case or [])
     cases = [case for case in _cases() if not selected or case.label in selected]
