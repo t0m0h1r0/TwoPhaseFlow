@@ -1,15 +1,16 @@
 # 02_ACTIVE_LEDGER — Phase, Branch, CHK Register, Assumptions & Lessons
 # LIVE: append-only for CHK/ASM/KL rows; update phase/branch/current session only.
 # Read path: ACTIVE STATE first; CHECKLIST for older CHKs; ASSUMPTIONS/KL for invariants.
-# Last updated: 2026-05-05 (CHK-RA-PAPER-WIKI-006 integrated benchmark wording.)
+# Last updated: 2026-05-05 (CHK-RA-PAPER-WIKI-007 strict history audit.)
 
 ────────────────────────────────────────────────────────
 # § ACTIVE STATE
 
 | Key | Value |
 |---|---|
-| phase | CHK-RA-PAPER-WIKI-006 DONE / §14 framed as integrated benchmark |
+| phase | CHK-RA-PAPER-WIKI-007 DONE / strict paper/wiki history audit |
 | branch | source worktree `.claude/worktrees/ra-oscillating-droplet-n64-20260503` / branch `ra-oscillating-droplet-n64-20260503`; latest `main` (`04300d2b`) intaken into source branch; main already contains CHK-018, restart-checkpoint/wiki/review merges, and metaprompt external/refresh merges, but CHK-019/020/021/022/023/024/025/026 are not merged to main |
+| session_CHK | CHK-RA-PAPER-WIKI-007 DONE 2026-05-05 — User 指示「もう一度、書き漏らし・見落としがないか綿密かつ厳格に履歴を辿って確認」対応。Traced recent N64 RCA commits/ledger rows against paper/wiki cards. Finding: success/negative-knowledge coverage is broadly present, but §14 retained old parameter-sweep wording that could be misread as a tuning solution, and the §9 face-cochain formula used an undefined `\ba` macro. Reworded open benchmark items as curvature-representative / capillary time-integration residual / pressure-jump face-cochain closure checks, and repaired the face-cochain notation as `\mathbf{a}_{p,f}`. [SOLID-X] paper/ledger only; no solver code touched; no damping/CFL/smoothing/curvature-cap workaround; no main merge. |
 | session_CHK | CHK-RA-PAPER-WIKI-006 DONE 2026-05-05 — User 指摘「論文としては14章は統合ベンチマークという位置づけ」対応。Replaced the conversational wording in paper §13/§14 and wiki policy with integrated-benchmark wording: §12--13 provide verification gates/error budget, while §14 is the integrated benchmark chapter assuming those gates. [SOLID-X] docs/paper/wiki only; no solver code touched; no damping/CFL/smoothing/curvature-cap workaround; no main merge. |
 | session_CHK | CHK-RA-PAPER-WIKI-005 DONE 2026-05-05 — User 指摘「14章で確認する前に12-13章での確認をすべき。14章は統合ベンチマーク」対応。Moved N64 short-gate metrics and acceptance logic from §14 into §13 error budget: T=0.25/T=1 gate metrics, PPE residual contract, volume drift, signed deformation, and pressure-representative reading now serve as verification before the integrated benchmark. §14 now states it assumes §13 gates and reports integrated-benchmark behavior. Wiki policy card updated with chapter-role filter: 4--11 theory/design, 12--13 verification, 14 integrated benchmark. [SOLID-X] docs/paper/wiki only; no solver code touched; no damping/CFL/smoothing/curvature-cap workaround; no main merge. |
 | session_CHK | CHK-RA-PAPER-WIKI-004 DONE 2026-05-05 — User 指摘「12-14章は結果なのであって、それよりも4-11章の理論・設計こそが重要」対応。Moved the non-DC N64 RCA material out of §14-style result narration and into theory/design chapters: §9 split-PPE now defines pressure-work face cochain, phase Hodge pressure representative, and volume-weighted phase pressure mean; §10 ALE grid theory now defines step-local discrete-gradient surface-energy endpoint locality. §14 is reduced to result placement/gate interpretation only and explicitly excludes execution/configuration mechanics from physical/mathematical claims. [SOLID-X] docs/paper/wiki only; no solver code touched; no damping/CFL/smoothing/curvature-cap workaround; no main merge. |
