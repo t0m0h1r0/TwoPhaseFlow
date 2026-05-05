@@ -88,5 +88,5 @@ def coefficient_to_projection_mode(coefficient: str) -> str:
     if coefficient == "phase_density":
         return "variable_density"
     if coefficient == "phase_separated":
-        return "gfm"
+        return "variable_density"
     raise ValueError(f"Unsupported PPE coefficient model: {coefficient!r}")

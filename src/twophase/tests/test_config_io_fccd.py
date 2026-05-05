@@ -259,7 +259,7 @@ def test_ch14_capillary_yaml_loads_execution_stack():
     assert cfg.run.canonical_face_state is True
     assert cfg.run.face_native_predictor_state is True
     assert cfg.run.reinit_method == "ridge_eikonal"
-    assert cfg.run.reproject_mode == "gfm"
+    assert cfg.run.reproject_mode == "variable_density_only"
     assert cfg.run.ppe_solver == "fccd_iterative"
     assert cfg.run.pressure_scheme == "fccd_matrixfree"
     assert cfg.run.ppe_coefficient_scheme == "phase_separated"
@@ -378,7 +378,7 @@ def test_phase_separated_coefficient_defaults_to_affine_jump():
     assert cfg.run.pressure_scheme == "fccd_matrixfree"
     assert cfg.run.ppe_coefficient_scheme == "phase_separated"
     assert cfg.run.ppe_interface_coupling_scheme == "affine_jump"
-    assert cfg.run.reproject_mode == "gfm"
+    assert cfg.run.reproject_mode == "variable_density_only"
 
 
 def test_phase_separated_accepts_explicit_legacy_jump_decomposition():

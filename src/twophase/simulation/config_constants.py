@@ -8,16 +8,20 @@ _REINIT_METHODS = (
     "split", "unified", "dgr", "hybrid",
     "eikonal", "eikonal_xi", "eikonal_fmm", "ridge_eikonal",
 )
-_PROJECTION_MODES = ("standard", "variable_density", "iim", "gfm")
+_PROJECTION_MODES = (
+    "standard", "variable_density", "iim", "gfm",
+    "consistent_iim", "consistent_gfm",
+)
 _PROJECTION_MODE_ALIASES = {
-    "consistent_iim": "iim",
-    "consistent_gfm": "gfm",
+    "variable_density_only": "variable_density",
 }
 _PROJECTION_TO_REPROJECT_MODE = {
     "standard": "legacy",
     "variable_density": "variable_density_only",
     "iim": "iim",
     "gfm": "gfm",
+    "consistent_iim": "consistent_iim",
+    "consistent_gfm": "consistent_gfm",
 }
 _PPE_SCHEMES = (
     "fd_direct", "fd_iterative", "fvm_iterative", "fvm_direct", "fccd_iterative",
