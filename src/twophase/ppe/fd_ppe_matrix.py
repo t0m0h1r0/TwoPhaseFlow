@@ -29,7 +29,7 @@ pin (one DOF fixed to 0) is applied explicitly.
 Usage
 -----
     builder = FDPPEMatrix(grid, backend, ccd)
-    mat = builder.build(rho)        # scipy csr_matrix, includes pin
+    mat = builder.build(rho)        # backend CSR matrix, includes pin
     mat_raw = builder.build_raw(rho)# without pin (singular, for filter construction)
     lu  = builder.factorize(rho)    # SuperLU object via scipy.sparse.linalg.splu
     dp  = lu.solve(rhs.ravel()).reshape(grid.shape)
@@ -74,16 +74,10 @@ class FDPPEMatrix:
             raise NotImplementedError("FDPPEMatrix is implemented for 2D only.")
         if not grid.uniform:
             raise NotImplementedError("FDPPEMatrix requires a uniform grid.")
-        if getattr(backend, "is_gpu", lambda: False)():
-            raise NotImplementedError(
-                "FDPPEMatrix is a host-assembled legacy FD matrix builder and "
-                "would move GPU density fields to CPU. Use the GPU-native "
-                "PPESolverFDDirect/PPESolverFDMatrixFree paths instead, or run "
-                "FDPPEMatrix explicitly on the CPU backend."
-            )
 
         self.grid = grid
         self.backend = backend
+        self.xp = backend.xp
         self.ccd = ccd
 
         N = grid.N
@@ -100,7 +94,7 @@ class FDPPEMatrix:
 
     # ── Public API ────────────────────────────────────────────────────────────
 
-    def build(self, rho) -> "scipy.sparse.csr_matrix":
+    def build(self, rho):
         """Build pinned FD matrix for the given density field.
 
         Parameters
@@ -109,15 +103,14 @@ class FDPPEMatrix:
 
         Returns
         -------
-        scipy.sparse.csr_matrix, shape (n_dof, n_dof)
+        backend CSR matrix, shape (n_dof, n_dof)
             Gauge pin row replaced by identity.
         """
-        from scipy.sparse import csr_matrix
-        rho_np, drho_x, drho_y = self._density_fields(rho)
-        rows, cols, vals = self._assemble(rho_np, drho_x, drho_y)
-        return self._apply_pin(rows, cols, vals, csr_matrix)
+        rows, cols, vals = self._assemble(rho)
+        rows, cols, vals = self._apply_pin_to_coo(rows, cols, vals)
+        return self._sparse_matrix(rows, cols, vals, sparse_format="csr")
 
-    def build_raw(self, rho) -> "scipy.sparse.csr_matrix":
+    def build_raw(self, rho):
         """Build FD matrix WITHOUT pin constraint (singular — for filter construction).
 
         Parameters
@@ -126,12 +119,10 @@ class FDPPEMatrix:
 
         Returns
         -------
-        scipy.sparse.csr_matrix, shape (n_dof, n_dof) — null space = constants
+        backend CSR matrix, shape (n_dof, n_dof) — null space = constants
         """
-        from scipy.sparse import csr_matrix
-        rho_np, drho_x, drho_y = self._density_fields(rho)
-        rows, cols, vals = self._assemble(rho_np, drho_x, drho_y)
-        return csr_matrix((vals, (rows, cols)), shape=(self._n_dof, self._n_dof))
+        rows, cols, vals = self._assemble(rho)
+        return self._sparse_matrix(rows, cols, vals, sparse_format="csr")
 
     def factorize(self, rho):
         """Build and SuperLU-factorize the pinned matrix.
@@ -146,11 +137,7 @@ class FDPPEMatrix:
         Runs on the active device: CPU → scipy SuperLU, GPU → cuDSS via
         ``cupyx.scipy.sparse.linalg.splu``.
         """
-        L_host = self.build(rho)
-        if self.backend.is_gpu():
-            L_dev = self.backend.sparse.csc_matrix(L_host.tocsc())
-            return self.backend.sparse_linalg.splu(L_dev)
-        return self.backend.sparse_linalg.splu(L_host.tocsc())
+        return self.backend.sparse_linalg.splu(self.build(rho).tocsc())
 
     def build_helmholtz_filter(self, rho, alpha: float):
         """Factorize the FD Helmholtz filter (I − α L_FD) with pin row = identity.
@@ -176,36 +163,37 @@ class FDPPEMatrix:
         SuperLU object — call ``.solve(p_flat)`` to apply the filter. The
         factor lives on the active device.
         """
-        import scipy.sparse as _sp_host
-
-        L_raw = self.build_raw(rho)
         n = self._n_dof
         pin = self._pin_dof
-
-        F = _sp_host.eye(n, format="lil") - alpha * L_raw.tolil()
-        F[pin, :] = 0.0
-        F[pin, pin] = 1.0
-        F_host = F.tocsc()
-        if self.backend.is_gpu():
-            F_dev = self.backend.sparse.csc_matrix(F_host)
-            return self.backend.sparse_linalg.splu(F_dev)
-        return self.backend.sparse_linalg.splu(F_host)
+        xp = self.xp
+        rows, cols, vals = self._assemble(rho)
+        diag = xp.arange(n, dtype=rows.dtype)
+        rows = xp.concatenate([rows, diag])
+        cols = xp.concatenate([cols, diag])
+        vals = xp.concatenate([
+            -float(alpha) * vals,
+            xp.ones(n, dtype=vals.dtype),
+        ])
+        mask = rows != pin
+        rows = xp.concatenate([rows[mask], xp.asarray([pin], dtype=rows.dtype)])
+        cols = xp.concatenate([cols[mask], xp.asarray([pin], dtype=cols.dtype)])
+        vals = xp.concatenate([vals[mask], xp.asarray([1.0], dtype=vals.dtype)])
+        return self.backend.sparse_linalg.splu(
+            self._sparse_matrix(rows, cols, vals, sparse_format="csc")
+        )
 
     # ── Internal helpers ──────────────────────────────────────────────────────
 
     def _density_fields(self, rho):
-        """Return (rho_np, drho_x, drho_y) as host numpy arrays."""
-        xp = self.backend.xp
-        rho_np = np.asarray(self.backend.to_host(rho), dtype=float)
-        rho_dev = xp.asarray(rho_np)
-        drho_x_dev, _ = self.ccd.differentiate(rho_dev, 0)
-        drho_y_dev, _ = self.ccd.differentiate(rho_dev, 1)
-        drho_x = np.asarray(self.backend.to_host(drho_x_dev), dtype=float)
-        drho_y = np.asarray(self.backend.to_host(drho_y_dev), dtype=float)
-        return rho_np, drho_x, drho_y
+        """Return ``(rho, drho_x, drho_y)`` on the active backend."""
+        xp = self.xp
+        rho_dev = xp.asarray(rho, dtype=xp.float64)
+        drho_x, _ = self.ccd.differentiate(rho_dev, 0)
+        drho_y, _ = self.ccd.differentiate(rho_dev, 1)
+        return rho_dev, xp.asarray(drho_x), xp.asarray(drho_y)
 
-    def _assemble(self, rho_np, drho_x, drho_y):
-        """COO assembly of the FD matrix (no pin).
+    def _assemble(self, rho):
+        """Backend-native COO assembly of the FD matrix (no pin).
 
         Implements ∇·(1/ρ ∇p) = ∂²p/∂x²/ρ + ∂²p/∂y²/ρ − (∂ρ·∇p)/ρ²
         with ghost-cell Neumann BC at all four walls.
@@ -214,53 +202,110 @@ class FDPPEMatrix:
         and the ∂ρ/∂n · ∂p/∂n cross term vanishes (∂p/∂n = 0 at wall).
         """
         Nx, Ny = self._N
+        xp = self.xp
         h = self._h
         h2 = h * h
         ny = Ny + 1   # nodes per row
+        rho_dev, drho_x, drho_y = self._density_fields(rho)
+        inv_rho = 1.0 / rho_dev
+        inv_rho_h2 = inv_rho / h2
+        node = xp.arange(self._n_dof, dtype=xp.int32).reshape(Nx + 1, Ny + 1)
+        diag = xp.zeros((Nx + 1, Ny + 1), dtype=xp.float64)
+
+        rows_parts = []
+        cols_parts = []
+        vals_parts = []
+
+        def add(row_block, col_block, value_block):
+            rows_parts.append(row_block.ravel())
+            cols_parts.append(col_block.ravel())
+            vals_parts.append(value_block.ravel())
+
+        # x-axis interior: central FD plus variable-density cross term.
+        x_cross = drho_x / (rho_dev * rho_dev * (2.0 * h))
+        cm_x = inv_rho_h2 + x_cross
+        cp_x = inv_rho_h2 - x_cross
+        add(node[1:Nx, :], node[0:Nx - 1, :], cm_x[1:Nx, :])
+        add(node[1:Nx, :], node[2:Nx + 1, :], cp_x[1:Nx, :])
+        diag[1:Nx, :] -= cm_x[1:Nx, :] + cp_x[1:Nx, :]
+
+        coeff_x = 2.0 * inv_rho_h2
+        add(node[0:1, :], node[1:2, :], coeff_x[0:1, :])
+        add(node[Nx:Nx + 1, :], node[Nx - 1:Nx, :], coeff_x[Nx:Nx + 1, :])
+        diag[0:1, :] -= coeff_x[0:1, :]
+        diag[Nx:Nx + 1, :] -= coeff_x[Nx:Nx + 1, :]
+
+        # y-axis interior: central FD plus variable-density cross term.
+        y_cross = drho_y / (rho_dev * rho_dev * (2.0 * h))
+        cm_y = inv_rho_h2 + y_cross
+        cp_y = inv_rho_h2 - y_cross
+        add(node[:, 1:Ny], node[:, 0:Ny - 1], cm_y[:, 1:Ny])
+        add(node[:, 1:Ny], node[:, 2:Ny + 1], cp_y[:, 1:Ny])
+        diag[:, 1:Ny] -= cm_y[:, 1:Ny] + cp_y[:, 1:Ny]
+
+        coeff_y = 2.0 * inv_rho_h2
+        add(node[:, 0:1], node[:, 1:2], coeff_y[:, 0:1])
+        add(node[:, Ny:Ny + 1], node[:, Ny - 1:Ny], coeff_y[:, Ny:Ny + 1])
+        diag[:, 0:1] -= coeff_y[:, 0:1]
+        diag[:, Ny:Ny + 1] -= coeff_y[:, Ny:Ny + 1]
+
+        add(node, node, diag)
+        return (
+            xp.concatenate(rows_parts),
+            xp.concatenate(cols_parts),
+            xp.concatenate(vals_parts),
+        )
+
+    def _apply_pin_to_coo(self, rows, cols, vals):
+        """Replace pin_dof row with identity in backend-native COO arrays."""
+        pin = self._pin_dof
+        xp = self.xp
+        mask = rows != pin
+        return (
+            xp.concatenate([rows[mask], xp.asarray([pin], dtype=rows.dtype)]),
+            xp.concatenate([cols[mask], xp.asarray([pin], dtype=cols.dtype)]),
+            xp.concatenate([vals[mask], xp.asarray([1.0], dtype=vals.dtype)]),
+        )
+
+    def _sparse_matrix(self, rows, cols, vals, *, sparse_format: str):
+        sparse = self.backend.sparse
+        matrix_cls = sparse.csr_matrix if sparse_format == "csr" else sparse.csc_matrix
+        return matrix_cls((vals, (rows, cols)), shape=(self._n_dof, self._n_dof))
+
+    # ── C2: pre-GPU vectorization reference ─────────────────────────────
+    def _assemble_host_legacy(self, rho_np, drho_x, drho_y):
+        """DO NOT DELETE — pre-GPU host-loop COO baseline for regression audits."""
+        Nx, Ny = self._N
+        h = self._h
+        h2 = h * h
+        ny = Ny + 1
 
         def idx(i, j):
             return i * ny + j
 
         rows, cols, vals = [], [], []
-
         for i in range(Nx + 1):
             for j in range(Ny + 1):
                 k = idx(i, j)
                 inv_rho = 1.0 / rho_np[i, j]
                 cc = 0.0
-
                 for ax_idx, (coord, drho_ax, nb_lo, nb_hi) in enumerate([
                     (i, drho_x[i, j], idx(i - 1, j), idx(i + 1, j)),
                     (j, drho_y[i, j], idx(i, j - 1), idx(i, j + 1)),
                 ]):
                     N_ax = Nx if ax_idx == 0 else Ny
-                    coeff_bc = 2.0 * inv_rho / h2   # ghost-cell boundary stencil
+                    coeff_bc = 2.0 * inv_rho / h2
                     if 0 < coord < N_ax:
-                        # Interior: central FD (second + cross terms)
                         dr = drho_ax / rho_np[i, j] ** 2
-                        cm = inv_rho / h2 + dr / (2 * h)   # coefficient for p[i-1,j]
-                        cp = inv_rho / h2 - dr / (2 * h)   # coefficient for p[i+1,j]
+                        cm = inv_rho / h2 + dr / (2 * h)
+                        cp = inv_rho / h2 - dr / (2 * h)
                         rows += [k, k]; cols += [nb_lo, nb_hi]; vals += [cm, cp]
                         cc -= cm + cp
                     elif coord == 0:
-                        # Left/bottom wall: ghost-cell Neumann
                         rows.append(k); cols.append(nb_hi); vals.append(coeff_bc)
                         cc -= coeff_bc
                     else:
-                        # Right/top wall: ghost-cell Neumann
                         rows.append(k); cols.append(nb_lo); vals.append(coeff_bc)
                         cc -= coeff_bc
-
                 rows.append(k); cols.append(k); vals.append(cc)
-
         return rows, cols, vals
-
-    def _apply_pin(self, rows, cols, vals, csr_matrix):
-        """Replace pin_dof row with identity and assemble CSR."""
-        pin = self._pin_dof
-        n = self._n_dof
-        mask = [r != pin for r in rows]
-        rows_p = [r for r, m in zip(rows, mask) if m] + [pin]
-        cols_p = [c for c, m in zip(cols, mask) if m] + [pin]
-        vals_p = [v for v, m in zip(vals, mask) if m] + [1.0]
-        return csr_matrix((vals_p, (rows_p, cols_p)), shape=(n, n))
