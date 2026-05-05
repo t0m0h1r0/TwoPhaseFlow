@@ -742,7 +742,8 @@ class TwoPhaseNSSolver:
         if xp is None:
             xp = np
         psi_previous = xp.array(state.psi, copy=True)
-        if self._curvature_method == "transport_variational_p2_ale_discrete_gradient":
+        curvature_method = getattr(self, "_curvature_method", "")
+        if curvature_method == "transport_variational_p2_ale_discrete_gradient":
             state.transport_variational_previous_surface_energy = None
         rebuild_old_coords = None
         will_rebuild = (
@@ -754,8 +755,7 @@ class TwoPhaseNSSolver:
         if will_rebuild:
             rebuild_old_coords = [coords.copy() for coords in self._grid.coords]
             if (
-                self._curvature_method
-                == "transport_variational_p2_ale_discrete_gradient"
+                curvature_method == "transport_variational_p2_ale_discrete_gradient"
             ):
                 state.transport_variational_previous_surface_energy = (
                     p2_trace_surface_energy_2d(
