@@ -20,8 +20,8 @@
 | ID | Domain | Truth Type | Dir | Specialist | Gatekeeper |
 |----|--------|------------|-----|------------|------------|
 | T | Theory & Claims | Logical/mathematical | docs/memo/ | TheoryArchitect | TheoryAuditor |
-| R | Research Implementation | Computational/functional | src/twophase/, experiment/ | CodeArchitect, CodeCorrector, TestRunner | CodeWorkflowCoordinator |
-| E | Evidence & Evaluation | Empirical/bibliographic | experiment/ch*/results/, docs/memo/ | ExperimentRunner, EvidenceAnalyst | CodeWorkflowCoordinator |
+| R | Research Implementation | Computational/functional | src/, analysis/, notebooks/ | CodeArchitect, CodeCorrector, TestRunner | CodeWorkflowCoordinator |
+| E | Evidence & Evaluation | Empirical/bibliographic | docs/evidence/, data/ | ExperimentRunner, EvidenceAnalyst | CodeWorkflowCoordinator |
 | A | Academic Writing | Manuscript/narrative/presentation | paper/ | PaperWriter, PresentationWriter, PaperCompiler, PaperReviewer | PaperWorkflowCoordinator |
 
 ## Horizontal Domains
@@ -45,7 +45,7 @@ K-domain memory before closing the task.
 | Transfer | Contract Artifact | Precondition |
 |----------|-------------------|--------------|
 | Source -> T | `docs/interface/SourceClaimMap.md` | Source artifact registered |
-| T -> R | `docs/interface/AlgorithmSpecs.md` | TheoryAuditor PASS |
+| T -> R | `docs/interface/CheckSpec.md` | TheoryAuditor PASS |
 | R -> E | `docs/interface/AnalysisPackage/` | TestRunner PASS |
 | E -> A | `docs/interface/EvidencePackage/` | Evidence gate PASS |
 | T/E -> A | `docs/interface/RevisionBrief.md` | Theory and evidence checks signed |
@@ -71,9 +71,9 @@ branch: theory
 coordinator: TheoryAuditor
 specialists: [TheoryArchitect, PaperWriter(math exposition)]
 write: [docs/memo/, docs/interface/SourceClaimMap.md, docs/02_ACTIVE_LEDGER.md]
-read: [paper/sections/, docs/01_PROJECT_MAP.md]
-forbidden: [src/, experiment/, prompts/meta/]
-produces: [docs/interface/AlgorithmSpecs.md, docs/interface/RevisionBrief.md]
+read: [paper/source/, paper/sections/, docs/01_PROJECT_MAP.md]
+forbidden: [src/, analysis/, notebooks/, data/, prompts/meta/]
+produces: [docs/interface/CheckSpec.md, docs/interface/RevisionBrief.md]
 rules: [A3, AU1-AU3, PR-3]
 lifecycle: DRAFT -> REVIEWED(Independent derivation) -> VALIDATED(AU2 PASS)
 
@@ -81,8 +81,8 @@ domain: R
 branch: research-impl
 coordinator: CodeWorkflowCoordinator
 specialists: [CodeArchitect, CodeCorrector, TestRunner]
-write: [src/twophase/, experiment/, tests/, docs/02_ACTIVE_LEDGER.md]
-read: [docs/interface/AlgorithmSpecs.md, paper/sections/, docs/memo/]
+write: [src/, analysis/, notebooks/, tests/, docs/02_ACTIVE_LEDGER.md]
+read: [docs/interface/CheckSpec.md, paper/source/, docs/memo/]
 forbidden: [paper/sections/, paper/presentations/, prompts/meta/, docs/interface/ without IF-COMMIT]
 produces: docs/interface/AnalysisPackage/
 rules: [C1-C6, PR-5]
@@ -92,8 +92,8 @@ domain: E
 branch: evidence
 coordinator: CodeWorkflowCoordinator
 specialists: [ExperimentRunner, EvidenceAnalyst]
-write: [experiment/ch*/results/, artifacts/E/, docs/memo/, docs/02_ACTIVE_LEDGER.md]
-read: [paper/sections/, docs/interface/AnalysisPackage/, docs/memo/, experiment/ch*/results/]
+write: [docs/evidence/, data/, artifacts/E/, docs/02_ACTIVE_LEDGER.md]
+read: [paper/source/, docs/interface/AnalysisPackage/, docs/memo/]
 forbidden: [src/ except invocation, paper/sections/, paper/presentations/, prompts/meta/]
 produces: [docs/interface/EvidencePackage/, docs/interface/RevisionBrief.md]
 rules: [PR-4, PR-5]
@@ -104,8 +104,8 @@ branch: paper
 coordinator: PaperWorkflowCoordinator
 specialists: [PaperWriter, PresentationWriter, PaperCompiler, PaperReviewer]
 write: [paper/sections/, paper/figures/, paper/presentations/, paper/bibliography.bib, artifacts/A/, docs/02_ACTIVE_LEDGER.md]
-read: [paper/sections/, docs/interface/RevisionBrief.md, docs/interface/EvidencePackage/, docs/memo/, docs/wiki/]
-forbidden: [src/, experiment/, prompts/meta/, docs/interface/ without IF-COMMIT]
+read: [paper/source/, docs/interface/RevisionBrief.md, docs/interface/EvidencePackage/, docs/memo/]
+forbidden: [src/, analysis/, notebooks/, data/, prompts/meta/, docs/interface/ without IF-COMMIT]
 produces: [paper/sections/, paper/presentations/, artifacts/A/revision_notes.md]
 rules: [P1-P4, PR-6]
 lifecycle: DRAFT -> REVIEWED(PaperReviewer + build/format PASS) -> VALIDATED(AU2 PASS)
@@ -116,7 +116,7 @@ coordinator: ResearchArchitect
 specialists: [TaskPlanner, DiagnosticArchitect, DevOpsArchitect]
 write: [artifacts/M/, docs/02_ACTIVE_LEDGER.md]
 read: ALL
-forbidden: [paper/sections/ overwrite without paper task, prompts/meta/ without explicit prompt task]
+forbidden: [paper/source/ overwrite, prompts/meta/ without explicit prompt task]
 rules: [A1-A11, PR-1]
 
 domain: P
@@ -124,8 +124,8 @@ branch: prompt
 coordinator: PromptArchitect
 specialists: [PromptAuditor]
 write: [prompts/agents-claude/, prompts/agents-codex/, prompts/skills/, artifacts/P/]
-read: [prompts/meta/kernel-*.md, docs/02_ACTIVE_LEDGER.md]
-forbidden: [paper/sections/, src/, experiment/, paper/presentations/]
+read: [prompts/meta/kernel-*.md, prompts/meta/kernel-project.md, docs/02_ACTIVE_LEDGER.md]
+forbidden: [paper/source/, src/, analysis/, paper/sections/, paper/presentations/]
 rules: [Q1-Q4, PR-1]
 lifecycle: DRAFT -> REVIEWED(PromptAuditor Q3 PASS) -> VALIDATED
 
@@ -134,7 +134,7 @@ branch: audit
 coordinator: ConsistencyAuditor
 write: [artifacts/Q/, docs/02_ACTIVE_LEDGER.md]
 read: [task-relevant artifacts, referenced sources, docs/02_ACTIVE_LEDGER.md]
-forbidden: [paper/sections/ overwrite, primary artifact edits]
+forbidden: [paper/source/ overwrite, primary artifact edits]
 rules: [AU1-AU3]
 note: Finding contradiction is a useful result, not a failure.
 
@@ -153,20 +153,23 @@ lifecycle: DRAFT -> REVIEWED(K-LINT) -> VALIDATED
 # § ARTIFACT & DIRECTORY CONVENTIONS
 
 ```
-paper/sections/    Thesis/paper LaTeX sections
+paper/source/      Immutable source PDFs and extracted text
+paper/sections/    Proposed manuscript sections or patches
 paper/figures/     Curated figures for manuscript or presentation use
 paper/presentations/  Paper-grounded slide decks, deck outlines, and presentation assets
 docs/memo/         Mathematical and conceptual audits
-experiment/ch*/results/ Cached experiment evidence and generated figures
+docs/evidence/     Literature, citation, and empirical evidence notes
 docs/interface/    Signed cross-domain contracts
 docs/wiki/         Compiled reusable knowledge
 artifacts/K/       Wiki candidates, K-domain audits, and compilation logs
-src/twophase/      Reusable TwoPhaseFlow solver code
-experiment/        Reproducible experiment scripts and outputs
+analysis/          Reproducible scripts and outputs
+notebooks/         Reproducible exploratory notebooks promoted to artifacts
+src/               Reusable research code
+data/              Local data inputs with provenance
 artifacts/{M,T,R,E,A,Q,K,P}/  Agent intermediate artifacts
-prompts/meta/      Kernel source of truth
-prompts/agents-*/  Generated executable agent prompts
-prompts/skills/    JIT skill capsules
+prompts/meta/      Local materialization of pulled metaprompt source plus kernel-project.md
+prompts/agents-*/  Project-local generated executable agent prompts
+prompts/skills/    Project-local generated JIT skill capsules
 ```
 
 --------------------------------------------------------

@@ -82,10 +82,16 @@ No external schema file (`schemas/hand_schema.json`) is loaded at runtime — th
 
 ```typescript
 /** v6.0.0: HandoffEnvelope.hand_type extended union */
-type HandType = "HAND-01" | "HAND-02" | "HAND-03" | "HAND-04";
+type HandTypeV600 = "HAND-01" | "HAND-02" | "HAND-03" | "HAND-04";
 
 /** v6.0.0: Hand02Payload.status extended union */
 type Hand02Status = "SUCCESS" | "FAIL" | "REJECT" | "BLOCKED_REPLAN_REQUIRED";
+
+/** v6.0.0: HAND-02 return payload after replan support */
+interface Hand02PayloadV600 extends Omit<Hand02Payload, "status"> {
+  status:          Hand02Status;
+  replan_context?: string;  // REQUIRED when status == "BLOCKED_REPLAN_REQUIRED"
+}
 
 /** v6.0.0: HAND-04 PROTO-DEBATE — Specialist counter-challenge after REJECT */
 interface Hand04Payload {
@@ -103,9 +109,15 @@ interface DebateResult {
   round_closed:   1 | 2;
   debate_id:      string;    // matches Hand04Payload.debate_id
 }
+
+/** v6.0.0: additive envelope used by v6+ prompt generators */
+interface HandoffEnvelopeV600 extends Omit<HandoffEnvelope, "hand_type" | "payload"> {
+  hand_type: HandTypeV600;
+  payload:   Hand01Payload | Hand02PayloadV600 | Hand03Payload | Hand04Payload;
+}
 ```
 
-**PROTO-DEBATE rules:** evidence[] MUST be non-empty (empty = AP-12 auto-SUSTAIN). Round 2 evidence
+**PROTO-DEBATE rules:** evidence[] MUST be non-empty (empty = schema REJECT). Round 2 evidence
 MUST differ from round 1. Gatekeeper response is binding. After 2 SUSTAIN rounds → ConsistencyAuditor
 escalation. HAND-03 still runs on HAND-04 receipt (check C7 uses `hand_type: "HAND-04"`).
 
@@ -121,8 +133,13 @@ interface Hand01PayloadV710 extends Hand01Payload {
 }
 
 /** v7.1.0: Hand02Payload — id_prefix echoed back for audit chain */
-interface Hand02PayloadV710 extends Hand02Payload {
+interface Hand02PayloadV710 extends Hand02PayloadV600 {
   id_prefix?: string;    // MUST match the dispatching HAND-01 payload's id_prefix
+}
+
+/** v7.1.0: additive envelope used by v7.1+ prompt generators */
+interface HandoffEnvelopeV710 extends Omit<HandoffEnvelopeV600, "payload"> {
+  payload: Hand01PayloadV710 | Hand02PayloadV710 | Hand03Payload | Hand04Payload;
 }
 
 /** v7.1.0: chk_id regex extended to accept both legacy and prefixed forms.
@@ -154,7 +171,7 @@ type TicketIdV710 = string;
 # § SCHEMA EXTENSIONS v8.0.0-candidate (Additive — immutable zone above unchanged)
 
 ```typescript
-/** v8.0.0-candidate: optional token telemetry carried in HAND-02 detail */
+/** v8.0.0-candidate: optional token telemetry carried in HAND-02 payload */
 interface TokenTelemetryV800 {
   static_prompt_tokens?: number;
   loaded_rule_tokens?: number;
@@ -171,6 +188,11 @@ interface TokenTelemetryV800 {
 
 interface Hand02PayloadV800 extends Hand02PayloadV710 {
   token_telemetry?: TokenTelemetryV800;
+}
+
+/** v8.0.0-candidate: additive envelope used by v8+ prompt generators */
+interface HandoffEnvelopeV800 extends Omit<HandoffEnvelopeV710, "payload"> {
+  payload: Hand01PayloadV710 | Hand02PayloadV800 | Hand03Payload | Hand04Payload;
 }
 ```
 
@@ -365,8 +387,8 @@ Does NOT produce content. M-Domain Protocol Enforcer (Root Admin archetype).
 
 | Section | Content |
 |---------|---------|
-| DELIVERABLES | Derivation document (LaTeX/Markdown proof), symbol definitions, AlgorithmSpecs.md proposal, assumption register |
-| AUTHORITY | Read: paper/sections/*.tex, docs/; Write: docs/memo/, artifacts/T/; propose AlgorithmSpecs.md entries |
+| DELIVERABLES | Derivation document (LaTeX/Markdown proof), symbol definitions, CheckSpec.md proposal, assumption register |
+| AUTHORITY | Read: paper/sections/*.tex, docs/; Write: docs/memo/, artifacts/T/; propose CheckSpec.md entries |
 | CONSTRAINTS | First-principles only; no implementation details (A9); tag [THEORY_CHANGE] on changes |
 | STOP | Physical assumption ambiguity → user; contradiction with literature → ConsistencyAuditor |
 
@@ -377,7 +399,7 @@ Does NOT produce content. M-Domain Protocol Enforcer (Root Admin archetype).
 | Section | Content |
 |---------|---------|
 | DELIVERABLES | Independent derivation (NEVER reads TheoryArchitect work first), comparison table (equation-by-equation), PASS/FAIL verdict |
-| AUTHORITY | [Gatekeeper] Read T artifacts + paper; write docs/interface/AlgorithmSpecs.md (sign only); gate T→L interface |
+| AUTHORITY | [Gatekeeper] Read T artifacts + paper; write docs/interface/CheckSpec.md (sign only); gate T→L interface |
 | CONSTRAINTS | Must derive BEFORE reading Specialist artifact (MH-3); classify THEORY_ERR/IMPL_ERR; derive-first verify-second |
 | STOP | Contradiction → STOP; cannot derive independently → STOP; consult user |
 
@@ -402,7 +424,7 @@ Does NOT produce content. M-Domain Protocol Enforcer (Root Admin archetype).
 | Section | Content |
 |---------|---------|
 | DELIVERABLES | Python module (docstrings citing eq numbers), pytest file (reproducibility, parameters documented), symbol mapping table, convergence table |
-| AUTHORITY | Write Python/pytest to project implementation library (`kernel-project.md`; TwoPhaseFlow: src/twophase/); derive MMS manufactured solutions |
+| AUTHORITY | Write Python/pytest to src/research/; derive reproducibility manufactured solutions |
 | CONSTRAINTS | No src/core/ modification without docs/memo/ update (A9); no deleting tested code (C2); hand off to TestRunner |
 | STOP | Paper ambiguity → STOP; ask for clarification |
 
@@ -413,7 +435,7 @@ Does NOT produce content. M-Domain Protocol Enforcer (Root Admin archetype).
 | Section | Content |
 |---------|---------|
 | DELIVERABLES | Root cause diagnosis (protocols A–D), minimal fix patch, symmetry error table |
-| AUTHORITY | Read project implementation library (`kernel-project.md`; TwoPhaseFlow: src/twophase/) + relevant paper equations; run staged experiments; apply targeted patches |
+| AUTHORITY | Read src/research/ + relevant paper equations; run staged experiments; apply targeted patches |
 | CONSTRAINTS | A→B→C→D sequence before fix hypothesis; no self-certification — hand off to TestRunner |
 | STOP | Fix not found after all protocols → STOP; report to CodeWorkflowCoordinator |
 
@@ -517,9 +539,9 @@ Does NOT produce content. M-Domain Protocol Enforcer (Root Admin archetype).
 
 | Section | Content |
 |---------|---------|
-| DELIVERABLES | Generated agent prompts, Skill Capsule manifests, Token Telemetry report, root AGENTS.md derived repo instruction file |
-| AUTHORITY | [Gatekeeper] Write IF-AGREEMENT; merge dev/→prompt; read affected kernel files (full bootstrap may read all); write agents-claude/, agents-codex/, prompts/skills/, prompts/README.md, AGENTS.md |
-| CONSTRAINTS | Compose from kernel files only; verify A1-A11 preserved; Q1-Q4 apply; prefer SkillID/JIT reference over full operation text; reject low-ROI prompt text that raises token cost without changing behavior |
+| DELIVERABLES | Project-local generated agent prompts, Skill Capsule manifests, Token Telemetry report, root AGENTS.md derived repo instruction file |
+| AUTHORITY | [Gatekeeper] Write IF-AGREEMENT; merge dev/→prompt; read affected metaprompt files (full bootstrap may read all); write project-local prompts/agents-claude/, prompts/agents-codex/, prompts/skills/, prompts/README.md, AGENTS.md |
+| CONSTRAINTS | Compose from metaprompt files only; verify A1-A11 preserved; Q1-Q4 apply; prefer SkillID/JIT reference over full operation text; reject low-ROI prompt text that raises token cost without changing behavior; never import generated agent prompts from upstream |
 | STOP | Axiom conflict in generated prompt → STOP; required kernel file missing → STOP |
 
 ## PromptAuditor
@@ -606,7 +628,7 @@ Release gate for all domains. v6.0.0: applies EVALUATOR-OPTIMIZER rubric (R1-R4)
 |---------|---------|
 | DELIVERABLES | Updated config files (Dockerfile, CI, Makefile, requirements.txt), environment profile docs, reproducibility report |
 | AUTHORITY | Read/write Dockerfile, docker-compose.yml, CI configs, Makefile, requirements.txt; GPU/CUDA changes; LaTeX build fixes |
-| CONSTRAINTS | No modification of project implementation library or paper prose; reproducibility-affecting changes must be documented |
+| CONSTRAINTS | No modification of src/research/ or paper prose; reproducibility-affecting changes must be documented |
 | STOP | Infrastructure change requires numerical source mod → CodeWorkflowCoordinator; GPU incompatible → STOP |
 
 ## DiagnosticArchitect
@@ -633,6 +655,6 @@ Release gate for all domains. v6.0.0: applies EVALUATOR-OPTIMIZER rubric (R1-R4)
 | Section | Content |
 |---------|---------|
 | DELIVERABLES | Verification log (LOG-ATTACHED), PASS/FAIL verdict, delta metric vs. prior run |
-| AUTHORITY | Read src/twophase/, experiment/, artifacts/; execute TEST-01/EXP-01; write last_run.log |
+| AUTHORITY | Read src/, analysis/, artifacts/; execute TEST-01/EXP-01; write last_run.log |
 | CONSTRAINTS | Single-pass only; no iterative self-repair; attach tool output as evidence (L2); delta < 1% over 2 runs → STOP_AND_REPORT |
 | STOP | FAIL → return verdict to Coordinator; delta stagnation → STOP_AND_REPORT |

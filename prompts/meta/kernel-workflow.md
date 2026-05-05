@@ -82,7 +82,7 @@ Source Artifact
 | Domain | Branch | Gatekeeper | Execute | Verify | Entry contract |
 |--------|--------|------------|---------|--------|----------------|
 | T Theory | `theory` | TheoryAuditor | TheoryArchitect | independent derivation | SourceClaimMap signed |
-| R Implementation | `research-impl` | CodeWorkflowCoordinator | CodeArchitect / CodeCorrector | TestRunner | AlgorithmSpecs signed |
+| R Implementation | `research-impl` | CodeWorkflowCoordinator | CodeArchitect / CodeCorrector | TestRunner | CheckSpec signed |
 | E Evidence | `evidence` | CodeWorkflowCoordinator | ExperimentRunner / EvidenceAnalyst | evidence trace | AnalysisPackage signed |
 | A Writing | `paper` | PaperWorkflowCoordinator | PaperWriter / PresentationWriter / PaperCompiler | PaperReviewer | RevisionBrief signed |
 | P Prompt | `prompt` | PromptArchitect | PromptArchitect | PromptAuditor | meta edit request |
@@ -107,8 +107,8 @@ Agent count scales with independence and artifact separability, not importance.
 | Mode | Output | Gate |
 |------|--------|------|
 | Proof audit | `docs/memo/{topic}.md` | TheoryAuditor re-derivation |
-| Literature audit | `docs/memo/{topic}.md` or `docs/wiki/{category}/{topic}.md` | citation/source verification |
-| Numerical check | `experiment/ch{N}/results/{name}/` | TestRunner command log |
+| Literature audit | `docs/evidence/{topic}.md` | citation/source verification |
+| Numerical check | `analysis/{study}/` | TestRunner command log |
 | Revision brief | `docs/interface/RevisionBrief.md` | T/E sign-off |
 | Prose patch | `paper/sections/` or `artifacts/A/` | PaperReviewer |
 | Presentation deck | `paper/presentations/` or `artifacts/A/` | PaperReviewer |
@@ -172,12 +172,12 @@ must let a resumed agent continue from external artifacts alone.
 --------------------------------------------------------
 # § BOOTSTRAP PIPELINE
 
-For deploying a generic research-agent kernel:
+For deploying a generic research-agent kernel after a git metaprompt pull:
 
 | Step | Agent | Output | Gate |
 |------|-------|--------|------|
-| 1 Kernel retarget | PromptArchitect | generic `kernel-*.md` | PromptAuditor leakage scan |
-| 2 Project profile | ResearchArchitect | `kernel-project.md` + docs | PR count and traceability |
-| 3 Agent generation | PromptArchitect | `prompts/agents-*` | Q3 validation |
+| 1 Metaprompt intake | PromptArchitect | pulled `kernel-*.md` | upstream revision recorded |
+| 2 Project profile | ResearchArchitect | local `kernel-project.md` + docs | PR count and traceability |
+| 3 Local support + agent generation | PromptArchitect | local `prompts/skills/`, templates/scripts policy, `prompts/agents-*` | Q3 validation |
 | 4 Source registration | TaskPlanner | `docs/01_PROJECT_MAP.md` | source immutability |
 | 5 First critique task | ResearchArchitect | HAND-01 for proof/lit audit | P-E-V-A |
