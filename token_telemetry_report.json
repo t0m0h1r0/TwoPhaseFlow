@@ -1,17 +1,18 @@
 {
-  "report_id": "CHK-RA-META-V8-002",
-  "generated_at": "2026-05-03",
-  "scope": "v8.0.0-candidate Codex target bootstrap",
-  "status": "codex_target_static_pass",
+  "report_id": "CHK-RA-META-REFRESH-001",
+  "generated_at": "2026-05-05",
+  "scope": "v8.0.0-candidate project-local Codex+Claude redeploy after upstream metaprompt sync",
+  "status": "project_local_static_pass",
   "method": "manual_static_gate_with_wc_word_proxy; exact tokenizer remains required for full automation",
   "notes": [
     "EnvMetaBootstrapper now requires exact tokenizer counts during full regeneration.",
     "This report records the initial Skill Capsule footprint and Q3 gate expectations for the meta-kernel change.",
-    "Codex target prompts were regenerated in primitive-diff style from prompts/meta/kernel-deploy.md."
+    "Codex and Claude prompt-system artifacts were refreshed from local prompts/meta/ after upstream kernel-only sync.",
+    "Generated agents, skills, scripts, and templates remain project-local outputs and were not copied from upstream."
   ],
   "q3_static_gates": {
     "anti_pattern_count": 15,
-    "skill_capsule_count": 5,
+    "skill_capsule_count": 6,
     "requires_skill_capsule_schema": true,
     "requires_duplicate_operation_body_scan": true,
     "requires_effective_context_reserved_minimum": 0.4
@@ -30,8 +31,12 @@
       "token_target": 140
     },
     "SKILL-PROMPT-AUDIT": {
-      "word_count_proxy": 94,
+      "word_count_proxy": 124,
       "token_target": 160
+    },
+    "SKILL-PRESENTATION-DECK": {
+      "word_count_proxy": 246,
+      "token_target": 220
     },
     "SKILL-TOOL-TRUST": {
       "word_count_proxy": 109,
@@ -39,14 +44,14 @@
     }
   },
   "codex_target": {
-    "agent_prompt_count": 23,
-    "agent_word_count_proxy_total": 2420,
+    "agent_prompt_count": 25,
+    "agent_word_count_proxy_total": 2693,
     "largest_role_prompts_word_count_proxy": {
       "PromptAuditor": 193,
+      "PresentationWriter": 163,
+      "PromptArchitect": 158,
       "ResearchArchitect": 157,
-      "PromptArchitect": 145,
-      "CodeWorkflowCoordinator": 136,
-      "TaskPlanner": 119
+      "ConsistencyAuditor": 142
     },
     "static_prompt_tokens": "deferred_to_exact_tokenizer",
     "skill_manifest_tokens": "deferred_to_exact_tokenizer",

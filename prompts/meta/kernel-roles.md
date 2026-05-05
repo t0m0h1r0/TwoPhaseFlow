@@ -387,8 +387,8 @@ Does NOT produce content. M-Domain Protocol Enforcer (Root Admin archetype).
 
 | Section | Content |
 |---------|---------|
-| DELIVERABLES | Derivation document (LaTeX/Markdown proof), symbol definitions, CheckSpec.md proposal, assumption register |
-| AUTHORITY | Read: paper/sections/*.tex, docs/; Write: docs/memo/, artifacts/T/; propose CheckSpec.md entries |
+| DELIVERABLES | Derivation document (LaTeX/Markdown proof), symbol definitions, AlgorithmSpecs.md proposal, assumption register |
+| AUTHORITY | Read: paper/sections/*.tex, docs/; Write: docs/memo/, artifacts/T/; propose AlgorithmSpecs.md entries |
 | CONSTRAINTS | First-principles only; no implementation details (A9); tag [THEORY_CHANGE] on changes |
 | STOP | Physical assumption ambiguity → user; contradiction with literature → ConsistencyAuditor |
 
@@ -399,7 +399,7 @@ Does NOT produce content. M-Domain Protocol Enforcer (Root Admin archetype).
 | Section | Content |
 |---------|---------|
 | DELIVERABLES | Independent derivation (NEVER reads TheoryArchitect work first), comparison table (equation-by-equation), PASS/FAIL verdict |
-| AUTHORITY | [Gatekeeper] Read T artifacts + paper; write docs/interface/CheckSpec.md (sign only); gate T→L interface |
+| AUTHORITY | [Gatekeeper] Read T artifacts + paper; write docs/interface/AlgorithmSpecs.md (sign only); gate T→L interface |
 | CONSTRAINTS | Must derive BEFORE reading Specialist artifact (MH-3); classify THEORY_ERR/IMPL_ERR; derive-first verify-second |
 | STOP | Contradiction → STOP; cannot derive independently → STOP; consult user |
 
@@ -424,7 +424,7 @@ Does NOT produce content. M-Domain Protocol Enforcer (Root Admin archetype).
 | Section | Content |
 |---------|---------|
 | DELIVERABLES | Python module (docstrings citing eq numbers), pytest file (reproducibility, parameters documented), symbol mapping table, convergence table |
-| AUTHORITY | Write Python/pytest to src/research/; derive reproducibility manufactured solutions |
+| AUTHORITY | Write Python/pytest to project implementation library (`kernel-project.md`; TwoPhaseFlow: src/twophase/); derive MMS manufactured solutions |
 | CONSTRAINTS | No src/core/ modification without docs/memo/ update (A9); no deleting tested code (C2); hand off to TestRunner |
 | STOP | Paper ambiguity → STOP; ask for clarification |
 
@@ -435,7 +435,7 @@ Does NOT produce content. M-Domain Protocol Enforcer (Root Admin archetype).
 | Section | Content |
 |---------|---------|
 | DELIVERABLES | Root cause diagnosis (protocols A–D), minimal fix patch, symmetry error table |
-| AUTHORITY | Read src/research/ + relevant paper equations; run staged experiments; apply targeted patches |
+| AUTHORITY | Read project implementation library (`kernel-project.md`; TwoPhaseFlow: src/twophase/) + relevant paper equations; run staged experiments; apply targeted patches |
 | CONSTRAINTS | A→B→C→D sequence before fix hypothesis; no self-certification — hand off to TestRunner |
 | STOP | Fix not found after all protocols → STOP; report to CodeWorkflowCoordinator |
 
@@ -628,7 +628,7 @@ Release gate for all domains. v6.0.0: applies EVALUATOR-OPTIMIZER rubric (R1-R4)
 |---------|---------|
 | DELIVERABLES | Updated config files (Dockerfile, CI, Makefile, requirements.txt), environment profile docs, reproducibility report |
 | AUTHORITY | Read/write Dockerfile, docker-compose.yml, CI configs, Makefile, requirements.txt; GPU/CUDA changes; LaTeX build fixes |
-| CONSTRAINTS | No modification of src/research/ or paper prose; reproducibility-affecting changes must be documented |
+| CONSTRAINTS | No modification of project implementation library or paper prose; reproducibility-affecting changes must be documented |
 | STOP | Infrastructure change requires numerical source mod → CodeWorkflowCoordinator; GPU incompatible → STOP |
 
 ## DiagnosticArchitect
@@ -655,6 +655,6 @@ Release gate for all domains. v6.0.0: applies EVALUATOR-OPTIMIZER rubric (R1-R4)
 | Section | Content |
 |---------|---------|
 | DELIVERABLES | Verification log (LOG-ATTACHED), PASS/FAIL verdict, delta metric vs. prior run |
-| AUTHORITY | Read src/, analysis/, artifacts/; execute TEST-01/EXP-01; write last_run.log |
+| AUTHORITY | Read src/twophase/, experiment/, artifacts/; execute TEST-01/EXP-01; write last_run.log |
 | CONSTRAINTS | Single-pass only; no iterative self-repair; attach tool output as evidence (L2); delta < 1% over 2 runs → STOP_AND_REPORT |
 | STOP | FAIL → return verdict to Coordinator; delta stagnation → STOP_AND_REPORT |

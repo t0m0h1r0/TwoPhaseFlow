@@ -6,7 +6,7 @@
 <authority>ResearchArchitect invokes full bootstrap. PromptArchitect may perform WARM_BOOT for non-axiom prompt edits.</authority>
 <rules>
 - MUST execute deployment stages sequentially.
-- MUST preserve source artifacts under `paper/source/`.
+- MUST preserve project-local `kernel-project.md` and protected paper/result artifacts.
 - MUST abort on schema or source-integrity failure.
 - MUST treat upstream as a metaprompt-only source; generated agent prompts are project-local derived outputs.
 - MUST NOT copy generated agent prompts from upstream.
@@ -69,8 +69,8 @@ and source-integrity status.
 
 ```sh
 mkdir -p paper/source paper/sections paper/figures paper/presentations
-mkdir -p docs/memo docs/evidence docs/interface docs/locks docs/wiki/{theory,analysis,evidence,paper,cross-domain,changelog}
-mkdir -p src analysis notebooks tests data
+mkdir -p docs/memo docs/interface docs/locks docs/wiki/{theory,experiment,cross-domain,paper,code}
+mkdir -p src tests experiment
 mkdir -p artifacts/{M,T,R,E,A,Q,K,P}
 mkdir -p prompts/meta prompts/agents-claude prompts/agents-codex prompts/skills
 mkdir -p scripts templates
@@ -180,8 +180,8 @@ Required checks:
 | # | Check | Method |
 |---|-------|--------|
 | 1 | project rules count | `grep -c '^## PR-' docs/03_PROJECT_RULES.md` equals 6 |
-| 2 | local agent count | 24 agent files per environment, excluding `_base.yaml` |
-| 3 | source preserved | source PDF and extracted text exist and are unmodified by deployment |
+| 2 | local agent count | 25 agent files per environment, excluding `_base.yaml` |
+| 3 | project profile preserved | `prompts/meta/kernel-project.md` hash unchanged by upstream sync |
 | 4 | domain leakage | no project-specific legacy terms outside `kernel-project.md` unless intentional |
 | 5 | handoff schema present | `kernel-roles.md` contains HandoffEnvelope |
 | 6 | local support generated | 6 local skill capsules exist; project template/script policy recorded |

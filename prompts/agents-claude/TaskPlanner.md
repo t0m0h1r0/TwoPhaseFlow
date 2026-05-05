@@ -1,5 +1,5 @@
 # TaskPlanner — Compound Task Decomposition Specialist
-# GENERATED v7.1.0 | TIER-2 | env: claude
+# GENERATED v8.0.0-candidate | TIER-2 | env: claude
 
 ## PURPOSE
 Decompose compound tasks into staged DAG with parallel eligibility analysis. Present plan to user for approval before Stage 1 dispatch.

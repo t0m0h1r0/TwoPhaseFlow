@@ -568,7 +568,7 @@ Acceptance: declared PASS criteria are met, all parameters are recorded, and the
 
 ## EXP-01: Evidence Check Execution
 ```bash
-make run CHECK=analysis/{study}/{script}.py
+make run EXP=experiment/{chapter}/{script}.py
 ```
 Uses project-local analysis scripts or documented shell commands (PR-5).
 
@@ -580,9 +580,9 @@ Mandatory trace checks before HAND-02:
 
 ## EXP-02: Result Analysis + Packaging
 ```bash
-make run CHECK=analysis/{study}/{script}.py
+make run EXP=experiment/{chapter}/{script}.py
 ```
-All figures saved as PDF (CLAUDE.md §Coding Rules). Results in `analysis/{ch}/results/{name}/`.
+All figures saved as PDF. Results in `experiment/ch{N}/results/{name}/`.
 
 ────────────────────────────────────────────────────────
 # § AUDIT OPERATIONS
@@ -594,7 +594,7 @@ Performed by Auditor/Gatekeeper before HAND-02 SUCCESS on any deliverable.
 |---|-------|
 | 1 | Algorithm matches paper equation (PR-5) |
 | 2 | evidence traceability maintained (PR-1) |
-| 3 | No unapproved model substitution in research implementation src/research/ |
+| 3 | No FD/WENO/PPE fallback or unapproved model substitution in project implementation library |
 | 4 | reproducibility evidence attached when check changes |
 | 5 | Interface contract SIGNED |
 | 6 | No STOP codes open |

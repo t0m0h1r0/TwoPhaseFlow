@@ -69,9 +69,9 @@ Project-Local Derived Prompt-System Artifacts
 
 **Interface Contract flow (T-L-E-A, mandatory ordering):**
 ```
-T → CheckSpec.md → L → AnalysisAPI_vX.md → E → EvidencePackage/ → A
+T -> AlgorithmSpecs.md -> L -> SolverAPI_vX.py -> E -> ResultPackage/ -> A
                                                ↑
-                              RevisionBrief.md (T + E jointly → A)
+                               RevisionBrief.md (T + E jointly → A)
 ```
 
 **Authority rule:** kernel-constitution.md wins on axiom intent; docs/00_GLOBAL_RULES.md wins on rule
