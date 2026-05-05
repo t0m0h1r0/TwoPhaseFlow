@@ -1,4 +1,4 @@
-# Wiki Index — 326 entries
+# Wiki Index — 336 entries
 
 ## Active Retrieval Gate
 
@@ -8,7 +8,7 @@ research findings.  Older cards remain listed for provenance, but cards marked
 SUPERSEDED or REFERENCE must not be used as current algorithm policy without
 their curation notes.
 
-## Theory (149)
+## Theory (151)
 
 | REF-ID | Title |
 |--------|-------|
@@ -161,8 +161,10 @@ their curation notes.
 | [WIKI-T-147](theory/WIKI-T-147.md) | IMEX-BDF2 Startup Is a State-Consistency Contract |
 | [WIKI-T-148](theory/WIKI-T-148.md) | Bootstrap Reinitialization Is Pre-Consistency, Not a Convergence Proof |
 | [WIKI-T-149](theory/WIKI-T-149.md) | Periodic CCD Uses Interior Rows Everywhere |
+| [WIKI-T-150](theory/WIKI-T-150.md) | Wall-Contact Ridge-Eikonal Needs Closure Seeds and Pinned Mass |
+| [WIKI-T-151](theory/WIKI-T-151.md) | Axis-Selective Fitting Is a Metric Mask, Not a New Operator |
 
-## Cross-Domain (42)
+## Cross-Domain (44)
 
 | REF-ID | Title |
 |--------|-------|
@@ -208,8 +210,10 @@ their curation notes.
 | [WIKI-X-040](cross-domain/WIKI-X-040.md) | Recent Research Insight Digest: 2026-04-24 to 2026-05-03 |
 | [WIKI-X-041](cross-domain/WIKI-X-041.md) | Curated Wiki Retrieval Map: Active Contracts and Retired Knowledge |
 | [WIKI-X-042](cross-domain/WIKI-X-042.md) | Paper Failure Taxonomy Maps Symptoms to Numerical Contracts |
+| [WIKI-X-043](cross-domain/WIKI-X-043.md) | RCA Artifacts Falsify Shortcuts Before Authorizing Fixes |
+| [WIKI-X-044](cross-domain/WIKI-X-044.md) | Test Failure Retention Separates Live Contracts from Stale Probes |
 
-## Experiment (54)
+## Experiment (56)
 
 | REF-ID | Title |
 |--------|-------|
@@ -268,6 +272,8 @@ their curation notes.
 | [WIKI-E-052](experiment/WIKI-E-052.md) | V6 Pressure-Correction Ratio Is Auxiliary, Not Laplace Error |
 | [WIKI-E-053](experiment/WIKI-E-053.md) | V7 RCA Localizes the Time-Order Limit to the Capillary Jump Band |
 | [WIKI-E-054](experiment/WIKI-E-054.md) | V8/V9/V10 Preserve Future Gates by Design |
+| [WIKI-E-055](experiment/WIKI-E-055.md) | Capillary-Wave RCA Requires Energy and Mode Diagnostics, Not Max Deviation Alone |
+| [WIKI-E-056](experiment/WIKI-E-056.md) | Under-Resolved Capillary Droplets Need Resolution Contracts, Not CFL Patches |
 
 ## Paper (16)
 
@@ -290,7 +296,7 @@ their curation notes.
 | [WIKI-P-015](paper/WIKI-P-015.md) | Chapters 1-13 Use Failure-Mode to Contract Traceability |
 | [WIKI-P-016](paper/WIKI-P-016.md) | Appendices Are Proof Layers for Main-Text Contracts |
 
-## Meta (29)
+## Meta (31)
 
 | REF-ID | Title |
 |--------|-------|
@@ -323,8 +329,10 @@ their curation notes.
 | [WIKI-M-027](meta/WIKI-M-027.md) | Persona Prompting Anti-Pattern: Empirical Evidence |
 | [WIKI-M-028](meta/WIKI-M-028.md) | Prompt Caching Architecture for Long-Context Agents |
 | [WIKI-M-029](meta/WIKI-M-029.md) | Visible Extended Thinking × prompts/meta/ Agent Optimization |
+| [WIKI-M-030](meta/WIKI-M-030.md) | Meta-Prompt Evolution Needs Telemetry, Skills, and Tool-Trust Gates |
+| [WIKI-M-031](meta/WIKI-M-031.md) | Review Artifacts Close the Loop with Finding, Fix, and Validation |
 
-## Code (36)
+## Code (38)
 
 | REF-ID | Title |
 |--------|-------|
@@ -364,3 +372,5 @@ their curation notes.
 | [WIKI-L-034](code/WIKI-L-034.md) | ch13 Rising Bubble Closure: Balanced Buoyancy + Ridge-Eikonal FMM |
 | [WIKI-L-035](code/WIKI-L-035.md) | Implementation Roadmap: Projection-Native Capillary Coupling |
 | [WIKI-L-036](code/WIKI-L-036.md) | Phase-Trace Jump Flux Operator for Phase-Separated PPE |
+| [WIKI-L-037](code/WIKI-L-037.md) | Backend Boundary Owns Host, Device, and Scalar Conversion |
+| [WIKI-L-038](code/WIKI-L-038.md) | GPU Utilization Work Must Preserve the Discrete Algebra |
