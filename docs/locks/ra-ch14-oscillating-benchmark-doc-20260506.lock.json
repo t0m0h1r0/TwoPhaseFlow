@@ -8,5 +8,9 @@
   "scope": "document the ch14 oscillating-droplet benchmark from the canonical YAML, without duplicating the ch13 static-droplet benchmark",
   "stop_condition": "chapter 14 lists oscillating droplet as a physical benchmark and records YAML-derived method, diagnostics, and acceptance criteria",
   "main_merge": "forbidden until explicit user instruction",
-  "status": "STARTED"
+  "completed_at": "2026-05-06",
+  "status": "DONE",
+  "commits": [
+    "1d095dc5"
+  ]
 }
