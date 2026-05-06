@@ -851,6 +851,47 @@ workarounds.  Diagnostics should be named after theorem gates: stratum hash,
 geometry finite-difference residual, transport VJP residual, Riesz work
 residual, Hodge orthogonality, corrector sign power, and reinit energy split.
 
+## 14. Geometry Implementation Slice
+
+The first source slice is now implemented and verified.  It adds:
+
+```text
+ClosedInterfaceStratum
+TraceGeometryFunctional
+fixed_stratum_directional_derivative_check
+```
+
+as:
+
+```text
+src/twophase/coupling/closed_interface_stratum.py
+src/twophase/coupling/closed_interface_geometry.py
+src/twophase/tests/test_closed_interface_geometry.py
+```
+
+The implemented geometry contract is:
+
+```text
+K fixed by cell sign cases and edge crossing counts,
+S_h = P1 marching-squares trace length,
+V_h = sharp area of psi >= threshold,
+dS_h and dV_h are accepted only if centered probes keep the same K.
+```
+
+`dV_h` is an analytic nodal derivative of the oriented polygon area: crossing
+vertices carry derivatives with respect to their two endpoint `psi` values,
+and the shoelace area gradient maps those vertex derivatives back to nodal
+covectors.  This is still a diagnostic geometry slice, not a production force
+path.
+
+Remote validation through the project wrapper passed:
+
+```text
+598 passed, 32 skipped in 43.43s
+```
+
+The next implementation slice is the actual pre-reinit transport VJP.
+
 ## Final Policy
 
 The discretization is settled when the solver can state and verify:

@@ -533,6 +533,39 @@ Diagnostics should be theorem gates such as Riesz-work residual, Hodge
 orthogonality, corrector sign power, and reinit energy split, not
 shape-specific labels.
 
+## Geometry Implementation Slice
+
+`CHK-RA-CH14-GEOM-IMPL-001` implements the first code slice without changing
+production capillary physics:
+
+```text
+closed_interface_stratum.py
+closed_interface_geometry.py
+test_closed_interface_geometry.py
+```
+
+It exposes fixed-stratum hashing and sharp P1 geometry diagnostics:
+
+```text
+K hash from cell sign cases and edge crossing counts,
+S_h = P1 marching-squares trace length,
+V_h = sharp area of psi >= threshold,
+dS_h = existing P1 marching-squares length gradient,
+dV_h = analytic shoelace/edge-crossing area derivative.
+```
+
+The derivative checker verifies centered directional differences only when
+`psi+eps*r` and `psi-eps*r` keep the same stratum hash.  Exact threshold
+touches are irregular and fail closed.  Remote validation:
+
+```text
+598 passed, 32 skipped in 43.43s
+```
+
+This slice proves the geometry layer only.  The force-side VJP, `M_f` Riesz
+cochain, augmented Hodge projection, corrector sign-lock, YAML runtime mode,
+and ch14 N32 validation remain separate slices.
+
 ## Full Implementation Target
 
 The full implementation should expose:
