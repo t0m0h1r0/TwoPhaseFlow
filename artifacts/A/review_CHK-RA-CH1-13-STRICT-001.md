@@ -30,3 +30,13 @@ Remediation:
 
 Targeted scans after remediation:
 - `現行|lever|再初期化頻度と曲率の時間遅れ|検証章|V6：静止液滴 8-step|6ステップ`: PASS except the intentional Chapter 11 phrase "検証章の対応".
+
+## Round 2
+
+Verdict: FAIL before remediation; MAJOR traceability finding present.
+
+Findings:
+- MAJOR-5: U6-to-V traceability still named only V6/V7 in the HFE/DC primitive and downstream high-density stack notes, while Chapter 13 defines V6/V7/V9 as the measured range-projected pressure-jump stack family. This left V9 looking like a later side probe rather than part of the latest stack contract.
+
+Remediation:
+- Updated U6 and the V5/V8 bridge text to name V6/V7/V9 as the integrated behavior tied to the U6 primitive, while preserving V6/V7 as the density/time axes and V9 as the nominal/local switch boundedness diagnostic.
