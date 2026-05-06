@@ -21,7 +21,6 @@ from .plot_series_figures import (
 )
 from .plot_snapshot_figures import (
     density_snapshot,
-    pressure_bulk_snapshot,
     pressure_hodge_snapshot,
     pressure_snapshot,
     snapshot,
@@ -43,7 +42,6 @@ _FIGURE_RENDERERS: dict[str, FigureRenderer] = {
     "deformation_comparison": deformation_comparison,
     "velocity_snapshot": velocity_snapshot,
     "pressure_snapshot": pressure_snapshot,
-    "pressure_bulk_snapshot": pressure_bulk_snapshot,
     "pressure_hodge_snapshot": pressure_hodge_snapshot,
     "density_snapshot": density_snapshot,
 }
@@ -56,15 +54,12 @@ def generate_figures(cfg: "ExperimentConfig", results: dict, outdir: str | Path)
 
     for spec in cfg.output.figures:
         fig_type = spec.get("type", "")
-        try:
-            if fig_type == "snapshot_series":
-                snapshot_series(spec, results, cfg, outdir)
-                continue
-            fig = _make_figure(fig_type, spec, results, cfg)
-            fig.savefig(outdir / spec.get("file", f"{fig_type}.pdf"), bbox_inches="tight")
-            plt.close(fig)
-        except Exception as exc:
-            print(f"[plot_factory] WARNING: failed to generate '{fig_type}': {exc}")
+        if fig_type == "snapshot_series":
+            snapshot_series(spec, results, cfg, outdir)
+            continue
+        fig = _make_figure(fig_type, spec, results, cfg)
+        fig.savefig(outdir / spec.get("file", f"{fig_type}.pdf"), bbox_inches="tight")
+        plt.close(fig)
 
 
 def _make_figure(

@@ -29,6 +29,7 @@ def bind_ns_ppe_runtime(solver, state) -> None:
     solver._ppe_iteration_method = state.ppe_iteration_method
     solver._ppe_coefficient_scheme = state.ppe_coefficient_scheme
     solver._ppe_interface_coupling_scheme = state.ppe_interface_coupling_scheme
+    solver._capillary_range_projection = state.capillary_range_projection
     solver._ppe_tolerance = state.ppe_tolerance
     solver._ppe_max_iterations = state.ppe_max_iterations
     solver._ppe_restart = state.ppe_restart

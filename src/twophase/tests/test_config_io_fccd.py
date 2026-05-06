@@ -264,6 +264,7 @@ def test_ch14_capillary_yaml_loads_execution_stack():
     assert cfg.run.pressure_scheme == "fccd_matrixfree"
     assert cfg.run.ppe_coefficient_scheme == "phase_separated"
     assert cfg.run.ppe_interface_coupling_scheme == "affine_jump"
+    assert cfg.run.capillary_range_projection == "range_projected"
     assert cfg.run.ppe_defect_correction is True
     assert cfg.grid.grid_rebuild_freq == 1
     assert cfg.run.reinit_every == 1
@@ -289,13 +290,14 @@ def test_ch14_static_droplet_yaml_uses_base_dynamic_route():
     assert cfg.run.cfl == pytest.approx(1.0)
     assert cfg.run.interface_tracking_enabled is True
     assert cfg.run.interface_tracking_method == "psi_direct"
-    assert cfg.run.curvature_method == "transport_variational_p2_ale_discrete_gradient"
-    assert cfg.run.reinit_every == 1
+    assert cfg.run.curvature_method == "face_implicit"
+    assert cfg.run.reinit_every == 0
     assert cfg.run.convection_time_scheme == "imex_bdf2"
     assert cfg.run.viscous_time_scheme == "implicit_bdf2"
     assert cfg.run.viscous_dc_max_iterations == 12
     assert cfg.run.ppe_defect_correction is True
     assert cfg.run.ppe_dc_max_iterations == 12
+    assert cfg.run.capillary_range_projection == "range_projected"
 
 
 def test_ch14_canonical_yamls_use_theory_cfl_not_fixed_dt():
@@ -320,10 +322,9 @@ def test_ch14_canonical_yamls_share_base_numerical_stack():
     for path in sorted(config_dir.glob("*.yaml")):
         cfg = ExperimentConfig.from_yaml(path)
         assert cfg.run.advection_scheme == "fccd_flux", path.name
-        assert cfg.run.curvature_method == (
-            "transport_variational_p2_ale_discrete_gradient"
-        ), path.name
-        assert cfg.run.reinit_every == 1, path.name
+        assert cfg.run.curvature_method == "face_implicit", path.name
+        expected_reinit = 0 if path.name == "ch14_static_droplet.yaml" else 1
+        assert cfg.run.reinit_every == expected_reinit, path.name
         assert cfg.run.convection_scheme == "uccd6", path.name
         assert cfg.run.convection_time_scheme == "imex_bdf2", path.name
         assert cfg.run.viscous_time_scheme == "implicit_bdf2", path.name
@@ -337,6 +338,7 @@ def test_ch14_canonical_yamls_share_base_numerical_stack():
         assert cfg.run.pressure_scheme == "fccd_matrixfree", path.name
         assert cfg.run.ppe_coefficient_scheme == "phase_separated", path.name
         assert cfg.run.ppe_interface_coupling_scheme == "affine_jump", path.name
+        assert cfg.run.capillary_range_projection == "range_projected", path.name
         assert cfg.run.ppe_defect_correction is True, path.name
         assert cfg.run.ppe_dc_max_iterations == 12, path.name
 
@@ -369,6 +371,75 @@ def test_ch14_rising_bubble_yaml_loads_execution_stack():
     assert cfg.run.face_native_predictor_state is True
     assert cfg.run.pressure_scheme == "fccd_matrixfree"
     assert cfg.run.ppe_interface_coupling_scheme == "affine_jump"
+    assert cfg.run.capillary_range_projection == "range_projected"
+
+
+def test_capillary_range_projection_parses_and_requires_affine_jump():
+    cfg = ExperimentConfig.from_dict(_minimal({
+        "physics": {"surface_tension": 0.1},
+        "numerics": {
+            "momentum": {
+                "terms": {
+                    "surface_tension": {
+                        "formulation": "pressure_jump",
+                        "gradient": "none",
+                    },
+                },
+            },
+            "projection": {
+                "poisson": {
+                    "operator": {
+                        "discretization": "fccd",
+                        "coefficient": "phase_separated",
+                        "interface_coupling": "affine_jump",
+                        "capillary_range_projection": "range_projected",
+                    },
+                    "solver": {
+                        "kind": "defect_correction",
+                        "corrections": {
+                            "max_iterations": 3,
+                            "tolerance": 1.0e-8,
+                        },
+                        "base_solver": {"discretization": "fd", "kind": "direct"},
+                    },
+                },
+            },
+        },
+    }))
+    assert cfg.run.capillary_range_projection == "range_projected"
+
+    with pytest.raises(ValueError, match="capillary_range_projection"):
+        ExperimentConfig.from_dict(_minimal({
+            "physics": {"surface_tension": 0.1},
+            "numerics": {
+                "momentum": {
+                    "terms": {
+                        "surface_tension": {
+                            "formulation": "pressure_jump",
+                            "gradient": "none",
+                        },
+                    },
+                },
+                "projection": {
+                    "poisson": {
+                        "operator": {
+                            "discretization": "fccd",
+                            "coefficient": "phase_separated",
+                            "interface_coupling": "jump_decomposition",
+                            "capillary_range_projection": "range_projected",
+                        },
+                        "solver": {
+                            "kind": "defect_correction",
+                            "corrections": {
+                                "max_iterations": 3,
+                                "tolerance": 1.0e-8,
+                            },
+                            "base_solver": {"discretization": "fd", "kind": "direct"},
+                        },
+                    },
+                },
+            },
+        }))
 
 
 def test_legacy_buoyancy_predictor_assembly_alias_maps_to_balanced_name():
@@ -750,6 +821,38 @@ def test_ale_discrete_gradient_curvature_method_parse():
         },
     }))
     assert cfg.run.curvature_method == "transport_variational_p2_ale_discrete_gradient"
+
+
+def test_pressure_jump_rejects_unvalidated_p2_ale_face_cochain_route():
+    with pytest.raises(ValueError, match="not a validated pressure_jump"):
+        ExperimentConfig.from_dict(_minimal({
+            "interface": {
+                "geometry": {
+                    "curvature": {
+                        "method": "transport_variational_p2_ale_discrete_gradient",
+                    },
+                },
+            },
+            "physics": {"surface_tension": 0.072},
+            "numerics": {
+                "momentum": {
+                    "terms": {
+                        "surface_tension": {
+                            "formulation": "pressure_jump",
+                            "gradient": "none",
+                        },
+                    },
+                },
+                "projection": {
+                    "poisson": {
+                        "operator": {
+                            "coefficient": "phase_separated",
+                            "interface_coupling": "affine_jump",
+                        },
+                    },
+                },
+            },
+        }))
 
 
 @pytest.mark.parametrize("adv", ["bogus", "ccd"])

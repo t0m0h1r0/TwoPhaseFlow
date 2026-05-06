@@ -185,6 +185,19 @@ def parse_run_operator_settings(
         _CURVATURE_SCHEMES,
         layout["paths"]["surface_tension_curvature"],
     )
+    if (
+        surface_tension_scheme == "pressure_jump"
+        and curvature_method == "transport_variational_p2_ale_discrete_gradient"
+    ):
+        raise ValueError(
+            f"{layout['paths']['surface_tension_curvature']}="
+            "'transport_variational_p2_ale_discrete_gradient' is not a "
+            "validated pressure_jump production route: it leaves a nonzero "
+            "divergence-free capillary face cochain on static Young-Laplace "
+            "droplets. Use a scalar Young-Laplace jump geometry such as "
+            "'face_implicit' until the P2 ALE pressure-jump range projection "
+            "is implemented and verified."
+        )
     uccd6_sigma = float(convection.get("uccd6_sigma", 1.0e-3))
     if uccd6_sigma <= 0.0:
         raise ValueError(
@@ -296,6 +309,7 @@ def parse_run_operator_settings(
     return {
         "poisson_coefficient": poisson_settings["poisson_coefficient"],
         "poisson_interface_coupling": poisson_settings["poisson_interface_coupling"],
+        "capillary_range_projection": poisson_settings["capillary_range_projection"],
         "advection_scheme": advection_scheme,
         "convection_scheme": convection_scheme,
         "convection_time_scheme": convection_time_scheme,

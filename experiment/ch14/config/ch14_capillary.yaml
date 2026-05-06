@@ -1,10 +1,12 @@
 # N=128 water-air capillary-flow probe for WIKI-X-020..022 and WIKI-X-029..032.
-# Production numerical stack: FCCD PPE + P2 ALE discrete-gradient curvature + UCCD6.
+# Production numerical stack: FCCD PPE + face-native Young-Laplace jump + UCCD6.
 # - FCCD: conservative interface transport and pressure gradient use the `fccd`
 #   scheme; flux-locus form is the default option for these terms.
 # - Surface tension: `pressure_jump` enters as an affine interface-stress
 #   closure, not as CSF σκ∇ψ or a regular pressure field.
-# - Curvature: interface geometry uses `transport_variational_p2_ale_discrete_gradient`.
+# - Curvature: interface geometry uses the scalar face-native Young-Laplace
+#   pressure jump.  The P2 ALE discrete-gradient face-cochain route is not a
+#   validated production pressure-jump path.
 # - UCCD6: momentum convection uses `uccd6` per WIKI-T-062 / WIKI-X-028.
 # - Grid fitting: both tensor-product axes carry the interface monitor; the
 #   y axis additionally carries wall refinement for the physical upper/lower
@@ -46,10 +48,9 @@ interface:
     base_factor: 1.5
   geometry:
     curvature:
-      # P2 reduced-ALE variational surface energy route: pressure-jump work
-      # uses a finite-step discrete gradient that accounts for the pre-remap
-      # fitted-grid surface energy.
-      method: transport_variational_p2_ale_discrete_gradient
+      # Scalar face-native Young-Laplace jump; the invalid P2 ALE face-cochain
+      # route is fail-closed for pressure-jump production configs.
+      method: face_implicit
   reinitialization:
     algorithm: ridge_eikonal
     schedule:
@@ -115,6 +116,7 @@ numerics:
         discretization: fccd
         coefficient: phase_separated
         interface_coupling: affine_jump
+        capillary_range_projection: range_projected
       solver:
         kind: defect_correction
         corrections:
@@ -169,7 +171,7 @@ output:
       file_prefix: velocity_t
 
     - type: snapshot_series
-      field: pressure
+      field: pressure_hodge
       file_prefix: pressure_t
 
 diagnostics: [volume_conservation, kinetic_energy, interface_amplitude]

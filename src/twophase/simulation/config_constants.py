@@ -53,6 +53,15 @@ _POISSON_INTERFACE_COUPLING_ALIASES = {
     "legacy_jump": "jump_decomposition",
     "legacy_jump_decomposition": "jump_decomposition",
 }
+_CAPILLARY_RANGE_PROJECTION_MODES = ("none", "range_projected")
+_CAPILLARY_RANGE_PROJECTION_ALIASES = {
+    "off": "none",
+    "false": "none",
+    "disabled": "none",
+    "on": "range_projected",
+    "true": "range_projected",
+    "range": "range_projected",
+}
 _SURFACE_TENSION_SCHEMES = ("csf", "pressure_jump", "none")
 _SURFACE_TENSION_ALIASES = {
     "gfm_jump": "pressure_jump",
