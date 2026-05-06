@@ -22,9 +22,12 @@ V1 は project CCD 微分と FVM PPEBuilder 射影を直接用いる．
 結合 stack の $O(\Delta t)$ trend とする．
 
 \paragraph{設定．}
-$L=2\pi$, $\nu = 0.01$（$\Re_k = 100$）, $T = 0.05$, 周期境界．
+$L=2\pi$, $\nu = 0.01$（$\Re_k = 100$）, 周期境界．
+定量収束 sweep は $T = 0.05$ で評価し，
 空間 sweep は $N\in\{32,48,64\}$, $\Delta t=10^{-3}$．
 時間 sweep は $N=64$, $\Delta t\in\{3.846,2.000,1.000\}\times10^{-3}$．
+渦度場 snapshot は同じ CCD/PPE 経路の長時間減衰を示す可視化専用 run とし，
+$t=0,25,50$ の場を表示する（表~\ref{tab:V1_spatial}--\ref{tab:V1_temporal} の slope には用いない）．
 
 \paragraph{結果．}
 \begin{table}[!ht]
@@ -76,7 +79,7 @@ $1.000\times 10^{-3}$ & $1.583\times 10^{-7}$ & $2.267\times 10^{-6}$ & $2.00$ \
 \includegraphics[width=0.98\linewidth]{figures/ch13_v1_tgv_vorticity.pdf}
 \caption{V1：TGV 渦度場スナップショット}
 \label{fig:V1_tgv_vorticity}
-\PaperCaptionNote{$\omega = \partial_x v - \partial_y u$，$N=64$，$\nu=0.01$，周期境界，CCD 微分，AB2 predictor + standard PPE 射影．左から $t=0,\,25,\,50$．粘性減衰係数 $e^{-2\nu t}$ は $1.0 \to 0.61 \to 0.37$ と推移し，Taylor--Green の 4 渦対 checkerboard 構造が振幅を失っていく様子を直接可視化する．数値解と理論減衰係数の一致は $\Ord{10^{-3}}$ 以内（測定値 $0.6068 / 0.3681$ vs.\ 理論 $0.6065 / 0.3679$）．共有カラースケールは 99 パーセンタイルから対称取得．}
+\PaperCaptionNote{$\omega = \partial_x v - \partial_y u$，$N=64$，$\nu=0.01$，周期境界，CCD 微分，AB2 predictor + standard PPE 射影．本図は定量収束表とは別の長時間可視化 run であり，左から $t=0,\,25,\,50$．粘性減衰係数 $e^{-2\nu t}$ は $1.0 \to 0.61 \to 0.37$ と推移し，Taylor--Green の 4 渦対 checkerboard 構造が振幅を失っていく様子を直接可視化する．数値解と理論減衰係数の一致は $\Ord{10^{-3}}$ 以内（測定値 $0.6068 / 0.3681$ vs.\ 理論 $0.6065 / 0.3679$）．共有カラースケールは 99 パーセンタイルから対称取得．}
 \end{figure}
 
 \paragraph{判定と制約条件．}
@@ -93,7 +96,7 @@ $1.000\times 10^{-3}$ & $1.583\times 10^{-7}$ & $2.267\times 10^{-6}$ & $2.00$ \
         （Type-A criterion；表~\ref{tab:V_verdict_types}）とする．
   \item 非圧縮残差は $N=64$ で $6.4\times10^{-6}$．機械精度ではないが，
         FVM PPE 射影と CCD 勾配の不一致込みの residual として単調に低下する．
-  \item TGV 渦度場 snapshot（\autoref{fig:V1_tgv_vorticity}）は，
+  \item TGV 渦度場 snapshot（\autoref{fig:V1_tgv_vorticity}）は定量収束とは別の長時間可視化 run であり，
         $t=0,25,50$ で 4 渦対 checkerboard 構造が粘性減衰係数 $e^{-2\nu t}$ に沿って
         振幅を失う様子を可視化し，理論減衰係数との一致 $\Ord{10^{-3}}$ を裏付ける．
 \end{itemize}

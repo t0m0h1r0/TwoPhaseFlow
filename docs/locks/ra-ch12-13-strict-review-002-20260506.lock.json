@@ -1,0 +1,23 @@
+{
+  "id": "CHK-RA-CH12-13-STRICT-002",
+  "branch": "codex/ra-ch12-13-strict-review-20260506",
+  "worktree": ".claude/worktrees/codex-ra-ch12-13-strict-review-20260506",
+  "scope": [
+    "paper/sections/12_component_verification.tex",
+    "paper/sections/12h_summary.tex",
+    "paper/sections/13_verification.tex",
+    "paper/sections/13a_single_phase_ns.tex",
+    "paper/sections/13d_density_ratio.tex",
+    "paper/sections/13e_nonuniform_ns.tex",
+    "paper/sections/13f_error_budget.tex",
+    "artifacts/A/review_CHK-RA-CH12-13-STRICT-002.md",
+    "docs/02_ACTIVE_LEDGER.md"
+  ],
+  "policy": {
+    "main_merge": "forbidden_until_explicit_user_instruction",
+    "main_merge_method": "no-ff",
+    "continue_same_worktree_after_main_merge": true,
+    "commit_units": true,
+    "stop_rule": "repeat until no MAJOR+ findings remain or round count exceeds 20"
+  }
+}
