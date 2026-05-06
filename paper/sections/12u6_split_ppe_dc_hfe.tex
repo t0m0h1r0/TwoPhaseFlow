@@ -9,7 +9,7 @@
 \paragraph{検証対象．}
 第~\ref{sec:ppe_solve}章および第~\ref{sec:algorithm}章の標準圧力経路は，
 \textbf{pressure-jump 分相 PPE + HFE + DC}である．
-変密度一括 smoothed-Heaviside PPE は低密度比の対照・経路選択診断として残すが，
+変密度一括 smoothed-Heaviside PPE は低密度比の対照・経路選択診断に限り，
 高密度比の保証対象 primitive ではない．したがって本 U6 は，一括 PPE 高密度比 sweep を
 成果サブテストとして数えず，分相 PPE+HFE に渡す二つの前提 primitive：
 (i) defect--correction（DC；§\ref{sec:dc_pure_fccd_convergence}）の
@@ -21,8 +21,8 @@ $\omega$--緩和 guard と，
 \begin{description}\setlength{\itemsep}{0pt}
   \item[U6-a] DC $\omega$--緩和 guard．$N=64$ 円界面 $R=0.25$，
         $\rho_l \in \{1, 100, 1000\}$，relaxation $\omega \in \{0.2,0.3,0.5,0.7,0.9\}$，
-        $k_{\mathrm{DC}} \in \{2,3\}$．低密度比では clean，高密度比では一括 PPE を
-        保証対象 primitive と見なさないための guard として stall 判定を記録する．
+        $k_{\mathrm{DC}} \in \{2,3\}$．低密度比では clean であること，高密度比では一括 PPE を
+        保証対象 primitive と見なせないことを route guard として記録する．
   \item[U6-b] HFE 単独：1D MMS（外挿ステンシル単体精度），
         2D MMS（$\rho^{-1}\bnabla p$ の界面跨ぎ精度の \textbf{max} と \textbf{med}）．
 \end{description}
@@ -32,7 +32,7 @@ $\omega$--緩和 guard と，
 \begin{table}[!ht]
 \caption{U6-a：DC $\omega$--緩和 guard}
 \label{tab:U6_dc_omega}
-\PaperCaptionNote{$N=64$，円界面 $R=0.25$．$\rho_l = 1$ は $\omega$ 全域 / $k\in\{2,3\}$ で base GMRES 解で 1 補正（$k$ 内ループ break, residual $\!\approx\!5.19\!\times\!10^{-5}$ は DC break tolerance 域；機械精度床ではない）．$\rho_l \ge 100$ では一括 PPE 係数ジャンプが残るため DC が stall し，この経路を高密度比保証対象 primitive としない根拠になる．$\omega$ 増大で残差は改善し，$\rho_l = 1000$, $\omega = 0.9$, $k=3$ のみ例外的に許容床へ到達して \emph{break}（converge）．括弧内は \emph{converged} を示す．}
+\PaperCaptionNote{$N=64$，円界面 $R=0.25$．$\rho_l = 1$ は低密度比対照として clean．$\rho_l \ge 100$ では一括 PPE 係数ジャンプが残るため DC 残差が route guard にかかり，高密度比保証対象 primitive から除外される．$\omega$ 増大で残差は改善するが，$\rho_l = 1000$, $\omega = 0.9$, $k=3$ の例外的な許容床到達は経路受理条件ではなく，分相 PPE+HFE へ切り替える判断を変えない．括弧内は \emph{converged} を示す．}
 \centering\small
 \begin{tabular}{r c c c c c}
 \toprule
@@ -81,13 +81,11 @@ $256$ & $0.0039$ & $4.22\times 10^{-13}$ & $5.80\times 10^{-14}$ & $4.55\times 1
 
 \paragraph{判定と次章への接続．}
 \begin{itemize}\setlength{\itemsep}{0pt}
-  \item U6-a DC $\omega$--緩和 guard：$\rho_l = 1$ は base GMRES 単独で収束（DC stall 無）；
-        $\rho_l \ge 100$ は全 $\omega$ で stall するが，$\omega$ 増大で残差が単調減少
-        ($\omega=0.2$ → $0.9$ で残差 1 桁減）．例外として $\rho_l = 1000$, $\omega=0.9$,
-        $k_{\mathrm{DC}}=3$ は唯一 converge．$k_{\mathrm{DC}}=3$ は $k=2$ より残差を
-        $\omega=0.5$ で $50\%$，$\omega=0.9$ で $90\%$ 削減．
-        これは §\ref{sec:dc_pure_fccd_convergence} の $\omega$ 選択指針と整合するが，
-        同時に高密度比の一括 PPE を保証対象 primitive としないための guard でもある．\checkmark
+  \item U6-a DC $\omega$--緩和 guard：$\rho_l = 1$ は低密度比対照として clean．
+        $\rho_l \ge 100$ では一括 PPE の係数ジャンプが残り，$\omega$ 増大で残差が改善しても
+        高密度比の受理経路にはしない．例外的な $\rho_l = 1000$, $\omega=0.9$,
+        $k_{\mathrm{DC}}=3$ の許容床到達は route guard を解除する根拠ではなく，
+        §\ref{sec:split_ppe_framework} の分相 PPE+HFE 経路選択を支持する負対照である．\checkmark
   \item U6-b HFE：1D stencil は設計 6 次を完全達成．2D circular band も
         完全テンソル混合微分を用いることで低次化が消える．
         $N=32$ の max は closest-point 幾何の前漸近を含むが，

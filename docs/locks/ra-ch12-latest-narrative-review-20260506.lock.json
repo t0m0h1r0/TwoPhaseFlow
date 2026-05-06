@@ -1,0 +1,21 @@
+{
+  "id": "CHK-RA-CH12-LATEST-001",
+  "uuid": "FAD60B2F-6EB0-443E-8D81-43DEFBCEFC47",
+  "created_at_utc": "2026-05-06T06:38:36Z",
+  "worktree": ".claude/worktrees/codex-ra-ch12-latest-narrative-review-20260506",
+  "branch": "codex/ra-ch12-latest-narrative-review-20260506",
+  "id_prefix": "RA-CH12-LATEST",
+  "scope": [
+    "paper/sections/12*.tex",
+    "adjacent paper consistency checks only where needed",
+    "artifacts/A/review_CHK-RA-CH12-LATEST-001.md",
+    "docs/02_ACTIVE_LEDGER.md"
+  ],
+  "policy": {
+    "main_merge": "forbidden_until_explicit_user_instruction",
+    "main_merge_method": "no-ff",
+    "after_main_merge": "keep_this_worktree_active"
+  },
+  "completed": "2026-05-06",
+  "status": "DONE"
+}

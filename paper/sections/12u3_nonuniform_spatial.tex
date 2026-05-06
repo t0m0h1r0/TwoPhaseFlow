@@ -10,7 +10,7 @@
 （§\ref{sec:grid_density}：界面集中ガウス密度関数）と，
 そこに作用する CCD/FCCD のメトリック補正
 （§\ref{sec:scheme_per_variable}: 連鎖律 $\mathrm{d}J/\mathrm{d}\xi$ 経由の高次精度），
-および Ridge--Eikonal D1--D4 補正
+および D1--D4 metric 診断
 （§\ref{sec:ridge_eikonal_nu_grid}）の単体精度を確認する．
 
 格子は界面近傍に集中する gauss 密度
@@ -37,7 +37,9 @@ $\alpha = 1$ で一様格子（密度恒等的に 1），$\alpha = 2$ で
         \quad $D_2$: $\eps_{\mathrm{local}}$ 振幅幅，
         \quad $D_3$: 幾何平均間隔の振幅幅，
         \quad $D_4$: $\max|\mathrm{d}J/\mathrm{d}\xi|$（連鎖律補正）．
-        $\alpha = 1$ では $D_k = 0$，$\alpha > 1$ で順次活性化することを確認．
+        $\alpha = 1$ では $D_k = 0$，$\alpha > 1$ では本 smooth probe で必要となる
+        $D_4$（連鎖律補正）の発火を確認する．D1--D3 は局所厚み・振幅幅の診断であり，
+        本設定で発火しないこと自体が smooth-interface 条件との整合を示す．
 \end{description}
 
 \paragraph{D1--D4 の位置づけ．}

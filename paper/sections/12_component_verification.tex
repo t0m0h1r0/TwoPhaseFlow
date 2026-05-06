@@ -61,15 +61,15 @@ Part 2 の手法を依存関係の下流方向にトポロジカル整列し，
         U1 = CCD/DCCD/UCCD6/FCCD 演算子族（§\ref{sec:CCD}），
         U2 = CCD--Poisson 楕円型ソルバ + PPE 境界条件（§\ref{sec:ppe_solve}）．
   \item[Tier II（非一様格子 + メトリック）]
-        U3 = 界面適合非一様格子 + Ridge--Eikonal D1--D4 補正（§\ref{sec:grid}）．
+        U3 = 界面適合非一様格子 + D1--D4 metric 診断（§\ref{sec:grid}）．
   \item[Tier III（界面表現）]
-        U4 = Godunov Eikonal 再初期化 + DGR バンド厚（§\ref{sec:eikonal_reinit}），
+        U4 = Godunov Eikonal 再初期化 + DGR バンド厚（Ridge--Eikonal single-shot 経路とは別 primitive；§\ref{sec:eikonal_reinit}），
         U5 = 平滑化 $H_\varepsilon$ / $\delta_\varepsilon$ モーメント精度（§\ref{sec:eps_spatial_variable}）．
   \item[Tier IV（圧力結合系）]
         U6 = 分相 PPE+HFE へ渡す DC/HFE primitive
         （§\ref{sec:split_ppe_framework}, §\ref{sec:hfe}）．
   \item[Tier V（界面--圧力結合の単発実験）]
-        U7 = BF 静止液滴 1-step + face $\mu$ 補間（§\ref{sec:balanced_force}）．
+        U7 = 縮約 BF 静止液滴 1-step + face $\mu$ 補間；FD2 mismatch は合格経路ではなく低判別力を示す負対照（§\ref{sec:balanced_force}）．
   \item[Tier VI（時間積分）]
         U8 = TVD-RK3 / EXT2 / implicit-BDF2 3 種積分子（§\ref{sec:time_int}）．
   \item[Tier VII（否定検証）]
@@ -105,12 +105,12 @@ GPU/CuPy 経路は次章 V tier (§\ref{sec:verification})・第~\ref{sec:benchm
 ID & Tier & 単体で確定する primitive & §13 への出口 \\
 \midrule
 U1 & I & CCD/DCCD/UCCD6/FCCD 演算子族の一様格子精度と spectral damping． & V1/V2 の単相 NS，V10 の CLS flux-form． \\
-U2 & I & CCD--Poisson と現行 FVM--PPE Neumann gauge の基礎精度． & V1/V2 の standard PPE 縮約，V3/V5/V8 の Neumann BF 縮約． \\
-U3 & II & 非一様格子 CCD/FCCD と Ridge--Eikonal D1--D4 metric 補正． & V8/V9 の非一様格子診断． \\
-U4 & III & Godunov Eikonal reinit と DGR バンド厚補正． & V10 の reinit/mass-correction 付き CLS 移流． \\
+U2 & I & CCD--Poisson DC 参照と縮約 FVM--PPE Neumann gauge の基礎精度． & V1/V2 の単相 PPE 縮約，V3/V5/V8 の Neumann BF 縮約． \\
+U3 & II & 非一様格子 CCD/FCCD と D1--D4 metric 診断；滑らかな probe では D4 の発火だけを判定する． & V8/V9 の非一様格子診断． \\
+U4 & III & Godunov Eikonal reinit と DGR バンド厚補正（Ridge--Eikonal single-shot は対象外）． & V10 の reinit/mass-correction 付き CLS 移流． \\
 U5 & III & $H_\varepsilon$ / $\delta_\varepsilon$ のモーメント精度と $\varepsilon=ch$ 感度． & V3/V5/V8/V9/V10 の界面厚み・体積診断． \\
 U6 & IV & DC 緩和 guard と HFE 1D/2D 場延長精度．一括 PPE の高密度比劣化は保証対象 primitive ではなく，§9/§11 の分相 PPE+HFE を必要とする設計根拠として本文で扱う． & V6/V7/V9 の pressure-jump 分相 PPE+HFE stack． \\
-U7 & V & BF 静止液滴 1-step と face $\mu$ 補間． & V3/V5/V8 の静止液滴・寄生流れ． \\
+U7 & V & 縮約 BF 静止液滴 1-step と face $\mu$ 補間；FD2 mismatch は負対照としてのみ読む． & V3/V5/V8 の静止液滴・寄生流れ，および V6/V7/V9 pressure-jump stack との差分整理． \\
 U8 & VI & TVD-RK3 / EXT2 / implicit-BDF2 / 3-layer BDF2 の単体時間精度． & V1-b/V7/V10 の時間軸診断． \\
 U9 & VII & DCCD-on-pressure 禁止の否定検証． & V1--V10 全体の圧力勾配 operator policy． \\
 \bottomrule

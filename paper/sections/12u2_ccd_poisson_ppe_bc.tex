@@ -1,22 +1,21 @@
 % paper/sections/12u2_ccd_poisson_ppe_bc.tex
 %
-% U2: CCD-Poisson + current PPE BC — Tier I (uniform grid)
+% U2: CCD-Poisson + reduced Neumann PPE BC — Tier I (uniform grid)
 % ═══════════════════════════════════════════════════════════════════════════════
-\subsubsection{U2：CCD--Poisson + 現行 PPE 境界条件 [Tier I]}
+\subsubsection{U2：CCD--Poisson + 縮約 Neumann PPE 境界条件 [Tier I]}
 \label{sec:U2_ccd_poisson_ppe_bc}
 
 \paragraph{検証対象．}
 第~\ref{sec:ppe_solve}章 で導入した defect--correction 反復
 （§\ref{sec:defect_correction_ppe}：$k$ 回反復で精度を段階的に押し上げる），
-PPE Neumann 境界条件 + 1 点ゲージ固定（§\ref{sec:ppe_solve} 末尾）の
+単相・低密度比縮約で用いる PPE Neumann 境界条件 + 1 点ゲージ固定（§\ref{sec:ppe_solve} 末尾）の
 \textbf{単体精度}を確認する．
 U2-a の Dirichlet 変種は CCD 楕円作用素 + 一般 DC 反復理論の
 smooth reference として local FD ヘルパで構成し，
 §\ref{sec:defect_correction_main} の段階収束理論を独立に検証する．
-U2-b は \texttt{PPEBuilder} が組み立てる FVM/spsolve 系の
-Neumann PPE + 1 点ゲージを直接測る．
-\texttt{PPESolverCCDLU}（CCD Kronecker + sparse LU）は
-滑らかな component/reference 用の別基準であり，本 U2-b の測定対象からは外す．
+U2-b は現行の縮約 FVM--PPE Neumann gauge を直接測る．
+ここでの Neumann PPE は，V1/V2 の単相・V3/V5/V8 の縮約 BF 経路に渡す基礎作用素であり，
+水--空気級の pressure-jump 分相 PPE 標準（U6, V6/V7/V9）の代替ではない．
 
 \paragraph{設定．}
 2D 矩形領域 $[0,1]^2$ 上で MMS による格子収束（壁境界条件下）．
@@ -27,7 +26,7 @@ Neumann PPE + 1 点ゲージを直接測る．
         $k \ge 3 \to \Ord{h^7}$（スーパー収束）．
         CCD 楕円作用素を残差評価に，FD Dirichlet Laplacian を inner solve
         として用いる DC 反復（Neumann PPE--DC 連の数学的代理）．
-  \item[U2-b] 現行 FVM--PPE 作用素 + Neumann ゲージ固定．
+  \item[U2-b] 縮約 FVM--PPE 作用素 + Neumann ゲージ固定．
         $p^* = \cos(\pi x)\cos(\pi y)$，$f = -2\pi^2 p^*$．
         \texttt{PPEBuilder} が定数密度 ($\rho\!\equiv\!1$) の 5 点 FVM Laplacian を
         Neumann 境界条件 + 1 点ゲージ固定で組み立てる．理論期待は
@@ -57,9 +56,9 @@ $N$ & $h$ & $\|e\|^\infty_{k=1}$ & $\|e\|^\infty_{k=2}$ & $\|e\|^\infty_{k=3}$ &
 \end{table}
 
 \begin{table}[!ht]
-\caption{U2-b：現行 FVM--PPE Neumann ゲージ誤差}
+\caption{U2-b：縮約 FVM--PPE Neumann ゲージ誤差}
 \label{tab:U2_neumann}
-\PaperCaptionNote{\texttt{PPEBuilder} 経由で現行 FVM/spsolve 系の Neumann PPE を組み立て，ゲージ自由度を exact 解に合わせて $L_\infty$ 誤差を測る．5 点 FVM Laplacian の設計どおり $\Ord{h^2}$ に収束する．}
+\PaperCaptionNote{縮約 FVM/spsolve 系の Neumann PPE を組み立て，ゲージ自由度を exact 解に合わせて $L_\infty$ 誤差を測る．5 点 FVM Laplacian の設計どおり $\Ord{h^2}$ に収束する．}
 \centering\small
 \begin{tabular}{r r r}
 \toprule
@@ -79,9 +78,9 @@ $N$ & $h$ & $\|e\|_\infty$ \\
 \begin{figure}[!ht]
 \centering
 \includegraphics[width=0.88\linewidth]{figures/ch12_u2_ccd_poisson_ppe_bc}
-\caption{U2：CCD--Poisson + 現行 PPE 境界条件}
+\caption{U2：CCD--Poisson + 縮約 Neumann PPE 境界条件}
 \label{fig:ch12_u2}
-\PaperCaptionNote{(a) Dirichlet defect--correction $k=1,2,3$ で slope $2.00 / 4.18 / 6.90$ の段階収束（$k\!\ge\!3$ 飽和）； (b) \texttt{PPEBuilder} FVM--PPE + Neumann ゲージで slope $2.00$．}
+\PaperCaptionNote{(a) Dirichlet defect--correction $k=1,2,3$ で slope $2.00 / 4.18 / 6.90$ の段階収束（$k\!\ge\!3$ 飽和）； (b) 縮約 FVM--PPE + Neumann ゲージで slope $2.00$．}
 \end{figure}
 
 \paragraph{判定と次章への接続．}
@@ -92,9 +91,9 @@ $N$ & $h$ & $\|e\|_\infty$ \\
         $N\!=\!128$ で $k\!\ge\!3$ は $\Ord{10^{-12}}$ の機械精度床に達し，
         slope は床支配で頭打ちになる．$k=5,10$ は $k=3$ と同精度
         （DC が $k=3$ 時点で既に飽和；§\ref{sec:ppe_dc_accuracy} の段階理論と整合）．\checkmark
-  \item U2-b FVM--PPE + Neumann ゲージ：slope $2.00$．
-        \texttt{PPEBuilder}/FVM direct 経路が，
-        定数密度 Neumann MMS で設計 2 次を再現することを確認．\checkmark
+  \item U2-b 縮約 FVM--PPE + Neumann ゲージ：slope $2.00$．
+        定数密度 Neumann MMS で設計 2 次を再現することを確認．
+        この合格は単相・縮約 BF 経路に限り，pressure-jump 分相 PPE の高密度比精度は U6/V6/V7/V9 で扱う．\checkmark
 \end{itemize}
 検証対応：§\ref{sec:defect_correction_main} の DC 反復式に対し，
 Dirichlet MMS と現行 Neumann ゲージ固定 PPE の格子収束を測定する．
