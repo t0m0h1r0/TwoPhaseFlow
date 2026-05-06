@@ -338,6 +338,45 @@ resolved nonconstant modes.  Reinit is a separate measurement/energy
 contaminant: it can shift phase and energy strongly, but it does not explain
 the no-reinit under-stiffness.
 
+## Remedy Theory Selection
+
+The remedy space was expanded in `CHK-RA-CH14-REMEDY-THEORY-001`.  The
+selection rule is not near/middle/long-term priority and not a
+circle/ellipse decision.  A candidate survives only if it satisfies the finite
+dimensional virtual-work diagram on an arbitrary fixed closed-interface
+stratum:
+
+```text
+<s,w>_M   = -d(sigma S_h)[T w]
+<b_m,w>_M =  dV_m,h[T w]
+X         = [A_f G_f  B]
+h         = (I - Pi_X) s
+Pi_X s    = X (X^T M_f X)^+ X^T M_f s.
+```
+
+This rejects scalar Rayleigh rescaling, density/inertia scaling, damping,
+CFL tuning, curvature caps/smoothing, shape-name branches, raw `none` as a
+production law, blanket `range_projected`, QP-as-physics, and PPE-tolerance
+workarounds.  They either tune one symptom or delete the quotient force
+without proving the surface-energy covector.
+
+The surviving construction is:
+
+```text
+1. fixed-stratum trace geometry for S_h and V_m,h,
+2. transport VJP T^T for the pre-reinit endpoint,
+3. M_f Riesz representatives s and B,
+4. weighted projection onto range(A_fG_f)+range(B),
+5. full s in the corrector, with projection used only to remove reactions,
+6. q^n -> q_T -> q^{n+1} endpoint ledger so reinit work is separate.
+```
+
+Rayleigh-Lamb remains a Hessian acceptance test, not a calibration target.
+Static droplet tests must be phrased as constrained criticality of the same
+`S_h,V_h` pair, not as "is this trace a circle?"  Dynamic tests must include
+arbitrary noncritical perturbations so the implementation proves it computes
+the quotient force for nonconstant modes in general.
+
 ## Full Implementation Target
 
 The full implementation should expose:

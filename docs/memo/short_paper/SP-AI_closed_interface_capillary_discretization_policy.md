@@ -648,6 +648,56 @@ maximum transport-leg change was `6.436583e-07`, while its maximum reinit-leg
 change was `1.778247e-01`, directly showing why deformation changes must be
 split before they are interpreted as capillary motion.
 
+## 10. Remedy Theory After Phase RCA
+
+The phase RCA rules out two tempting explanations.  The slow no-reinit
+oscillation is not caused by the one-component reaction projection removing
+the dynamic mode: `capillary_range_projection:none` and
+`component_hodge_augmented` give the same early `N=32,T=1` stiffness.  It is
+also not an early grid-remap artifact: static-grid and dynamic-grid no-reinit
+probes match through the early acceleration window.
+
+The remaining force-side theorem obligation is therefore sharper:
+
+```text
+The scalar face_implicit cochain is not the fixed-stratum Riesz
+representative of d(sigma S_h).
+```
+
+Post-RCA remedy generation considered scalar rescaling, inertia scaling,
+damping, CFL reduction, curvature caps, smoothing, raw `none`, restored
+`range_projected`, shape-name branching, mean-curvature subtraction, PPE
+tolerance changes, component-beta tuning, surface-stress divergence, diffuse
+surface-energy derivatives, finite-difference VJPs, analytic transport VJPs,
+finite-step discrete gradients, multi-component reaction bases, topology
+guards, Rayleigh Hessian gates, and reinit ledgers.  The filter is simple:
+surviving candidates must satisfy the same finite-dimensional virtual-work
+identity in the same face Hilbert space:
+
+```text
+<s,w>_M   = -d(sigma S_h)[T w],
+<b_m,w>_M =  dV_m,h[T w],
+h         = (I - Pi_X)s,  X=[A_fG_f B].
+```
+
+This leaves one coherent remedy family:
+
+```text
+1. define S_h and V_m,h on a fixed trace stratum,
+2. pull dS_h and dV_m,h back by the actual pre-reinit transport VJP,
+3. form s and B as M_f Riesz representatives,
+4. remove only pressure and component reactions by the weighted projection,
+5. keep full s in the production corrector,
+6. record q^n -> q_T separately from q_T -> q^{n+1}.
+```
+
+Everything else is diagnostic or rejected as a symptom adjustment.  In
+particular, Rayleigh-Lamb is an eigenvalue/Hessian acceptance gate, not a
+frequency-fitting source term.  Static droplet validation is a constrained
+criticality test of `S_h,V_h`, not a circle detector.  Dynamic validation must
+include arbitrary noncritical closed-interface modes, because the method must
+compute the quotient capillary force, not identify a named benchmark shape.
+
 ## Final Policy
 
 The discretization is settled when the solver can state and verify:
