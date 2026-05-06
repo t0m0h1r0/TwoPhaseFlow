@@ -274,6 +274,7 @@ class FCCDDivergenceOperator(IDivergenceOperator):
         phase_threshold=None,
         interface_coupling_scheme: str = "none",
         interface_stress_context=None,
+        capillary_jump_components=None,
     ) -> list["array"]:
         """Compute PPE-consistent face pressure fluxes."""
         xp = self._fccd.xp
@@ -346,7 +347,10 @@ class FCCDDivergenceOperator(IDivergenceOperator):
                 pressure_face_gradient = (
                     p[sl(1, n_cells + 1)] - p[sl(0, n_cells)]
                 ) / self._face_spacing[axis]
-            if interface_coupling_scheme == "affine_jump":
+            if (
+                interface_coupling_scheme == "affine_jump"
+                and capillary_jump_components is None
+            ):
                 pressure_face_gradient = pressure_face_gradient - signed_pressure_jump_gradient(
                     xp=xp,
                     grid=grid,
@@ -356,6 +360,11 @@ class FCCDDivergenceOperator(IDivergenceOperator):
                     fccd=self._fccd,
                 )
             face = coeff * pressure_face_gradient
+            if (
+                interface_coupling_scheme == "affine_jump"
+                and capillary_jump_components is not None
+            ):
+                face = face - xp.asarray(capillary_jump_components[axis])
             faces.append(face)
         return faces
 
@@ -371,6 +380,7 @@ class FCCDDivergenceOperator(IDivergenceOperator):
         phase_threshold=None,
         interface_coupling_scheme: str = "none",
         interface_stress_context=None,
+        capillary_jump_components=None,
     ) -> list["array"]:
         """FCCD face-flux projection (WIKI-T-068 §5)."""
         return self.reconstruct_nodes(
@@ -385,6 +395,7 @@ class FCCDDivergenceOperator(IDivergenceOperator):
                 phase_threshold=phase_threshold,
                 interface_coupling_scheme=interface_coupling_scheme,
                 interface_stress_context=interface_stress_context,
+                capillary_jump_components=capillary_jump_components,
             )
         )
 
@@ -400,6 +411,7 @@ class FCCDDivergenceOperator(IDivergenceOperator):
         phase_threshold=None,
         interface_coupling_scheme: str = "none",
         interface_stress_context=None,
+        capillary_jump_components=None,
     ) -> list["array"]:
         """Apply FCCD face-flux projection and keep corrected faces."""
         xp = self._fccd.xp
@@ -417,6 +429,7 @@ class FCCDDivergenceOperator(IDivergenceOperator):
             phase_threshold=phase_threshold,
             interface_coupling_scheme=interface_coupling_scheme,
             interface_stress_context=interface_stress_context,
+            capillary_jump_components=capillary_jump_components,
         )
         return apply_pressure_projection(u_faces, p_faces, f_faces, dt)
 

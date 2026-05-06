@@ -932,10 +932,24 @@ def solve_ns_pressure_stage(
                 transport_variational_temporaries
             ),
         )
+        range_projection = None
+        pressure_flux_eval_kwargs = pressure_flux_kwargs
+        if getattr(ppe_runtime, "capillary_range_projection", "none") == "range_projected":
+            range_projection = capillary_jump_range_projection(
+                xp=xp,
+                div_op=div_op,
+                ppe_solver=ppe_solver,
+                rho=state.rho,
+                pressure_flux_kwargs=pressure_flux_kwargs,
+            )
+            pressure_flux_eval_kwargs = dict(pressure_flux_kwargs)
+            pressure_flux_eval_kwargs["capillary_jump_components"] = (
+                range_projection["range_projection_components"]
+            )
         full_pressure_faces = div_op.pressure_fluxes(
             state.pressure_increment,
             state.rho,
-            **pressure_flux_kwargs,
+            **pressure_flux_eval_kwargs,
         )
         if previous_pressure_accel_faces is None:
             state.pressure_correction_face_components = [
@@ -952,13 +966,14 @@ def solve_ns_pressure_stage(
             xp.asarray(component) for component in full_pressure_faces
         ]
         if state.debug_scalars is not None:
-            range_projection = capillary_jump_range_projection(
-                xp=xp,
-                div_op=div_op,
-                ppe_solver=ppe_solver,
-                rho=state.rho,
-                pressure_flux_kwargs=pressure_flux_kwargs,
-            )
+            if range_projection is None:
+                range_projection = capillary_jump_range_projection(
+                    xp=xp,
+                    div_op=div_op,
+                    ppe_solver=ppe_solver,
+                    rho=state.rho,
+                    pressure_flux_kwargs=pressure_flux_kwargs,
+                )
             state.capillary_face_diagnostics = capillary_face_cochain_diagnostics(
                 xp=xp,
                 backend=backend,

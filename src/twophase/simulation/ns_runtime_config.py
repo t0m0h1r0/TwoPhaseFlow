@@ -41,6 +41,7 @@ class NSPPERuntimeState:
     ppe_iteration_method: str
     ppe_coefficient_scheme: str
     ppe_interface_coupling_scheme: str
+    capillary_range_projection: str
     ppe_tolerance: float
     ppe_max_iterations: int
     ppe_restart: int | None
@@ -190,6 +191,23 @@ def normalise_ns_ppe_runtime(
     ppe_interface_coupling_scheme = str(
         options.ppe_interface_coupling_scheme
     ).strip().lower()
+    capillary_range_projection = str(
+        getattr(options, "capillary_range_projection", "none")
+    ).strip().lower()
+    if capillary_range_projection not in {"none", "range_projected"}:
+        raise ValueError(
+            "Unsupported capillary_range_projection="
+            f"'{getattr(options, 'capillary_range_projection', None)}'. "
+            "Use none|range_projected."
+        )
+    if (
+        capillary_range_projection != "none"
+        and ppe_interface_coupling_scheme != "affine_jump"
+    ):
+        raise ValueError(
+            "capillary_range_projection requires "
+            "ppe_interface_coupling_scheme='affine_jump'."
+        )
     validate_pressure_jump_ppe_compatibility(
         surface_tension_scheme=surface_tension_scheme,
         ppe_coefficient_scheme=ppe_coefficient_scheme,
@@ -211,6 +229,7 @@ def normalise_ns_ppe_runtime(
         ppe_iteration_method=ppe_iteration_method,
         ppe_coefficient_scheme=ppe_coefficient_scheme,
         ppe_interface_coupling_scheme=ppe_interface_coupling_scheme,
+        capillary_range_projection=capillary_range_projection,
         ppe_tolerance=float(options.ppe_tolerance),
         ppe_max_iterations=int(options.ppe_max_iterations),
         ppe_restart=options.ppe_restart,

@@ -309,6 +309,7 @@ def parse_run_operator_settings(
     return {
         "poisson_coefficient": poisson_settings["poisson_coefficient"],
         "poisson_interface_coupling": poisson_settings["poisson_interface_coupling"],
+        "capillary_range_projection": poisson_settings["capillary_range_projection"],
         "advection_scheme": advection_scheme,
         "convection_scheme": convection_scheme,
         "convection_time_scheme": convection_time_scheme,

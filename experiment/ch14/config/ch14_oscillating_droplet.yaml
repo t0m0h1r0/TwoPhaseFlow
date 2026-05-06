@@ -98,6 +98,7 @@ numerics:
         discretization: fccd
         coefficient: phase_separated
         interface_coupling: affine_jump
+        capillary_range_projection: range_projected
       solver:
         kind: defect_correction
         corrections:

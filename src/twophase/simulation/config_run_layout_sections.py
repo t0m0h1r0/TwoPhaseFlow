@@ -86,6 +86,7 @@ def parse_numerics_layout(numerics: dict) -> dict:
                 "poisson_discretization": "numerics.projection.poisson.operator.discretization",
                 "poisson_coefficient": "numerics.projection.poisson.operator.coefficient",
                 "poisson_interface_coupling": "numerics.projection.poisson.operator.interface_coupling",
+                "poisson_capillary_range_projection": "numerics.projection.poisson.operator.capillary_range_projection",
                 "poisson_solver": "numerics.projection.poisson.solver",
             },
         }
@@ -126,6 +127,7 @@ def parse_numerics_layout(numerics: dict) -> dict:
             "poisson_discretization": "numerics.elliptic.pressure_projection.poisson.discretization",
             "poisson_coefficient": "numerics.elliptic.pressure_projection.poisson.coefficient",
             "poisson_interface_coupling": "numerics.elliptic.pressure_projection.poisson.interface_coupling",
+            "poisson_capillary_range_projection": "numerics.elliptic.pressure_projection.poisson.capillary_range_projection",
             "poisson_solver": "numerics.elliptic.pressure_projection.poisson.solver",
         },
     }
