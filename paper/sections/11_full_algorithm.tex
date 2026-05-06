@@ -303,8 +303,11 @@ IMEX-BDF2 予測子~\cite{AscherRuuthSpiteri1997,AscherRuuthWetton1995,HairerWan
 これは圧力ジャンプ型閉包の代替ではない
 （Balanced--Force 条件，式~\eqref{eq:balanced_pressure}，\eqref{eq:balanced_surface}；
 投影閉包は式~\eqref{eq:same_face_projection_closure}）．
-なお，第~\ref{sec:verification}章 V7 で示す通り，二相結合下の実効時間次数は
-再初期化頻度と曲率の時間遅れに律速され，IMEX-BDF2 単体の 2 次設計次数をそのまま維持しない．
+なお，第~\ref{sec:verification}章 V7 で示す通り，二相標準 stack の実効時間次数は
+再初期化頻度や曲率の単純な時間遅れではなく，
+capillary pressure-jump / affine FCCD projection が $\psi\simeq0.5$ の界面帯で作る
+低正則性誤差に律速される．したがって本手順は IMEX-BDF2 単体の 2 次設計次数と，
+range-projected pressure-jump stack の coupled-stack 実効次数を分けて読む．
 
 \medskip
 \underline{予測段階のベクトル形式（$n \ge 1$）：}

@@ -74,7 +74,8 @@ $N$ & $\alpha$ & $h_{\min}$ & $\Delta p_{\mathrm{final}}$ & $u_\infty^{\mathrm{e
         本効果は §\ref{sec:verification}「N 軸 vs.\ 時間軸 monotonicity の区別」 で
         記述した CCD 高次微分の短波長 spurious mode 励起特性に該当する Type-D 現象であり，
         V5 と同じ機序．圧力スケールは保たれているため BF 検証目的では合格，
-        ただし長時間 spurious 抑制には HFE/pressure-jump 経路（U6, V6/V7）が必要．
+        ただし長時間 spurious 抑制には HFE/pressure-jump 経路
+        （U6 を入口 primitive とし，V6/V7/V9 で統合挙動を読む）が必要．
 \end{itemize}
 V8 の合格は固定格子・CSF 縮約静止問題に対するものであり，
 移動界面の非一様格子までを保証しない．
@@ -109,7 +110,7 @@ $|\Delta p_{\mathrm{corr}}|/(\sigma/R)$ は補助診断としてのみ示す．
 \begin{table}[p]
 \caption{V9：nominal/local $\varepsilon$ switch 診断}
 \label{tab:V9_local_eps}
-\PaperCaptionNote{Range-projected pressure-jump stack 上で $n_{\mathrm{step}}=10$ まで比較する．capillary range projection 後，現行の direct-$\psi$/HFE 縮約経路では B (nominal) と C (local) が同一値になり，local mode はこの有限時間縮約試験では独立した改善 lever として発現しない．}
+\PaperCaptionNote{Range-projected pressure-jump stack 上で $n_{\mathrm{step}}=10$ まで比較する．capillary range projection 後，この direct-$\psi$/HFE 縮約経路では B (nominal) と C (local) が同一値になり，local mode はこの有限時間縮約試験では独立した改善機構として発現しない．}
 \centering\small
 \begin{tabular}{r l r r r r r}
 \toprule
@@ -140,7 +141,7 @@ $|\Delta p_{\mathrm{corr}}|/(\sigma/R)$ & $|\Delta V|/V_0$ \\
 \includegraphics[width=0.98\linewidth]{figures/ch13_v9_ch14_stack_field.pdf}
 \caption{V9：pressure-jump/HFE stack で得た $N=32$ の 2D 速度場スナップショット}
 \label{fig:V9_ch14_stack_field}
-\PaperCaptionNote{白線は $\psi=0.5$ 界面．A/B/C の全ケースで静止液滴形状は保持される．B/C は現行 direct-$\psi$/HFE の有限時間縮約試験で同一場となり，local mode の有効性はここでは「劣化なし」の確認に留まる．}
+\PaperCaptionNote{白線は $\psi=0.5$ 界面．A/B/C の全ケースで静止液滴形状は保持される．B/C はこの direct-$\psi$/HFE 有限時間縮約試験で同一場となり，local mode の有効性はここでは「劣化なし」の確認に留まる．}
 \end{figure}
 
 \paragraph{判定と制約条件．}
