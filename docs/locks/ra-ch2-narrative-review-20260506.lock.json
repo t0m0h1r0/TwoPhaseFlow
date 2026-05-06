@@ -1,0 +1,11 @@
+{
+  "branch": "ra-ch2-narrative-review-20260506",
+  "branch_slug": "ra-ch2-narrative-review-20260506",
+  "id_prefix": "RA-CH2",
+  "session_id": "RA-CH2-20260506-CODEX",
+  "worktree_path": ".claude/worktrees/ra-ch2-narrative-review-20260506",
+  "holder_agent": "ResearchArchitect",
+  "acquired_at": "2026-05-06T00:00:00Z",
+  "expires_at": "2026-05-07T00:00:00Z",
+  "meta_version": "5.1.0"
+}
