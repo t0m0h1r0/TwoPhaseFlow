@@ -11,40 +11,54 @@ Previous RCA established:
 local cut-face B_Gamma(j) notin range(A_f G_f)
 ```
 
-for curved closed interfaces.  The current affine jump/FCCD complex is exact
-for compatible flat jumps, but a static circular Young--Laplace jump leaves an
-O(4-5%) weighted Hodge residual.  Production `range_projected` then removes
-that residual by replacing the whole cochain with its range part, but this also
-removes the true oscillating-ellipse capillary drive.
+for curved closed interfaces.  The static-circle and oscillating-ellipse
+experiments are only diagnostic probes.  They must not become branch conditions
+or theoretical categories: a production method must handle arbitrary closed
+interfaces, including nonconstant, high-frequency, non-elliptic, and poorly
+parameterized curvature modes.
+
+The current affine jump/FCCD complex is exact for compatible flat jumps, but
+its local closed-interface cochain can contain a spurious Hodge component.
+Production `range_projected` then removes that component by replacing the whole
+cochain with its range part, which also deletes genuine capillary drive for any
+noncritical shape.
 
 The remedy must satisfy:
 
 ```text
-G1 static circle:        P_h c = 0 for constant Young-Laplace jump
-G2 dynamic ellipse:      P_h c != 0 for nonconstant constrained curvature mode
-G3 energy contract:      face work equals -delta(sigma S_h - lambda V_h)
-G4 same complex:         same D_f, A_f, G_f as PPE/corrector
-G5 no shortcuts:         no damping/CFL/caps/smoothing/FD/WENO/PPE fallback
-G6 reinit separation:    do not mix Pi_h reinitialization work with capillary work
+G1 variational identity: face work equals -delta(sigma S_h - sum lambda_m V_m,h)
+G2 equilibrium nullity:  P_h c = 0 exactly for discrete constrained critical shapes
+G3 noncritical release:  P_h c != 0 for arbitrary noncritical closed-interface modes
+G4 same complex:         same D_f, A_f, G_f and face metric as PPE/corrector
+G5 component topology:   per-component constraints, not a global shape classifier
+G6 no shortcuts:         no damping/CFL/caps/smoothing/FD/WENO/PPE fallback
+G7 reinit separation:    do not mix Pi_h reinitialization work with capillary work
 ```
 
 ## Key Theorem For Selection
 
-For a closed incompressible droplet, the pressure can absorb only the
-component-wise Young--Laplace Lagrange multiplier:
+The shape-agnostic theorem is the constrained virtual-work statement.  For
+interface configuration `q`, discrete surface energy `S_h(q)`, component
+volumes `V_m,h(q)`, and face-transport map `T_h`, the capillary covector must
+be
 
 ```text
-lambda_m = sigma * kappa_bar_m,
-delta(sigma S - lambda_m V) = 0   for a static circular component.
+c_sigma = T_h^* d_q [ sigma S_h(q) - sum_m lambda_m V_m,h(q) ].
 ```
 
-Therefore a valid production cochain must make the constant component exact
-without deleting the nonconstant shape modes.  This is the narrow path between
-the two known failures:
+The multipliers `lambda_m` are not recognized by asking whether the shape looks
+like a circle or ellipse.  They are the discrete Lagrange multipliers selected
+by the stationarity equation on each connected component.  The pressure
+projection may absorb only the exact constraint-reaction part represented by
+the same pressure complex.  The remaining Hodge component is physical
+capillary acceleration if and only if it is the above virtual-work covector.
+
+Thus a valid production cochain must derive all modes from one energy
+functional.  This is the narrow path between the two known failures:
 
 ```text
-full raw local jump      -> moves, but static circle has parasitic Hodge work
-blanket range projection -> static, but dynamic ellipse is killed
+raw local jump           -> can move, but may include nonvariational Hodge work
+blanket range projection -> removes all drive, including physical modes
 ```
 
 ## Candidate List And Theory Verdicts
@@ -58,269 +72,238 @@ blanket range projection -> static, but dynamic ellipse is killed
 | R05 | Use current `transport_variational_p2` with a volume multiplier. | Reject. RCA showed relative Hodge about 1 for static circle even with `lambda`; it fails before dynamics. |
 | R06 | Use diffuse nodal pressure `q ~ psi` or phase-step `q ~ 1_phase` as the exact jump lifting. | Reject as exact fix. Best phase-step mismatch is about 20%; diffuse candidates are O(1). |
 | R07 | Make every capillary jump exact by defining `c = A_f G_f q_lift(j)`. | Reject. If all nonconstant jumps are range, dynamic capillary drive is killed. |
-| R08 | Subtract the component-wise mean curvature from curvature before building the affine jump: `kappa' = kappa - kappa_bar`. | Promising but incomplete. It enforces the continuum constrained force and zeros a static circle, but loses pressure-contrast representation unless mean jump is recorded separately. |
-| R09 | Build `c_dyn = B_Gamma(sigma(kappa-kappa_bar))` and store `lambda=sigma*kappa_bar` as diagnostic pressure contrast only. | Promising for velocity dynamics, weaker for pressure diagnostics. Good first diagnostic branch, not final pressure law. |
-| R10 | Range-calibrated Young--Laplace null mode: `c = Pi_R c_bar + (c_raw(kappa) - c_raw(kappa_bar))`. | Strongly promising. Static circle gives exact range cochain; nonconstant modes are preserved. Uses range projection only for the physically pressure-like scalar null mode, not the whole capillary force. |
-| R11 | Hodge-null calibration form: `c = c_raw(kappa) - H(c_raw(kappa_bar))`, where `H=I-Pi_R`. | Strongly promising and equivalent to R10 algebraically. It removes only the known spurious closed-interface residual of the constant mode. |
-| R12 | Choose `kappa_bar_h` by interface quadrature mean curvature. | Promising as first definition, but must pass discrete static gates. |
-| R13 | Choose `kappa_bar_h` by discrete constrained variation `delta S_h / delta V_h`. | Stronger than R12. Best theoretical definition because it matches the energy constraint. |
-| R14 | Choose `kappa_bar_h` as scalar minimizing `||P_h B_Gamma(kappa-kappa_bar)||_{A^-1}`. | Conditionally promising. Scalar-only minimization cannot erase nonconstant modes, but it must be proven equivalent or close to discrete `delta S_h/delta V_h`, not used as arbitrary tuning. |
+| R08 | Subtract the component-wise mean curvature from curvature before building the affine jump: `kappa' = kappa - kappa_bar`. | Reject as final law. It is a continuum mnemonic, not a discrete virtual-work derivation, unless `kappa_bar` and the residual cochain are obtained from `d(S_h-lambda V_h)`. |
+| R09 | Build `c_dyn = B_Gamma(sigma(kappa-kappa_bar))` and store `lambda=sigma*kappa_bar` as diagnostic pressure contrast only. | Reject as production. This preserves some motion but still assumes the local jump cochain is the adjoint transport gradient. |
+| R10 | Range-calibrated Young--Laplace null mode: `c = Pi_R c_bar + (c_raw(kappa) - c_raw(kappa_bar))`. | Conditional diagnostic surrogate only. It is admissible only if proven algebraically identical to the discrete virtual-work cochain; otherwise it is a calibrated patch. |
+| R11 | Hodge-null calibration form: `c = c_raw(kappa) - H(c_raw(kappa_bar))`, where `H=I-Pi_R`. | Conditional diagnostic surrogate only, equivalent to R10. It cannot be the final theory unless `H(c_raw(kappa_bar))` is derived from the discrete energy/constraint complex. |
+| R12 | Choose `kappa_bar_h` by interface quadrature mean curvature. | Reject as principle. Useful for probes, but not a production multiplier unless it equals the discrete constrained variation. |
+| R13 | Choose `kappa_bar_h` by discrete constrained variation `delta S_h / delta V_h`. | Required ingredient, but not sufficient alone. The whole face covector, not only the scalar multiplier, must come from the same variation. |
+| R14 | Choose `kappa_bar_h` as scalar minimizing `||P_h B_Gamma(kappa-kappa_bar)||_{A^-1}`. | Reject as physics. It is a residual fit unless independently derived from the discrete Euler-Lagrange equations. |
 | R15 | Component-wise version for multiple droplets: one `kappa_bar_m` per connected interface component. | Required for generality. A single global mean is physically wrong for multiple radii. |
 | R16 | Use a harmonic/cohomology basis and remove only the constant Young--Laplace harmonic residue per component. | Promising theoretical framing for R10/R11; useful if the residual is a closed-interface harmonic artifact. |
-| R17 | Enrich the pressure space with one Heaviside/jump DOF per connected component. | Strongly promising but heavier. Constant jumps become exact operator DOFs; nonconstant modes still drive. |
-| R18 | Full GFM/HFE pressure-jump lifting with a component jump unknown and variable residual along interface. | Strongly promising, medium/high effort. This is an operator-level exactness fix. |
-| R19 | Interface-fitted/cut-cell pressure operator where constant closed-interface jumps are exact by construction. | Promising long-term, high implementation cost and larger blast radius. |
+| R17 | Enrich the pressure space with one Heaviside/jump DOF per connected component. | Required if the current pressure complex cannot represent `dV_m,h` reactions exactly. This is not optional polish; it is part of the variational complex. |
+| R18 | Full GFM/HFE pressure-jump lifting with a component jump unknown and variable residual along interface. | Promising only as an implementation of the variational complex, with the component jump and variable residual sharing the same operator. |
+| R19 | Interface-fitted/cut-cell pressure operator where constraint reactions are exact by construction. | Promising if it realizes the same discrete variational complex. Implementation cost is irrelevant to the selection principle. |
 | R20 | Build capillarity as a discrete surface-stress divergence rather than scalar pressure jump. | Promising only if derived as `T_h^* dS_h` in the same face space; otherwise it risks becoming CSF fallback. |
-| R21 | Polygonal interface virtual-work cochain: define `S_h` and `V_h` from the reconstructed closed curve and differentiate them with respect to face-normal transport. | Gold-standard theory. High effort but cleanest energy proof. |
-| R22 | Finite-step Gonzalez/discrete-gradient version of R21 for time integration. | Strong long-term companion to R21; needed for energy ledger over finite steps. |
-| R23 | Use `range_projected` as a static-equilibrium gate only, failing production if the static null mode residual exceeds tolerance. | Required diagnostic, not a remedy alone. |
+| R21 | Polygonal interface virtual-work cochain: define `S_h` and `V_m,h` from the reconstructed closed curve and differentiate them with respect to face-normal transport. | Selected physical/mathematical target. This is the only candidate in this list that directly defines all modes by one constrained energy. |
+| R22 | Finite-step Gonzalez/discrete-gradient version of R21 for time integration. | Required extension for theorem-grade finite-step energy accounting, not a schedule-based later option. |
+| R23 | Use `range_projected` as an equilibrium/range-membership diagnostic only. | Required diagnostic, not a remedy alone. It must never define production capillarity. |
 | R24 | Let reinitialization absorb residual geometry errors. | Reject. Reinit is a representation projection, not capillary work. |
-| R25 | Hybrid safe rollout: first implement R10/R11 as diagnostic-only cochain variant, then gate static circle and ellipse before enabling corrector. | Strongly promising as process. It avoids silently replacing physics. |
+| R25 | Gate-first rollout: compute candidate cochains diagnostically on arbitrary closed interfaces before enabling corrector. | Required process. Test shapes are probes only; success requires variational identity and constrained criticality, not circle/ellipse recognition. |
 
 ## Theoretical Screening
 
-### Gate G1 - Static Circle Exactness
+### Gate G1 - Variational Identity
 
-R08/R09 pass by construction if `kappa_bar` equals the constant circle
-curvature, because `kappa-kappa_bar=0`.  However, they remove the mean jump
-from the velocity cochain entirely.  That is physically acceptable for velocity
-because the mean jump is a pressure Lagrange multiplier, but pressure contrast
-must be reconstructed separately.
-
-R10/R11 pass more completely:
+The production cochain must be the adjoint of the same transport map that
+moves the interface:
 
 ```text
-c_raw(kappa_bar) = Pi_R c_raw(kappa_bar) + H c_raw(kappa_bar)
-c = c_raw(kappa_bar) - H c_raw(kappa_bar)
-  = Pi_R c_raw(kappa_bar)
+<c_sigma, u_f>_faces
+  = - d_q [ sigma S_h(q) - sum_m lambda_m V_m,h(q) ][ T_h u_f ]
 ```
 
-The corrector then yields zero acceleration for a zero-predictor static
-circle because the cochain is exactly pressure-range.  Unlike blanket range
-projection, this replacement is restricted to the constant Young--Laplace
-null mode.
+for arbitrary admissible face velocities `u_f`.  This is the central test.
+It does not ask whether the reconstructed interface is a circle, ellipse,
+square, or anything else.
 
-R17/R18/R19 also pass by adding pressure-space structure so a constant
-closed-interface jump is exact by construction.
+R21 satisfies the gate by definition if `S_h`, `V_m,h`, and `T_h` are the
+actual discrete objects used by transport.  R17/R18/R19 can satisfy it only if
+their augmented pressure/jump variables are part of the same variational
+operator.  R08-R14 fail as standalone laws because they alter curvature
+scalars or Hodge residues without first proving the full face covector is the
+transport-adjoint energy gradient.
 
-### Gate G2 - Dynamic Ellipse Release
+### Gate G2 - Constrained Equilibrium Nullity
 
-The continuum capillary drive for a fixed-area closed curve is controlled by
-the nonconstant curvature mode:
+For each connected component, equilibrium means constrained stationarity:
 
 ```text
-delta E = -sigma integral_Gamma (kappa - kappa_bar) u_n ds.
+d_q [ sigma S_h - sum_m lambda_m V_m,h ] = 0
 ```
 
-R08/R09/R10/R11 preserve `B_Gamma(kappa-kappa_bar)`.  Therefore an ellipse,
-whose curvature is not constant, retains nonzero admissible capillary work.
-They do not delete the dynamic Hodge component unless `kappa` is constant.
+on all admissible interface variations.  The test is not "is the shape a
+circle?"  A circle is only a convenient manufactured equilibrium for a
+particular `S_h,V_h`; if the discrete geometry admits another constrained
+critical shape, that shape must also produce zero Hodge drive.  Conversely, a
+shape that merely resembles a known benchmark must not be silenced unless the
+discrete stationarity equations say so.
 
-R17/R18/R19 preserve dynamics if the enriched pressure handles only the
-component jump scalar exactly and leaves variable jump content to the same
-PPE/corrector residual mechanism.
+This gate rejects blanket range projection because it forces nullity by
+algebra, not by constrained energy criticality.  It also rejects benchmark-name
+switching and hand-picked `kappa_bar` fits.
 
-R07 fails here: exact-lifting all jump content makes all capillarity pressure
-range and kills release.
+### Gate G3 - Noncritical Release For Arbitrary Modes
 
-### Gate G3 - Energy Contract
-
-R10/R11 are acceptable only if `kappa_bar_h` is chosen from a discrete
-constrained energy relation, not from visual tuning:
+For any perturbation direction with nonzero constrained first variation, the
+Hodge residual must remain nonzero:
 
 ```text
-kappa_bar_h = (delta S_h / delta V_h)_component.
+P_h c_sigma != 0
 ```
 
-For a circle this recovers `1/R`; for general closed shapes it removes only
-the component-wise pressure multiplier.  R13 is therefore preferred over R12.
+unless the variation is a pure pressure/gauge reaction in the same complex.
+This includes non-elliptic modes, high wavenumbers, asymmetric deformations,
+component interactions, and noisy but resolved interface modes.  The method
+must compute the force from the energy gradient, not from a named modal family.
 
-R21 is strongest because it derives the whole cochain from
-
-```text
-T_h^* d(sigma S_h - lambda_h V_h)
-```
-
-directly, rather than correcting a local jump after the fact.
+R07 and blanket `range_projected` fail because they can erase physical
+noncritical modes.  Raw local jumps fail if their Hodge residual contains
+nonvariational work.  R21 is the selected target because all modes are
+generated by one scalar energy.
 
 ### Gate G4 - Same PPE Complex
 
-R10/R11 explicitly use the same `Pi_R` and weighted Hodge split already
-computed from `(D_f,A_f,G_f)`, so their static calibration is in the correct
-complex.  This is why they are more credible than ad hoc curvature smoothing.
+The pressure reaction and capillary residual must live in the same weighted
+face complex:
 
-R17/R18/R19 also satisfy G4 only if the PPE/corrector both consume the same
-augmented operator.  A diagnostic-only pressure enrichment that is not used by
-the corrector would fail.
+```text
+D_f A_f G_f p = D_f c_sigma
+a_f = A_f G_f p - c_sigma
+```
 
-### Gate G5 - No Shortcut Policy
+If the current pressure space cannot represent the component volume
+constraint reactions `dV_m,h` exactly, the mathematically correct repair is to
+augment the operator, for example with one component jump/Heaviside DOF per
+closed interface component.  This is a structural requirement, not a
+medium-term convenience.
 
-R01-R07, R24 fail or are incomplete because they either erase dynamic physics,
-hide the symptom, or do not repair the cochain contract.
+### Gate G5 - Reinitialization Separation
 
-R10/R11/R13/R15/R17/R18/R21/R22/R23/R25 are compatible with the no-shortcut
-policy because they state verifiable mathematical invariants.
+The virtual-work identity is evaluated on the transport step.  Any
+reinitialization map `Pi_h` has a separate representation-change ledger:
 
-## Extracted Promising Set
+```text
+psi_before_transport -> psi_after_transport_before_reinit
+psi_after_transport_before_reinit -> psi_after_reinit
+```
 
-### A. Range-Calibrated Young--Laplace Null Mode
+No capillary remedy is valid if it relies on reinitialization to remove,
+create, or hide capillary work.
+
+## Extracted Physically Correct Set
+
+### A. Selected Target: Discrete Surface-Energy Virtual-Work Cochain
 
 Definition:
 
 ```text
-c_bar = B_Gamma(sigma kappa_bar_h)
-c_dyn = B_Gamma(sigma (kappa - kappa_bar_h))
-c_prod = Pi_R(c_bar) + c_dyn
-       = c_raw(kappa) - H(c_bar)
+c_sigma = T_h^* d_q [ sigma S_h(q) - sum_m lambda_m V_m,h(q) ]
 ```
 
-Why it is promising:
-
-- exact static circle by construction;
-- preserves nonconstant curvature modes;
-- uses range projection only for the physically pressure-like scalar
-  Lagrange multiplier;
-- minimal blast radius because it can sit inside the existing affine-jump
-  diagnostics/corrector path;
-- supports component-wise multiple droplets.
-
-Required proof/tests:
+where:
 
 ```text
-static circle:        ||P_h c_prod||_w / ||c_prod||_w -> roundoff/small tolerance
-oscillating ellipse:  ||P_h c_prod||_w remains clearly nonzero
-flat wall jump:       unchanged exactness
-constant square:      no regression
+q        = reconstructed closed-interface degrees of freedom
+S_h      = discrete surface length/area used by the solver
+V_m,h    = discrete volume of component m
+lambda_m = discrete Lagrange multiplier from constrained stationarity
+T_h      = face-velocity-to-interface transport map
 ```
 
-This is the best near-term candidate.
+This is the selected remedy because it is the only candidate here whose force,
+null space, and noncritical modes all come from the same variational object.
+It has no circle/ellipse detector and no time-horizon classification.
 
-### B. Discrete Constrained Curvature Mean
-
-Definition:
+Required verification:
 
 ```text
-kappa_bar_h = (delta S_h / delta V_h)_component
+virtual_work_rel_error(u_f) =
+  | <c_sigma,u_f>_faces + delta E_h[T_h u_f] |
+  / max(|delta E_h[T_h u_f]|, eps)
 ```
 
-or, as a controlled first approximation, an interface-quadrature mean that
-must be shown to agree with the discrete constrained variation on static
-circles.
+must be small for arbitrary sampled face velocities and arbitrary closed
+interfaces within the resolved geometry class.
 
-Why it is promising:
+### B. Required Operator Compatibility: Component Constraint Reactions
 
-- gives R10/R11 a physical scalar, not a tuning parameter;
-- handles different droplet radii component-wise;
-- ties the correction to the same area/volume constraint as Rayleigh--Lamb.
-
-Required proof/tests:
+If `dV_m,h` or the associated pressure jump reaction is not exactly
+representable by the current pressure range, augment the pressure/jump complex
+so that constrained equilibria are represented structurally:
 
 ```text
-circle radius R:      kappa_bar_h -> 1/R
-ellipse same area:    kappa_bar_h is scalar pressure multiplier only
-multiple droplets:    one scalar per component, not global mean
+range(A_f G_f)  <-  range(A_f G_f) + span{component jump reactions}
 ```
 
-This is a necessary companion to A.
+The augmented DOFs are not a fallback and not a pressure postprocess.  They
+must be consumed by the PPE, corrector, HFE history, gauge handling, and
+diagnostics as one operator.
 
-### C. Enriched Pressure-Jump DOF Per Interface Component
+### C. Finite-Step Energy Version
 
-Definition:
-
-Augment the pressure solve with a component jump scalar so that constant
-Young--Laplace jumps are in the pressure space exactly, while variable
-curvature content remains a residual drive.
-
-Why it is promising:
-
-- repairs the operator rather than correcting the cochain afterward;
-- matches GFM/XFEM intuition without FD/WENO fallback;
-- pressure contrast becomes native rather than diagnostic-only.
-
-Cost/risk:
-
-- larger implementation surface: PPE operator, corrector, pressure history,
-  gauge, and HFE representatives must all share the augmented complex.
-
-This is a strong medium-term candidate.
-
-### D. Polygonal Surface-Energy Virtual-Work Cochain
-
-Definition:
-
-Use the reconstructed closed interface polygon to define `S_h` and `V_h`;
-differentiate `sigma S_h - lambda_h V_h` through the actual face transport map
-to obtain the face covector.
-
-Why it is promising:
-
-- cleanest variational proof;
-- static and dynamic behavior come from one energy;
-- compatible with finite-step energy ledgers if extended by a Gonzalez
-  discrete gradient.
-
-Cost/risk:
-
-- highest implementation cost;
-- must handle topology, component labeling, cut-point derivatives, and reinit
-  separation carefully.
-
-This is the gold-standard long-term candidate.
-
-### E. Gate-First Rollout
-
-Before any production corrector change, add an experimental/diagnostic route
-that computes A/B candidates and reports:
+For production time integration, the infinitesimal covector should be extended
+to a finite-step discrete gradient, for example a Gonzalez-type construction:
 
 ```text
-raw_static_rel
-nullmode_calibrated_static_rel
-ellipse_dynamic_rel
-flat_exact_rel
-component_count
-kappa_bar_h
+<c_sigma^{n+1/2}, Delta x_f>
+  = -[ E_h(q^{n+1}) - E_h(q^n) ]
 ```
 
-Why it is promising:
+with the same component-volume constraints and the same reinit separation.
+This is not a later convenience; it is the finite-step version of the same
+energy theorem.
 
-- prevents another silent `range_projected`-style overgeneralization;
-- makes the theory falsifiable before enabling motion;
-- keeps reinit and capillary work separated.
+### D. Diagnostic Surrogates Only
 
-This is required process, not optional polish.
+R10/R11 can remain useful as diagnostic surrogates:
 
-## Recommended Order
+```text
+c = c_raw(kappa) - H(c_raw(kappa_bar))
+```
 
-1. Implement diagnostic-only R10/R11 with component-wise `kappa_bar_h`.
-2. Define `kappa_bar_h` first by robust interface quadrature, then compare to
-   discrete `delta S_h/delta V_h` on circles and ellipses.
-3. Run gates: flat wall, static circle, canonical oscillating ellipse, square
-   negative/positive controls.
-4. Only if gates pass, enable full `c_prod` in the corrector for a temporary
-   experiment config.
-5. In parallel or next phase, design enriched pressure-jump DOF or polygonal
-   virtual-work cochain for a theorem-grade production route.
+but only to falsify or approximate the theorem.  They must not be adopted as
+production physics unless proven equal to `T_h^* d(S_h-lambda V_h)` in the
+same discrete complex.  The same restriction applies to quadrature mean
+curvature, residual-minimizing `kappa_bar`, and any scalar null-mode
+calibration.
+
+## Required Gates
+
+The gates are shape-agnostic.  Named geometries are manufactured probes, not
+logic branches.
+
+```text
+1. Variational work gate:
+   arbitrary closed interface + arbitrary sampled u_f must satisfy
+   <c_sigma,u_f> = -delta E_h[T_h u_f].
+
+2. Constrained criticality gate:
+   any manufactured or numerically found constrained critical shape must have
+   ||P_h c_sigma||_w near solver tolerance.
+
+3. Noncritical release gate:
+   random resolved perturbations, non-elliptic modes, high modes, and
+   multi-component interactions with nonzero constrained first variation must
+   have nonzero ||P_h c_sigma||_w.
+
+4. Operator compatibility gate:
+   PPE, corrector, HFE history, and diagnostics use the same augmented or
+   non-augmented `(D_f,A_f,G_f)` complex.
+
+5. Reinit separation gate:
+   transport work and representation-projection work are reported separately.
+```
 
 ## Final Selection
 
-Most promising near-term path:
+Adopt the physically and mathematically strongest construction:
 
 ```text
-Range-Calibrated Young--Laplace Null Mode
-  + component-wise discrete kappa_bar_h
-  + diagnostic-first gates
+Discrete closed-interface surface-energy virtual-work cochain
+  c_sigma = T_h^* d_q [ sigma S_h - sum_m lambda_m V_m,h ]
 ```
 
-Most rigorous long-term path:
-
-```text
-Polygonal closed-interface virtual-work cochain
-  or augmented pressure-jump DOF per component
-```
+and, if the existing pressure complex cannot represent the component constraint
+reactions, repair the pressure/jump complex with component-wise constraint DOFs
+so the same theorem holds inside the PPE/corrector.
 
 Rejected explicitly:
 
 ```text
+circle/ellipse shape classification,
+near/mid/long-term selection as a correctness criterion,
+range-calibrated null mode as production without variational proof,
 blanket range projection,
 none-only production,
 damping/CFL/caps/smoothing,
