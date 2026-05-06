@@ -1,0 +1,16 @@
+{
+  "id": "CHK-RA-CH14-BENCH-NARR-001",
+  "id_prefix": "RA-CH14-BENCH-NARR",
+  "branch": "ra-ch14-oscillating-benchmark-doc-20260506",
+  "worktree": ".claude/worktrees/ra-ch14-oscillating-benchmark-doc-20260506",
+  "created_at": "2026-05-06",
+  "base": "ra-ch14-oscillating-benchmark-doc-20260506@0c8f4c50",
+  "scope": "review and rewrite chapter 14 as a successful physical-benchmark chapter, emphasizing narrative coherence and terminology consistency",
+  "stop_condition": "repeat review/fix until no MAJOR+ findings or review round exceeds 10",
+  "main_merge": "forbidden until explicit user instruction",
+  "completed_at": "2026-05-06",
+  "status": "DONE",
+  "commits": [
+    "cc01b034"
+  ]
+}

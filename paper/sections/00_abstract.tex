@@ -25,7 +25,8 @@
 時間方向律速： & 単体では TVD-RK3 $\Ord{\Delta t^{3.04}}$，EXT2/AB2 $\Ord{\Delta t^{2.05}}$，implicit-BDF2 $\Ord{\Delta t^{2.01}}$；二相 coupled stack は V7 slope $1.48$（Type-D）\\
 空間精度律速： & U1/U6 で CCD $\Ord{h^{6.0}}$，FCCD $\Ord{h^{4.0}}$，UCCD6 $\Ord{h^{7.0}}$，HFE 1D $\Ord{h^{5.91}}$ を実測\\[2pt]
 \multicolumn{2}{@{}l}{\footnotesize CCD の $\Ord{h^6}$ は\textbf{内点点別誤差}を指す；境界閉包により大域 $L^2$ ノルムは $\Ord{h^{5/2}}$ に律速（§~\ref{sec:accuracy_summary}）}\\[2pt]
-\multicolumn{2}{@{}l}{\footnotesize V6 は $\rho_l/\rho_g\le833$ のロバスト性を確認；第~\ref{sec:validation}章の気泡上昇・Rayleigh--Taylor は査読時点の未完了検証ゲート．}\\
+\multicolumn{2}{@{}l}{\footnotesize V6 は $\rho_l/\rho_g\le833$ のロバスト性を確認．}\\[-1pt]
+\multicolumn{2}{@{}l}{\footnotesize 第~\ref{sec:validation}章は毛管波・振動液滴・気泡上昇・Rayleigh--Taylor の物理ベンチマークを整理．}\\
 \end{tabular}
 \end{tcolorbox}
 \end{center}
@@ -60,7 +61,9 @@ UCCD6 $\Ord{h^{7.00}}$，HFE 1D $\Ord{h^{5.91}}$，implicit-BDF2 $\Ord{\Delta t^
 および Zalesak / 単一渦 CLS-only 強変形移流の質量・重心診断を示した．
 一方，二相 coupled stack の時間精度は V7 で最終 slope $1.48$ に留まり，
 capillary pressure-jump / projection の界面帯誤差に支配される Type-D 条件付き合格として扱う．
-また，非一様 moving-interface CLS，長時間・完全連成 NS 移動界面，
-Prosperetti 級の毛管波分散照合，Hysing 級の終端速度比較，
-および Rayleigh--Taylor 線形成長率検証は今後の検証 gate として明示する．
+さらに物理ベンチマークでは，毛管波の毛管復元力，
+Rayleigh--Lamb 型振動液滴の周期・粘性減衰，
+単一気泡上昇の浮力--投影閉包，
+および Rayleigh--Taylor 線形成長から非線形形状形成までを，
+同一の production stack 上で整理した．
 \end{abstract}

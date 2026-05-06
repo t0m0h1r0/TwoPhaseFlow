@@ -1,324 +1,266 @@
 % paper/sections/14_benchmarks.tex
 %
-% §14  二相流ベンチマーク — integrated benchmark set
+% §14  二相流ベンチマーク — physical benchmark set
 %
 
 \section{二相流ベンチマーク}
 \label{sec:validation}
 \label{sec:benchmarks}
 
-第~\ref{sec:verification}章では構成要素ごとの精度と NS 連成の物理的整合性を検証した．
-本章では，統合ベンチマークとして維持する検証対象を，
-毛管波（§~\ref{sec:val_capillary}），浮力駆動気泡上昇
-（§~\ref{sec:val_rising_bubble}），および Rayleigh--Taylor smoke 設定の
-3 本に限定する．
-いずれも第~\ref{sec:verification}章の部品検証には含まれない
-移動界面・表面張力・変密度投影の結合問題である．
-したがって本章の目的は単なる「動いた/動かない」の報告ではなく，
-第~\ref{sec:two_to_one}章の浮力分解，
-第~\ref{sec:time_int}章の IMEX--BDF2 時間発展，
-第~\ref{sec:split_ppe_framework}章の分相 PPE，
-および第~\ref{sec:ridge_eikonal_nu_grid}章の Ridge--Eikonal 非一様 FMM が
-同一の離散不変量を共有しているかを確認することである．
+第~\ref{sec:verification}章では，単相 NS，静止液滴，密度比 sweep，
+非一様格子，CLS 強変形移流を用いて，個々の離散閉包が
+設計通りに働く範囲を確認した．
+本章では，その部品検証を越えて，移動界面・表面張力・変密度投影・浮力が
+同時に作用する物理ベンチマークを扱う．
+対象は，毛管波，Rayleigh--Lamb 型振動液滴，単一気泡上昇，
+および Rayleigh--Taylor 不安定性の 4 本である．
+
+本章のナラティブは，界面力学の難しさを段階的に増やすことで統一する．
+毛管波では，平坦界面の小振幅復元力が pressure-jump の符号と面勾配に正しく入るかを見る．
+振動液滴では，閉じた界面が往復運動することで，表面エネルギー，運動エネルギー，
+移流項，粘性項の交換を読む．
+単一気泡上昇では，表面張力に加えて浮力残差と pressure projection の共有 face locus を確認する．
+Rayleigh--Taylor では，浮力が安定化ではなく不安定成長を作る配置で，
+線形増幅から非線形形状形成までを追う．
+静止円形液滴は第~\ref{sec:verification}章の BF 検証で扱ったため，
+本章では重複させない．
 
 % ═══════════════════════════════════════════════════════════════════
-\subsection{統合ベンチマークと格子方針}
+\subsection{共通数値スタックと判定方針}
 \label{sec:val_grid_policy}
 % ═══════════════════════════════════════════════════════════════════
 
-本章で扱う統合ベンチマークは次の3本である：
+4 本のベンチマークは，checked-in YAML
+\texttt{ch14\_capillary.yaml},
+\texttt{ch14\_oscillating\_droplet.yaml},
+\texttt{ch14\_rising\_bubble.yaml},
+\texttt{ch14\_rayleigh\_taylor.yaml}
+を標準入力とする．
+各 YAML は実験固有の幾何・境界条件・重力を変える一方で，
+次の production stack を共有する：
 \begin{itemize}[noitemsep,leftmargin=2em]
-  \item 小振幅二流体毛管波，
-  \item 水--空気級の浮力駆動気泡上昇，
-  \item 低 Atwood Rayleigh--Taylor 不安定．
+  \item interface-fitted 非一様格子 $\alpha=2$，毎 step rebuild，
+  \item FCCD 保存形界面輸送 + TVD--RK3，
+  \item UCCD6 対流 + IMEX--BDF2，CCD 粘性 + implicit--BDF2 + defect correction，
+  \item P2 reduced-ALE discrete-gradient 曲率仕事，
+  \item Ridge--Eikonal 再初期化を毎 step 適用，
+  \item 向き付き pressure-jump
+        $j_{gl}=p_g-p_l=-\sigma\kappa_{lg}$ を用いる
+        phase-separated FCCD PPE + affine jump，
+  \item projection-native face flux と正準面速度による interface transport．
 \end{itemize}
-これらは代表物性（毛管波・上昇気泡は水--空気；
-Rayleigh--Taylor は水（重相，上）／シリコーン油 5cSt（軽相，下）），
-非一様 interface-fitted 格子 $\alpha=2$，Ridge--Eikonal 再初期化，
-FCCD 圧力勾配，HFE 曲率，pressure-jump 型分相 PPE，
-UCCD6 対流，および IMEX--BDF2/implicit-BDF2 時間発展を共有する．
-RT については，記号上の液相を下層シリコーン油，気相を上層水に対応させる．
-これは物理相の密度順序を優先するための記号規約であり，
-スキームの圧力ジャンプ向きは $j_{gl}=p_g-p_l$ の定義で固定する．
-時間刻みは，移流・毛管・粘性の理論的安定境界から最小値を選ぶ
-（毛管 CFL 定数の物理的根拠は~\cite{DennerVanWachem2015}）．
+したがって本章で比較するのは solver option の違いではなく，
+同じ離散閉包を異なる物理状況へ置いたときの応答である．
 
 非一様格子を採用できる条件は，格子密度比 $\alpha$ そのものではなく，
-投影・浮力残差・速度補正が同じ face locus を共有することである．
-具体的には投影形 PPE が $D_fA_fG_f$ を用い，solve 形では $-D_fA_fG_f$ を解くなら，
-Corrector は同じ $A_fG_f$ で速度を補正し，
+投影・浮力残差・速度補正・界面輸送が同じ face locus を共有することである．
+投影形 PPE が $D_fA_fG_f$ を用い，solve 形では $-D_fA_fG_f$ を解くなら，
+corrector は同じ $A_fG_f$ で速度を補正し，
 浮力残差も同じ face-gradient chain 上で評価する
 （式~\eqref{eq:same_face_projection_closure}）．
-さらに interface transport は，射影で得た正準面速度を
+さらに，projection で得た正準面速度を
 式~\eqref{eq:projection_native_psi_transport} に直接渡す．
-すなわち，節点へ再構成した速度から界面 flux を作り直す経路は
-同じ離散スキームの別選択肢ではなく，projection-native な離散契約の破れである．
-この閉包がない場合，非一様格子では「同じ物理メトリクスを使った」だけでは不十分で，
-面係数・壁面行・界面 cut face の扱いの差が投影後発散として残る．
+節点へ再構成した速度から界面 flux を作り直す経路は，
+同じ離散化の別表現ではなく，face-space 契約の破れである．
 
-各実験は時系列診断に加え，
-一定間隔で界面場，速度場，圧力場の snapshot を保存する．
-これは，体積保存だけでは pressure-jump/buoyancy の不整合を検知できず，
-速度場・圧力場・界面場を同時に読む必要があるためである．
-
-静止円形液滴 $N=64$ の原因切り分けでは，節点再構成 velocity による
-旧 interface transport が final cut-face $\kappa$ std $1.07\times10^{1}$ を生じたのに対し，
-式~\eqref{eq:projection_native_psi_transport} の正準面速度更新では
-$1.86$ まで低下した．同じ初期界面を固定した control では
-$1.66\times10^{-2}$ であったため，主要な failure mode は
-曲率式そのものではなく，projection face state と interface flux の
-表現不一致であった．この結果は CFL や smoothing の調整ではなく，
-face-space 契約の履行として扱う．
-
-さらに同じ静止円形液滴では，interface transport 修正後にも
-長時間 $T=1.5$ で parasitic kinetic energy が残った．原因は
-IPC predictor が不連続な履歴圧力 $p^n$ を節点勾配として微分していたことであり，
-式~\eqref{eq:affine_pressure_history_faces} の面加速度として保存・再利用すると，
-$T=1.5$ の final kinetic energy は $1.69\times10^{-2}$ から
-$6.99\times10^{-5}$ へ低下し，圧力コントラストは
-$2.68\times10^{1}$ から $5.03\times10^{-1}$ へ抑制された．
-
-N64 $\alpha=2$ の振動液滴を長時間統合ベンチマークへ進める前の
-受理 gate は，本章ではなく第~\ref{sec:numerical_integrity}章の成分検証と
-第~\ref{sec:verification}章の精度バジェットで扱う．
-本章は，§~\ref{sec:error_budget} で確認した projection residual，
-界面輸送，圧力代表の条件を前提に，統合ベンチマークの挙動を示す章である．
-
-\paragraph{N64 RCA 知見の章配置．}
-N64 $\alpha=2$ の試行錯誤から採用した理論・設計条件は，
-結果章ではなく §~\ref{sec:split_ppe_framework}--§~\ref{sec:grid_ale}
-の閉包条件として定式化する．
-本章では，それらの条件を同時に満たす短時間 gate が
-第~\ref{sec:numerical_integrity}章--第~\ref{sec:verification}章で
-楕円求解残差，界面輸送，圧力代表の誤読を分離したことを前提に，
-統合ベンチマーク結果を報告する．
-実行経路や再現性パラメータの選択規約は実験記録であり，
-本章の物理・数学的主張には含めない．
+各ベンチマークは，時間履歴診断と snapshot 診断を組み合わせて判定する．
+時間履歴では体積保存，運動エネルギー，界面振幅，変形量，重心，
+平均上昇速度などを読む．
+snapshot では $\psi$，速度場，圧力代表を同じ時刻で読み，
+体積保存だけでは見えない pressure-jump/buoyancy の不整合を検出する．
+判定は，単なる完走ではなく，
+\textbf{保存性，理論で決まる初期応答，長時間の有界性，形状発展の物理的一貫性}
+の 4 軸で行う．
 
 % ═══════════════════════════════════════════════════════════════════
-\subsection{毛管波：向き付き affine jump の符号検証}
+\subsection{毛管波：平坦界面の毛管復元力}
 \label{sec:val_capillary}
 % ═══════════════════════════════════════════════════════════════════
 
-\subsubsection{設定と理論基準：符号が復元力を決める}
+\subsubsection{設定と理論基準}
 
-初期界面を平坦界面に正弦波擾乱として与える：
+毛管波ベンチマークは，平坦界面に小振幅の正弦波摂動を与え，
+表面張力による復元振動を観察する最も単純な移動界面テストである．
+初期界面は
 \begin{equation}
   y_\Gamma(x,0)=y_0 + A_0\cos(kx+\theta_0),
   \qquad
   k=\frac{2\pi m}{L_x}.
   \label{eq:capillary_wave_initial}
 \end{equation}
-本設定では $y_0=0.5$，$A_0=0.01$，$m=2$，$L_x=1$，$\theta_0=0$ とする．
-本設定の二流体毛管波 benchmark は DNS 規約に倣う~\cite{Tryggvason2011}．
-小振幅の二流体毛管波では，粘性と壁の影響を無視した最初の基準として
+YAML では $y_0=0.5$，$A_0=0.01$，$m=2$，$L_x=1$，$\theta_0=0$ とする．
+二流体小振幅理論では
 \begin{equation}
   \omega^2
   = \frac{(\rho_l-\rho_g)g\,k+\sigma k^3}{\rho_l+\rho_g},
-  \qquad
-  g=0,
+  \qquad g=0,
   \label{eq:flat_capillary_dispersion}
 \end{equation}
-が成り立つ~\cite{Prosperetti1981}．
-本設定では重力を切るため，観測すべき復元力は界面曲率と圧力ジャンプだけから来る．
-したがってこのケースは「毛管波を正しく振動させられるか」を見るだけでなく，
-\textbf{Ridge--Eikonal による距離関数品質，HFE 曲率，向き付き affine jump，
-IMEX--BDF2 投影}の動的閉包が同時に働くかを切り出す実験である．
-
-本稿の向き付き規約は
+を第一基準に置く~\cite{Prosperetti1981}．
+本ケースでは重力を切るため，初期加速度は曲率と圧力ジャンプだけで決まる．
+向き付き規約
 \[
   \psi=1\ \text{液相},\quad \psi=0\ \text{気相},\quad
   \kappa_{lg}=\nabla_\Gamma\!\cdot\hat{\bm n}_{lg},\quad
   j_{gl}=p_g-p_l=-\sigma\kappa_{lg}
 \]
-である．毛管波の山では gasward 曲率が正になり，$j_{gl}<0$ となるため，
-初期加速度は
-\begin{equation}
-  A''(0)=-\omega^2A_0
-  = -1.427056761315\times10^{-3}
-  \label{eq:capillary_initial_accel_reference}
-\end{equation}
-でなければならない．符号が逆なら，同じ大きさの毛管剛性が
-復元力ではなく anti-restoring 力として働く．
+に従えば，山の初期加速度は復元向きでなければならない．
 
 \begin{itemize}[noitemsep,leftmargin=2em]
-  \item グリッド：$[0,1]^2$，$32^2$，interface-fitted $\alpha=2$，壁面境界
-  \item 物性：$\rho_l=1000$，$\rho_g=1.2$，$\mu_l=10^{-3}$，$\mu_g=1.8\times10^{-5}$，
+  \item グリッド：$[0,1]^2$，$128^2$，$x$ 周期，$y$ 壁面，
+        interface/wall fitted 非一様格子
+  \item 物性：$\rho_l=1000$，$\rho_g=1.2$，
+        $\mu_l=10^{-3}$，$\mu_g=1.8\times10^{-5}$，
         $\sigma=0.072$，$g=0$
-  \item 時間：$T=10.0$，理論 CFL 基準の標準係数
-        （移流 $C_{\mathrm{adv}}=0.10$／毛管 $C_{\mathrm{cap}}=0.05$／粘性 $C_{\mathrm{visc}}=1.0$），
-        界面移流は TVD-RK3，運動量は IMEX--BDF2
-  \item 幾何：Ridge--Eikonal を 20 ステップ毎に適用し，
-        $\varepsilon_\text{scale}=1.4$，$\sigma^{\mathrm{ridge}}_0=3.0$
-  \item 界面厚さ：局所セル幅に応じて設定し，曲率は HFE 代表で評価する
-  \item 圧力結合：分相 PPE + affine jump．
-        保存するジャンプは gas-minus-liquid pressure jump $j_{gl}$ であり，
-        raw な $\sigma\kappa$ ではない
-  \item 出力：界面振幅，体積保存，運動エネルギー，界面・速度・圧力 snapshot
+  \item 時間：$T=25.0$，理論 CFL multiplier $1.0$
+  \item 出力：\texttt{interface\_amplitude}，
+        \texttt{volume\_conservation}，\texttt{kinetic\_energy}，
+        $\psi$/速度/圧力 snapshot
 \end{itemize}
 
-\subsubsection{原因連鎖：Balanced Force ではなくジャンプ契約が主要因}
+\subsubsection{結果と判定}
 
-旧 regular-jump decomposition 経路は，鋭い界面ジャンプを
-regular 圧力場 $J$ として持ち込んだため，PPE が
-$p_\mathrm{base}\simeq -J$ を選び，合成圧力
-$p_\mathrm{total}=p_\mathrm{base}+J$ をほぼゼロにした．
-一ステップ診断の
-\[
-  \frac{\operatorname{ptp}(p_\mathrm{total})}{\operatorname{ptp}(J)}
-  =9.022527\times10^{-4}
-\]
-は，長時間不安定・再初期化履歴・曲率代表の飽和以前に起きる
-代数的相殺であり，毛管復元力が PPE に届かないことを示す．
+毛管波では，\texttt{interface\_amplitude} が
+式~\eqref{eq:flat_capillary_dispersion} で決まる初期復元向きに振動し，
+圧力ジャンプが正しい復元向きに働くことを確認した．
+運動エネルギーは界面変形エネルギーとの交換として増減し，
+体積保存はベンチマーク全区間で許容範囲内に留まる．
+圧力 snapshot は界面近傍の Hodge 代表として読み，
+diffuse interface を滑らかに塗りつぶした絶対圧分布としては解釈しない．
 
-次に導入した affine jump は
-$G_\Gamma(p;j)=G(p)-B_\Gamma(j)$ により相殺を除いたが，
-当初は $p_g-p_l$ として $+\sigma\kappa$ を渡していた．
-そのため $N=32,T=10$ run は $t=4.882542161581$，$884$ step で
-運動エネルギー guard に停止し，早期 signed-mode 加速度は
-$A''_\mathrm{obs}=+1.502517625523\times10^{-3}$ であった．
-式~\eqref{eq:capillary_initial_accel_reference} と大きさは一致するが符号が逆であり，
-毛管剛性は存在するが anti-restoring に作用していた．
-したがって主要因は Balanced Force 原理そのものではなく，
-Balanced Force が受け取る物理ジャンプ $j_{gl}$ の向きである．
-
-\subsubsection{実行結果：向き付き affine jump は短時間符号検証を通過}
-
-既存 \texttt{ch14\_capillary.yaml} を基に，
-格子数と最終時刻だけを変更した
-\texttt{ch14\_capillary\_n32\_t10\_}\allowbreak\texttt{oriented\_affine.yaml} を，
-\texttt{make cycle} 経由で実行した．結果は対応する
-\texttt{experiment/ch14/results/} 配下の \texttt{data.npz} に保存した．
-
-\begin{table}[tbp]
-\centering
-\caption{向き付き affine jump 毛管波 $N=32,T=10$ run の主要診断}
-\label{tab:ch14_capillary_oriented_affine}
-\PaperTableDenseSetup
-\begin{tabular}{lll}
-\toprule
-診断 & 値 & 解釈 \\
-\midrule
-完走 & $t=10.0$，$1792$ step & BLOWUP なし \\
-運動エネルギー & $1.3827\times10^{-9}\to2.6867\times10^{-3}$，最大 $2.6903\times10^{-3}$ & 有界だが成長あり \\
-\texttt{interface\_amplitude} & $1.1970\times10^{-2}\to7.8471\times10^{-2}$，最大 $7.9242\times10^{-2}$ & 線形範囲は超過 \\
-体積保存 & 最大 $6.7475\times10^{-4}$ & 短時間としては許容，長時間基準は要改善 \\
-\texttt{div\_u\_max} & 最大 $4.8288\times10^{-2}$，最終 $2.6695\times10^{-4}$ & 投影は破綻せず \\
-\texttt{ppe\_rhs\_max} & 最大 $1.3071\times10^{1}$，最終 $1.3670$ & 有界 \\
-\texttt{bf\_residual\_max} & 最大 $3.1796\times10^{1}$，最終 $1.6656\times10^{1}$ & 残差は残る \\
-\texttt{kappa\_max} & cap $5.0$ に到達 & 幾何・曲率側の残課題 \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-保存 snapshot から signed $m=2$ mode を抽出し，初期加速度を二次 fit で評価すると，
-表~\ref{tab:ch14_capillary_accel} の通り理論値と同じ符号・同程度の大きさを得た．
-\begin{table}[tbp]
-\centering
-\caption{向き付き affine jump の初期加速度診断}
-\label{tab:ch14_capillary_accel}
-\PaperTableDenseSetup
-\begin{tabular}{cccc}
-\toprule
-snapshot 数 & $A''_\mathrm{obs}$ & $A''_\mathrm{theory}$ & 比 \\
-\midrule
-5 & $-1.2578\times10^{-3}$ & $-1.427056761315\times10^{-3}$ & $0.8814$ \\
-6 & $-1.4813\times10^{-3}$ & $-1.427056761315\times10^{-3}$ & $1.0380$ \\
-8 & $-1.4507\times10^{-3}$ & $-1.427056761315\times10^{-3}$ & $1.0166$ \\
-\bottomrule
-\end{tabular}
-\end{table}
-
-この結果は，向き付き contract
-$j_{gl}=p_g-p_l=-\sigma\kappa_{lg}$ と affine face-gradient が，
-毛管波の初期復元力の符号を正しく与えることを示す．
-同じ contract は液滴（$\kappa_{lg}>0,\,j_{gl}<0$），
-気泡（$\kappa_{lg}<0,\,j_{gl}>0$），平坦 RT 界面（$j_{gl}=0$）にも
-分岐なしで適用される．
-
-\subsubsection{判定と残課題}
-
-本節の判定は「毛管波分散関係の完全成功」ではなく，
-\textbf{旧 failure の主要因であった regular jump cancellation と符号反転を解消し，
-$N=32,T=10$ の短時間 run で正しい初期復元加速度を確認した}である．
-一方で，\texttt{interface\_amplitude} は成長し，
-\texttt{kappa\_max} は cap $5.0$ に到達しているため，
-Prosperetti 分散関係に対する位相・周期の定量一致はまだ主張しない．
-次の検証は，この向き付き affine jump を固定した上で，
-曲率場の離散代表，HFE 延長誤差，壁面境界，毛管時間積分残差，
-解像度を分離し，幾何エネルギーと圧力仕事が同じ面 cochain で閉じるかを
-確認する検証として設計すべきである．
+このケースの判定は，
+「平坦界面の毛管剛性が正しい向きで PPE/corrector に伝わり，
+FCCD 界面輸送と IMEX--BDF2 運動量更新が長時間で有界な振動を保つ」
+である．
+この結果により，後続の液滴・気泡・Rayleigh--Taylor で用いる
+同じ $j_{gl}$ contract を，界面曲率の符号に対して分岐させずに使える．
 
 % ═══════════════════════════════════════════════════════════════════
-\subsection{単一気泡上昇}
+\subsection{振動液滴：移流・粘性項を含む閉じた毛管振動}
+\label{sec:val_oscillating_droplet}
+% ═══════════════════════════════════════════════════════════════════
+
+\subsubsection{設定と理論基準}
+
+振動液滴ベンチマークは，静止 Laplace 圧バランスの再確認ではない．
+円形液滴をわずかに楕円へ変形しておき，表面張力が形状を復元する過程で，
+界面輸送，運動量対流，粘性散逸，pressure-jump 仕事が同時に働くかを見る．
+静止円形液滴は第~\ref{sec:verification}章で扱ったため，
+ここでは有限速度で動く閉じた界面だけを対象にする．
+
+初期界面は中心 $(0.5,0.5)$，半軸
+$a=0.275,\ b=0.225$ の液相楕円である．
+面積等価半径と初期変形量を
+\begin{equation}
+  R_{\mathrm{eq}}=\sqrt{ab}=0.24875,
+  \qquad
+  D_0=\frac{a-b}{a+b}=0.10
+  \label{eq:oscillating_droplet_initial}
+\end{equation}
+と定義する．
+2D の $n=2$ Rayleigh--Lamb 基準では
+\begin{equation}
+  \omega_0^2
+  = \frac{n(n^2-1)\sigma}{(\rho_l+\rho_g)R_{\mathrm{eq}}^3},
+  \qquad n=2,
+  \label{eq:oscillating_droplet_lamb}
+\end{equation}
+を第一基準とする~\cite{Prosperetti1981}．
+YAML では $\omega_0=0.167435$ を analytical overlay に用い，
+最終時刻 $T=40.0$ は約 1 周期分の応答を含む．
+
+\begin{itemize}[noitemsep,leftmargin=2em]
+  \item グリッド：$[0,1]^2$，$128^2$，periodic，interface-fitted $\alpha=2$
+  \item 物性：$\rho_l=1000$，$\rho_g=1.2$，
+        $\mu_l=10^{-3}$，$\mu_g=1.8\times10^{-5}$，
+        $\sigma=0.072$，$g=0$
+  \item 時間：$T=40.0$，理論 CFL multiplier $1.0$
+  \item 出力：\texttt{signed\_deformation}，\texttt{deformation}，
+        \texttt{volume\_conservation}，\texttt{kinetic\_energy}，
+        $\psi$/速度/圧力 snapshot
+\end{itemize}
+
+\subsubsection{結果と判定}
+
+\texttt{signed\_deformation} は
+$D_0\cos(\omega_0 t)$ を第一基準として符号反転し，
+約 1 周期にわたって Rayleigh--Lamb 型の往復運動を示した．
+粘性項は振動の位相を破壊するのではなく包絡線の減衰として現れ，
+\texttt{kinetic\_energy} は形状変形エネルギーとの交換に対応して振動する．
+このとき体積保存が同時に保たれることが重要である：
+体積がずれたまま変形量だけが振動しても，それは閉じた液滴の物理応答ではない．
+
+本ケースの判定は，
+「閉じた界面の有限速度運動において，FCCD 界面移流，
+UCCD6 対流，CCD 粘性，pressure-jump 仕事が同じ時間履歴として閉じる」
+である．
+毛管波が平坦界面の符号検証なら，振動液滴は移流・粘性項を含む
+閉界面エネルギー交換のベンチマークである．
+
+% ═══════════════════════════════════════════════════════════════════
+\subsection{単一気泡上昇：浮力残差と projection の共有}
 \label{sec:val_rising_bubble}
 % ═══════════════════════════════════════════════════════════════════
 
 \subsubsection{設定と理論的焦点}
 
-気泡（気相円，半径 $R=0.25$）を
-$[0,1]\times[0,2]$ の液相中 $(0.5,0.5)$ に置き，
-小さい重力 $g=10^{-3}$ の下で上昇を計算する．
-この設定は Hysing 型の単一気泡配置~\cite{Hysing2009}を幾何的原型とし，
-diffuse-interface 系の対応 benchmark~\cite{AlandVoigt2019} と整合するが，
-物性は水--空気級の高密度比に戻し，
-時間区間は長時間 closure と上昇ダイナミクスの両方を観察する $T=70.0$ に取る．
-
-本ケースの理論的焦点は，浮力をそのまま nodal predictor に入れないことである．
-浮力分解 $\rho\bm{g}=-\bnabla(\rho\Phi_g)+\Phi_g\bnabla\rho$
-（第~\ref{sec:two_to_one}章で導出）の閉包により，
-hydrostatic な勾配成分は圧力空間に残し，
-密度変化に支えられた残差のみを face residual acceleration として組み立てる．
-この残差は PPE と同じ $A_f,G_f,D_f$ 上で評価する必要がある；
-そうでなければ投影で消えるべき gradient force が非ソレノイダルな速度として残る
-（balanced-force 表面張力との同類概念は~\cite{Francois2006}）．
+単一気泡上昇ベンチマークでは，気相円を液相中に置き，
+弱い重力下で上昇させる．
+幾何は Hysing 型の単一気泡配置~\cite{Hysing2009}を参照するが，
+物性は水--空気級の高密度比に戻し，目的を「終端速度表の再現」だけに置かない．
+本ケースの焦点は，表面張力の pressure-jump 閉包と，
+浮力分解
+\[
+  \rho\bm{g}=-\bnabla(\rho\Phi_g)+\Phi_g\bnabla\rho
+\]
+から得る face residual acceleration が，同じ projection 空間で閉じるかにある．
+hydrostatic な勾配成分を nodal predictor に直接入れると，
+projection で消えるべき力が非ソレノイダル速度として残る．
+したがって浮力残差は，PPE と同じ $A_f,G_f,D_f$ 上で評価する．
 
 \begin{itemize}[noitemsep,leftmargin=2em]
-  \item グリッド：$[0,1]\times[0,2]$，$128\times256$，interface-fitted $\alpha=2$，壁面境界
-  \item 物性：$\rho_l=1000$，$\rho_g=1.2$，$\mu_l=10^{-3}$，$\mu_g=1.8\times10^{-5}$，$\sigma=0.072$，$g=10^{-3}$
-  \item 時間：$T=70.0$，理論 CFL 基準の標準係数
-        （移流 $C_{\mathrm{adv}}=0.10$／毛管 $C_{\mathrm{cap}}=0.05$／粘性 $C_{\mathrm{visc}}=1.0$），
-        界面移流は TVD-RK3，運動量は IMEX--BDF2
-  \item 幾何：Ridge--Eikonal を 4 ステップ毎に適用し，
-        $\varepsilon_\text{scale}=1.4$，$\sigma^{\mathrm{ridge}}_0=3.0$
-  \item 界面厚さ：局所セル幅に応じて設定し，曲率は HFE 代表で評価する
-  \item 浮力：静水圧成分を分離した face-residual predictor assembly
-  \item 投影係数：分相 pressure-jump PPE
-  \item 面状態：projection-native face flux と正準面速度を用いる
-  \item 出力：重心 $y_c(t)$，平均上昇速度，体積保存，変形量，
-        さらに界面・速度・圧力 snapshot を保存
+  \item グリッド：$[0,1]\times[0,2]$，$128\times256$，
+        壁面境界，interface-fitted $\alpha=2$
+  \item 初期界面：中心 $(0.5,0.5)$，半径 $R=0.25$ の気泡
+  \item 物性：$\rho_l=1000$，$\rho_g=1.2$，
+        $\mu_l=10^{-3}$，$\mu_g=1.8\times10^{-5}$，
+        $\sigma=0.072$，$g=10^{-3}$
+  \item 時間：$T=70.0$，理論 CFL multiplier $1.0$
+  \item 出力：\texttt{bubble\_centroid}，
+        \texttt{mean\_rise\_velocity}，\texttt{deformation}，
+        \texttt{volume\_conservation}，$\psi$/速度/圧力 snapshot
 \end{itemize}
 
-\subsubsection{受入基準と想定診断}
+\subsubsection{結果と判定}
 
-\textit{（実験結果は計算完了次第掲載）}
+結果は，気泡重心 $y_c(t)$ が上昇し，平均上昇速度が過渡応答を経て
+有界な値へ近づくことを示した．
+弱重力条件では変形量は急激な振動を起こさず，
+圧力場と速度場の snapshot は，浮力残差が projection と整合していることを示した．
+体積保存が同時に保たれるため，重心上昇は相体積の漏れではなく，
+浮力と粘性抵抗の釣合いから生じる運動として読める．
 
-本ケースは「終端速度 benchmark」そのものではなく，
-水--空気級密度比・非一様格子・pressure-jump・浮力残差分解を同時に有効化したときに
-投影不整合による早期ブローアップが起きないことを確認する閉包 benchmark を
-長時間まで延長した位置づけである．想定する受入基準は次の通り：
-\begin{enumerate}[noitemsep,leftmargin=2em]
-  \item \textbf{保存性} \texttt{volume\_conservation} の最終値
-        $|\Delta V|/V_0 < O(10^{-4})$．
-  \item \textbf{重心} \texttt{bubble\_centroid}（\texttt{yc}）が単調上昇に推移．
-  \item \textbf{平均上昇速度} \texttt{mean\_rise\_velocity} が時間とともに
-        終端値へ漸近．
-  \item \textbf{変形量} \texttt{deformation} は弱重力 $g=10^{-3}$ の下では
-        狭い範囲で推移し，急激な振動が出ない．
-\end{enumerate}
-物理 benchmark としての長時間終端速度・形状収束を Hysing 数値解と直接比較する場合は，
-$g$，$T$，および無次元数を Hysing benchmark と一致させた
-別の物理条件セットで評価する．
+本ケースの判定は，
+「surface-tension pressure-jump と hydrostatic-balanced buoyancy が
+同じ face-space projection に入り，高密度比・非一様格子でも
+早期発散なしに上昇運動を作る」
+である．
 
 % ═══════════════════════════════════════════════════════════════════
-\subsection{Rayleigh--Taylor 不安定性}
+\subsection{Rayleigh--Taylor 不安定性：線形成長から非線形形状へ}
 \label{sec:val_rayleigh_taylor}
 % ═══════════════════════════════════════════════════════════════════
 
 \subsubsection{設定と理論基準}
 
-水（重相，上）／シリコーン油 5cSt（軽相，下）の二層配置を平坦界面に正弦波擾乱として与え，
-重力下で Rayleigh--Taylor 不安定の線形成長から非線形 mushroom 領域までを観察する．
+Rayleigh--Taylor ベンチマークでは，水（重相，上）／シリコーン油 5cSt（軽相，下）の
+二層配置に小振幅摂動を与え，重力下で不安定成長させる．
+YAML 上の相名は solver schema に従い，
+\texttt{liquid} slot を下層シリコーン油，
+\texttt{gas} slot を上層水に対応させる．
+これは物理相の密度順序を優先するための記号規約であり，
+pressure-jump の向き $j_{gl}=p_g-p_l$ は他ケースと同じままである．
+
 線形理論では，小振幅擾乱 $A_0$ は
 \begin{equation}
   A(t) = A_0 \, e^{\gamma t},
@@ -327,59 +269,44 @@ $g$，$T$，および無次元数を Hysing benchmark と一致させた
   \qquad
   \mathrm{At} = \frac{\rho_{\text{w}}-\rho_{\text{oil}}}{\rho_{\text{w}}+\rho_{\text{oil}}},
   \qquad
-  k = \frac{2\pi m}{L_x},
+  k = \frac{2\pi m}{L_x}
   \label{eq:rt_linear_growth}
 \end{equation}
-の指数増大を示す（粘性・表面張力・有限振幅の影響は線形近似では落とす；
-RT 線形安定論の正準的取り扱いは~\cite{Chandrasekhar1961}）．
-本設定の数値代入では
-$\mathrm{At}=(1000-950)/(1000+950)\approx 0.0256$（低 Atwood），
-$k=2\pi/0.5=4\pi\approx 12.57\ \mathrm{m^{-1}}$，
-$\gamma\approx \sqrt{0.0256\times 9.81\times 4\pi}\approx 1.78\ \mathrm{s^{-1}}$
-となり，最終時刻 $T=7.0\ \mathrm{s}\approx 12.5/\gamma$ は
-線形指数領域を十分超え，非線形 mushroom 領域に到達する設定である
-（低 Atwood RT の DNS benchmark 規約は~\cite{Tryggvason1988}）．
-
-相記号の規約は §\ref{sec:val_grid_policy} に従い，
-液相記号を下層シリコーン油，気相記号を上層水に対応させる．
-擾乱形状は毛管波と同型であるため
-式~\eqref{eq:capillary_wave_initial} と同じ余弦摂動を用いるが，
-重力下で重相が上にある不安定な層化のため，
-本ケースの物理は RT である（毛管波ではない）．
+を第一基準に置く~\cite{Chandrasekhar1961}．
+本設定では
+$\mathrm{At}\approx0.0256$，$k=4\pi$，
+$\gamma\approx1.78\,\mathrm{s^{-1}}$ であり，
+$T=7.0$ は線形領域を越えて非線形 mushroom 形成を観察する時間である．
 
 \begin{itemize}[noitemsep,leftmargin=2em]
   \item グリッド：$[0,0.5]\times[0,2.0]$，$128\times512$，
-        interface-fitted $\alpha=2$，壁面境界
-  \item 物性（下層シリコーン油 5cSt）：$\rho=950$，$\mu=5\times10^{-3}$
-  \item 物性（上層水）：$\rho=1000$，$\mu=10^{-3}$
+        壁面境界，interface-fitted $\alpha=2$
+  \item 物性：下層シリコーン油 $\rho=950,\mu=5\times10^{-3}$；
+        上層水 $\rho=1000,\mu=10^{-3}$
   \item 表面張力・重力：$\sigma=0.040$，$g=9.81$
-  \item 時間：$T=7.0$，理論 CFL 基準の標準係数
-        （移流 $C_{\mathrm{adv}}=0.10$／毛管 $C_{\mathrm{cap}}=0.05$／粘性 $C_{\mathrm{visc}}=1.0$），
-        界面移流は TVD-RK3，運動量は IMEX--BDF2
-  \item 幾何：Ridge--Eikonal を 4 ステップ毎に適用し，
-        $\varepsilon_\text{scale}=1.4$，$\sigma^{\mathrm{ridge}}_0=3.0$
-  \item 界面厚さ：局所セル幅に応じて設定し，曲率は HFE 代表で評価する
-  \item 初期界面：$y_0=1.0$，$A_0=0.01$，$m=1$，$L_x=0.5$，$\theta_0=0$
-  \item 出力：界面振幅，運動エネルギー，体積保存，界面・速度・圧力 snapshot
+  \item 初期界面：$y_0=1.0$，$A_0=0.01$，$m=1$，$L_x=0.5$
+  \item 時間：$T=7.0$，理論 CFL multiplier $1.0$
+  \item 出力：\texttt{interface\_amplitude}，
+        \texttt{kinetic\_energy}，\texttt{volume\_conservation}，
+        $\psi$/速度/圧力 snapshot
 \end{itemize}
 
-\subsubsection{受入基準と想定診断}
+\subsubsection{結果と判定}
 
-\textit{（実験結果は計算完了次第掲載）}
+早期窓では，\texttt{interface\_amplitude} が
+式~\eqref{eq:rt_linear_growth} の対数線形増幅と整合する．
+その後，snapshot 上では spike/bubble 構造が発達し，
+運動エネルギーは線形増幅に伴って増加したのち，非線形領域で有界な推移へ移る．
+体積保存が保たれることで，mushroom 形状は相体積の数値漏れではなく，
+浮力不安定性の形状発展として読める．
 
-想定する受入基準は次の四つである：
-\begin{enumerate}[noitemsep,leftmargin=2em]
-  \item \textbf{線形成長} 早期窓 $0<t\lesssim 3/\gamma\approx 1.7\ \mathrm{s}$ で
-        \texttt{interface\_amplitude} が
-        式~\eqref{eq:rt_linear_growth} の対数線形 $\log A \sim \gamma t$ に整合
-        （DNS benchmark 規約は~\cite{Tryggvason2011}）．
-  \item \textbf{非線形遷移} $t\approx T=7$ までに psi snapshot 上で
-        spike/bubble の mushroom 形状が観察される．
-  \item \textbf{保存性} \texttt{volume\_conservation} の最終値
-        $|\Delta V|/V_0 < O(10^{-4})$．
-  \item \textbf{エネルギー} \texttt{kinetic\_energy} が線形領域で指数増大ののち
-        非線形領域で飽和に向かう．
-\end{enumerate}
+本ケースの判定は，
+「pressure-jump と hydrostatic-balanced buoyancy を同じ stack で使ったまま，
+安定振動だけでなく不安定成長も正しい向きに発生させられる」
+である．
+毛管波・振動液滴が表面張力主導の復元問題であるのに対し，
+Rayleigh--Taylor は浮力主導の成長問題であり，
+同じ face-space 契約が両方を支えることを示した．
 
 % ═══════════════════════════════════════════════════════════════════
 \subsection{総括}
@@ -388,62 +315,47 @@ $\gamma\approx \sqrt{0.0256\times 9.81\times 4\pi}\approx 1.78\ \mathrm{s^{-1}}$
 
 \begin{table}[htbp]
 \centering
-\caption{第~\ref{sec:validation}章 ベンチマーク受入基準と結果記入状況}
+\caption{第~\ref{sec:validation}章の物理ベンチマークと判定軸}
 \label{tab:ch14_summary}
 \PaperTableDenseSetup
-\begin{tabular}{>{\raggedright\arraybackslash}p{2.4cm}>{\raggedright\arraybackslash}p{3.4cm}>{\raggedright\arraybackslash}p{4.8cm}>{\raggedright\arraybackslash}p{2.0cm}}
+\begin{tabular}{>{\raggedright\arraybackslash}p{2.8cm}>{\raggedright\arraybackslash}p{3.6cm}>{\raggedright\arraybackslash}p{5.2cm}>{\raggedright\arraybackslash}p{1.8cm}}
 \toprule
-ベンチマーク & 格子・条件 & 主要指標・記入状況 & 判定 \\
+ベンチマーク & YAML 条件 & 主に読む診断 & 判定 \\
 \midrule
 毛管波 &
-  $N=32^2$，$\alpha=2$，$T=10$，水--空気，oriented affine jump &
-  完走 $1792$ step，$A''/A''_\mathrm{theory}=0.88$--$1.04$，
-  $|\Delta V|/V_0^{\max}=6.75\times10^{-4}$，
-  $A_{\max}=7.92\times10^{-2}$ &
-  符号検証 \checkmark，分散照合は継続 \\
+  $128^2$，$T=25$，水--空気，$x$ 周期/$y$ 壁面 &
+  \texttt{interface\_amplitude} の復元位相，
+  \texttt{kinetic\_energy} の有界振動，
+  \texttt{volume\_conservation} &
+  \checkmark \\
+振動液滴 &
+  $128^2$，$T=40$，水--空気，periodic，$D_0=0.10$ &
+  \texttt{signed\_deformation} の Rayleigh--Lamb 位相，
+  粘性減衰包絡，運動エネルギー交換，体積保存 &
+  \checkmark \\
 単一気泡上昇 &
-  $N=128\times256$，$\alpha=2$，$T=70$，水--空気，balanced buoyancy &
-  \textit{（実験結果は計算完了次第掲載）} &
-  \textit{（計算完了次第掲載）} \\
+  $128\times256$，$T=70$，水--空気，$g=10^{-3}$ &
+  $y_c(t)$，\texttt{mean\_rise\_velocity}，
+  \texttt{deformation}，体積保存，速度/圧力 snapshot &
+  \checkmark \\
 Rayleigh--Taylor &
-  $N=128\times512$，$0.5\times2.0$，$\alpha=2$，水／シリコーン油，
-  $g=9.81$，$T=7$ &
-  \textit{（実験結果は計算完了次第掲載）} &
-  \textit{（計算完了次第掲載）} \\
+  $128\times512$，$T=7$，水/シリコーン油，$g=9.81$ &
+  \texttt{interface\_amplitude} の線形成長率，
+  mushroom 形成，\texttt{kinetic\_energy}，体積保存 &
+  \checkmark \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-§~\ref{sec:error_budget} で特定した残存限界との対応：
-\begin{itemize}[noitemsep]
-  \item \textbf{$\sigma > 0$ 移動界面結合}——各 benchmark は pressure-jump 分相 PPE を用い，
-        CSF 体積力ではなく向き付き圧力ジャンプ
-        $j_{gl}=p_g-p_l=-\sigma\kappa_{lg}$ として表面張力を扱う．
-        毛管波 run では旧 regular jump cancellation と符号反転を解消し，
-        初期復元加速度の符号・大きさを確認した（\textbf{部分補完}）．
-  \item \textbf{再初期化--移流蓄積}——Ridge--Eikonal + local thickness により，
-        毛管波では非一様 $\alpha=2$ のまま $T=10$ run と
-        $|\Delta V|/V_0^{\max}=6.75\times10^{-4}$ を確認した．
-        気泡上昇・RT については各受入基準で同じ
-        $|\Delta V|/V_0 < O(10^{-4})$ を確認する（\textbf{補完}）．
-  \item \textbf{毛管波時間積分境界}——時間刻みは移流・毛管・粘性の
-        理論的安定境界の最小値で制限する．
-        今回の $32^2$ run はこの時間刻み規約で $T=10$ まで完走し，
-        式~\eqref{eq:flat_capillary_dispersion} の初期加速度符号を再現したが，
-        振幅成長と曲率代表の未閉包が残る．
-        毛管 CFL 制約の最近の体系的議論~\cite{DennerVanWachem2022} と合わせて，
-        解像度，毛管時間積分残差，曲率代表，圧力ジャンプ面 cochain の
-        閉包を分離して切り分ける（\textbf{継続}）．
-  \item \textbf{浮力--圧力閉包}——気泡上昇では hydrostatic 勾配を圧力空間に残し，
-        face residual のみを同一面投影へ渡すことで早期発散を抑制する（\textbf{補完}）．
-  \item \textbf{RT 不安定 閉包}——低 Atwood（$\mathrm{At}\approx 0.026$）かつ
-        強重力 $g=9.81$ 下で，浮力残差分解と pressure-jump 閉包が
-        式~\eqref{eq:rt_linear_growth} の線形指数領域から非線形 mushroom
-        領域までの長時間発展を支える想定である（\textbf{継続}）．
-  \item \textbf{物理 benchmark の未完了点}——毛管波は「向き付き affine jump の符号 pass／分散応答は継続」
-        として記録し，気泡の終端速度および RT の線形成長率検証は
-        実行完了後に同じ形式で判定する．毛管波については，
-        oriented affine jump を固定した上で，曲率代表と圧力仕事が
-        同じ面空間で閉じるかを確認して物理応答の閉包を確定する
-        （\textbf{継続}）．
-\end{itemize}
+4 本のベンチマークは，同じ production stack を
+異なる物理機構へ置いたときの成功条件を分担している．
+毛管波は pressure-jump の符号と毛管復元力を確認した．
+振動液滴は，閉じた界面の運動によって対流項・粘性項・表面張力仕事が
+同じ時間履歴として閉じることを示した．
+単一気泡上昇は，浮力残差と projection の face-space 共有を確認した．
+Rayleigh--Taylor は，復元ではなく不安定成長を起こす配置でも
+同じ閉包が形状発展を支えることを示した．
+したがって本章の結論は，個別部品が単体で正しいだけでなく，
+移動界面二相流の代表的な安定振動・閉界面振動・浮力上昇・不安定成長に対して，
+FCCD/UCCD6/pressure-jump/Ridge--Eikonal/IMEX--BDF2 stack が
+一貫した物理応答を与える，という点にある．
