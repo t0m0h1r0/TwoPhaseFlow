@@ -7,9 +7,12 @@
   "base": "ra-ch14-oscillating-benchmark-doc-20260506@0c8f4c50",
   "scope": "review and rewrite chapter 14 as a successful physical-benchmark chapter, emphasizing narrative coherence and terminology consistency",
   "stop_condition": "repeat review/fix until no MAJOR+ findings or review round exceeds 10",
-  "main_merge": "forbidden until explicit user instruction",
+  "main_merge": "performed via no-ff merge c0d9e63b after explicit user instruction",
   "completed_at": "2026-05-06",
-  "status": "DONE",
+  "merged_at": "2026-05-06",
+  "merge_commit": "c0d9e63b",
+  "source_worktree_removed": true,
+  "status": "MERGED",
   "commits": [
     "cc01b034"
   ]
