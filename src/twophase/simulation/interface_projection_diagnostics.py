@@ -17,6 +17,7 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import Any
 
+from ..coupling.interface_stress_closure import affine_jump_face_inverse_density
 from ..coupling.transport_variational_capillary import p2_trace_surface_energy_2d
 
 
@@ -37,6 +38,10 @@ _FACE_ZERO_DIAGNOSTICS = {
     "capillary_hodge_residual": 0.0,
     "capillary_hodge_divergence_linf": 0.0,
     "capillary_range_projection_solved": 0.0,
+    "capillary_face_weighted_l2": 0.0,
+    "capillary_jump_weighted_l2": 0.0,
+    "capillary_range_projection_weighted_l2": 0.0,
+    "capillary_hodge_weighted_l2": 0.0,
 }
 
 
@@ -115,6 +120,7 @@ def capillary_face_cochain_diagnostics(
     capillary_jump_components=None,
     range_projection_components=None,
     hodge_residual_components=None,
+    face_weight_components=None,
 ) -> dict[str, float]:
     """Measure the post-PPE face cochain left in the projection face space.
 
@@ -153,6 +159,30 @@ def capillary_face_cochain_diagnostics(
         range_projection_components,
         dtype=face_linf.dtype,
     )
+    face_weighted_l2 = _optional_face_components_weighted_l2(
+        xp,
+        face_components,
+        face_weight_components,
+        dtype=face_linf.dtype,
+    )
+    jump_weighted_l2 = _optional_face_components_weighted_l2(
+        xp,
+        capillary_jump_components,
+        face_weight_components,
+        dtype=face_linf.dtype,
+    )
+    projection_weighted_l2 = _optional_face_components_weighted_l2(
+        xp,
+        range_projection_components,
+        face_weight_components,
+        dtype=face_linf.dtype,
+    )
+    hodge_weighted_l2 = _optional_face_components_weighted_l2(
+        xp,
+        hodge_components,
+        face_weight_components,
+        dtype=face_linf.dtype,
+    )
     solved = xp.asarray(
         1.0 if hodge_residual_components is not None else 0.0,
         dtype=face_linf.dtype,
@@ -169,6 +199,10 @@ def capillary_face_cochain_diagnostics(
                     hodge_linf,
                     hodge_div_linf,
                     solved,
+                    face_weighted_l2,
+                    jump_weighted_l2,
+                    projection_weighted_l2,
+                    hodge_weighted_l2,
                 ]
             )
         )
@@ -181,6 +215,10 @@ def capillary_face_cochain_diagnostics(
         "capillary_hodge_residual": values[4],
         "capillary_hodge_divergence_linf": values[5],
         "capillary_range_projection_solved": values[6],
+        "capillary_face_weighted_l2": values[7],
+        "capillary_jump_weighted_l2": values[8],
+        "capillary_range_projection_weighted_l2": values[9],
+        "capillary_hodge_weighted_l2": values[10],
     }
 
 
@@ -220,6 +258,12 @@ def capillary_jump_range_projection(
     capillary_jump_faces = [
         -xp.asarray(component) for component in capillary_flux_at_zero
     ]
+    face_weights = _capillary_face_hodge_weights(
+        xp=xp,
+        div_op=div_op,
+        rho=rho,
+        pressure_flux_kwargs=pressure_flux_kwargs,
+    )
     source = div_op.divergence_from_faces(capillary_jump_faces)
     zero_jump_kwargs = _zero_jump_pressure_flux_kwargs(pressure_flux_kwargs)
     snapshots = _snapshot_solver_graph(ppe_solver)
@@ -245,6 +289,7 @@ def capillary_jump_range_projection(
         "capillary_jump_components": capillary_jump_faces,
         "range_projection_components": range_projection_faces,
         "hodge_residual_components": hodge_residual_faces,
+        "face_weight_components": face_weights,
     }
 
 
@@ -261,11 +306,98 @@ def _optional_face_components_linf(xp, face_components, *, dtype) -> Any:
     return _face_components_linf(xp, face_components)
 
 
+def _optional_face_components_weighted_l2(
+    xp,
+    face_components,
+    face_weight_components,
+    *,
+    dtype,
+) -> Any:
+    if face_components is None or face_weight_components is None:
+        return xp.asarray(0.0, dtype=dtype)
+    terms = [
+        xp.sum(xp.asarray(component) * xp.asarray(component) * xp.asarray(weight))
+        for component, weight in zip(
+            face_components,
+            face_weight_components,
+            strict=True,
+        )
+    ]
+    if not terms:
+        return xp.asarray(0.0, dtype=dtype)
+    return xp.sqrt(xp.sum(xp.stack(terms)))
+
+
 def _face_components_divergence_linf(xp, div_op, face_components, *, dtype) -> Any:
     if not hasattr(div_op, "divergence_from_faces"):
         return xp.asarray(0.0, dtype=dtype)
     div_field = div_op.divergence_from_faces(face_components)
     return xp.max(xp.abs(div_field))
+
+
+def _capillary_face_hodge_weights(
+    *,
+    xp,
+    div_op,
+    rho,
+    pressure_flux_kwargs: dict[str, Any],
+) -> list[Any] | None:
+    """Return face weights for the ``A_f^{-1}`` Hodge diagnostic norm."""
+    fccd = getattr(div_op, "_fccd", None)
+    grid = getattr(fccd, "grid", None)
+    if grid is None:
+        return None
+    rho_arr = xp.asarray(rho)
+    coefficient_scheme = str(
+        pressure_flux_kwargs.get("coefficient_scheme", "phase_density")
+    ).strip().lower()
+    interface_coupling_scheme = str(
+        pressure_flux_kwargs.get("interface_coupling_scheme", "none")
+    ).strip().lower()
+    context = pressure_flux_kwargs.get("interface_stress_context")
+    weights = []
+    for axis in range(grid.ndim):
+        n_cells = grid.N[axis]
+
+        def sl(start, stop, ax=axis):
+            slices = [slice(None)] * grid.ndim
+            slices[ax] = slice(start, stop)
+            return tuple(slices)
+
+        rho_lo = rho_arr[sl(0, n_cells)]
+        rho_hi = rho_arr[sl(1, n_cells + 1)]
+        coeff = 2.0 / (rho_lo + rho_hi)
+        if (
+            coefficient_scheme == "phase_separated"
+            and interface_coupling_scheme == "affine_jump"
+        ):
+            coeff = affine_jump_face_inverse_density(
+                xp=xp,
+                grid=grid,
+                rho=rho_arr,
+                axis=axis,
+                context=context,
+            )
+        elif (
+            coefficient_scheme == "phase_separated"
+            and interface_coupling_scheme != "affine_jump"
+        ):
+            threshold = pressure_flux_kwargs.get("phase_threshold")
+            if threshold is None:
+                threshold = 0.5 * (xp.min(rho_arr) + xp.max(rho_arr))
+            same_phase = (rho_lo >= threshold) == (rho_hi >= threshold)
+            coeff = xp.where(same_phase, coeff, 0.0)
+
+        d_face = xp.asarray(grid.coords[axis][1:] - grid.coords[axis][:-1])
+        d_shape = [1] * grid.ndim
+        d_shape[axis] = -1
+        transverse_axis = 1 - axis
+        face_area = xp.asarray(grid.h[transverse_axis])
+        area_shape = [1] * grid.ndim
+        area_shape[transverse_axis] = -1
+        measure = d_face.reshape(d_shape) * face_area.reshape(area_shape)
+        weights.append(xp.where(coeff > 0.0, measure / coeff, 0.0))
+    return weights
 
 
 def _zero_jump_pressure_flux_kwargs(pressure_flux_kwargs: dict[str, Any]) -> dict[str, Any]:
