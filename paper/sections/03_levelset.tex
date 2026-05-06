@@ -26,11 +26,12 @@
         $\psi$ 直接法での適用域 $\psi_{\min}$ と飽和帯の扱い，
         $\psi$ プロファイル品質監視，および $\phi$/HFE 経路での分母クランプの役割を整理する．
   \item \textbf{§~\ref{sec:ridge_eikonal}（Ridge--Eikonal 補助距離再構成）：}
-        移流後の $\psi$ が品質閾値を超えた場合や，
+        production stack では各 time step の標準幾何更新として，
+        縮約・診断経路では移流後の $\psi$ が品質閾値を超えた場合や
         トポロジー変化を連続的に扱う必要がある場合の幾何修復段として，
         Gaussian 補助場 $\xiridge$ による界面再定義（リッジ集合）と，
         その FMM/FSM による Eikonal 再構成を定式化する．
-        基本の保存形輸送は $\psi$ で閉じ，距離再構成は必要時に
+        基本の保存形輸送は $\psi$ で閉じ，距離再構成は
         $\phi$ を再構成して標準 CLS パイプラインへ戻す幾何段である．
 \end{enumerate}
 

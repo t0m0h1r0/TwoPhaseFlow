@@ -11,7 +11,7 @@
   \item 界面を表す $\phi,\psi$ と，液相$\to$気相向き法線・曲率の符号規約，
   \item Two-Fluid 系の応力ジャンプを One-Fluid 方程式へ埋め込む弱形式等価性，
   \item 点値物性補間と face 係数構成の違い，
-  \item CSF 体積力，Young--Laplace 圧力ジャンプ，分相 PPE へ接続する毛管閉包，
+  \item CSF 体積力，Young--Laplace 圧力ジャンプ，分相 PPE へ接続する毛管閉包と capillary range projection，
   \item 無次元数と曲率式，
 \end{enumerate}
 を一つの章内で揃える．
@@ -20,7 +20,7 @@
 一括 One-Fluid/Balanced--Force 経路では CSF 体積力を圧力勾配と同じ面演算子に乗せる．
 一方，高密度比・低 Weber 数の主経路では，Young--Laplace 圧力差を
 分相 PPE の向き付きジャンプ条件として保持し，
-HFE と face-space 投影で速度補正まで同一面契約に閉じる
+HFE，capillary range projection，face-space 投影で速度補正まで同一面契約に閉じる
 （§~\ref{sec:split_ppe_framework}, §~\ref{sec:algorithm}）．
 この階層を先に固定しておくことで，第~\ref{sec:levelset}章以降の
 CLS，曲率，Balanced--Force，分相 PPE の議論が同じ符号と同じ物理量を参照できる．

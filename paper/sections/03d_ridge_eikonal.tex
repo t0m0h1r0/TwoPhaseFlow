@@ -12,10 +12,11 @@
 
 \paragraph{本節の 2 用途．}
 Ridge--Eikonal 経路は論文中で次の 2 つの目的で用いられる：
-\textbf{(A) 標準パイプラインの幾何修復．}~保存形移流後の $\psi$ が
-品質閾値を超えた場合，$\psi=0.5$ 零等値面から FMM/FSM を起動して
+\textbf{(A) production stack の標準幾何更新．}~第~\ref{sec:algorithm}章の
+7 段手順では，保存形移流後に $\psi=0.5$ 零等値面から FMM/FSM を起動して
 $\phi$ を再構成し，$H_\varepsilon(-\phi)$ と質量閉鎖で CLS 変数へ戻す
-（§~\ref{sec:ridge_fmm_reconstruction}）．
+（§~\ref{sec:ridge_fmm_reconstruction}）．縮約・診断経路では同じ操作を
+$\psi$ 品質閾値に基づく幾何修復として起動してよい．
 \textbf{(B) トポロジー変化の連続化．}~界面の融合・分裂時は
 補助場 $\xiridge$ の時間発展（移流＋拡散）がリッジ集合の位相遷移を
 連続変形として捉え，その後 FMM/FSM で $\phi$ を再構成する．
@@ -24,7 +25,8 @@ $\phi$ を再構成し，$H_\varepsilon(-\phi)$ と質量閉鎖で CLS 変数へ
 \begin{tcolorbox}[defbox, title={本節の位置づけ}]
 本節は，第~\ref{sec:levelset}章で導入した CLS 基本経路
 （保存形移流・再初期化・$\psi$ 直接曲率）を\textbf{置き換える}ものではなく，
-品質劣化時とトポロジー変化時に $\phi$ を作り直す\textbf{幾何修復段}を与えるものである．
+production stack の標準段階として，また品質劣化時とトポロジー変化時の
+縮約・診断経路として $\phi$ を作り直す\textbf{幾何更新段}を与えるものである．
 本章では連続定式化と再構成の論理に焦点を当て，
 CCD/FCCD の離散演算子，非一様格子実装，感度較正の詳細は
 第~\ref{sec:CCD}章，第~\ref{sec:grid}章，および
@@ -265,8 +267,9 @@ TVD-RK3 + FCCD 保存形面フラックスの $\psi$ 移流が担い，
 FCCD 面中心演算子は後段で圧力・CSF・運動量離散化に接続される．
 退化リッジ候補を含まない時間帯（トポロジー変化が発生しない区間）では，
 アルゴリズムは
-(i) 標準 CLS $\psi$ 移流，(ii) 必要時のみの Ridge--Eikonal 再投影
-という標準パイプラインの一般化として読める．
+(i) 標準 CLS $\psi$ 移流，(ii) production では各 step の Ridge--Eikonal 再投影，
+縮約・診断経路では必要時の Ridge--Eikonal 再投影
+という同じ幾何更新契約として読める．
 
 \paragraph{本節の要点}
 \begin{itemize}
