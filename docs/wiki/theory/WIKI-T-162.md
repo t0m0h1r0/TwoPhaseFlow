@@ -439,6 +439,50 @@ Delta E_total =
   [E_h(q_T)-E_h(q^n)] + [E_h(q^{n+1})-E_h(q_T)].
 ```
 
+## Implementation Method
+
+`CHK-RA-CH14-IMPL-METHOD-001` maps the rigorous contract onto current code.
+The selected force law should not be encoded as a fake curvature method.
+Introduce an explicit capillary source selector under the existing pressure
+jump formulation:
+
+```yaml
+numerics:
+  physical_time:
+    momentum:
+      capillary_force:
+        formulation: pressure_jump
+        source: closed_interface_riesz
+```
+
+`curvature` remains the legacy scalar-jump source.  `source` chooses how the
+raw face cochain is constructed.  `capillary_range_projection` remains a
+reaction/projection policy.
+
+The implementation should be split into proof-sized objects:
+
+```text
+ClosedInterfaceStratum
+TraceGeometryFunctional
+TransportLinearization
+CapillaryRieszCochain
+AugmentedCapillaryHodgeProjector
+CorrectorSignLock
+ReinitEnergyLedger
+```
+
+The first code commit should implement only stratum/geometry diagnostics:
+
+```text
+closed_interface_stratum.py
+closed_interface_geometry.py
+test_closed_interface_geometry.py
+```
+
+and prove finite-difference consistency of `S_h` and `V_h` on unchanged
+strata.  Production coupling comes later, after transport VJP, Riesz residual,
+augmented projection, and corrector sign-lock tests pass.
+
 ## Full Implementation Target
 
 The full implementation should expose:

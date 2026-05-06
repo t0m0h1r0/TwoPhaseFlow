@@ -767,6 +767,40 @@ Delta E_total =
 
 Only the first bracket is capillary transport work.
 
+## 12. Implementation Method
+
+The implementation should not hide the new law behind the old word
+`curvature`.  Keep the public formulation as `pressure_jump`, but add a
+capillary source selector:
+
+```yaml
+capillary_force:
+  formulation: pressure_jump
+  source: closed_interface_riesz
+```
+
+Then keep the responsibilities separate.  `ClosedInterfaceStratum` owns the
+cut topology and hash.  `TraceGeometryFunctional` owns `S_h,V_h,dS_h,dV_h`.
+`TransportLinearization` owns the actual pre-reinit VJP.  `CapillaryRieszCochain`
+builds `s,B` and reports work residuals.  `AugmentedCapillaryHodgeProjector`
+removes only pressure/component reactions.  `CorrectorSignLock` checks energy
+power, and `ReinitEnergyLedger` keeps profile projection work separate.
+
+The code should be introduced in proof-sized slices:
+
+```text
+1. stratum + geometry finite-difference diagnostics,
+2. transport VJP dot-product diagnostics,
+3. Riesz cochain work diagnostics,
+4. general multi-component augmented projection,
+5. explicit experimental runtime mode,
+6. ch14 static/dynamic/reinit-separated validation and visuals.
+```
+
+The first source commit should stop at slice 1.  It cannot change production
+physics, and it locates failures in the geometry layer before PPE signs,
+projection rank, or Rayleigh phase are involved.
+
 ## Final Policy
 
 The discretization is settled when the solver can state and verify:
