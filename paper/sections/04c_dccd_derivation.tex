@@ -105,7 +105,7 @@ $1-\varepsilon_d\xi^2$ を与える．
 この対応は定数係数・一様格子・1 ステップ 1 回の post-filter に限る．
 式~\eqref{eq:dccd_filter_transfer} はその低波数極限を，
 直流成分を保ち，Nyquist モードを $4\varepsilon_d$ で抑える
-波数選択的な実装形へ置き換えたものである．
+波数選択的な評価形へ置き換えたものである．
 
 % -------------------------------------------------------------------------------
 \subsubsection{半離散 Fourier 安定性}
@@ -135,42 +135,44 @@ Nyquist $\xi=\pi$ で有限正値 $m_{\text{eq}}(\pi)=48/5=9.6$
 \end{equation}
 等号は $k=0$（直流）のみで成立．半離散系は非自明モードで無条件散逸．
 
-\noindent\textbf{Post-filter 形での実装条件．}
+\noindent\textbf{Post-filter 形での適用条件．}
 本稿の DCCD は PDE 形ではなく\textbf{post-filter} 形
-$H(\xi) = 1 - 4\varepsilon_d\sin^2(\xi/2)$ で実装される（式~\eqref{eq:dccd_filter_transfer}）．
+$H(\xi) = 1 - 4\varepsilon_d\sin^2(\xi/2)$ で評価する（式~\eqref{eq:dccd_filter_transfer}）．
 フィルタ非負条件 $H(\xi)\ge 0$ から $\varepsilon_d\le 1/4$ が
 符号反転を起こさない単調減衰条件となる．
 定係数周期格子で $\ell^2$ 非増幅だけを問えば
 $|H(\xi)|\le 1$ から $\varepsilon_d\le 1/2$ まで許されるが，
 $\varepsilon_d>1/4$ では高波数で符号が反転するため本稿では採用しない．
-§\ref{sec:cls_stages} で採用する $\varepsilon_d=1/4$ はこの設計上限に相当する
-（過剰散逸を避けつつチェッカーボードを最大限に抑える設計値）．
+この $\varepsilon_d=1/4$ は節点中心 post-filter 単独での設計上限であり，
+標準 CLS 移流に採用する値ではない．
+CLS $\psi$ の標準輸送は §\ref{sec:advection_motivation} の
+FCCD 保存形面フラックスで閉じる．
 
 % -------------------------------------------------------------------------------
-\subsubsection{6 つの反論への回答}
+\subsubsection{主張範囲と適用条件}
 \label{sec:dccd_rebuttals}
 % -------------------------------------------------------------------------------
 
-以下の 6 反論に対し，本構成は回避または明示的にスコープアウトする：
+本構成が主張する範囲を以下に固定する：
 
-\begin{enumerate}[label=\textbf{CA-\arabic*.}]
-\item \textbf{定数 $\varepsilon$ の精度低下．}
+\begin{enumerate}[label=\textbf{D-\arabic*.}]
+\item \textbf{定数 $\varepsilon$ の精度低下は spectral post-filter で分離する．}
       §\ref{sec:dccd_spectral_filter} の波数選択的フィルタが解決．
-\item \textbf{境界付き領域での必要非十分性．}
+\item \textbf{境界付き領域では Fourier 解析を十分条件として使わない．}
       §\ref{sec:ccd_bc} の片側 Hermite 閉包が\textbf{十分条件プローブ}として機能する；
       ただし DCCD の有界域安定性は Fourier 解析だけからは結論しない．
       本稿では境界点を未フィルタに保つ設計と内部点ブロックの spectral bound を用い，
       厳密な Gustafsson--Kreiss--Sundstr\"om 安定性は主張範囲外とする．
-\item \textbf{境界行で $m_{\text{eq}}\ge 0$ 違反の可能性．}
+\item \textbf{境界行での $m_{\text{eq}}\ge 0$ は別途閉包設計に依存する．}
       壁近傍の境界行設計（Option III/IV による置換）は
       §\ref{sec:grid} 章の境界処理で論じる．
-\item \textbf{半離散 $\Re\lambda\le 0$ と完全離散 RK 安定性の齟齬．}
+\item \textbf{完全離散安定性は時間積分子の安定領域と併記する．}
       TVD-RK3 の虚軸安定領域 $|\Im\lambda|\Delta t\le\sqrt{3}$ を介した CFL により，
       中程度 $\varepsilon\lesssim 0.1$ で標準 CFL に帰着．
-\item \textbf{非線形・多次元・可変係数への拡張可否．}
+\item \textbf{非線形・多次元・可変係数への拡張は検証対象とする．}
       線形解析は\textbf{必要条件プローブ}に過ぎない；
       後続の検証章（§\ref{sec:verify_summary}）で確認対象とし，本節では十分条件として主張しない．
-\item \textbf{大 $\varepsilon$ の放物型時間刻み制約．}
+\item \textbf{大 $\varepsilon$ の放物型時間刻み制約を避ける．}
       適応スイッチ $S(\psi)=(2\psi-1)^2$ が散逸を bulk に局在化させ，
       $\varepsilon_d\le 0.05$ の弱フィルタ設定で非拘束．
 \end{enumerate}
@@ -273,7 +275,7 @@ $C^0$ tanh プロファイルの節点中心比較経路
 低波数精度も同率で劣化する．
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{適応散逸制御則と実装アルゴリズム}
+\subsubsection{適応散逸制御則と節点中心評価手順}
 \label{sec:dccd_adaptive}
 % ─────────────────────────────────────────────────────────────────────────────
 
@@ -312,7 +314,7 @@ $0\le 1+\mu\le1$ であり，定数係数の場合と同じ
 標準 $\ell^2$ 収縮を主張する場合は，対称保存形フィルタまたは
 別途のノルム評価が必要である．
 
-\begin{tcolorbox}[algbox, title={適応 Dissipative-CCD フィルタの実装アルゴリズム}]
+\begin{tcolorbox}[algbox, title={適応 Dissipative-CCD フィルタの節点中心評価手順}]
 \label{alg:dccd}
 \textbf{入力：} スカラー場 $f$ の格子値 $\{f_i\}$，CLS 変数 $\{\psi_i^n\}$，散逸強度 $\varepsilon_{d,\max}$
 
@@ -364,7 +366,7 @@ $f''_{xx}, f''_{yy}, f''_{xy}$ に対しても同様に適用する．
 \noindent\textbf{適用範囲の制限．}
 $\varepsilon_d^{(i)} = \varepsilon_{d,\max}(2\psi_i-1)^2$ という適応制御は
 $S(\psi)$ が界面で消失する性質を持ち，
-DCCD フィルタを\textbf{界面帯外に限定して適用}する自然な実装となっている．
+DCCD フィルタを\textbf{界面帯外に限定して適用}する自然な構成となっている．
 均衡条件に依存する物理量（圧力場・毛管圧など）への適用可否は
 スキーム設計の問題ではなく用途章で扱う離散整合性の問題であるため，
 本節では取り扱わない．
