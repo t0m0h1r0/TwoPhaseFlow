@@ -48,13 +48,13 @@ U5-b & $\delta_\varepsilon$ vs $h$ scaling（$c=\varepsilon/h$ 最適性）& $c 
 \multicolumn{5}{l}{\textbf{Tier IV：圧力ソルバ}} \\
 \midrule
 U6-a & DC $\omega$ route guard（$\rho_l \in \{1,100,1000\}$, $k\in\{2,3\}$, $\omega \in \{0.2..0.9\}$） & $\rho_l=1$ clean，高密度比一括 PPE は保証対象外 & $\rho_l=1$: $5.19\!\times\!10^{-5}$；高密度比は残差改善しても分相 PPE+HFE へ切替 & \checkmark guard \\
-U6-b & HFE 1D step extension  & $\Ord{h^6}$              & $\Ord{h^{5.91}}$（1D）   & \checkmark \\
-U6-b & HFE 2D band 診断       & 幾何込み条件付き & effective slope max $11.35$ / med $8.72$ & \checkmark \\
+U6-b1 & HFE 1D step extension  & $\Ord{h^6}$              & $\Ord{h^{5.91}}$（1D）   & \checkmark \\
+U6-b2 & HFE 2D band 診断       & 幾何込み条件付き & effective slope max $11.35$ / med $8.72$ & \checkmark \\
 \midrule
 \multicolumn{5}{l}{\textbf{Tier V：界面--圧力結合}} \\
 \midrule
-U7-a & 縮約 BF 整合：$j_{gl}=-\sigma\kappa_{lg}$ vs 計算値 & $N\ge64$ で ${<}3\%$ & $0.61\%$（$N=128$） & \checkmark \\
-U7-a & BF mismatch one-step 負対照 & 合格経路ではなく判別力の低さを示す & FD2 mismatch でも $N\ge64$ で ${<}3\%$ に見えるため長時間 V5 へ送る & $\bullet$ \\
+U7-a1 & 縮約 BF 整合：$j_{gl}=-\sigma\kappa_{lg}$ vs 計算値 & $N\ge64$ で ${<}3\%$ & $0.61\%$（$N=128$） & \checkmark \\
+U7-a2 & BF mismatch one-step 負対照 & 合格経路ではなく判別力の低さを示す & FD2 mismatch でも $N\ge64$ で ${<}3\%$ に見えるため長時間 V5 へ送る & $\bullet$ \\
 U7-b & face $\mu$ 補間 3 種 & $\Ord{h^2}$ 安定    & $1.91/1.81/1.91$       & \checkmark \\
 \midrule
 \multicolumn{5}{l}{\textbf{Tier VI：時間積分}} \\
@@ -71,7 +71,8 @@ U9   & DCCD-on-pressure 違反   & 差分誤差 $\Ord{h^2}$    & $L_\infty^{\mat
 \multicolumn{5}{p{0.95\linewidth}}{\footnotesize
 $\triangle$ の類型——
 \checkmark: 設計精度達成，$\bullet$: negation 成立（規則違反量が予測通り発散；合格扱い），$\times$: 未達（本章では該当なし）．
-本表は Tier 順で配置する（24 サブテスト；U6-b は 1D / 2D で 2 行に分割；U7-a も match / mismatch で 2 行に分割）．
+本表は Tier 順で配置する（24 サブテスト；親テスト U6-b は U6-b1/U6-b2，親テスト U7-a は U7-a1/U7-a2 として
+表内で一意に引用できる枝番へ分割）．
 U6 の一括 PPE 高密度比 sweep は保証対象 primitive ではないため本成果表から除外し，U6 本文では分相 PPE+HFE を必要とする route guard として扱う．
 U7-a mismatch は負対照であり，FD2 を合格経路として採用しない．
 }

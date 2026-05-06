@@ -243,12 +243,10 @@ V10-a は二つの \emph{独立} な観測軸に分けて評価する：
         shape $L^1 = 8.307\times 10^{-3}$．Zalesak slot 幅 $0.05$ に対し
         $N=128$ で slot/h $= 6.4$，$\varepsilon=1.5h$ が slot 幅の $24\%$ を
         占めるため，corner smearing は $\varepsilon$ と $h$ の両方で律速される．
-        追加診断では smooth disk 対照が centroid err $5.461\times10^{-3}$,
-        shape $L^1=3.877\times10^{-3}$ を示し，slot は shape $L^1$ を約 2 倍へ
-        増やすが centroid 誤差の唯一原因ではない．mass correction 無効化は
-        mass drift を $1.464\%$ へ悪化させても shape $L^1=8.375\times10^{-3}$ と
-        ほぼ不変，CFL 半減も shape $L^1=8.313\times10^{-3}$ と不変であるため，
-        支配因子は時間積分や補正 cadence ではなく，固定一様格子上の steep CLS
+        smooth disk 対照および mass-correction/CFL 分離診断は，
+        slot が shape $L^1$ を増やす一方で centroid 誤差の唯一原因ではなく，
+        時間積分や補正 cadence も支配因子ではないことを示す．
+        支配因子は固定一様格子上の steep CLS
         空間移流・thresholded geometry・slot/corner 解像度の複合である．これは
         Type-D（連続方程式・離散構造に由来する理論的 hard limit）として
         表~\ref{tab:V_verdict_types} に分類される．
@@ -315,15 +313,9 @@ V10-a と同じく二軸分離評価を行う（§\ref{sec:verification}
         $2.248\times10^{-2}$ には正式 criterion が存在しない．
         $T=8$ は Rider--Kothe 1998 標準 $T=2$~\cite{RiderKothe1998,LeVeque1996}
         の \emph{4 倍のストレス} 領域で実施しており，最大変形時 ($t=T/2$) には
-        folded filament が grid-scale まで薄くなる．追加診断では thresholded
-        area/perimeter 幅 proxy が $N=64$ で $T=1,2,4,8$ に対し
-        $6.19h,3.81h,2.01h,1.62h$ と低下し，対応する reversal $L^1$ は
-        $1.672\times10^{-3},2.227\times10^{-3},1.213\times10^{-2},
-        5.013\times10^{-2}$ へ増加した．$N=128$ でも $T=2,4,8$ は
-        $9.860\times10^{-4},4.324\times10^{-3},2.248\times10^{-2}$ と
-        同じ傾向を示す．さらに no-reinit は mass drift $42.3\%$，reinit every step は
-        $L^1=6.055\times10^{-2}$，CFL 半減は $L^1=5.294\times10^{-2}$ であり，
-        reinit/correction/time-step の小変更では形状復元を救えない．
+        folded filament が grid-scale まで薄くなる．
+        $T$ sweep，reinitialization cadence，mass correction，CFL の分離診断はいずれも，
+        形状復元誤差が時間刻みや補正頻度ではなく filament 幅の grid-scale 化に連動することを示す．
         これは grid-scale filament tracking の理論的下限であり，
         Eulerian-only 固定格子では PLS / AMR / moving mesh
         ~\cite{EnrightFedkiwFerzigerMitchell2002} 級の物理モデル拡張なしには

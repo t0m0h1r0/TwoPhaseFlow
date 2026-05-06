@@ -114,7 +114,7 @@ ridge-eikonal reinitialization は全 step で有効化する．
 \begin{table}[!ht]
 \caption{V7：range-projected pressure-jump stack の二相時間精度診断}
 \label{tab:V7_imex_bdf2_time}
-\PaperCaptionNote{参照は $n_{\mathrm{ref}}=64$．capillary range projection を含む最新 stack で再実行した結果，最終 halving の観測 slope は $\mathbf{1.59}$ となる．純粋な 2 次には未達だが，補助分離検証では BDF2 係数ではなく pressure-jump coupled-stack が支配因子であることを確認した．連続比は誤差 $\|e\|_\infty$ の直前行に対する比（$e^{(i-1)} / e^{(i)}$）であり，全 halving が $\Delta t$ ratio $= 2$ のため slope $= \log_2(\text{連続比})$．}
+\PaperCaptionNote{参照は $n_{\mathrm{ref}}=64$．capillary range projection を含む range-projected pressure-jump stack での最終 halving の観測 slope は $\mathbf{1.59}$ となる．純粋な 2 次には未達だが，分離診断は BDF2 係数ではなく pressure-jump coupled-stack が支配因子であることを示す．連続比は誤差 $\|e\|_\infty$ の直前行に対する比（$e^{(i-1)} / e^{(i)}$）であり，全 halving が $\Delta t$ ratio $= 2$ のため slope $= \log_2(\text{連続比})$．}
 \centering\small
 \begin{tabular}{r r r r}
 \toprule
@@ -134,36 +134,21 @@ $n_{\mathrm{step}}$ & $\Delta t$ & $\|e\|_\infty$ & 連続比 \\
 \includegraphics[width=0.92\linewidth]{figures/ch13_v7_imex_bdf2_time.pdf}
 \caption{V7：IMEX-BDF2 二相時間精度}
 \label{fig:V7_imex_bdf2_time}
-\PaperCaptionNote{Range-projected pressure-jump stack 全体での参照解差を log-log 表示する．capillary range projection 後の最終 halving では slope $1.59$ となり，粗い時間刻みでは range-projected capillary pressure-jump / affine FCCD projection の界面帯誤差が支配する．}
+\PaperCaptionNote{Range-projected pressure-jump stack 全体での参照解差を log-log 表示する．capillary range projection 後の最終 halving では slope $1.59$ となり，range-projected capillary pressure-jump / affine FCCD projection の界面帯誤差が実効次数を支配する．}
 \end{figure}
 
 \paragraph{判定と制約条件．}
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item 観測された最終局所 slope は $\mathbf{1.59}$．BDF2 単体の $2.00$ には届かないが，
         capillary coupled-stack の実効次数として $1.5$ 近傍に位置する．
-  \item \textbf{補助分離検証（capillary pressure-jump/projection 界面帯律速）}：
-    補助検証で $n_{\mathrm{ref}}=128$ とし，
-    再初期化 cadence，界面輸送，表面張力，二相係数を分離した．結果は，
-    参照解品質と reinit cadence が誤差定数を変える一方，支配因子は
-    range-projected capillary pressure-jump / affine FCCD projection の界面帯誤差であることを示す
-    （対照実験表は付録~\ref{app:v7_imex_bdf2_rca}）．
-    \begin{enumerate}\setlength{\itemsep}{0pt}
-      \item \textbf{参照解品質}：capillary range projection 後の $n_{\mathrm{ref}}=64$ では
-            finest slope $1.59$．$n_{\mathrm{ref}}=128$ の対照でも each-step reinit の
-            finest slope は同じく $1.59$ 近傍に留まり，2 次には戻らない．
-      \item \textbf{再初期化 cadence}：reinit 回数を全 run で 3 回に固定しても
-            slope $1.50$，再初期化なしでも $1.57$．cadence は誤差定数を変えるが
-            主因ではない．
-      \item \textbf{界面輸送 / Lie split}：界面輸送を止めた static-interface 対照でも
-            slope $1.58$，$n=64$ の velocity error は $1.87\times10^{-3}$．
-            したがって TVD-RK3/IMEX-BDF2 の Lie 分割は低次数の必要条件ではない．
-      \item \textbf{capillary jump}：同じ static-interface で $\sigma=0$ とすると
-            $n=64$ の velocity error は $6.83\times10^{-8}$ まで低下する．逆に
-            $\rho,\mu$ を一様化しても $\sigma=1$ なら $8.20\times10^{-3}$ と大きい．
-            これは range-projected capillary pressure-jump / projection が支配因子であることを示す．
-      \item \textbf{局在}：最大 velocity error は $\psi\simeq0.5$ の界面帯にあり，
-            bulk error は数桁小さい．体積 drift は round-off floor であり，質量保存誤差ではない．
-    \end{enumerate}
+  \item \textbf{分離診断（capillary pressure-jump/projection 界面帯律速）}：
+        参照解品質，再初期化 cadence，界面輸送，表面張力，二相係数を分離した補助診断では，
+        $n_{\mathrm{ref}}=128$ でも slope は $1.59$ 近傍に留まり，
+        界面輸送を止めても同程度の実効次数が残る．一方，$\sigma=0$ では velocity error が
+        数桁低下し，最大誤差は $\psi\simeq0.5$ の界面帯に局在する．
+        したがって支配因子は BDF2 係数や reinitialization cadence ではなく，
+        range-projected capillary pressure-jump / affine FCCD projection の界面帯誤差である
+        （対照実験表は付録~\ref{app:v7_imex_bdf2_rca}）．
   \item \textbf{Type-D 合格 ($\triangle$, capillary coupled-stack-limited)} —
         本稿では V7 を「BDF2 単体の純粋次数」ではなく「pressure-jump capillary stack 下の coupled-stack
         実効次数」として測定する diagnostic とする．
