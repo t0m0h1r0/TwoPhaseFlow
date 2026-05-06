@@ -770,7 +770,7 @@ def test_ch14_capillary_yaml_builds_solver():
     assert solver._hfe is not None
     assert isinstance(solver._transport, PsiDirectTransport)
     assert solver._interface_runtime.rebuild_freq == 1
-    assert solver._interface_runtime.reinit_every == 20
+    assert solver._interface_runtime.reinit_every == 1
     assert isinstance(solver._ppe_solver, PPESolverDefectCorrection)
     assert isinstance(solver._ppe_solver.operator, PPESolverFCCDMatrixFree)
     assert isinstance(solver._ppe_solver.base_solver, PPESolverFDDirect)
@@ -847,7 +847,7 @@ def test_ch14_rising_bubble_yaml_builds_solver():
     assert solver.LY == pytest.approx(2.0)
     assert isinstance(solver._transport, PsiDirectTransport)
     assert solver._interface_runtime.rebuild_freq == 1
-    assert solver._interface_runtime.reinit_every == 4
+    assert solver._interface_runtime.reinit_every == 1
     assert solver._advection_scheme == "fccd_flux"
     assert solver._convection_scheme == "uccd6"
     assert solver._convection_time_scheme == "imex_bdf2"
@@ -1075,8 +1075,8 @@ def test_ch14_capillary_yaml_uses_true_low_order_defect_base():
     assert cfg.run.ppe_dc_base_solver == "fd_direct"
     assert cfg.grid.bc_type == "periodic_wall"
     assert cfg.grid.grid_rebuild_freq == 1
-    assert cfg.grid.fitting_axes == (False, True)
-    assert cfg.grid.fitting_alpha_grid == (1.0, 2.0)
+    assert cfg.grid.fitting_axes == (True, True)
+    assert cfg.grid.fitting_alpha_grid == (2.0, 2.0)
     assert cfg.grid.wall_refinement_axes == (False, True)
     assert cfg.grid.wall_alpha_grid == (1.0, 1.3)
     assert cfg.grid.wall_eps_g_cells == (None, 4.0)
