@@ -47,4 +47,12 @@ Root fix: normalized those occurrences to `projection-native face closure`.
 
 ## Round 2 Findings
 
-Pending after Round 1 remediation.
+### MAJOR-6 — The conclusion chapter still contradicted the Chapter 13 latest values
+
+Evidence after Round 1: `paper/sections/15_conclusion.tex:173` still said `face-flux projection`; `:207` and `:313` still reported the old V6 pressure-correction diagnostic `2.006`; `:218` and `:333` still described V7 as `effective \Ord{\Delta t^{1.48}}`; `:305` still named V4 as `fixed-wall Galilean offset`; and `:319` tied V9 to a `§14 stack` rather than the Chapter 13 range-projected stack. These cross-paper summary rows would make a reader leave Chapter 13 with the corrected story and then encounter older values in the conclusion.
+
+Root fix: synchronized the conclusion to `projection-native face closure`, V7 slope `1.59`, current V6 stability/volume/speed diagnostics, `fixed-wall uniform-offset`, and the Chapter 13 `range-projected pressure-jump stack` wording for V9.
+
+## Round 3 Findings
+
+Pending after Round 2 remediation.
