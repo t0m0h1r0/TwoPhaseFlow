@@ -51,21 +51,23 @@ Operator-stack 診断 & range-projected pressure-jump/HFE/projection-native stac
 \end{table}
 
 \paragraph{演算子 stack の構成．}
-本章は reference operator stack の \emph{subset} を，
-各 V test の検証目的に応じて部分的に使用する縮約 (reduced) 路線を取る．
-Reference operator stack の構成は下記であり，各 V test では \paragraph{設定} 内で
-含有 operator を明記する．
+本章の最新二相標準は \textbf{range-projected pressure-jump stack} である．
+これは V6/V7/V9 で直接測る閉包であり，表面張力を CSF 体積力として予測段階へ入れず，
+pressure-jump 分相 PPE，HFE，DC，同一 $D_fA_fG_f$ face closure，
+capillary range projection，projection-native face closure，affine pressure-history faces で閉じる．
+各 V test では検証したい離散 identity に合わせてこの標準 stack の一部または対照縮約を使い，
+本文の \paragraph{設定} で含有 operator を明記する．
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item \textbf{interface transport}: FCCD flux-form (高次保存形)
   \item \textbf{convection}: UCCD6（6 次 upwind compact）
-  \item \textbf{curvature}: HFE（Heaviside-Flux-Embedded）
+  \item \textbf{curvature / extension}: Hermite Field Extension (HFE) による片側 Hermite 延長と曲率データ供給
   \item \textbf{PPE}: pressure-jump phase-separated FCCD PPE + defect correction (DC)
   \item \textbf{capillary Hodge closure}: capillary range projection
         （式~\eqref{eq:capillary_range_projection}）
-  \item \textbf{projection closure}: 同一 $D_fA_fG_f$ による速度補正・浮力残差・face-flux projection
+  \item \textbf{projection closure}: 同一 $D_fA_fG_f$ による速度補正・浮力残差・projection-native face closure
   \item \textbf{pressure history}: affine-jump IPC の履歴圧力を正準面加速度として保存・再利用
   \item \textbf{reinitialization}: Ridge--Eikonal（典型 $10$ step ごと）
-  \item \textbf{mass correction}: Olsson--Kreiss（典型 $10$ step ごと）
+  \item \textbf{volume closure}: 必要な CLS 移流診断で Olsson--Kreiss 型 mass correction を明示的に適用
   \item \textbf{time integration}: TVD-RK3（界面）+ IMEX-BDF2（運動量）
 \end{itemize}
 本章での縮約路線は次の四系統に大別される：
@@ -79,8 +81,7 @@ PPE + DC + capillary range projection + projection-native face closure + affine 
 (iv) \textbf{NS 非連成 CLS advection}（V10-a/b）— FCCD flux-form + TVD-RK3
 （+ Ridge--Eikonal 再初期化 + Olsson--Kreiss mass correction; momentum/PPE
 は含まない受動移流経路）．
-以下では (iii) を短く \textbf{range-projected pressure-jump stack} と呼ぶ．
-``reference stack'' はこの構成を含む上位集合を指す便宜名であり，
+以下では (iii) だけを \textbf{range-projected pressure-jump stack} と呼び，
 V6/V7/V9 の実測値は capillary range projection を有効化した同一 stack で読む．
 
 \paragraph{圧力出力の取り扱い．}
@@ -198,7 +199,7 @@ V1-a & 単相 TGV 空間 ($N{=}32,48,64$)    & \autoref{fig:V1_tgv}            &
 V1-b & 単相 TGV 時間 (standard PPE)    & \autoref{fig:V1_tgv}            & $E_{\mathrm{rel}}$ slope (dt) & \checkmark Type-A \\
 V2 & Kovasznay CCD 空間残差            & \autoref{fig:V2_kovasznay}       & $\|R\|_\infty$ slope (h) & \checkmark Type-A \\
 V3 & 静止液滴 long-term (200 step)    & \autoref{fig:V3_droplet}         & $u_\infty^{\mathrm{max}}$, $\Delta p_{\mathrm{rel}}$ & \checkmark \\
-V4 & fixed-wall Galilean offset 残差 & \autoref{fig:V4_galilean_offset} & $\|\Delta u\|_\infty/\|\bU\|$ & \checkmark Type-A \\
+V4 & fixed-wall uniform-offset 残差 & \autoref{fig:V4_galilean_offset} & $\|\Delta u\|_\infty/\|\bU\|$ & \checkmark Type-A \\
 V5 & 寄生流れ multistep ($\rho_r$/op) & \autoref{fig:V5_spurious}        & $u_\infty^{\mathrm{end}}$ (CCD 主，FD 参照) & \checkmark Type-A \\
 V6 & 密度比収束 ($\rho_r=2..833$)      & \autoref{fig:V6_density_ratio}   & $u_\infty^{\mathrm{end}}$, $|\Delta V_\psi|/V_{\psi,0}$ & \checkmark \\
 V7 & IMEX-BDF2 二相時間精度            & \autoref{fig:V7_imex_bdf2_time}  & $\|e\|_\infty$ slope ($\Delta t$) & $\triangle$ Type-D \\
@@ -214,14 +215,14 @@ V10-b & 単一渦 reversal ($\alpha=1$, $T=8$) & \autoref{fig:V10_single_vortex}
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item \autoref{sec:single_phase_ns}：V1 (TGV エネルギー減衰) + V2 (Kovasznay CCD 空間収束)．
   \item \autoref{sec:twophase_static_verification}：V3 (静止液滴 long-term) + V5 (寄生流れ multistep)．
-  \item \autoref{sec:galilean_offset}：V4 (Galilean offset 残差)．
+  \item \autoref{sec:galilean_offset}：V4 (fixed-wall uniform-offset 残差)．
   \item \autoref{sec:varrho_dc_convergence}：V6 (密度比 sweep) + V7 (IMEX-BDF2 二相時間精度)．
   \item \autoref{sec:nonuniform_grid_ns}：V8 (非一様 NS 静止) + V9 (nominal/local $\varepsilon$ switch) + V10 (一様格子 Zalesak / 単一渦 CLS 移流)．
   \item \autoref{sec:error_budget}：V1--V10 横断の精度バジェット総合．
 \end{itemize}
 本文配置順は表~\ref{tab:V_summary}・表~\ref{tab:v_accuracy_summary} の
 V 番号順とは一部異なる（V3 と V5 は同じ BF 静止液滴設定を共有するため
-\autoref{sec:twophase_static_verification} 内に連続配置し，V4 (Galilean offset)
+\autoref{sec:twophase_static_verification} 内に連続配置し，V4 (fixed-wall uniform-offset)
 は別の固定 wall 流入配置を持つため \autoref{sec:galilean_offset} に独立配置；
 読み順は V3$\to$V5$\to$V4 となる）．
 
