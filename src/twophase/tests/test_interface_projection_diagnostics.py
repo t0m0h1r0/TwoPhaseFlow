@@ -90,6 +90,40 @@ def test_capillary_face_cochain_diagnostics_exposes_divergence_small_face_large(
     assert diag["capillary_range_projection_solved"] == pytest.approx(0.0)
 
 
+def test_capillary_face_cochain_diagnostics_reports_weighted_hodge_norms():
+    backend = Backend(use_gpu=False)
+    xp = backend.xp
+    faces = [xp.asarray([[3.0, 4.0]])]
+    projection = [xp.asarray([[1.0, 1.0]])]
+    hodge = [faces[0] - projection[0]]
+    weights = [xp.asarray([[2.0, 8.0]])]
+
+    class ZeroDivergence:
+        def divergence_from_faces(self, face_components):
+            return xp.zeros((1, 2))
+
+    diag = capillary_face_cochain_diagnostics(
+        xp=xp,
+        backend=backend,
+        div_op=ZeroDivergence(),
+        face_components=hodge,
+        capillary_jump_components=faces,
+        range_projection_components=projection,
+        hodge_residual_components=hodge,
+        face_weight_components=weights,
+    )
+
+    assert diag["capillary_jump_weighted_l2"] == pytest.approx(
+        np.sqrt(3.0 * 3.0 * 2.0 + 4.0 * 4.0 * 8.0)
+    )
+    assert diag["capillary_range_projection_weighted_l2"] == pytest.approx(
+        np.sqrt(1.0 * 1.0 * 2.0 + 1.0 * 1.0 * 8.0)
+    )
+    assert diag["capillary_hodge_weighted_l2"] == pytest.approx(
+        np.sqrt(2.0 * 2.0 * 2.0 + 3.0 * 3.0 * 8.0)
+    )
+
+
 def test_capillary_jump_range_projection_restores_solver_and_removes_range_part():
     xp = np
     rho = xp.ones((2, 2))
