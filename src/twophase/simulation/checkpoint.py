@@ -336,7 +336,7 @@ def _capture_results(
             "psi_after_transport_before_reinit",
             "psi_after_reinit",
         ):
-            if field in snapshots[0]:
+            if all(field in snap for snap in snapshots):
                 arrays[f"snapshots/{field}"] = np.stack(
                     [np.asarray(snap[field]) for snap in snapshots], axis=0
                 )

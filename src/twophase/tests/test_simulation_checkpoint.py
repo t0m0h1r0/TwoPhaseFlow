@@ -217,6 +217,40 @@ def test_checkpoint_roundtrip_restores_solver_runtime_state(tmp_path):
     assert state["debug_history"] == [{"kappa_max": 1.0}]
 
 
+def test_checkpoint_skips_partial_endpoint_snapshot_fields(tmp_path):
+    config = tmp_path / "cfg.yaml"
+    _write_config(config)
+    path = tmp_path / "checkpoint_final.npz"
+    solver = _solver()
+
+    save_checkpoint(
+        path,
+        solver=solver,
+        psi=np.ones((3, 3)),
+        u=np.zeros((3, 3)),
+        v=np.zeros((3, 3)),
+        p=np.zeros((3, 3)),
+        t=0.25,
+        step=2,
+        config_path=config,
+        snapshots=[
+            {
+                "t": 0.125,
+                "psi": np.ones((3, 3)),
+                "psi_before_transport": np.zeros((3, 3)),
+            },
+            {"t": 0.25, "psi": np.ones((3, 3))},
+        ],
+    )
+
+    restored_solver = _solver()
+    state = load_checkpoint(path, solver=restored_solver, config_path=config)
+
+    assert len(state["snapshots"]) == 2
+    assert "psi_before_transport" not in state["snapshots"][0]
+    assert "psi_before_transport" not in state["snapshots"][1]
+
+
 def test_checkpoint_wall_contacts_roundtrip_as_binary_float_arrays(tmp_path):
     config = tmp_path / "cfg.yaml"
     _write_config(config)

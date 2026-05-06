@@ -48,7 +48,7 @@ def _add_snapshot_series(flat: dict, snaps) -> None:
         "psi_after_transport_before_reinit",
         "psi_after_reinit",
     ):
-        if field in snaps[0]:
+        if all(field in snap for snap in snaps):
             flat[f"fields/{field}"] = np.stack(
                 [np.asarray(snap[field]) for snap in snaps], axis=0,
             )

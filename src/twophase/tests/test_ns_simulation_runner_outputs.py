@@ -71,6 +71,28 @@ def test_snapshot_fields_are_saved_as_npz_series():
     assert flat["fields/grid_coords/0"].tolist() == [0.0, 1.0]
 
 
+def test_partial_endpoint_snapshot_fields_are_not_stacked():
+    runner = _load_ns_simulation_runner()
+    flat = {}
+    snaps = [
+        {
+            "t": 0.0,
+            "psi": np.zeros((2, 2)),
+            "psi_before_transport": np.zeros((2, 2)),
+            "psi_after_transport_before_reinit": np.ones((2, 2)),
+            "psi_after_reinit": np.ones((2, 2)),
+        },
+        {"t": 0.5, "psi": np.ones((2, 2))},
+    ]
+
+    runner._add_snapshot_series(flat, snaps)
+
+    assert "fields/psi" in flat
+    assert "fields/psi_before_transport" not in flat
+    assert "fields/psi_after_transport_before_reinit" not in flat
+    assert "fields/psi_after_reinit" not in flat
+
+
 def test_snapshot_fields_reconstruct_plot_snapshots():
     runner = _load_ns_simulation_runner()
     results = {
