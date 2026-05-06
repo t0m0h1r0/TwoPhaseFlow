@@ -580,6 +580,60 @@ the full trace/Riesz cochain `s=-M_f^{-1}T^Td(sigma S_h)^T` is still required:
 the current scalar face-implicit curvature cochain is not yet proven to be
 the discrete surface-energy gradient.
 
+## 9. Long Validation and Physical Reading
+
+The later N32/T10 and N32/T20 runs answer whether the visually plausible
+oscillation should be accepted as physics.  The answer is mixed: the
+component-augmented mode fixes the algebraic zero-drive theorem failure, but
+the dynamic phase and the reinit coupling are not yet correct enough to close
+the capillary-force theory.
+
+Static droplet, reinit disabled, `T=1`:
+
+| N | final KE | max KE | max snapshot speed | max corrected Hodge weighted L2 | max volume drift |
+|---:|---:|---:|---:|---:|---:|
+| 16 | `1.490637e-07` | `1.490637e-07` | `9.070593e-05` | `8.428385e-04` | `1.223563e-15` |
+| 32 | `5.284015e-09` | `5.284015e-09` | `2.492200e-05` | `2.814614e-04` | `1.903440e-15` |
+| 64 | `1.138320e-09` | `2.542873e-09` | `1.941430e-05` | `5.893873e-04` | `3.159875e-15` |
+
+The static droplet is volume-stable and nearly still, but the corrected Hodge
+residual does not decrease monotonically with resolution.  This blocks any
+claim that the current scalar face-implicit curvature cochain is already the
+transport-adjoint Riesz representative of surface energy.
+
+Oscillating droplet, `N=32`:
+
+```text
+T=10, reinit every step:
+  signed deformation              7.617534e-02 -> -2.124984e-02
+  Rayleigh-Lamb reference at t=10 -7.874146e-03
+  first zero crossing             7.578596
+  reference first zero crossing   9.381529
+  final/max KE                    2.174340e-03 / 3.512706e-03
+  max corrected Hodge L2          9.018738e-02
+
+T=10, reinit disabled:
+  signed deformation              7.617534e-02 -> 2.310884e-02
+  first zero crossing             none by t=10
+  final/max KE                    5.889060e-04 / 6.247928e-04
+  max corrected Hodge L2          7.263806e-03
+
+T=20, reinit disabled:
+  signed deformation              7.617534e-02 -> -2.228711e-02
+  Rayleigh-Lamb reference at t=20 -7.454746e-02
+  first zero crossing             13.393564
+  reference first zero crossing   9.381529
+  final/max KE                    4.117141e-05 / 6.247928e-04
+```
+
+Thus the pressure and velocity fields are qualitatively coherent, but the
+phase evidence is decisive.  Reinit every step advances the zero crossing and
+amplifies energy/Hodge norms; no-reinit dynamics cross too late and are too
+damped by `T=20`.  The remedy is not damping, CFL retuning, curvature
+smoothing, caps, or another projection of the force into the pressure range.
+The remedy is to finish the fixed-stratum virtual-work cochain and to record
+the physical transport endpoint separately from the reinit endpoint.
+
 ## Final Policy
 
 The discretization is settled when the solver can state and verify:

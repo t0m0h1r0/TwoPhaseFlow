@@ -245,6 +245,51 @@ obligation, not a tuning target: it says the current scalar face-implicit
 curvature cochain is still not the full transport-adjoint surface-energy
 Riesz representative.
 
+## Long Validation Note
+
+The N32/T10 and N32/T20 validation separates three questions:
+
+```text
+1. Does the old zero-drive failure remain?          no
+2. Is the static component reaction fully silent?  not yet at theorem level
+3. Does the dynamic phase match Rayleigh-Lamb?     not yet
+```
+
+For the static droplet, `N=16,32,64` at `T=1` gave:
+
+| N | final KE | max KE | max snapshot speed | max corrected Hodge weighted L2 | max volume drift |
+|---:|---:|---:|---:|---:|---:|
+| 16 | `1.490637e-07` | `1.490637e-07` | `9.070593e-05` | `8.428385e-04` | `1.223563e-15` |
+| 32 | `5.284015e-09` | `5.284015e-09` | `2.492200e-05` | `2.814614e-04` | `1.903440e-15` |
+| 64 | `1.138320e-09` | `2.542873e-09` | `1.941430e-05` | `5.893873e-04` | `3.159875e-15` |
+
+The kinetic leakage improves strongly, but the corrected Hodge residual is
+not monotone in `N`.  This means the current component-augmented scalar
+cochain is a useful first slice, not a proof that the force is exactly
+`T_h^* dS_h`.
+
+For the oscillating droplet, reinit changes the physics-level judgement.  With
+reinit every step at `N=32,T=10`, the first signed-deformation zero crossing
+is `7.578596`, earlier than the Rayleigh-Lamb reference `9.381529`, and the
+max corrected Hodge weighted L2 reaches `9.018738e-02`.  With reinit disabled,
+there is no zero crossing by `T=10`; by `T=20`, the first zero crossing is
+`13.393564`, later than the same reference, and the final signed deformation
+is `-2.228711e-02` while the reference is `-7.454746e-02`.
+
+Therefore the visually coherent pressure/velocity snapshots are not enough to
+accept the method as final.  The old algebraic freeze is fixed, but the
+remaining physical error is phase/amplitude fidelity and reinit work
+contamination.  The next accepted route remains the fixed-stratum
+transport-adjoint Riesz cochain:
+
+```text
+s = -M_f^{-1} T^T d(sigma S_h)^T
+B =  M_f^{-1} T^T [dV_m]^T
+```
+
+and a stored `q^n -> q_T -> q^{n+1}` ledger that separates capillary transport
+from reinitialization.
+
 ## Full Implementation Target
 
 The full implementation should expose:
