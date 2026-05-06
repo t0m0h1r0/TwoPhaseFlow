@@ -913,6 +913,42 @@ deformation at `t=4` is `2.894198501011e-02` versus the canonical
 Rayleigh-Lamb overlay value `0.10 cos(0.167435*4)≈7.838e-02`.  Thus the
 longer gate confirms motion but not final phase/amplitude correctness.
 
+## 15. Riesz Verification Slice
+
+The central proof slice now exists as diagnostics:
+
+```text
+src/twophase/coupling/closed_interface_riesz.py
+src/twophase/tests/test_closed_interface_riesz.py
+```
+
+It constructs
+
+```text
+T(u) = -D_f(psi_f u_f)
+s    = -M_f^{-1} T^T d(sigma S_h)^T
+B    =  M_f^{-1} T^T dV_h^T
+```
+
+and uses a dense diagnostic Hodge projection onto
+`range(M_f^{-1}D_f^T)`.  The virtual-work identity passes on a fixed
+stratum: an N12 ellipse gives finite difference
+`-3.550367776828e+01`, gradient action `-3.550367702084e+01`, capillary
+power `3.550367702084e+01`, and Riesz residual `0`.
+
+The static gate fails.  After best component-volume reaction removal, a
+nearly round circle retains component Hodge residuals around
+`1.786111893948e-02` to `4.583342999469e-02` for N10--N24, with
+divergence-free residuals under the same dense `D_f` solve.  Ellipses retain
+the expected nonzero dynamic drive, but the circle failure blocks production
+acceptance.
+
+Therefore the current conservative indicator transport
+`T(u)=-D_f(psi_f u_f)` is a valid Riesz law for its own transport map, but not
+the final capillary law for sharp fixed-stratum geometry.  The next candidate
+must differentiate the actual zero-crossing trace vertices under face
+velocities and then re-run the same virtual-work/static/dynamic gates.
+
 ## Final Policy
 
 The discretization is settled when the solver can state and verify:

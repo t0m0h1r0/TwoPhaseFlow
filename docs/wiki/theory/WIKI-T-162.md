@@ -596,6 +596,57 @@ strengthens the conclusion that the zero-drive pathology is gone, but the
 current scalar curvature-jump production cochain plus reinit-contaminated shape
 ledger is not yet final Rayleigh-Lamb physics.
 
+## Riesz Verification Slice
+
+`CHK-RA-CH14-RIESZ-VERIFY-001` implements the proof diagnostic layer:
+
+```text
+closed_interface_riesz.py
+test_closed_interface_riesz.py
+```
+
+The tested candidate is
+
+```text
+T(u) = -D_f(psi_f u_f)
+s    = -M_f^{-1} T^T d(sigma S_h)^T
+B    =  M_f^{-1} T^T dV_h^T
+```
+
+with Hodge projection performed by a dense diagnostic matrix for the same
+`D_f` and `M_f`.  The result is split:
+
+```text
+Riesz virtual work:        PASS
+static Young-Laplace gate: FAIL
+dynamic nonzero gate:      PASS
+```
+
+For an N12 ellipse, the fixed-stratum virtual-work check gives:
+
+```text
+finite_difference    -3.550367776828e+01
+gradient_action      -3.550367702084e+01
+capillary_power       3.550367702084e+01
+Riesz residual        0
+```
+
+Thus `d(sigma S_h)[T(u)] + <s,u>_M = 0` is algebraically correct for the
+chosen transport map.
+
+However, a nearly round circle does not become a constrained critical point
+after component-volume reaction removal.  For N10--N24, the circle residual
+stays at `1.786111893948e-02`--`4.583342999469e-02`, while the residual
+divergence is only `~1e-12` under the same Hodge solve.  This is not a PPE
+artifact.  It means the conservative nodal indicator transport map
+`-D_f(psi_f u_f)` is not the correct fixed-stratum trace transport
+differential for sharp zero-crossing geometry.
+
+This is a theorem-level negative result.  The next implementation candidate
+must use the VJP of the actual marching-squares trace vertices under face
+velocities, not damping, smoothing, CFL tuning, curvature caps, or projection
+deletion.
+
 ## Full Implementation Target
 
 The full implementation should expose:
