@@ -236,6 +236,30 @@ def masked_bulk_pressure(
     return np.where(bulk, pressure_arr, np.nan)
 
 
+def _draw_bulk_pressure_band_contours(
+    ax,
+    X: np.ndarray,
+    Y: np.ndarray,
+    psi: np.ndarray,
+    *,
+    gas_max_psi: float,
+    liquid_min_psi: float,
+    enabled: bool,
+) -> None:
+    """Draw the two mask thresholds that bound undefined interface pressure."""
+    if not enabled:
+        return
+    ax.contour(
+        X,
+        Y,
+        psi.T,
+        levels=[float(gas_max_psi), float(liquid_min_psi)],
+        colors="0.55",
+        linestyles="--",
+        linewidths=0.6,
+    )
+
+
 def pressure_bulk_snapshot(
     spec: dict,
     results: dict,
@@ -245,11 +269,13 @@ def pressure_bulk_snapshot(
     context = build_snapshot_plot_context(spec, results, cfg)
     grid = cfg.grid
     pressure = remap_snapshot_field(context, context.snap["p"])
+    gas_max_psi = float(spec.get("gas_max_psi", 0.05))
+    liquid_min_psi = float(spec.get("liquid_min_psi", 0.95))
     bulk_pressure = masked_bulk_pressure(
         pressure,
         context.psi,
-        gas_max_psi=float(spec.get("gas_max_psi", 0.05)),
-        liquid_min_psi=float(spec.get("liquid_min_psi", 0.95)),
+        gas_max_psi=gas_max_psi,
+        liquid_min_psi=liquid_min_psi,
     )
     title = spec.get("title", f"Bulk pressure at t = {context.t_val:.3f}")
     cmap = spec.get("cmap", "RdBu_r")
@@ -266,6 +292,15 @@ def pressure_bulk_snapshot(
     )
     if spec.get("colorbar", True):
         fig.colorbar(im, ax=ax, label="p (bulk phases)")
+    _draw_bulk_pressure_band_contours(
+        ax,
+        context.X,
+        context.Y,
+        context.psi,
+        gas_max_psi=gas_max_psi,
+        liquid_min_psi=liquid_min_psi,
+        enabled=bool(spec.get("bulk_band_contours", True)),
+    )
     if spec.get("contour", True):
         ax.contour(
             context.X, context.Y, context.psi.T, levels=[0.5], colors="k", linewidths=0.8

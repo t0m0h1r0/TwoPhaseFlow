@@ -74,6 +74,35 @@ def test_pressure_bulk_snapshot_renders_without_interface_values():
     plt.close(fig)
 
 
+def test_pressure_bulk_snapshot_marks_masked_band_boundaries():
+    cfg = SimpleNamespace(
+        grid=SimpleNamespace(LX=1.0, LY=1.0, NX=2, NY=2),
+    )
+    snap = {
+        "t": 0.0,
+        "psi": np.array(
+            [
+                [0.0, 0.05, 1.0],
+                [0.0, 0.50, 1.0],
+                [0.0, 0.95, 1.0],
+            ]
+        ),
+        "p": np.arange(9.0).reshape(3, 3),
+    }
+
+    fig = pressure_bulk_snapshot({"t_idx": 0}, {"snapshots": [snap]}, cfg)
+    assert len(fig.axes[0].collections) == 3
+    plt.close(fig)
+
+    fig = pressure_bulk_snapshot(
+        {"t_idx": 0, "bulk_band_contours": False},
+        {"snapshots": [snap]},
+        cfg,
+    )
+    assert len(fig.axes[0].collections) == 2
+    plt.close(fig)
+
+
 def test_phase_hodge_pressure_representative_recovers_same_phase_gradient():
     coords = [np.array([0.0, 1.0]), np.array([0.0, 1.0])]
     x, y = np.meshgrid(coords[0], coords[1], indexing="ij")
