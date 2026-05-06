@@ -80,6 +80,47 @@ $N$ & $h$ & $\Delta p_{\mathrm{meas}}$ & $|\Delta p_{\mathrm{rel}}|$ & $u_\infty
 検証対応：式~\eqref{eq:bf_fccd_unification} と \autoref{sec:csf} の曲率評価に対し，
 長時間の Laplace 圧維持と寄生流れ最大値を測定する．
 
+\paragraph{pressure-jump range projection による静止液滴 face-balance gate．}
+上の V3 は CSF/BF 縮約経路の長時間診断である．
+一方，水--空気級の production 経路では，表面張力を
+CSF 体積力ではなく §~\ref{sec:split_ppe_pressure_jump_formulation} の
+向き付き pressure-jump として閉じる．この経路の静止液滴平衡は，
+圧力差 $\Delta p=\sigma/r$ だけでなく，
+式~\eqref{eq:discrete_young_laplace_static_face_balance} の
+面ごとの $a_f^{\mathrm{range}}=0$ を満たす必要がある．
+したがって本稿では，§~\ref{sec:split_ppe_capillary_range_projection} の
+Hodge 閉包に対する短時間 gate を V3 の補助診断として追加する．
+
+\begin{table}[!ht]
+\caption{pressure-jump range projection：静止液滴 \texorpdfstring{$N=32,T=0.2$}{N=32,T=0.2} face-balance gate}
+\label{tab:V3_pressure_jump_range_gate}
+\PaperCaptionNote{水--空気物性，interface-fitted $\alpha=2$，periodic，pressure-jump affine PPE，Ridge--Eikonal every step，CFL 制御．Raw Hodge residual は式~\eqref{eq:capillary_hodge_gate} の原因診断であり，補正へ渡る実効 cochain は range projection 後の値で判定する．}
+\centering\small
+\begin{tabular}{l r}
+\toprule
+診断量 & 実測値 \\
+\midrule
+最終運動エネルギー $K(T)$ & $7.783\times10^{-38}$ \\
+体積 drift $|\Delta V|/V_0$ & $1.777\times10^{-15}$ \\
+補正後 $\|a_f^{\mathrm{range}}\|_{\infty,f}$ & $3.816\times10^{-17}$ \\
+$D_fa_f^{\mathrm{range}}$ residual & $4.028\times10^{-15}$ \\
+raw $\|c_f-\Pi_{\mathcal{R}_h}c_f\|_{\infty,f}$ & $1.139\times10^{-3}$ \\
+$\|D_h\bu\|_\infty$ & $1.282\times10^{-17}$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+表~\ref{tab:V3_pressure_jump_range_gate} は，
+PPE 残差だけでは検出できない divergence-free な毛管 cochain が
+raw 幾何ジャンプには存在すること（$1.139\times10^{-3}$）と，
+それを $D_f A_f G_f$ 値域へ射影した後は補正段階の実効 face acceleration が
+丸め誤差まで消えることを同時に示す．この結果は
+「静止液滴の KE 上昇は物理的毛管振動ではなく，
+pressure-jump cochain の Hodge 非勾配成分である」という
+§~\ref{sec:split_ppe_capillary_range_projection} の推論を支持する．
+ここで用いた修正は damping，CFL 縮小，曲率上限，平滑化ではなく，
+PPE と速度補正が共有する face 複体の値域条件である．
+
 \subsubsection{V5：CCD 勾配による寄生流れ抑制 — 長時間多ステップ診断}
 \label{sec:spurious_multistep}
 
