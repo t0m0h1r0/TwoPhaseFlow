@@ -194,9 +194,42 @@ FD/WENO/PPE fallback,
 benchmark-name branching.
 ```
 
-## Implementation Target
+## Component-Augmented Implementation Slice
 
-The first implementation should be diagnostic-only and expose:
+The first implemented production candidate is the one-component version of the
+augmented Hodge theorem.  It does not identify a shape as circular or
+elliptical.  It constructs the component reaction directly in the same
+face-cochain complex as the pressure jump:
+
+```text
+c      = current capillary jump cochain
+b      = unit constant component pressure-jump cochain
+h_c    = c - Pi_R c
+h_b    = b - Pi_R b
+beta   = <h_c,h_b>_M / <h_b,h_b>_M
+c_aug  = c - beta h_b
+```
+
+This is algebraically the projection onto `range(A G)+span(b)` because the
+range part of `b` is already in `range(A G)` and only `h_b` expands the
+pressure-range complement.  Consequences:
+
+```text
+static constant component reaction: h_c parallel h_b, so c_aug has no Hodge drive;
+resolved nonconstant mode: only the unit reaction component is removed;
+range_projected control: c -> Pi_R c remains a deletion of all Hodge drive.
+```
+
+The runtime mode is `capillary_range_projection: component_hodge_augmented`.
+It uses the same `D_f,A_f,G_f`, affine-jump coefficient, pressure history, and
+corrector face space as the production pressure stage.  It is still a first
+slice, not the final trace/Riesz construction, because the raw `c` must still
+be replaced by or verified against the full `s=-M_f^{-1}T^Td(sigma S_h)^T`
+object on a fixed trace stratum.
+
+## Full Implementation Target
+
+The full implementation should expose:
 
 ```text
 ClosedInterfaceStratum
