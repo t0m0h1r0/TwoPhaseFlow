@@ -21,7 +21,7 @@ from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
 from twophase.ppe.iim.jump_conditions import JumpConditionCalculator
 from twophase.ppe.iim.stencil_corrector import IIMStencilCorrector
-from twophase.ppe import PPESolverIIM
+from twophase.ppe.iim_solver import PPESolverIIM
 
 
 @pytest.fixture
@@ -35,7 +35,6 @@ def make_setup(N=16, backend=None, iim_backend="lu"):
     cfg = SimulationConfig(
         grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
         solver=SolverConfig(
-            ppe_solver_type="iim",
             iim_backend=iim_backend,
             pseudo_tol=1e-10,
             pseudo_maxiter=500,
@@ -342,7 +341,6 @@ class TestPPESolverIIMDecomp:
         cfg = SimulationConfig(
             grid=GridConfig(ndim=2, N=(N, N), L=(1.0, 1.0)),
             solver=SolverConfig(
-                ppe_solver_type="iim",
                 iim_mode="nearest", iim_backend="decomp",
                 pseudo_tol=1e-8, pseudo_maxiter=500, pseudo_c_tau=2.0,
             ),

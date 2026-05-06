@@ -1,7 +1,6 @@
-# Rayleigh-Lamb n=2 oscillating droplet benchmark derived from
-# ch14_static_droplet.yaml. The circular initial interface is replaced by
-# a true ellipse with semi-axes a=0.055, b=0.045. With water-air density and
-# sigma=0.811133, the area-equivalent radius sqrt(ab)=0.04975 gives T≈1.0.
+# Rayleigh-Lamb n=2 oscillating droplet benchmark on the ch14 base stack.
+# The true ellipse uses semi-axes a=0.275, b=0.225. With water-air density and
+# sigma=0.072, the area-equivalent radius sqrt(ab)=0.24875 gives T≈37.5.
 
 experiment:
   type: ellipse
@@ -18,12 +17,12 @@ grid:
         type: nonuniform
         monitors:
           interface:
-            alpha: 4.0
+            alpha: 2.0
       y:
         type: nonuniform
         monitors:
           interface:
-            alpha: 4.0
+            alpha: 2.0
 
 interface:
   thickness:
@@ -31,12 +30,14 @@ interface:
     base_factor: 1.5
   geometry:
     curvature:
-      method: psi_direct_filtered
-      cap: 40.0
+      # P2 reduced-ALE variational surface energy route: pressure-jump work
+      # uses a finite-step discrete gradient that accounts for the pre-remap
+      # fitted-grid surface energy.
+      method: transport_variational_p2_ale_discrete_gradient
   reinitialization:
     algorithm: ridge_eikonal
     schedule:
-      every_steps: 0
+      every_steps: 1
     profile:
       eps_scale: 1.4
       ridge_sigma_0: 3.0
@@ -49,15 +50,14 @@ physics:
     gas:
       rho: 1.2
       mu: 1.8e-5
-  surface_tension: 0.811133
+  surface_tension: 0.072
   gravity: 0.0
 
 run:
   time:
-    final: 1.5
-    # Period-one surface-tension forcing needs a stricter capillary CFL than
-    # the gentle static-droplet route.
-    cfl: 0.2
+    final: 40.0
+    # Multiplier on theory CFL constants; 1.0 uses the §7 CFL budget.
+    cfl: 1.0
     print_every: 200
   debug:
     step_diagnostics: false
@@ -86,7 +86,7 @@ numerics:
           kind: defect_correction
           tolerance: 1.0e-8
           corrections:
-            max_iterations: 3
+            max_iterations: 12
             relaxation: 0.8
       surface_tension:
         formulation: pressure_jump
@@ -102,7 +102,7 @@ numerics:
       solver:
         kind: defect_correction
         corrections:
-          max_iterations: 3
+          max_iterations: 12
           tolerance: 1.0e-8
           relaxation: 0.7
         base_solver:
@@ -124,7 +124,7 @@ output:
       ylabel: "$D_s(t)$"
       analytical:
         formula: prosperetti
-        omega0: 6.283185
+        omega0: 0.167435
         beta: 0.0
         D0: 0.10
       file: signed_deformation.pdf
@@ -168,7 +168,7 @@ initial_condition:
   objects:
     - type: ellipse
       center: [0.5, 0.5]
-      semi_axes: [0.055, 0.045]
+      semi_axes: [0.275, 0.225]
       interior_phase: liquid
 
 initial_velocity: null

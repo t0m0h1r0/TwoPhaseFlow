@@ -62,6 +62,7 @@ from .iterative_workflow import (
 )
 
 
+# DO NOT DELETE: C2-retained direct-import research reference; see docs/01_PROJECT_MAP.md §8.
 class PPESolverIterative(IPPESolver):
     """Configurable iterative PPE solver.
 
@@ -100,6 +101,13 @@ class PPESolverIterative(IPPESolver):
         method: str | None = None,
         bc_spec: "BoundarySpec | None" = None,
     ) -> None:
+        if getattr(backend, "is_gpu", lambda: False)():
+            raise NotImplementedError(
+                "PPESolverIterative is a host-only research/reference solver "
+                "and would move GPU fields to CPU. Select a GPU-native PPE "
+                "solver such as fvm_iterative/fd_iterative/fvm_direct, or run "
+                "this iterative toolkit explicitly on the CPU backend."
+            )
         self.xp = backend.xp
         self.backend = backend
         self.ndim = grid.ndim

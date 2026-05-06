@@ -5,14 +5,41 @@ Direct Geometric Reinitialization (DGR, WIKI-T-030) and Hybrid strategies.
 from __future__ import annotations
 from typing import TYPE_CHECKING
 
+import numpy as np
+
 from .interfaces import IReinitializer
 from .heaviside import heaviside, invert_heaviside
-from ..backend import scalar_value
 from ..core.boundary import boundary_axes, sync_periodic_image_nodes
 
 if TYPE_CHECKING:
     from ..ccd.ccd_solver import CCDSolver
     from ..backend import Backend
+
+
+def _band_median_or_default(xp, values, band, default):
+    """Return ``median(values[band])`` without a host scalar branch."""
+    values_flat = xp.asarray(values).ravel()
+    band_flat = xp.asarray(band, dtype=bool).ravel()
+    sorted_values = xp.sort(
+        xp.where(
+            band_flat,
+            values_flat,
+            xp.asarray(xp.inf, dtype=values_flat.dtype),
+        )
+    )
+    count = xp.sum(band_flat.astype(xp.int64))
+    indices = xp.arange(sorted_values.size)
+    lower = xp.maximum((count - 1) // 2, 0)
+    upper = xp.maximum(count // 2, 0)
+    zero = xp.asarray(0.0, dtype=values_flat.dtype)
+    lower_value = xp.sum(xp.where(indices == lower, sorted_values, zero))
+    upper_value = xp.sum(xp.where(indices == upper, sorted_values, zero))
+    median = 0.5 * (lower_value + upper_value)
+    return xp.where(
+        count > 0,
+        median,
+        xp.asarray(default, dtype=values_flat.dtype),
+    )
 
 
 class DGRReinitializer(IReinitializer):
@@ -36,6 +63,7 @@ class DGRReinitializer(IReinitializer):
         self.eps = eps
         self.phi_smooth_C = float(phi_smooth_C)
         self._bc_axes = boundary_axes(getattr(ccd, "bc_type", "wall"), grid.ndim)
+        self._h_min = float(min(np.min(grid.h[ax]) for ax in range(grid.ndim)))
 
     def reinitialize(self, psi):
         xp = self.xp
@@ -54,17 +82,12 @@ class DGRReinitializer(IReinitializer):
         # Estimate ε_eff from interface band (0.05 < ψ < 0.95)
         band = (psi > 0.05) & (psi < 0.95)
         psi_1mpsi = psi * (1.0 - psi)
-        if scalar_value(xp.any(band)):
-            eps_local = psi_1mpsi[band] / xp.maximum(grad_psi[band], 1e-14)
-            # GPU sync point: scalar extraction forces device→host transfer.
-            # Acceptable — DGR runs every reinit_every steps, not every step.
-            eps_eff = scalar_value(xp.median(eps_local))
-        else:
-            eps_eff = self.eps
+        eps_local = psi_1mpsi / xp.maximum(grad_psi, 1e-14)
+        eps_eff = _band_median_or_default(xp, eps_local, band, self.eps)
 
         phi_raw = invert_heaviside(xp, psi, self.eps)
         sync_periodic_image_nodes(phi_raw, self._bc_axes)
-        scale = eps_eff / self.eps if eps_eff > 1e-14 else 1.0
+        scale = xp.where(eps_eff > 1e-14, eps_eff / self.eps, 1.0)
         phi_sdf = phi_raw * scale
 
         # Optional non-paper compatibility smoothing on φ_sdf.
@@ -76,13 +99,12 @@ class DGRReinitializer(IReinitializer):
         # Damps O(h^5) wall-boundary asymmetry accumulated over ~10^4 steps.
         if self.phi_smooth_C > 0.0:
             from .curvature_filter import _ccd_laplacian
-            h_min = scalar_value(
-                xp.min(xp.stack([
-                    xp.min(xp.asarray(self.grid.h[ax]))
-                    for ax in range(self.grid.ndim)
-                ]))
+            phi_sdf = (
+                phi_sdf
+                + self.phi_smooth_C
+                * self._h_min**2
+                * _ccd_laplacian(xp, self.ccd, phi_sdf)
             )
-            phi_sdf = phi_sdf + self.phi_smooth_C * h_min**2 * _ccd_laplacian(xp, self.ccd, phi_sdf)
             sync_periodic_image_nodes(phi_sdf, self._bc_axes)
 
         psi_new = heaviside(xp, phi_sdf, self.eps)

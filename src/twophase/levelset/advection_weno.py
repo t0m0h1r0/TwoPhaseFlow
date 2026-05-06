@@ -54,10 +54,13 @@ class LevelSetAdvection(ILevelSetAdvection):
         ndim = len(vel)
         result = xp.zeros_like(psi)
 
-        alpha_global = float(max(
-            xp.max(xp.abs(vel[ax])) for ax in range(ndim)
-        ))
-        alpha_global = max(alpha_global, 1e-14)
+        alpha_global = xp.max(xp.stack([
+            xp.max(xp.abs(xp.asarray(vel[ax]))) for ax in range(ndim)
+        ]))
+        alpha_global = xp.maximum(
+            alpha_global,
+            xp.asarray(1e-14, dtype=xp.asarray(psi).dtype),
+        )
 
         for ax in range(ndim):
             h = self._h[ax]
@@ -66,7 +69,7 @@ class LevelSetAdvection(ILevelSetAdvection):
 
         return result
 
-    def _weno5_divergence(self, psi, u, axis: int, alpha: float, h: float):
+    def _weno5_divergence(self, psi, u, axis: int, alpha, h: float):
         xp = self.xp
         n = psi.shape[axis]
         F = u * psi

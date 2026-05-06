@@ -231,8 +231,10 @@ class ReinitializerWENO5(IReinitializer):
         safe_grad   = xp.maximum(xp.sqrt(xp.maximum(grad_psi_sq, 1e-12)), 1e-6)
         n_hat = [g / safe_grad for g in dpsi]
         psi_1mpsi = psi * (1.0 - psi)
-        alpha = float(xp.max(xp.abs(psi_1mpsi)))
-        alpha = max(alpha, 1e-14)
+        alpha = xp.maximum(
+            xp.max(xp.abs(psi_1mpsi)),
+            xp.asarray(1e-14, dtype=psi.dtype),
+        )
         div_compression = xp.zeros_like(psi)
         for ax in range(ndim):
             F_ax = psi_1mpsi * n_hat[ax]
@@ -240,7 +242,7 @@ class ReinitializerWENO5(IReinitializer):
             div_compression += div_ax
         return -div_compression + eps * d2psi_sum
 
-    def _weno5_compression_div(self, psi, F, alpha: float, axis: int):
+    def _weno5_compression_div(self, psi, F, alpha, axis: int):
         xp = self.xp
         n = psi.shape[axis]
         axis_bc = self._axis_bc(axis)

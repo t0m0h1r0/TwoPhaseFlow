@@ -5,11 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 import numpy as np
-import warnings
 
 from ..ppe.interfaces import MatrixAssemblyUnavailable
 from .velocity_reprojector import IVelocityReprojector, _device_array, _host_array
-from .velocity_reprojector_basic import VariableDensityReprojector
 
 if TYPE_CHECKING:
     from ..backend import Backend
@@ -19,10 +17,9 @@ if TYPE_CHECKING:
     from .scheme_build_ctx import ReprojectorBuildCtx
 
 
+# DO NOT DELETE: C2-retained direct-import IIM reprojection reference; see docs/01_PROJECT_MAP.md §8.
 class ConsistentIIMReprojector(IVelocityReprojector):
     """Immersed Interface Method (IIM) reprojector with backtracking."""
-
-    scheme_names = ("iim", "consistent_iim")
 
     @classmethod
     def _build(cls, name: str, ctx: "ReprojectorBuildCtx") -> "ConsistentIIMReprojector":
@@ -52,9 +49,6 @@ class ConsistentIIMReprojector(IVelocityReprojector):
             "iim_div_iim_reject_sum": 0.0,
             "iim_backtrack_accepts": 0,
         }
-        self._warned_iim_fail = False
-        self._warned_iim_reject = False
-        self._delegate = VariableDensityReprojector()
 
     def reproject(
         self,
@@ -69,8 +63,18 @@ class ConsistentIIMReprojector(IVelocityReprojector):
     ) -> tuple[np.ndarray, np.ndarray]:
         self._stats["calls"] += 1
 
+        if getattr(backend, "is_gpu", lambda: False)():
+            raise NotImplementedError(
+                "consistent_iim velocity reprojection is host-only and would "
+                "transfer GPU fields to CPU. Select a GPU-native reproject_mode "
+                "or run consistent_iim explicitly on the CPU backend."
+            )
+
         if rho_l is None or rho_g is None:
-            return self._delegate.reproject(psi, u, v, ppe_solver, ccd, backend, rho_l, rho_g)
+            raise ValueError(
+                "consistent_iim requires explicit rho_l and rho_g; "
+                "select variable_density_only explicitly for a non-IIM projection."
+            )
 
         xp = backend.xp
         psi_d = _device_array(psi, backend)
@@ -80,8 +84,11 @@ class ConsistentIIMReprojector(IVelocityReprojector):
         rho = rho_g + (rho_l - rho_g) * psi_d
         try:
             a_host = ppe_solver.get_matrix(rho)
-        except MatrixAssemblyUnavailable:
-            return self._delegate.reproject(psi, u, v, ppe_solver, ccd, backend, rho_l, rho_g)
+        except MatrixAssemblyUnavailable as exc:
+            raise MatrixAssemblyUnavailable(
+                "consistent_iim requires an assembled PPE matrix from get_matrix(); "
+                "select a matrix-providing PPE solver or choose another reproject_mode explicitly."
+            ) from exc
 
         du_dx = ccd.first_derivative(u_d, 0)
         dv_dy = ccd.first_derivative(v_d, 1)
@@ -99,7 +106,7 @@ class ConsistentIIMReprojector(IVelocityReprojector):
             return u_c, v_c, float(div_check)
 
         phi_base = ppe_solver.solve(div, rho)
-        u_base, v_base, div_base = _apply_phi_and_div(phi_base)
+        _, _, div_base = _apply_phi_and_div(phi_base)
 
         self._stats["iim_attempts"] += 1
         try:
@@ -123,8 +130,9 @@ class ConsistentIIMReprojector(IVelocityReprojector):
                 dp_dx=_host_array(dp0_x, backend),
                 dp_dy=_host_array(dp0_y, backend),
             )
+            delta_q_dev = xp.asarray(delta_q).reshape(div.shape)
 
-            phi_iim = ppe_solver.solve(div + xp.asarray(delta_q), rho)
+            phi_iim = ppe_solver.solve(div + delta_q_dev, rho)
             u_iim, v_iim, div_iim = _apply_phi_and_div(phi_iim)
 
             self._stats["iim_div_base_sum"] += float(div_base)
@@ -140,12 +148,10 @@ class ConsistentIIMReprojector(IVelocityReprojector):
                 self._stats["iim_div_iim_accept_sum"] += float(div_iim)
                 return u_iim, v_iim
 
-            accepted_bt = False
             best_div_bt = div_iim
-            best_u_bt, best_v_bt = u_iim, v_iim
             for alpha in [0.5, 0.25, 0.1]:
-                delta_q_bt = alpha * delta_q
-                phi_bt = ppe_solver.solve(div + xp.asarray(delta_q_bt), rho)
+                delta_q_bt = alpha * delta_q_dev
+                phi_bt = ppe_solver.solve(div + delta_q_bt, rho)
                 u_bt, v_bt, div_bt = _apply_phi_and_div(phi_bt)
 
                 finite_bt = (
@@ -159,15 +165,8 @@ class ConsistentIIMReprojector(IVelocityReprojector):
                     self._stats["iim_backtrack_accepts"] += 1
                     return u_bt, v_bt
 
-                if np.isfinite(div_bt):
-                    best_div_bt = min(best_div_bt, div_bt)
-                    best_u_bt, best_v_bt = u_bt, v_bt
-                    accepted_bt = accepted_bt or (
-                        finite_bt and div_bt <= 1.05 * max(div_base, 1e-30)
-                    )
-
-            if accepted_bt:
-                return best_u_bt, best_v_bt
+                if np.isfinite(div_bt) and div_bt < best_div_bt:
+                    best_div_bt = div_bt
 
             self._stats["iim_rejects"] += 1
             self._stats["iim_crossings_reject"] += int(n_cross)
@@ -176,25 +175,21 @@ class ConsistentIIMReprojector(IVelocityReprojector):
                 self._stats["iim_reject_nonfinite"] += 1
             else:
                 self._stats["iim_reject_divergence"] += 1
-            if not self._warned_iim_reject:
-                warnings.warn(
-                    f"consistent_iim candidate rejected; div_base={div_base:.3e}, div_iim={div_iim:.3e}",
-                    RuntimeWarning,
-                    stacklevel=2,
-                )
-                self._warned_iim_reject = True
-            return u_base, v_base
+            raise RuntimeError(
+                "consistent_iim rejected all IIM correction candidates; "
+                f"div_base={div_base:.3e}, div_iim={div_iim:.3e}, "
+                f"best_backtrack_div={best_div_bt:.3e}. "
+                "Select a different reproject_mode explicitly if base projection is intended."
+            )
 
         except Exception as exc:
+            if isinstance(exc, RuntimeError):
+                raise
             self._stats["iim_fails"] += 1
-            if not self._warned_iim_fail:
-                warnings.warn(
-                    f"consistent_iim reprojection failed; fallback to base. cause={exc}",
-                    RuntimeWarning,
-                    stacklevel=2,
-                )
-                self._warned_iim_fail = True
-            return u_base, v_base
+            raise RuntimeError(
+                "consistent_iim reprojection failed before an IIM correction "
+                "could be accepted; no alternate projection scheme was applied."
+            ) from exc
 
     @property
     def stats(self) -> dict[str, float]:

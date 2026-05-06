@@ -150,7 +150,7 @@ def test_ppe_ccd_lu_gpu_matches_cpu(cpu_backend, gpu_backend):
             grid=GridConfig(ndim=2, N=(24, 24), L=(1.0, 1.0)),
             fluid=FluidConfig(Re=100.0),
             numerics=NumericsConfig(),
-            solver=SolverConfig(ppe_solver_type="ccd_lu", allow_kronecker_lu=True),
+            solver=SolverConfig(),
             use_gpu=backend.is_gpu(),
         )
         grid = Grid(cfg.grid, backend)
@@ -213,6 +213,42 @@ def test_ppe_fvm_builder_gpu_matches_cpu(cpu_backend, gpu_backend):
     A_gpu = sp.csr_matrix((data_h, (rows_h, cols_h)), shape=(n, n)).toarray()
 
     np.testing.assert_allclose(A_gpu, A_cpu, rtol=1e-10, atol=1e-15)
+
+
+def test_fd_ppe_matrix_gpu_factor_matches_cpu(
+    tiny_grid_factory,
+    cpu_backend,
+    gpu_backend,
+):
+    """Legacy FD PPE matrix builder now assembles and factors on the GPU."""
+    from twophase.ppe.fd_ppe_matrix import FDPPEMatrix
+
+    def _build(backend):
+        grid = tiny_grid_factory(backend, N=8)
+        ccd = CCDSolver(grid, backend)
+        return grid, FDPPEMatrix(grid, backend, ccd)
+
+    grid_cpu, fd_cpu = _build(cpu_backend)
+    grid_gpu, fd_gpu = _build(gpu_backend)
+    rng = np.random.default_rng(20260508)
+    rho_np = 1.0 + rng.random(grid_cpu.shape)
+    rhs_np = rng.standard_normal(grid_cpu.shape)
+    rhs_np.ravel()[fd_cpu._pin_dof] = 0.0
+
+    matrix_gpu = fd_gpu.build(gpu_backend.xp.asarray(rho_np))
+    assert type(matrix_gpu.data).__module__.split(".", 1)[0] == "cupy"
+
+    p_cpu = fd_cpu.factorize(rho_np).solve(rhs_np.ravel()).reshape(grid_cpu.shape)
+    p_gpu = fd_gpu.factorize(gpu_backend.xp.asarray(rho_np)).solve(
+        gpu_backend.xp.asarray(rhs_np).ravel()
+    ).reshape(grid_gpu.shape)
+
+    np.testing.assert_allclose(
+        gpu_backend.to_host(p_gpu),
+        p_cpu,
+        rtol=1e-10,
+        atol=1e-10,
+    )
 
 
 def test_fccd_matrixfree_phase_density_keeps_gpu_density_device(

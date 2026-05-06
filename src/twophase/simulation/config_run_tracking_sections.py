@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 _PROJECTION_MODES = (
-    "legacy", "variable_density", "iim", "gfm", "consistent_iim", "consistent_gfm",
+    "legacy", "variable_density", "gfm", "consistent_gfm",
 )
 _PROJECTION_MODE_ALIASES = {
     "standard": "legacy",
@@ -15,9 +15,7 @@ _PROJECTION_MODE_ALIASES = {
 _PROJECTION_TO_REPROJECT_MODE = {
     "legacy": "legacy",
     "variable_density": "variable_density_only",
-    "iim": "iim",
     "gfm": "gfm",
-    "consistent_iim": "consistent_iim",
     "consistent_gfm": "consistent_gfm",
 }
 
@@ -88,5 +86,5 @@ def coefficient_to_projection_mode(coefficient: str) -> str:
     if coefficient == "phase_density":
         return "variable_density"
     if coefficient == "phase_separated":
-        return "gfm"
+        return "variable_density"
     raise ValueError(f"Unsupported PPE coefficient model: {coefficient!r}")

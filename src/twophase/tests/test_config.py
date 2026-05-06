@@ -18,6 +18,7 @@ import pytest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..'))
 
 from twophase.config import NumericsConfig, SimulationConfig, GridConfig, SolverConfig
+from twophase.ppe.factory import create_ppe_solver
 
 
 # ── Test 1: advection_scheme field validation ─────────────────────────────
@@ -143,7 +144,7 @@ def test_config_loader_roundtrips_extended_solver_and_numerics_fields():
             n_extend=7,
         ),
     )
-    cfg_orig.solver.ppe_solver_type = "iterative"
+    cfg_orig.solver.ppe_solver_type = "fd_iterative"
     cfg_orig.solver.ppe_discretization = "3pt"
     cfg_orig.solver.ppe_iteration_method = "gauss_seidel"
 
@@ -156,7 +157,7 @@ def test_config_loader_roundtrips_extended_solver_and_numerics_fields():
         assert cfg_loaded.numerics.surface_tension_model == "gfm"
         assert cfg_loaded.numerics.extension_method == "none"
         assert cfg_loaded.numerics.n_extend == 7
-        assert cfg_loaded.solver.ppe_solver_type == "iterative"
+        assert cfg_loaded.solver.ppe_solver_type == "fd_iterative"
         assert cfg_loaded.solver.ppe_discretization == "3pt"
         assert cfg_loaded.solver.ppe_iteration_method == "gauss_seidel"
     finally:
@@ -178,11 +179,17 @@ def test_solver_config_normalizes_legacy_fvm_matrixfree():
     assert cfg.solver.ppe_solver_type == "fvm_iterative"
 
 
-def test_solver_config_rejects_unflagged_kronecker_lu():
-    with pytest.raises(AssertionError, match="allow_kronecker_lu"):
-        SolverConfig(ppe_solver_type="ccd_lu")
+@pytest.mark.parametrize("solver_type", ["ccd_lu", "iim", "iterative"])
+def test_solver_config_rejects_retired_reference_ppe_routes(solver_type):
+    with pytest.raises(AssertionError, match="ppe_solver_type must be one of"):
+        SolverConfig(ppe_solver_type=solver_type, allow_kronecker_lu=True)
 
 
-def test_solver_config_allows_flagged_kronecker_lu():
-    cfg = SolverConfig(ppe_solver_type="ccd_lu", allow_kronecker_lu=True)
-    assert cfg.ppe_solver_type == "ccd_lu"
+@pytest.mark.parametrize("solver_type", ["ccd_lu", "iim", "iterative"])
+def test_ppe_factory_excludes_retired_reference_routes(solver_type):
+    cfg = SimulationConfig(
+        grid=GridConfig(ndim=2, N=(8, 8), L=(1.0, 1.0)),
+    )
+    cfg.solver.ppe_solver_type = solver_type
+    with pytest.raises(ValueError, match="Unknown ppe_solver_type"):
+        create_ppe_solver(cfg, backend=None, grid=None, ccd=None, bc_spec=object())

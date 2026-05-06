@@ -212,7 +212,10 @@ class PPESolverDefectCorrection(IPPESolver):
         rhs_dev = self._add_affine_interface_jump_rhs(rhs_dev)
         rhs_dev = self._enforce_rhs_compatibility(rhs_dev)
         if self._collapse_same_operator:
-            return self._solve_same_operator(rhs_dev, rho, dt=dt, p_init=p_init)
+            raise RuntimeError(
+                "same-operator defect-correction collapse is disabled; "
+                "configure a distinct low-order L_L base solver."
+            )
         pressure = xp.asarray(
             self.base_solver.solve(rhs_dev, rho, dt=dt, p_init=p_init)
         )
@@ -402,8 +405,6 @@ class PPESolverDefectCorrection(IPPESolver):
 
 def _can_collapse_same_operator(base_solver: IPPESolver, operator: IPPESolver) -> bool:
     """Return whether DC wraps the same linear operator as its base solve."""
-    if getattr(operator, "interface_coupling_scheme", "none") != "affine_jump":
-        return False
     if type(base_solver) is not type(operator):
         return False
     for name in ("grid", "coefficient_scheme", "interface_coupling_scheme", "bc_type"):

@@ -41,12 +41,14 @@ interface:
     base_factor: 1.5
   geometry:
     curvature:
-      method: psi_direct_filtered
-      cap: 5.0
+      # P2 reduced-ALE variational surface energy route: pressure-jump work
+      # uses a finite-step discrete gradient that accounts for the pre-remap
+      # fitted-grid surface energy.
+      method: transport_variational_p2_ale_discrete_gradient
   reinitialization:
     algorithm: ridge_eikonal
     schedule:
-      every_steps: 4
+      every_steps: 1
     profile:
       eps_scale: 1.4
       ridge_sigma_0: 3.0
@@ -94,7 +96,7 @@ numerics:
           kind: defect_correction
           tolerance: 1.0e-8
           corrections:
-            max_iterations: 3
+            max_iterations: 12
             relaxation: 0.8
       surface_tension:
         formulation: pressure_jump
@@ -110,7 +112,7 @@ numerics:
       solver:
         kind: defect_correction
         corrections:
-          max_iterations: 3
+          max_iterations: 12
           tolerance: 1.0e-8
           relaxation: 0.7
         base_solver:

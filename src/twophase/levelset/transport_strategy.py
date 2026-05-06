@@ -240,7 +240,12 @@ class PsiDirectTransport(ILevelSetTransport):
         self._reinit_reference_monitor: float | None = None
         if self.mass_correction and grid is None:
             raise ValueError("PsiDirectTransport mass correction requires grid")
-        self._dV = grid.cell_volumes() if self.mass_correction else None
+
+    def _current_dV(self):
+        """Return control volumes for the grid state current at this call."""
+        if self.grid is None:
+            raise ValueError("PsiDirectTransport requires grid control volumes")
+        return self.grid.cell_volumes()
 
     def _volume_monitor(self, psi) -> float:
         monitor = getattr(self.reinitializer, "volume_monitor", None)
@@ -249,7 +254,7 @@ class PsiDirectTransport(ILevelSetTransport):
         if self.grid is None:
             raise ValueError("adaptive reinitialization requires grid or volume_monitor()")
         xp = self.xp
-        dV = self._dV if self._dV is not None else self.grid.cell_volumes()
+        dV = self._current_dV()
         value = xp.sum(xp.asarray(psi) * (1.0 - xp.asarray(psi)) * dV)
         return self.backend.to_scalar(value)
 
@@ -273,7 +278,8 @@ class PsiDirectTransport(ILevelSetTransport):
         """Direct ψ advection with optional reinit."""
         xp = self.xp
         if self.mass_correction:
-            M_pre = xp.sum(xp.asarray(psi) * self._dV)
+            dV = self._current_dV()
+            M_pre = xp.sum(xp.asarray(psi) * dV)
 
         # Advect ψ directly
         psi = xp.asarray(self.advection.advance(psi, velocity, dt))
@@ -284,7 +290,7 @@ class PsiDirectTransport(ILevelSetTransport):
                 self._reinit_reference_monitor = max(self._volume_monitor(psi), 1.0e-30)
 
         if self.mass_correction:
-            psi = apply_mass_correction(xp, psi, self._dV, M_pre)
+            psi = apply_mass_correction(xp, psi, dV, M_pre)
 
         return psi
 
@@ -305,7 +311,8 @@ class PsiDirectTransport(ILevelSetTransport):
 
         xp = self.xp
         if self.mass_correction:
-            M_pre = xp.sum(xp.asarray(psi) * self._dV)
+            dV = self._current_dV()
+            M_pre = xp.sum(xp.asarray(psi) * dV)
 
         psi = xp.asarray(advance_face(psi, face_velocity_components, dt))
 
@@ -315,6 +322,6 @@ class PsiDirectTransport(ILevelSetTransport):
                 self._reinit_reference_monitor = max(self._volume_monitor(psi), 1.0e-30)
 
         if self.mass_correction:
-            psi = apply_mass_correction(xp, psi, self._dV, M_pre)
+            psi = apply_mass_correction(xp, psi, dV, M_pre)
 
         return psi

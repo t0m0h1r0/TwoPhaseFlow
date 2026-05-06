@@ -11,19 +11,17 @@ For wall BC the preconditioner can apply either cheap diagonal Jacobi scaling
 or shifted line solves along each axis using the variable-batched tridiagonal
 helper added in CHK-162.
 
-This is an additive solver: the legacy :class:`PPESolverFVMSpsolve` remains the
-fallback path and is used automatically for non-wall boundary conditions.
+This solver is fail-closed: unsupported boundary conditions or Krylov failures
+raise immediately so callers must choose a different PPE solver explicitly.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-import warnings
 
 import numpy as np
 
 from .interfaces import IPPESolver
-from .fvm_spsolve import PPESolverFVMSpsolve
 from .fvm_matrixfree_helpers import (
     build_fvm_grid_metrics,
     build_fvm_line_coeffs,
@@ -79,9 +77,12 @@ class PPESolverFVMMatrixFree(IPPESolver):
         self.bc_type = bc_type
         self.bc_spec = bc_spec
         solver_cfg = getattr(config, "solver", config)
-        self.allow_direct_fallback = bool(
-            getattr(solver_cfg, "ppe_allow_direct_fallback", True)
-        )
+        if self.bc_type != "wall":
+            raise ValueError(
+                "PPESolverFVMMatrixFree supports bc_type='wall' only; "
+                f"got {self.bc_type!r}. Select ppe_solver_type='fvm_direct' "
+                "explicitly if sparse FVM is intended for this boundary condition."
+            )
         self.tol = getattr(solver_cfg, "pseudo_tol", 1e-8)
         self.maxiter = getattr(solver_cfg, "pseudo_maxiter", 500)
         self.c_tau = getattr(solver_cfg, "pseudo_c_tau", 2.0)
@@ -127,12 +128,6 @@ class PPESolverFVMMatrixFree(IPPESolver):
             centre_idx = tuple(n // 2 for n in grid.N)
             self._pin_dof = int(np.ravel_multi_index(centre_idx, grid.shape))
 
-        self._fallback = None
-        if self.bc_type != "wall":
-            self._fallback = PPESolverFVMSpsolve(
-                backend, grid, bc_type=bc_type, bc_spec=bc_spec
-            )
-
         self._operator_coeffs = None
         self._precond_coeffs = None
         self._diag_inv = None
@@ -147,28 +142,19 @@ class PPESolverFVMMatrixFree(IPPESolver):
         self._precond_coeffs = None
         self._diag_inv = None
         self._refresh_grid_metrics()
-        if self._fallback is not None:
-            self._fallback = PPESolverFVMSpsolve(
-                self.backend, self.grid, bc_type=self.bc_type, bc_spec=self.bc_spec
-            )
 
     def solve(self, rhs, rho, dt: float = 0.0, p_init=None):
         """Solve the FVM PPE with a matrix-free Krylov method."""
-        if self._fallback is not None:
-            return self._solve_direct_fallback(rhs, rho, dt=dt, p_init=p_init)
-
         la = self.backend.sparse_linalg
         if (
             (self.iteration_method == "gmres" and not backend_supports_gmres(la))
             or (self.iteration_method == "cg" and not backend_supports_cg(la))
         ):
-            warnings.warn(
-                "Matrix-free Krylov PPE solver unavailable on this backend; falling back "
-                "to PPESolverFVMSpsolve.",
-                RuntimeWarning,
-                stacklevel=2,
+            raise RuntimeError(
+                "Matrix-free Krylov PPE solver unavailable on this backend; "
+                "no alternate PPE solver was applied. Select ppe_solver_type="
+                "'fvm_direct' explicitly if sparse FVM is intended."
             )
-            return self._solve_direct_fallback(rhs, rho, dt=dt, p_init=p_init)
 
         rho_dev = self.xp.asarray(rho)
         rhs_dev = self.xp.asarray(rhs)
@@ -258,35 +244,16 @@ class PPESolverFVMMatrixFree(IPPESolver):
         }
 
         if info != 0:
-            if not self.allow_direct_fallback:
-                raise RuntimeError(
-                    f"{type(self).__name__} did not converge cleanly "
-                    f"(info={info}) and direct fallback is disabled."
-                )
-            warnings.warn(
+            raise RuntimeError(
                 f"{type(self).__name__} did not converge cleanly (info={info}); "
-                "falling back to PPESolverFVMSpsolve.",
-                RuntimeWarning,
-                stacklevel=2,
+                "no alternate PPE solver was applied. Increase the matrix-free "
+                "iteration budget/tolerance or select ppe_solver_type='fvm_direct' "
+                "explicitly if sparse FVM is intended."
             )
-            return self._solve_direct_fallback(rhs, rho, dt=dt, p_init=p_init)
 
         sol = self.xp.asarray(sol_flat).reshape(self.grid.shape)
         sol.ravel()[self._pin_dof] = 0.0
         return sol
-
-    def _solve_direct_fallback(self, rhs, rho, *, dt: float, p_init=None):
-        """Run the legacy direct fallback when this solver is allowed to."""
-        if not self.allow_direct_fallback:
-            raise RuntimeError(
-                f"{type(self).__name__} direct fallback is disabled; "
-                "the configured L_L correction must remain matrix-free."
-            )
-        if self._fallback is not None:
-            return self._fallback.solve(rhs, rho, dt, p_init=p_init)
-        return PPESolverFVMSpsolve(
-            self.backend, self.grid, bc_type=self.bc_type, bc_spec=self.bc_spec
-        ).solve(rhs, rho, dt, p_init=p_init)
 
     def prepare_operator(self, rho) -> None:
         """Build matrix-free FVM operator coefficients for the current density."""

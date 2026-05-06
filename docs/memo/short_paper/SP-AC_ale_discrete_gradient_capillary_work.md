@@ -79,10 +79,11 @@ diagnostics, and the implementation contract.
 
 ## 2. Empirical trigger and research question
 
-The relevant one-period control is
+The relevant one-period control was a temporary diagnostic variant derived from
+the canonical oscillating-droplet YAML:
 
 ```text
-experiment/ch14/config/ch14_oscillating_droplet_n64_alpha2_one_period.yaml
+experiment/ch14/config/ch14_oscillating_droplet.yaml
 ```
 
 with
@@ -92,8 +93,12 @@ N = 64,
 alpha = 2,
 surface_tension = 0.072,
 T_period = 37.52611644626026,
-curvature.method = transport_variational_p2_discrete_gradient.
+curvature.method = transport_variational_p2_ale_discrete_gradient.
 ```
+
+The archived result identity is
+`ch14_oscillating_droplet_n64_alpha2_one_period`; it is not a checked-in YAML
+because ch14 keeps exactly one YAML per experiment type.
 
 Short gates are benign. For example the `T = 0.25` P2 discrete-gradient route
 reaches the final time with small kinetic energy, small volume drift, and a
@@ -994,4 +999,3 @@ current P2 route improved the fixed-grid `psi` part of this theorem but left
 the dynamic fitted-grid `X`/remap part open. Completing the theory therefore
 requires `Gbar_X`, an interface-energy GCL for remap/adaptation, and a
 pressure-work operator built from the adjoint of the actual update map.
-

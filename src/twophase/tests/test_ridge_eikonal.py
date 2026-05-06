@@ -649,6 +649,21 @@ def test_dgr_default_is_paper_exact_no_smoothing(backend):
     assert reinit.phi_smooth_C == pytest.approx(0.0)
 
 
+def test_dgr_band_median_default_matches_interface_band_median(backend):
+    """DGR ε_eff selection keeps the band median without a host scalar branch."""
+    from twophase.levelset.reinit_dgr import _band_median_or_default
+
+    xp = backend.xp
+    values = xp.asarray([[1.0, 9.0], [3.0, 7.0]])
+    band = xp.asarray([[True, False], [True, False]])
+
+    eps_eff = _band_median_or_default(xp, values, band, 5.0)
+    no_band = _band_median_or_default(xp, values, xp.zeros_like(band), 5.0)
+
+    assert float(np.asarray(backend.to_host(eps_eff))) == pytest.approx(2.0)
+    assert float(np.asarray(backend.to_host(no_band))) == pytest.approx(5.0)
+
+
 def test_uniform_basis_eikonal_paths_reject_nonuniform_grid(backend):
     """ξ-SDF/eikonal_fmm are uniform-grid bases; non-uniform uses ridge_eikonal."""
     from twophase.levelset.reinit_eikonal import EikonalReinitializer

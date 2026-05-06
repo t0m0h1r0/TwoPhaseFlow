@@ -22,6 +22,7 @@ from twophase.ccd.fccd import FCCDSolver
 from twophase.config import GridConfig, SimulationConfig
 from twophase.core.grid import Grid
 from twophase.ppe.defect_correction import PPESolverDefectCorrection
+from twophase.ppe.fd_direct import PPESolverFDDirect
 from twophase.ppe.fccd_matrixfree import PPESolverFCCDMatrixFree
 from twophase.simulation.divergence_ops import FCCDDivergenceOperator
 from twophase.simulation.ns_pipeline import TwoPhaseNSSolver
@@ -37,10 +38,12 @@ from twophase.simulation.config_io import ExperimentConfig
 from twophase.simulation.face_projection import reconstruct_nodes_from_faces
 from twophase.levelset.transport_strategy import PhiPrimaryTransport, PsiDirectTransport
 from twophase.simulation.velocity_reprojector import (
-    ConsistentIIMReprojector,
+    IVelocityReprojector,
     VariableDensityReprojector,
 )
-from twophase.ppe.interfaces import IPPESolver
+from twophase.simulation.velocity_reprojector_iim import ConsistentIIMReprojector
+from twophase.simulation.scheme_build_ctx import ReprojectorBuildCtx
+from twophase.ppe.interfaces import IPPESolver, MatrixAssemblyUnavailable
 
 
 N = 16
@@ -188,7 +191,8 @@ def test_defect_correction_preserves_mixed_periodic_pressure_space():
     ccd = CCDSolver(grid, backend, bc_type="periodic_wall")
     fccd = FCCDSolver(grid, backend, bc_type="periodic_wall", ccd_solver=ccd)
     operator = PPESolverFCCDMatrixFree(backend, SimulationConfig(), grid, fccd)
-    dc = PPESolverDefectCorrection(backend, grid, operator, operator)
+    base = PPESolverFDDirect(backend, grid, bc_type="periodic_wall")
+    dc = PPESolverDefectCorrection(backend, grid, base, operator)
 
     pressure = np.zeros(grid.shape)
     pressure[-1, :] = np.linspace(1.0, 2.0, grid.shape[1])
@@ -692,7 +696,7 @@ def test_p2_midpoint_capillary_interface_uses_temporal_midpoint():
     [("fccd_flux", "fccd_flux"), ("fccd_nodal", "fccd_nodal")],
 )
 def test_fullstack_two_steps_no_nan(advection_scheme: str, convection_scheme: str):
-    """FCCD × Ridge-Eikonal × α=2 × consistent_gfm × HFE — 2 steps stable."""
+    """FCCD × Ridge-Eikonal × α=2 × explicit variable-density reproject — stable."""
     solver = TwoPhaseNSSolver(
         N, N, L, L, bc_type="wall",
         alpha_grid=2.0,
@@ -703,7 +707,7 @@ def test_fullstack_two_steps_no_nan(advection_scheme: str, convection_scheme: st
         reinit_every=2,
         reinit_eps_scale=1.4,
         ridge_sigma_0=3.0,
-        reproject_mode="consistent_gfm",
+        reproject_mode="variable_density_only",
         phi_primary_transport=True,
         advection_scheme=advection_scheme,
         convection_scheme=convection_scheme,
@@ -766,7 +770,7 @@ def test_ch14_capillary_yaml_builds_solver():
     assert solver._hfe is not None
     assert isinstance(solver._transport, PsiDirectTransport)
     assert solver._interface_runtime.rebuild_freq == 1
-    assert solver._interface_runtime.reinit_every == 20
+    assert solver._interface_runtime.reinit_every == 1
     assert isinstance(solver._ppe_solver, PPESolverDefectCorrection)
     assert isinstance(solver._ppe_solver.operator, PPESolverFCCDMatrixFree)
     assert isinstance(solver._ppe_solver.base_solver, PPESolverFDDirect)
@@ -843,7 +847,7 @@ def test_ch14_rising_bubble_yaml_builds_solver():
     assert solver.LY == pytest.approx(2.0)
     assert isinstance(solver._transport, PsiDirectTransport)
     assert solver._interface_runtime.rebuild_freq == 1
-    assert solver._interface_runtime.reinit_every == 4
+    assert solver._interface_runtime.reinit_every == 1
     assert solver._advection_scheme == "fccd_flux"
     assert solver._convection_scheme == "uccd6"
     assert solver._convection_time_scheme == "imex_bdf2"
@@ -1071,8 +1075,8 @@ def test_ch14_capillary_yaml_uses_true_low_order_defect_base():
     assert cfg.run.ppe_dc_base_solver == "fd_direct"
     assert cfg.grid.bc_type == "periodic_wall"
     assert cfg.grid.grid_rebuild_freq == 1
-    assert cfg.grid.fitting_axes == (False, True)
-    assert cfg.grid.fitting_alpha_grid == (1.0, 2.0)
+    assert cfg.grid.fitting_axes == (True, True)
+    assert cfg.grid.fitting_alpha_grid == (2.0, 2.0)
     assert cfg.grid.wall_refinement_axes == (False, True)
     assert cfg.grid.wall_alpha_grid == (1.0, 1.3)
     assert cfg.grid.wall_eps_g_cells == (None, 4.0)
@@ -1162,7 +1166,7 @@ def test_defect_correction_can_build_fd_iterative_cg_base_solver():
     assert isinstance(solver._ppe_solver.base_solver, PPESolverFDMatrixFree)
     assert solver._ppe_solver.base_solver.iteration_method == "cg"
     assert solver._ppe_solver.base_solver.preconditioner == "jacobi"
-    assert solver._ppe_solver.base_solver.allow_direct_fallback is False
+    assert not hasattr(solver._ppe_solver.base_solver, "_solve_direct_fallback")
 
 
 def test_phase_separated_fccd_ppe_applies_pressure_jump_context():
@@ -1772,7 +1776,7 @@ def test_fccd_psi_bimodal_preserved():
         reinit_every=2,
         reinit_eps_scale=1.4,
         ridge_sigma_0=3.0,
-        reproject_mode="consistent_gfm",
+        reproject_mode="variable_density_only",
         phi_primary_transport=True,
         advection_scheme="fccd_flux",
         convection_scheme="fccd_flux",
@@ -1854,12 +1858,12 @@ def test_from_config_threads_fccd_keys():
             },
             "elliptic": {
                 "pressure_projection": {
-                    "mode": "consistent_gfm",
-                        "poisson": {
-                            "discretization": "fvm",
-                            "coefficient": "phase_density",
-                            "solver": {"kind": "direct"},
-                        },
+                    "mode": "variable_density",
+                    "poisson": {
+                        "discretization": "fvm",
+                        "coefficient": "phase_density",
+                        "solver": {"kind": "direct"},
+                    },
                 },
             },
         },
@@ -1957,41 +1961,80 @@ class _ArrayBackend:
         return np.asarray(arr)
 
 
-class _RecordingReprojector:
-    def __init__(self):
-        self.calls = 0
-
-    def reproject(self, psi, u, v, ppe_solver, ccd, backend, rho_l=None, rho_g=None):
-        self.calls += 1
-        return u + 1.0, v + 1.0
-
-
-def test_consistent_iim_reprojector_uses_ppe_matrix_contract():
-    """Matrix-free PPE fallback is driven by IPPESolver.get_matrix contract."""
+def test_consistent_iim_reprojector_fails_closed_without_matrix_contract():
+    """IIM reprojection must not silently switch to a base projection scheme."""
     reprojector = ConsistentIIMReprojector(
         reproj_iim=object(),
         reconstruct_base=object(),
     )
-    delegate = _RecordingReprojector()
-    reprojector._delegate = delegate
 
     psi = np.zeros((4, 4))
     u = np.zeros_like(psi)
     v = np.zeros_like(psi)
-    u_out, v_out = reprojector.reproject(
-        psi,
-        u,
-        v,
-        _NoMatrixPPESolver(),
-        ccd=None,
-        backend=_ArrayBackend(),
-        rho_l=2.0,
-        rho_g=1.0,
-    )
+    with pytest.raises(MatrixAssemblyUnavailable, match="consistent_iim requires"):
+        reprojector.reproject(
+            psi,
+            u,
+            v,
+            _NoMatrixPPESolver(),
+            ccd=None,
+            backend=_ArrayBackend(),
+            rho_l=2.0,
+            rho_g=1.0,
+        )
 
-    assert delegate.calls == 1
-    assert np.all(u_out == 1.0)
-    assert np.all(v_out == 1.0)
+
+class _IdentityPPESolver(IPPESolver):
+    def get_matrix(self, rho):
+        return object()
+
+    def solve(self, rhs, rho, dt: float = 0.0, p_init=None):
+        return np.asarray(rhs)
+
+
+class _IdentityCCD:
+    def first_derivative(self, field, axis):
+        return np.asarray(field)
+
+
+class _PsiIdentity:
+    def phi_from_psi(self, psi):
+        return np.asarray(psi)
+
+
+class _RejectingIIMCorrection:
+    def find_interface_crossings(self, phi):
+        return [object()]
+
+    def compute_correction(self, *args, **kwargs):
+        rho = np.asarray(args[4])
+        return np.ones(rho.size)
+
+
+def test_consistent_iim_reprojector_rejects_instead_of_returning_base():
+    """Rejected IIM candidates are failures, not permission to use base projection."""
+    reprojector = ConsistentIIMReprojector(
+        reproj_iim=_RejectingIIMCorrection(),
+        reconstruct_base=_PsiIdentity(),
+    )
+    psi = np.zeros((4, 4))
+    u = np.zeros_like(psi)
+    v = np.zeros_like(psi)
+
+    with pytest.raises(RuntimeError, match="rejected all IIM correction candidates"):
+        reprojector.reproject(
+            psi,
+            u,
+            v,
+            _IdentityPPESolver(),
+            ccd=_IdentityCCD(),
+            backend=_ArrayBackend(),
+            rho_l=2.0,
+            rho_g=1.0,
+        )
+
+    assert reprojector.stats["iim_rejects"] == 1
+    assert reprojector.stats["iim_fails"] == 0
 
 
 class _ContextRecordingPPESolver(IPPESolver):
@@ -2030,3 +2073,44 @@ def test_reprojector_clears_interface_jump_context_before_ppe_solve():
     )
 
     assert ppe.events == ["clear", "solve"]
+
+
+def test_variable_density_reprojector_requires_explicit_densities():
+    reprojector = VariableDensityReprojector()
+    psi = np.zeros((4, 4))
+    u = np.zeros_like(psi)
+    v = np.zeros_like(psi)
+
+    with pytest.raises(ValueError, match="requires explicit rho_l and rho_g"):
+        reprojector.reproject(
+            psi,
+            u,
+            v,
+            _ContextRecordingPPESolver(),
+            ccd=_DerivativeOnlyCCD(),
+            backend=_ArrayBackend(),
+        )
+
+
+def test_consistent_gfm_reprojector_fails_closed_until_implemented():
+    with pytest.raises(ValueError, match="not implemented as a GFM"):
+        IVelocityReprojector.from_scheme(
+            "consistent_gfm",
+            ReprojectorBuildCtx(
+                iim_stencil_corrector=object(),
+                reconstruct_base=object(),
+            ),
+        )
+
+
+def test_retired_iim_reprojector_direct_import_does_not_register_route():
+    assert "iim" not in IVelocityReprojector._registry
+    assert "consistent_iim" not in IVelocityReprojector._registry
+    with pytest.raises(ValueError, match="Unknown reproject_mode"):
+        IVelocityReprojector.from_scheme(
+            "iim",
+            ReprojectorBuildCtx(
+                iim_stencil_corrector=object(),
+                reconstruct_base=object(),
+            ),
+        )

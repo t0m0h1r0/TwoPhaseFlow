@@ -17,6 +17,7 @@ from twophase.config import SimulationConfig, GridConfig
 from twophase.core.grid import Grid
 from twophase.ccd.fccd import FCCDSolver
 from twophase.levelset.fccd_advection import FCCDLevelSetAdvection
+from twophase.levelset.transport_strategy import PsiDirectTransport
 
 
 @pytest.fixture
@@ -44,6 +45,27 @@ def gaussian_blob(grid, x0=0.3, y0=0.5, sigma=0.07, L=1.0):
     X, Y = grid.meshgrid()
     r2 = (X - x0) ** 2 + (Y - y0) ** 2
     return np.asarray(np.exp(-r2 / (2 * sigma ** 2)))
+
+
+class _MutableVolumeGrid:
+    def __init__(self, volumes):
+        self.volumes = np.asarray(volumes, dtype=float)
+
+    def cell_volumes(self):
+        return self.volumes
+
+
+class _NudgingAdvection:
+    def __init__(self, delta):
+        self.delta = np.asarray(delta, dtype=float)
+
+    def advance(self, psi, velocity, dt):
+        return np.clip(np.asarray(psi, dtype=float) + dt * self.delta, 0.0, 1.0)
+
+
+class _NoopReinitializer:
+    def reinitialize(self, psi):
+        return psi
 
 
 # ── V10: Volume conservation of level-set advection ──────────────────────
@@ -107,6 +129,31 @@ def test_flux_mode_mass_conservation_uniform_divfree(backend):
     # Expect < 1% drift for a well-contained blob over O(10) rotations'
     # worth of passive advection on a 48x48 grid.
     assert rel_drift < 0.05, f"flux mode mass drift too large: {rel_drift:.3e}"
+
+
+def test_psi_direct_mass_correction_uses_current_grid_volumes(backend):
+    """Dynamic fitted-grid transport must not retain stale control volumes."""
+    volumes_1 = np.array([[1.0, 1.4], [0.7, 1.8]])
+    volumes_2 = np.array([[1.7, 0.9], [1.5, 0.8]])
+    grid = _MutableVolumeGrid(volumes_1)
+    transport = PsiDirectTransport(
+        backend,
+        _NudgingAdvection([[0.15, -0.08], [0.05, -0.12]]),
+        _NoopReinitializer(),
+        reinit_every=0,
+        grid=grid,
+        mass_correction=True,
+    )
+
+    psi = np.array([[0.22, 0.41], [0.58, 0.77]])
+    target_1 = float(np.sum(psi * volumes_1))
+    psi = transport.advance(psi, [np.zeros_like(psi), np.zeros_like(psi)], dt=0.1)
+    assert float(np.sum(psi * volumes_1)) == pytest.approx(target_1, abs=1e-12)
+
+    grid.volumes = volumes_2
+    target_2 = float(np.sum(psi * volumes_2))
+    psi = transport.advance(psi, [np.zeros_like(psi), np.zeros_like(psi)], dt=0.1)
+    assert float(np.sum(psi * volumes_2)) == pytest.approx(target_2, abs=1e-12)
 
 
 @pytest.mark.parametrize("mode", ["node", "flux"])

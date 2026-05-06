@@ -9,10 +9,10 @@ stack. Five production YAML files are checked in:
 - `ch14_rising_bubble.yaml` — rising-bubble benchmark.
 - `ch14_rayleigh_taylor.yaml` — Rayleigh–Taylor instability benchmark.
 
-The capillary-wave route intentionally has a single checked-in YAML:
-`ch14_capillary.yaml`.  Short, bounded, or GPU profiling variants should be
-created as untracked local run copies or reproduced through command-line
-overrides, not checked in as additional capillary YAMLs.
+Each experiment type intentionally has exactly one checked-in YAML. Short,
+bounded, diagnostic, resolution, one-period, and GPU-profiling variants should
+be created as untracked local run copies, command-line overrides, or in-memory
+diagnostic configs. They must not be checked in as additional ch14 YAMLs.
 Run them through the unified runner (`experiment/run.py`):
 
 - `python experiment/run.py --config ch14_capillary`
@@ -36,7 +36,7 @@ read-only dry run is needed. Numerical state is stored as NumPy `.npy` binary
 members inside the `.npz`, preserving array dtype bytes losslessly; JSON is used
 only for non-numerical metadata such as the manifest and debug key names.
 
-The four production configs emit periodic snapshots with `psi`, `velocity`,
+The five production configs emit periodic snapshots with `psi`, `velocity`,
 and `pressure` fields. The runner stores these in `data.npz` under `fields/psi`,
 `fields/velocity`, and `fields/pressure` (plus compatibility fields
 `fields/u`, `fields/v`, and `fields/p`).
@@ -153,8 +153,9 @@ component unchanged except for the base field.
   On nonuniform grids, `local`/`xi_cells` is allowed only with
   `surface_tension.formulation: pressure_jump` or `none`; CSF uses `nominal`.
 - `geometry.curvature`: interface-geometry reconstruction used to obtain κ.
-  `psi_direct_filtered` is the direct-ψ curvature route with an
-  interface-limited smoothing filter; it is not Hermite field extension.
+  ch14 production YAMLs use `transport_variational_p2_ale_discrete_gradient`,
+  the P2 reduced-ALE discrete-gradient route that makes pressure-jump work
+  track the finite-step fitted-grid surface-energy change.
 - `reinitialization`: geometry restoration algorithm in pseudo-time; this is not
   physical time integration.
 
@@ -294,6 +295,11 @@ The dynamic ch14 YAMLs share the production stack:
   determines the tracking variable. The flux-locus form is the term default.
 - `interface.transport.time_integrator: tvd_rk3` — co-located with the spatial
   scheme in the same `transport:` block.
+- `interface.geometry.curvature.method: transport_variational_p2_ale_discrete_gradient`
+  — P2 reduced-ALE variational surface energy route for pressure-jump work on
+  fitted grids.
+- `interface.reinitialization.schedule.every_steps: 1` — Ridge--Eikonal profile
+  restoration is applied every physical step in the canonical ch14 route.
 - `momentum.terms.convection.spatial: uccd6` + `time_integrator: imex_bdf2` —
   WIKI-T-062 positions UCCD6 as the order-preserving upwind CCD remedy for
   transport/Gibbs control.
@@ -318,7 +324,7 @@ viscosity:
     max_iterations: 80
     restart: 40
     corrections:
-      max_iterations: 3
+      max_iterations: 12
       relaxation: 0.8
       low_operator: component  # or scalar; scalar uses c=(d+1)/d isotropic low solve
 ```
@@ -338,13 +344,10 @@ viscosity:
   one outer DC solve, matching the paper's grid-defect method without
   re-entering the legacy FVM direct sparse solve for every correction RHS.
 
-Cadence differences across YAMLs:
-- Capillary-wave: `reinitialization.every_steps: 20` (slow dynamics).
-- Static droplet: `tracking.enabled: false`, `convection.time_integrator: ab2`,
-  and `viscosity.time_integrator: forward_euler`; this frozen-interface
-  reference route avoids BDF2/PPE coefficient rebuilds while preserving the
-  pressure-jump projection stack.
-- Rising-bubble & RT: `every_steps: 4` (faster geometry change).
+Experiment-specific YAMLs may change geometry, boundary conditions, initial
+fields, gravity, output cadence, and final time. They should not change the
+canonical ch14 numerical stack above without recording a new paper-backed
+experiment type.
 
 ## PPE Solver Semantics
 
@@ -370,7 +373,7 @@ projection:
     solver:
       kind: defect_correction
       corrections:          # outer DC loop
-        max_iterations: 3
+        max_iterations: 12
         tolerance: 1.0e-8
         relaxation: 0.7     # ω < 0.833 for FCCD/FD DC stability margin
       base_solver:          # inner approximate solve

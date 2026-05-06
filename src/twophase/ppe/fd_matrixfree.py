@@ -12,8 +12,8 @@ operator matrix-free instead of assembling/factorizing it.
 Code: ``solve`` applies an approximate ``L_L^{-1}`` through backend-native
 Krylov iteration.  CG solves the control-volume-weighted SPD sign-flipped
 system ``-W L_L p = -W rhs``; GMRES remains available for parity with the
-matrix-free PPE infrastructure.  Direct fallback is intentionally disabled so
-DC cannot silently leave the configured low-order iterative path.
+matrix-free PPE infrastructure.  Fail-closed behaviour keeps DC on the
+configured low-order iterative path.
 """
 
 from __future__ import annotations
@@ -47,4 +47,3 @@ class PPESolverFDMatrixFree(PPESolverFVMMatrixFree):
         bc_spec: "BoundarySpec | None" = None,
     ):
         super().__init__(backend, config, grid, bc_type=bc_type, bc_spec=bc_spec)
-        self.allow_direct_fallback = False

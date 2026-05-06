@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 import scipy.sparse as sp
 
 from twophase.backend import Backend
@@ -101,6 +102,29 @@ def test_fvm_matrixfree_solve_matches_direct_fvm():
 
     np.testing.assert_allclose(p_mf, p_ref, rtol=1e-9, atol=1e-10)
 
+
+def test_fvm_matrixfree_rejects_non_wall_bc_instead_of_direct_solver():
+    backend = Backend(use_gpu=False)
+    cfg = _make_cfg(4)
+    grid = Grid(cfg.grid, backend)
+
+    with pytest.raises(ValueError, match="supports bc_type='wall' only"):
+        PPESolverFVMMatrixFree(backend, cfg, grid, bc_type="periodic_wall")
+
+
+def test_fvm_matrixfree_raises_when_krylov_backend_unavailable():
+    backend = Backend(use_gpu=False)
+    backend.__dict__["sparse_linalg"] = object()
+    cfg = _make_cfg(4)
+    grid = Grid(cfg.grid, backend)
+    solver = PPESolverFVMMatrixFree(backend, cfg, grid, bc_type="wall")
+    rho = np.ones(grid.shape)
+    rhs = np.zeros(grid.shape)
+
+    with pytest.raises(RuntimeError, match="unavailable"):
+        solver.solve(rhs, rho, dt=1e-3)
+
+
 def test_fvm_defect_correction_with_direct_base_matches_direct_fvm():
     backend = Backend(use_gpu=False)
     cfg = _make_cfg(8)
@@ -163,7 +187,7 @@ def test_fd_matrixfree_cg_matches_fd_direct():
     p_cg = np.asarray(solver_cg.solve(rhs, rho, dt=1e-3))
     p_ref = np.asarray(solver_ref.solve(rhs, rho, dt=1e-3))
 
-    assert solver_cg.allow_direct_fallback is False
+    assert not hasattr(solver_cg, "_solve_direct_fallback")
     np.testing.assert_allclose(p_cg, p_ref, rtol=1e-8, atol=1e-9)
 
 

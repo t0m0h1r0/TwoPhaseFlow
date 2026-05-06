@@ -63,9 +63,9 @@ src/twophase/
 │   ├── solvers/                # PPE solver implementations
 │   │   ├── ccd_ppe_base.py     # _CCDPPEBase — Template Method for CCD solvers
 │   │   ├── ccd_ppe_utils.py    # CCD Laplacian evaluation helpers
-│   │   ├── ccd_lu.py           # PPESolverCCDLU — CCD Kronecker + sparse LU (restricted reference)
-│   │   ├── iim.py              # PPESolverIIM — CCD + IIM interface correction
-│   │   ├── iterative.py        # PPESolverIterative — research toolkit
+│   │   ├── ccd_lu.py           # PPESolverCCDLU — legacy/reference CCD Kronecker + sparse LU
+│   │   ├── iim.py              # PPESolverIIM — legacy/reference CCD + IIM interface correction
+│   │   ├── iterative.py        # PPESolverIterative — legacy/reference research toolkit
 │   │   ├── factory.py          # Registry-based factory (OCP)
 │   │   ├── fd_ppe_matrix.py    # FDPPEMatrix — FD Laplacian matrix
 │   │   └── thomas_sweep.py     # Thomas sweep for ADI solvers
@@ -162,8 +162,9 @@ IPPESolver.solve(rhs, rho, dt, p_init=None) → p
 | **return** `p` | `grid.shape` | Solved pressure p^{n+1} |
 
 Implementations route through `SolverConfig.ppe_solver_type`: `fvm_iterative` default;
-`fd_direct`, `fd_iterative`, `fvm_direct`, `iim`, and legacy/reference paths are explicit.
-`ccd_lu` requires `allow_kronecker_lu=True`.
+`fd_direct`, `fd_iterative`, and `fvm_direct` are explicit active routes.
+Retired reference solvers (`ccd_lu`, `iim`, legacy `iterative`) are direct-import only and
+are not selectable through the public PPE factory/config path.
 
 ### INSTerm (`interfaces/ns_terms.py`)
 Marker only — SimulationBuilder.with_*() enforces type safety at construction.
@@ -228,8 +229,8 @@ Use physical diagnostics: divergence-free projection, Laplace pressure dp, ‖u�
 |---|---|---|
 | `"fvm_iterative"` | FVM matrix-free | Default production route |
 | `"fvm_direct"` / `"fd_direct"` | Sparse direct | Deterministic direct routes |
-| `"iim"` | Jump-corrected CCD/IIM | Explicit interface-correction route |
-| `"ccd_lu"` | CCD Kronecker LU | Restricted reference/component tests only |
+| `"iim"` | Jump-corrected CCD/IIM | Retired reference; direct-import tests only |
+| `"ccd_lu"` | CCD Kronecker LU | Retired reference/component tests only |
 
 ### Known Symmetry-Breaking Root Causes (fixed 2026-03-22, ASM-008)
 | Root Cause | Stage | Signature |
@@ -282,6 +283,10 @@ PPE code must use dynamic center pin — never hardcode (0,0):
 | `PPESolverSweep` | `pressure/legacy/ppe_solver_sweep.py` | DC/PPE sweep routes | Matrix-free sweep reference |
 | `PPESolverDCOmega` | `pressure/legacy/ppe_solver_dc_omega.py` | `PPESolverCCDLU` | Under-relaxed ADI reference |
 | `CurvatureCalculator` | `levelset/curvature.py` | `CurvatureCalculatorPsi` | phi-inversion cross-validation |
+| `PPESolverCCDLU` | `ppe/ccd_lu.py` | `fvm_direct` / `fd_direct` / DC routes | ch11 smooth-RHS component reference; excluded from public factory |
+| `PPESolverIIM` | `ppe/iim_solver.py` | affine-jump/FCCD projection routes | IIM research reference; excluded from public factory |
+| `PPESolverIterative` | `ppe/iterative.py` | `fvm_iterative` / `fd_iterative` | retired host-only research toolkit; excluded from public factory |
+| `ConsistentIIMReprojector` | `simulation/velocity_reprojector_iim.py` | `variable_density_only` / active GFM pressure-jump routes | IIM reprojection reference; excluded from run config registration |
 | `simulation.interface_stress_closure` imports | `simulation/interface_stress_closure.py` | `coupling/interface_stress_closure.py` | Compatibility path after affine face-jump helpers moved to neutral coupling layer |
 | `exp_V6_density_ratio_convergence_legacy.py` | `experiment/ch13/legacy/exp_V6_density_ratio_convergence_legacy.py` | `experiment/ch13/exp_V6_density_ratio_convergence.py` | Reduced smoothed-density CSF/PPE density sweep reference |
 | `exp_V7_imex_bdf2_twophase_time_legacy.py` | `experiment/ch13/legacy/exp_V7_imex_bdf2_twophase_time_legacy.py` | `experiment/ch13/exp_V7_imex_bdf2_twophase_time.py` | Reduced hand-rolled BDF2/PPE time-order proxy |

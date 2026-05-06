@@ -68,7 +68,6 @@ from .velocity_reprojector_basic import (
     LegacyReprojector,
     VariableDensityReprojector,
 )
-from .velocity_reprojector_iim import ConsistentIIMReprojector
 
 __all__ = [
     "IVelocityReprojector",
@@ -76,5 +75,4 @@ __all__ = [
     "VariableDensityReprojector",
     "ConsistentGFMReprojectorLegacy",
     "ConsistentGFMReprojector",
-    "ConsistentIIMReprojector",
 ]

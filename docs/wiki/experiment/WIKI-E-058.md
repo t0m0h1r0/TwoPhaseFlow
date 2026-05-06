@@ -5,7 +5,8 @@ domain: experiment
 status: ACTIVE
 tags: [ch14, n64_alpha2, oscillating_droplet, short_gate]
 sources:
-  - path: experiment/ch14/config/ch14_oscillating_droplet_n64_alpha2_one_period.yaml
+  - path: experiment/ch14/config/ch14_oscillating_droplet.yaml
+  - path: docs/memo/short_paper/SP-AC_ale_discrete_gradient_capillary_work.md
   - path: paper/sections/14_benchmarks.tex
   - path: docs/02_ACTIVE_LEDGER.md
 ---
@@ -24,8 +25,10 @@ volume drift, and deformation behavior.
   small volume drift, and bounded signed deformation.
 - Snapshot cadence and pressure representative choice must be fixed before the
   long run, because post-hoc plots can otherwise misread raw pressure.
-- The one-period run is expensive enough that every long launch should inherit
-  the last short-gate config and diagnostics.
+- The one-period run is expensive enough that every long launch should derive
+  its temporary diagnostic config from the canonical oscillating-droplet YAML
+  and inherit the last short-gate diagnostics. The result identity may keep a
+  descriptive N64 alpha-2 name, but the variant YAML is not checked in.
 
 ## Negative Knowledge
 
