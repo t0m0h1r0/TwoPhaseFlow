@@ -62,6 +62,8 @@ class StaticInterfaceTransport(ILevelSetTransport):
 
     def __init__(self, backend: "Backend"):
         self.xp = backend.xp
+        self.record_reinit_projection = False
+        self.last_reinit_projection = {"triggered": False}
 
     def advance(
         self,
@@ -70,6 +72,7 @@ class StaticInterfaceTransport(ILevelSetTransport):
         dt: float,
         step_index: int = 0,
     ) -> np.ndarray:
+        self.last_reinit_projection = {"triggered": False}
         return self.xp.asarray(psi)
 
 
@@ -111,6 +114,8 @@ class PhiPrimaryTransport(ILevelSetTransport):
         self.advection = advection
         self.reinitializer = reinitializer
         self.grid = grid
+        self.record_reinit_projection = False
+        self.last_reinit_projection = {"triggered": False}
 
         self.redist_every = max(1, int(phi_primary_params.get("redist_every", 4)))
         self.clip_factor = max(2.0, float(phi_primary_params.get("clip_factor", 12.0)))
@@ -125,6 +130,9 @@ class PhiPrimaryTransport(ILevelSetTransport):
     ) -> np.ndarray:
         """Phi-primary transport with periodic redistancing."""
         xp = self.xp
+        self.last_reinit_projection = {"triggered": False}
+        record_projection = bool(self.record_reinit_projection)
+        psi_before_reinit = None
 
         # Pre-advection mass snapshot
         dV_pre = self.grid.cell_volumes()
@@ -144,12 +152,19 @@ class PhiPrimaryTransport(ILevelSetTransport):
 
         # Periodic redistancing to correct interface thickness
         if step_index > 0 and (step_index % self.redist_every == 0):
+            psi_before_reinit = xp.array(psi, copy=True) if record_projection else None
             psi = self.reinitializer.reinitialize(psi)
             phi = self.reconstruct.phi_from_psi(psi)
             psi = self.reconstruct.psi_from_phi(phi)
 
         # Restore original mass
         psi = apply_mass_correction(xp, psi, dV_pre, M_pre)
+        if psi_before_reinit is not None:
+            self.last_reinit_projection = {
+                "triggered": True,
+                "psi_before": psi_before_reinit,
+                "psi_after": xp.asarray(psi),
+            }
 
         return psi
 
@@ -161,6 +176,9 @@ class PhiPrimaryTransport(ILevelSetTransport):
         step_index: int = 0,
     ) -> np.ndarray:
         """Phi-primary transport with projection-native face velocities."""
+        self.last_reinit_projection = {"triggered": False}
+        record_projection = bool(self.record_reinit_projection)
+        psi_before_reinit = None
         advance_face = getattr(self.advection, "advance_with_face_velocity", None)
         if not callable(advance_face):
             raise RuntimeError(
@@ -185,11 +203,19 @@ class PhiPrimaryTransport(ILevelSetTransport):
         psi = self.reconstruct.psi_from_phi(phi)
 
         if step_index > 0 and (step_index % self.redist_every == 0):
+            psi_before_reinit = xp.array(psi, copy=True) if record_projection else None
             psi = self.reinitializer.reinitialize(psi)
             phi = self.reconstruct.phi_from_psi(psi)
             psi = self.reconstruct.psi_from_phi(phi)
 
-        return apply_mass_correction(xp, psi, dV_pre, M_pre)
+        psi = apply_mass_correction(xp, psi, dV_pre, M_pre)
+        if psi_before_reinit is not None:
+            self.last_reinit_projection = {
+                "triggered": True,
+                "psi_before": psi_before_reinit,
+                "psi_after": xp.asarray(psi),
+            }
+        return psi
 
 
 class PsiDirectTransport(ILevelSetTransport):
@@ -238,6 +264,8 @@ class PsiDirectTransport(ILevelSetTransport):
         if self.reinit_threshold <= 1.0:
             raise ValueError("reinit_threshold must be > 1.0")
         self._reinit_reference_monitor: float | None = None
+        self.record_reinit_projection = False
+        self.last_reinit_projection = {"triggered": False}
         if self.mass_correction and grid is None:
             raise ValueError("PsiDirectTransport mass correction requires grid")
 
@@ -277,6 +305,9 @@ class PsiDirectTransport(ILevelSetTransport):
     ) -> np.ndarray:
         """Direct ψ advection with optional reinit."""
         xp = self.xp
+        self.last_reinit_projection = {"triggered": False}
+        record_projection = bool(self.record_reinit_projection)
+        psi_before_reinit = None
         if self.mass_correction:
             dV = self._current_dV()
             M_pre = xp.sum(xp.asarray(psi) * dV)
@@ -285,12 +316,20 @@ class PsiDirectTransport(ILevelSetTransport):
         psi = xp.asarray(self.advection.advance(psi, velocity, dt))
 
         if self._should_reinitialize(psi, step_index):
+            psi_before_reinit = xp.array(psi, copy=True) if record_projection else None
             psi = xp.asarray(self.reinitializer.reinitialize(psi))
             if self.reinit_trigger_mode == "adaptive":
                 self._reinit_reference_monitor = max(self._volume_monitor(psi), 1.0e-30)
 
         if self.mass_correction:
             psi = apply_mass_correction(xp, psi, dV, M_pre)
+
+        if psi_before_reinit is not None:
+            self.last_reinit_projection = {
+                "triggered": True,
+                "psi_before": psi_before_reinit,
+                "psi_after": xp.asarray(psi),
+            }
 
         return psi
 
@@ -302,6 +341,8 @@ class PsiDirectTransport(ILevelSetTransport):
         step_index: int = 0,
     ) -> np.ndarray:
         """Direct ψ advection with projection-native face velocities."""
+        self.last_reinit_projection = {"triggered": False}
+        record_projection = bool(self.record_reinit_projection)
         advance_face = getattr(self.advection, "advance_with_face_velocity", None)
         if not callable(advance_face):
             raise RuntimeError(
@@ -310,6 +351,7 @@ class PsiDirectTransport(ILevelSetTransport):
             )
 
         xp = self.xp
+        psi_before_reinit = None
         if self.mass_correction:
             dV = self._current_dV()
             M_pre = xp.sum(xp.asarray(psi) * dV)
@@ -317,11 +359,19 @@ class PsiDirectTransport(ILevelSetTransport):
         psi = xp.asarray(advance_face(psi, face_velocity_components, dt))
 
         if self._should_reinitialize(psi, step_index):
+            psi_before_reinit = xp.array(psi, copy=True) if record_projection else None
             psi = xp.asarray(self.reinitializer.reinitialize(psi))
             if self.reinit_trigger_mode == "adaptive":
                 self._reinit_reference_monitor = max(self._volume_monitor(psi), 1.0e-30)
 
         if self.mass_correction:
             psi = apply_mass_correction(xp, psi, dV, M_pre)
+
+        if psi_before_reinit is not None:
+            self.last_reinit_projection = {
+                "triggered": True,
+                "psi_before": psi_before_reinit,
+                "psi_after": xp.asarray(psi),
+            }
 
         return psi

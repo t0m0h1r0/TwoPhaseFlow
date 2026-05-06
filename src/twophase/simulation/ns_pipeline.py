@@ -28,6 +28,10 @@ from .ns_step_services import (
     record_ns_step_diagnostics,
     solve_ns_pressure_stage,
 )
+from .interface_projection_diagnostics import (
+    reinit_projection_diagnostics,
+    zero_reinit_projection_diagnostics,
+)
 from . import ns_pipeline_registrations as _ns_pipeline_registrations  # noqa: F401
 from .ns_geometry_runtime import build_ns_geometry_runtime
 from .ns_grid_rebuild import rebuild_ns_grid
@@ -766,6 +770,8 @@ class TwoPhaseNSSolver:
                     )
                 )
         advance_face = getattr(self._transport, "advance_with_face_velocity", None)
+        if hasattr(self._transport, "record_reinit_projection"):
+            self._transport.record_reinit_projection = bool(self._step_diag.enabled)
         if state.face_velocity_components is not None and callable(advance_face):
             state.psi = advance_face(
                 state.psi,
@@ -776,6 +782,21 @@ class TwoPhaseNSSolver:
         else:
             state.psi = self._transport.advance(
                 state.psi, [state.u, state.v], state.dt, step_index=state.step_index
+            )
+        state.interface_projection_diagnostics = zero_reinit_projection_diagnostics()
+        reinit_projection = getattr(self._transport, "last_reinit_projection", None)
+        if (
+            self._step_diag.enabled
+            and reinit_projection
+            and reinit_projection.get("triggered", False)
+        ):
+            state.interface_projection_diagnostics = reinit_projection_diagnostics(
+                xp=xp,
+                backend=backend,
+                grid=self._grid,
+                psi_before=reinit_projection["psi_before"],
+                psi_after=reinit_projection["psi_after"],
+                sigma=state.sigma,
             )
         state.psi_previous = psi_previous
         if will_rebuild:

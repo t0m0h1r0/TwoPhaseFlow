@@ -19,6 +19,10 @@ from ..coupling.transport_variational_capillary import (
     p2_trace_surface_energy_discrete_gradient_2d,
     p2_trace_surface_energy_gradient_2d,
 )
+from .interface_projection_diagnostics import (
+    capillary_face_cochain_diagnostics,
+    zero_capillary_face_diagnostics,
+)
 from .ns_step_state import NSStepState
 
 IMEX_BDF2_PROJECTION_FACTOR = 2.0 / 3.0
@@ -903,6 +907,7 @@ def solve_ns_pressure_stage(
     state.pressure = _apply_solver_interface_jump(ppe_solver, state.pressure_base)
     state.pressure_accel_face_components = None
     state.pressure_correction_face_components = None
+    state.capillary_face_diagnostics = zero_capillary_face_diagnostics()
     if uses_affine_face_history:
         jump_sigma = state.sigma if surface_tension_scheme == "pressure_jump" else 0.0
         interface_psi = _capillary_interface_psi(
@@ -945,6 +950,13 @@ def solve_ns_pressure_stage(
         state.pressure_accel_face_components = [
             xp.asarray(component) for component in full_pressure_faces
         ]
+        if state.debug_scalars is not None:
+            state.capillary_face_diagnostics = capillary_face_cochain_diagnostics(
+                xp=xp,
+                backend=backend,
+                div_op=div_op,
+                face_components=state.pressure_accel_face_components,
+            )
     next_p_prev_dev = xp.copy(state.pressure)
     next_p_prev = (
         None
@@ -1153,3 +1165,5 @@ def record_ns_step_diagnostics(
     step_diag.record_ppe_stats(
         getattr(ppe_solver, "last_diagnostics", {})
     )
+    step_diag.record_ppe_stats(state.interface_projection_diagnostics or {})
+    step_diag.record_ppe_stats(state.capillary_face_diagnostics or {})

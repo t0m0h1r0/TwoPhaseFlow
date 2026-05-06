@@ -68,6 +68,8 @@ class NSStepState:
     transport_variational_nodal_covector: Any = None
     transport_variational_psi: Any = None
     transport_variational_previous_surface_energy: Any = None
+    interface_projection_diagnostics: dict[str, float] | None = None
+    capillary_face_diagnostics: dict[str, float] | None = None
     face_velocity_components: list[Any] | None = None
     projected_face_components: list[Any] | None = None
     projection_dt: float | None = None

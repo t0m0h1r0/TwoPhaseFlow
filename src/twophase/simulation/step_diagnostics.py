@@ -85,6 +85,15 @@ class ActiveStepDiagnostics(IStepDiagnostics):
             "ppe_rhs_max": 0.0,
             "bf_residual_max": 0.0,
             "div_u_max": 0.0,
+            "reinit_triggered": 0.0,
+            "reinit_volume_delta": 0.0,
+            "reinit_surface_energy_delta": 0.0,
+            "reinit_linf_delta": 0.0,
+            "reinit_zero_level_displacement": 0.0,
+            "reinit_zero_crossing_change_count": 0.0,
+            "capillary_face_linf": 0.0,
+            "capillary_face_divergence_linf": 0.0,
+            "capillary_hodge_residual": 0.0,
         }
 
     def record_kappa(self, kappa_max: float) -> None:
