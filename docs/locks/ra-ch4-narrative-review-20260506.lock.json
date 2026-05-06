@@ -1,0 +1,22 @@
+{
+  "id": "CHK-RA-CH4-002",
+  "branch": "ra-ch4-narrative-review-20260506",
+  "worktree": ".claude/worktrees/ra-ch4-narrative-review-20260506",
+  "scope": [
+    "paper chapter 4",
+    "adjacent consistency checks only where needed",
+    "review artifact",
+    "ledger bookkeeping"
+  ],
+  "review_focus": [
+    "strict reviewer stance",
+    "convincing narrative",
+    "notation consistency",
+    "chapter and section structure",
+    "logical coherence",
+    "latest research state only; omit trial-and-error/version history"
+  ],
+  "stop_condition": "repeat until no MAJOR+ findings remain or round exceeds 20",
+  "merge_policy": "do not merge to main without explicit user instruction; if requested, use no-ff and continue in this worktree afterward",
+  "solid_x": "paper/docs scope at start; no solver code edits and no tested implementation deletion"
+}
