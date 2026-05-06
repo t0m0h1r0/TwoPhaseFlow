@@ -93,7 +93,11 @@ class ActiveStepDiagnostics(IStepDiagnostics):
             "reinit_zero_crossing_change_count": 0.0,
             "capillary_face_linf": 0.0,
             "capillary_face_divergence_linf": 0.0,
+            "capillary_jump_linf": 0.0,
+            "capillary_range_projection_linf": 0.0,
             "capillary_hodge_residual": 0.0,
+            "capillary_hodge_divergence_linf": 0.0,
+            "capillary_range_projection_solved": 0.0,
         }
 
     def record_kappa(self, kappa_max: float) -> None:

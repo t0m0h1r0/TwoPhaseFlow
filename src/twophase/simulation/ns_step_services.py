@@ -20,6 +20,7 @@ from ..coupling.transport_variational_capillary import (
     p2_trace_surface_energy_gradient_2d,
 )
 from .interface_projection_diagnostics import (
+    capillary_jump_range_projection,
     capillary_face_cochain_diagnostics,
     zero_capillary_face_diagnostics,
 )
@@ -951,11 +952,19 @@ def solve_ns_pressure_stage(
             xp.asarray(component) for component in full_pressure_faces
         ]
         if state.debug_scalars is not None:
+            range_projection = capillary_jump_range_projection(
+                xp=xp,
+                div_op=div_op,
+                ppe_solver=ppe_solver,
+                rho=state.rho,
+                pressure_flux_kwargs=pressure_flux_kwargs,
+            )
             state.capillary_face_diagnostics = capillary_face_cochain_diagnostics(
                 xp=xp,
                 backend=backend,
                 div_op=div_op,
                 face_components=state.pressure_accel_face_components,
+                **range_projection,
             )
     next_p_prev_dev = xp.copy(state.pressure)
     next_p_prev = (

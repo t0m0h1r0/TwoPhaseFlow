@@ -8,8 +8,10 @@ import pytest
 from twophase.backend import Backend
 from twophase.config import GridConfig
 from twophase.core.grid import Grid
+from twophase.coupling.interface_stress_closure import InterfaceStressContext
 from twophase.levelset.transport_strategy import PsiDirectTransport
 from twophase.simulation.interface_projection_diagnostics import (
+    capillary_jump_range_projection,
     capillary_face_cochain_diagnostics,
     reinit_projection_diagnostics,
 )
@@ -84,6 +86,76 @@ def test_capillary_face_cochain_diagnostics_exposes_divergence_small_face_large(
     assert diag["capillary_face_linf"] == pytest.approx(2.0)
     assert diag["capillary_face_divergence_linf"] == pytest.approx(0.0)
     assert diag["capillary_hodge_residual"] == pytest.approx(2.0)
+    assert diag["capillary_hodge_divergence_linf"] == pytest.approx(0.0)
+    assert diag["capillary_range_projection_solved"] == pytest.approx(0.0)
+
+
+def test_capillary_jump_range_projection_restores_solver_and_removes_range_part():
+    xp = np
+    rho = xp.ones((2, 2))
+    jump = xp.full((2, 2), 3.0)
+    context = InterfaceStressContext(
+        psi=xp.ones((2, 2)),
+        pressure_jump_gas_minus_liquid=jump,
+        kappa_lg=xp.ones((2, 2)),
+        sigma=1.0,
+    )
+
+    class IdentityRangeFaces:
+        def pressure_fluxes(self, pressure, rho, **kwargs):
+            flux_context = kwargs["interface_stress_context"]
+            pressure_arr = xp.asarray(pressure)
+            if flux_context.pressure_jump_gas_minus_liquid is None:
+                return [pressure_arr]
+            return [pressure_arr - flux_context.pressure_jump_gas_minus_liquid]
+
+        def divergence_from_faces(self, face_components):
+            return xp.asarray(face_components[0])
+
+    class RestorableSolver:
+        def __init__(self):
+            self.marker = "original"
+            self.last_diagnostics = {"ppe_dc_converged": 1.0}
+
+        def set_interface_jump_context(self, **kwargs):
+            self.marker = f"sigma={kwargs['sigma']}"
+
+        def invalidate_cache(self):
+            self.cache_invalidated = True
+
+        def solve(self, rhs, rho, dt=0.0, p_init=None):
+            self.marker = "mutated-by-solve"
+            self.last_diagnostics = {"overwritten": 1.0}
+            return xp.asarray(rhs)
+
+    div_op = IdentityRangeFaces()
+    ppe_solver = RestorableSolver()
+    projection = capillary_jump_range_projection(
+        xp=xp,
+        div_op=div_op,
+        ppe_solver=ppe_solver,
+        rho=rho,
+        pressure_flux_kwargs={"interface_stress_context": context},
+    )
+
+    np.testing.assert_allclose(projection["capillary_jump_components"][0], jump)
+    np.testing.assert_allclose(projection["range_projection_components"][0], jump)
+    np.testing.assert_allclose(projection["hodge_residual_components"][0], 0.0)
+    assert ppe_solver.marker == "original"
+    assert ppe_solver.last_diagnostics == {"ppe_dc_converged": 1.0}
+    assert not hasattr(ppe_solver, "cache_invalidated")
+
+    diag = capillary_face_cochain_diagnostics(
+        xp=xp,
+        backend=Backend(use_gpu=False),
+        div_op=div_op,
+        face_components=[xp.zeros_like(rho)],
+        **projection,
+    )
+    assert diag["capillary_jump_linf"] == pytest.approx(3.0)
+    assert diag["capillary_range_projection_linf"] == pytest.approx(3.0)
+    assert diag["capillary_hodge_residual"] == pytest.approx(0.0)
+    assert diag["capillary_range_projection_solved"] == pytest.approx(1.0)
 
 
 def test_psi_direct_transport_records_reinit_projection_pair():
