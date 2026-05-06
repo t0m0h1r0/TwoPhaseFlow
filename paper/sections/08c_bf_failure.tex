@@ -19,7 +19,9 @@
   -G_h p + f_{\sigma,h} \approx \mathbf{0}
   \label{eq:bf_discrete_balance}
 \end{equation}
-が要請される．微分階数ではなく\textbf{離散演算子の整合性}が
+が要請される．pressure-jump 標準経路では同じ条件を
+$A_f G_f p-c_f(j_{gl})=\mathbf{0}$ という face cochain の釣合として読む．
+微分階数ではなく\textbf{離散演算子の整合性}が
 寄生流れ（spurious currents）を支配する~\cite{Popinet2009,Renardy2002,DennerVanWachem2015}．
 離散化で現れる 5 つの破綻モードを以下に列挙する：
 
@@ -27,21 +29,21 @@
 \begin{description}[leftmargin=2em,style=nextline]
   \item[\textbf{F-1} 評価位置不一致]
     $G_h p$ と $f_{\sigma,h}$ が異なる格子位置（節点 vs 面）で評価される．
-    $(G_h p)_f \neq (f_\sigma)_f$ が定義上保証できない．
+    $(G_h p)_f \neq c_f(j_{gl})$ が定義上保証できない．
   \item[\textbf{F-2} PPE 勾配と補正勾配の不一致]
     PPE 内部で用いる $G_h$ と，$\bu^* \to \bu^{n+1}$ 補正で用いる $G_h$ が異なる．
     ある方程式を解き，別の方程式で補正していることになる．
   \item[\textbf{F-3} $D_h$ と $G_h$ が離散共役でない]
     $D_h \neq -G_h^\ast$．PPE 演算子の対称正定値性と
     離散エネルギー恒等式が同時に崩れる．
-  \item[\textbf{F-4} $\betaf=(1/\rho)_f$ の経路不一致]
-    PPE / 速度補正 / 界面張力の 3 経路で $\betaf$ の平均化
-    （算術 vs 調和）が異なる．高密度比 $\rho_l/\rho_g\gg 1$ で
-    補正残差が界面上で $\Ord{1}$ となる．
+  \item[\textbf{F-4} 面係数 $A_f$（または $\betaf=(1/\rho)_f$）の経路不一致]
+    PPE / 速度補正 / 毛管ジャンプ cochain で面係数の平均化
+    （算術 vs 調和，または異なる切断面メトリクス）が異なる．
+    高密度比 $\rho_l/\rho_g\gg 1$ で補正残差が界面上で $\Ord{1}$ となる．
   \item[\textbf{F-5} 界面ジャンプ無補正の CCD ステンシル]
     $j_{gl}=-\sigma\kappa_{lg}$ を跨ぐ CCD ステンシルが
     滑らかな場として扱われ，ジャンプが数値的に平滑化される．
-    GFM/IIM による面フラックス補正が必要．
+    GFM ジャンプ行と HFE 片側データによる面フラックス補正が必要．
 \end{description}
 \end{tcolorbox}
 
@@ -50,12 +52,12 @@ F-1..F-5 は\textbf{すべて微分階数と独立}である．
 すべての微分を高次 CCD に置き換えるだけでは，評価位置，随伴性，
 係数平均，界面ジャンプのいずれかがずれ得る．
 たとえば PPE 右辺の発散を高精度化しても，速度補正が別の $G_h$ を参照する限り
-F-2 は残り，BF 残差は小さくならない（P-2 参照，\S\ref{sec:bf_seven_principles}）．
+F-2 は残り，BF 残差は小さくならない（P-2 参照，§~\ref{sec:bf_seven_principles}）．
 
 \noindent\textbf{方針}：
 §\ref{sec:bf_seven_principles} で 7 つの設計原則 P-1..P-7 を定式化し，
 §\ref{sec:fccd_bf_sub_system} で FCCD 面フラックス部分系による
-面フットプリント不一致の $\Ord{\Delta x^4}$ 抑制と，
-pressure-jump/CSF 律速を含む実効 BF 残差の $\Ord{\Delta x^2}$ 評価を分離して示す．
+面フットプリント不一致の抑制と，
+pressure-jump cochain の値域閉包を分離して示す．
 
 % ═══════════════════════════════════════════════════════════════════════════════

@@ -1,0 +1,21 @@
+{
+  "id": "CHK-RA-CH8-001",
+  "id_prefix": "RA-CH8",
+  "created": "2026-05-06",
+  "worktree": ".claude/worktrees/codex-ra-ch8-narrative-review-20260506",
+  "branch": "codex/ra-ch8-narrative-review-20260506",
+  "scope": [
+    "paper Chapter 8",
+    "adjacent consistency checks only where needed",
+    "review artifact",
+    "ledger"
+  ],
+  "policy": {
+    "main_merge": "forbidden until explicit user instruction",
+    "main_merge_method": "no-ff",
+    "after_main_merge": "keep this worktree active"
+  },
+  "review_artifact": "artifacts/A/review_CHK-RA-CH8-001.md",
+  "completed": "2026-05-06",
+  "status": "DONE"
+}
