@@ -56,9 +56,7 @@ def n64_static_like_oscillating(
     raw["grid"]["distribution"]["schedule"] = 0 if static_grid else 1
     _set_axis_alpha(raw, alpha)
 
-    raw["interface"]["geometry"]["curvature"]["cap"] = 40.0
-    raw["interface"]["reinitialization"]["schedule"]["every_steps"] = 0
-    raw["numerics"]["interface"].pop("tracking", None)
+    raw["interface"]["reinitialization"]["schedule"]["every_steps"] = 1
 
     terms = raw["numerics"]["momentum"]["terms"]
     terms["convection"]["time_integrator"] = "imex_bdf2"
@@ -66,13 +64,13 @@ def n64_static_like_oscillating(
     terms["viscosity"]["solver"] = {
         "kind": "defect_correction",
         "tolerance": 1.0e-8,
-        "corrections": {"max_iterations": 3, "relaxation": 0.8},
+        "corrections": {"max_iterations": 12, "relaxation": 0.8},
     }
 
     time = raw["run"]["time"]
     time.pop("dt", None)
-    time["final"] = 1.5
-    time["cfl"] = 0.2
+    time["final"] = 40.0
+    time["cfl"] = 1.0
     time["print_every"] = 200
 
     raw["output"]["dir"] = f"results/{output_name}"
@@ -82,7 +80,7 @@ def n64_static_like_oscillating(
 
 def n64_oscillating_droplet(
     *,
-    alpha: float = 4.0,
+    alpha: float = 2.0,
     dc_iterations: int | None = None,
     one_period: bool = False,
     output_name: str = "ch14_oscillating_droplet_n64",

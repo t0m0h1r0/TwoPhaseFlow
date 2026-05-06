@@ -1,11 +1,11 @@
-# N=128 water-air static-droplet GPU route on a fully periodic, initially fitted grid.
+# N=128 water-air static-droplet route on a fully periodic fitted grid.
 # This reuses the ch14 production stack while replacing the capillary-wave graph
 # interface by a centred circular liquid droplet.
 # - Boundary topology: x and y are both periodic; no wall monitor or wall
 #   velocity closure is declared.
-# - Grid fitting: both tensor-product axes are nonuniform, but the static
-#   standard route rebuilds/remaps every physical step so the fitted grid
-#   follows the current interface geometry.
+# - Grid fitting: both tensor-product axes are nonuniform and rebuilt/remapped
+#   every physical step so the fitted grid follows the current interface
+#   geometry.
 
 experiment:
   type: circle
@@ -35,12 +35,14 @@ interface:
     base_factor: 1.5
   geometry:
     curvature:
-      method: psi_direct_filtered
-      cap: 5.0
+      # P2 reduced-ALE variational surface energy route: pressure-jump work
+      # uses a finite-step discrete gradient that accounts for the pre-remap
+      # fitted-grid surface energy.
+      method: transport_variational_p2_ale_discrete_gradient
   reinitialization:
     algorithm: ridge_eikonal
     schedule:
-      every_steps: 20
+      every_steps: 1
     profile:
       eps_scale: 1.4
       ridge_sigma_0: 3.0
@@ -58,7 +60,7 @@ physics:
 
 run:
   time:
-    final: 1.0
+    final: 40.0
     # Multiplier on theory CFL constants; 1.0 uses the §7 CFL budget.
     cfl: 1.0
     print_every: 20
@@ -73,20 +75,24 @@ numerics:
       variable: psi
       spatial: fccd
       time_integrator: tvd_rk3
-    tracking:
-      enabled: false
   momentum:
     predictor:
       assembly: balanced_buoyancy
     terms:
       convection:
         spatial: uccd6
-        time_integrator: ab2
+        time_integrator: imex_bdf2
       pressure:
         gradient: fccd
       viscosity:
         spatial: ccd
-        time_integrator: forward_euler
+        time_integrator: implicit_bdf2
+        solver:
+          kind: defect_correction
+          tolerance: 1.0e-8
+          corrections:
+            max_iterations: 12
+            relaxation: 0.8
       surface_tension:
         formulation: pressure_jump
   projection:
@@ -101,7 +107,7 @@ numerics:
       solver:
         kind: defect_correction
         corrections:
-          max_iterations: 3
+          max_iterations: 12
           tolerance: 1.0e-8
           relaxation: 0.7
         base_solver:

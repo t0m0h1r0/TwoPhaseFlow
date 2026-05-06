@@ -246,7 +246,7 @@ def test_ch14_capillary_yaml_loads_execution_stack():
     assert cfg.run.viscous_spatial_scheme == "ccd_bulk"
     assert cfg.run.viscous_time_scheme == "implicit_bdf2"
     assert cfg.run.viscous_solver == "defect_correction"
-    assert cfg.run.viscous_dc_max_iterations == 3
+    assert cfg.run.viscous_dc_max_iterations == 12
     assert cfg.run.cfl_policy == "theory_multiplier"
     assert cfg.run.cfl == pytest.approx(1.0)
     assert cfg.run.cfl_advective == pytest.approx(0.10)
@@ -266,13 +266,13 @@ def test_ch14_capillary_yaml_loads_execution_stack():
     assert cfg.run.ppe_interface_coupling_scheme == "affine_jump"
     assert cfg.run.ppe_defect_correction is True
     assert cfg.grid.grid_rebuild_freq == 1
-    assert cfg.run.reinit_every == 20
+    assert cfg.run.reinit_every == 1
     assert cfg.run.reinit_trigger_mode == "fixed"
     assert cfg.run.interface_tracking_method == "psi_direct"
     assert cfg.run.phi_primary_transport is False
 
 
-def test_ch14_static_droplet_yaml_uses_gpu_static_route():
+def test_ch14_static_droplet_yaml_uses_base_dynamic_route():
     path = (
         Path(__file__).resolve().parents[3]
         / "experiment/ch14/config/ch14_static_droplet.yaml"
@@ -283,15 +283,19 @@ def test_ch14_static_droplet_yaml_uses_gpu_static_route():
     assert cfg.grid.NY == 128
     assert cfg.grid.bc_type == "periodic"
     assert cfg.grid.grid_rebuild_freq == 1
-    assert cfg.run.T_final == pytest.approx(1.0)
+    assert cfg.run.T_final == pytest.approx(40.0)
     assert cfg.run.dt_fixed is None
     assert cfg.run.cfl_policy == "theory_multiplier"
     assert cfg.run.cfl == pytest.approx(1.0)
-    assert cfg.run.interface_tracking_enabled is False
-    assert cfg.run.interface_tracking_method == "none"
-    assert cfg.run.convection_time_scheme == "ab2"
-    assert cfg.run.viscous_time_scheme == "forward_euler"
+    assert cfg.run.interface_tracking_enabled is True
+    assert cfg.run.interface_tracking_method == "psi_direct"
+    assert cfg.run.curvature_method == "transport_variational_p2_ale_discrete_gradient"
+    assert cfg.run.reinit_every == 1
+    assert cfg.run.convection_time_scheme == "imex_bdf2"
+    assert cfg.run.viscous_time_scheme == "implicit_bdf2"
+    assert cfg.run.viscous_dc_max_iterations == 12
     assert cfg.run.ppe_defect_correction is True
+    assert cfg.run.ppe_dc_max_iterations == 12
 
 
 def test_ch14_canonical_yamls_use_theory_cfl_not_fixed_dt():
@@ -307,6 +311,36 @@ def test_ch14_canonical_yamls_use_theory_cfl_not_fixed_dt():
         assert cfg.run.cfl > 0.0, path.name
 
 
+def test_ch14_canonical_yamls_share_base_numerical_stack():
+    config_dir = (
+        Path(__file__).resolve().parents[3]
+        / "experiment/ch14/config"
+    )
+
+    for path in sorted(config_dir.glob("*.yaml")):
+        cfg = ExperimentConfig.from_yaml(path)
+        assert cfg.run.advection_scheme == "fccd_flux", path.name
+        assert cfg.run.curvature_method == (
+            "transport_variational_p2_ale_discrete_gradient"
+        ), path.name
+        assert cfg.run.reinit_every == 1, path.name
+        assert cfg.run.convection_scheme == "uccd6", path.name
+        assert cfg.run.convection_time_scheme == "imex_bdf2", path.name
+        assert cfg.run.viscous_time_scheme == "implicit_bdf2", path.name
+        assert cfg.run.viscous_solver == "defect_correction", path.name
+        assert cfg.run.viscous_dc_max_iterations == 12, path.name
+        assert cfg.run.pressure_gradient_scheme == "fccd_flux", path.name
+        assert cfg.run.surface_tension_scheme == "pressure_jump", path.name
+        assert cfg.run.face_flux_projection is True, path.name
+        assert cfg.run.canonical_face_state is True, path.name
+        assert cfg.run.face_native_predictor_state is True, path.name
+        assert cfg.run.pressure_scheme == "fccd_matrixfree", path.name
+        assert cfg.run.ppe_coefficient_scheme == "phase_separated", path.name
+        assert cfg.run.ppe_interface_coupling_scheme == "affine_jump", path.name
+        assert cfg.run.ppe_defect_correction is True, path.name
+        assert cfg.run.ppe_dc_max_iterations == 12, path.name
+
+
 def test_ch14_rising_bubble_yaml_loads_execution_stack():
     path = (
         Path(__file__).resolve().parents[3]
@@ -320,7 +354,7 @@ def test_ch14_rising_bubble_yaml_loads_execution_stack():
     assert cfg.grid.LY == 2.0
     assert cfg.grid.grid_rebuild_freq == 1
     assert cfg.physics.g_acc == pytest.approx(0.001)
-    assert cfg.run.reinit_every == 4
+    assert cfg.run.reinit_every == 1
     assert cfg.run.reinit_trigger_mode == "fixed"
     assert cfg.run.interface_tracking_method == "psi_direct"
     assert cfg.run.phi_primary_transport is False
