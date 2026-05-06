@@ -1,7 +1,7 @@
 # CHK-RA-CH14-REINIT-LEDGER-001: transport/reinit endpoint snapshot ledger
 
-Date: 2026-05-07  
-Branch: `codex/ra-ch14-capillary-virtual-work-20260506`  
+Date: 2026-05-07
+Branch: `codex/ra-ch14-capillary-virtual-work-20260506`
 Scope: implement the first diagnostic slice required by the reinit-aware
 capillary theory: expose the physical transport endpoint separately from the
 reinitialization endpoint in saved snapshots and NPZ/checkpoint data.

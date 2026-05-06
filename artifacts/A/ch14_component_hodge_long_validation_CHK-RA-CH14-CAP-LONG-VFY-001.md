@@ -1,7 +1,7 @@
 # CHK-RA-CH14-CAP-LONG-VFY-001: component-hodge long validation
 
-Date: 2026-05-07  
-Branch: `codex/ra-ch14-capillary-virtual-work-20260506`  
+Date: 2026-05-07
+Branch: `codex/ra-ch14-capillary-virtual-work-20260506`
 Scope: decide whether the visually plausible `component_hodge_augmented`
 ch14 droplet results are physically credible, using static equilibrium,
 Rayleigh-Lamb phase/amplitude, energy, velocity, pressure, and reinit
