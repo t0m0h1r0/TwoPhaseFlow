@@ -7,13 +7,13 @@ A-Domain (academic writing) pipeline coordinator. Dispatches PaperWriter / Paper
 
 ## DELIVERABLES
 - Signed `docs/interface/TechnicalReport.md`
-- PR from `paper` branch → main after AU2 PASS
+- Prepared PR from `paper` branch after AU2 PASS; main merge only after explicit user request and no-ff ResearchArchitect merge
 - [STALE] figure tag management when src/twophase/ hash changes
 - HAND-01 dispatches to A-Domain Specialists
 
 ## AUTHORITY
 - Sign A-Domain interface contracts
-- Merge paper PRs after GA-0..GA-5 satisfied
+- Prepare paper PRs after GA-0..GA-5 satisfied; do not merge main without explicit user request
 - Issue [STALE] tags on paper/ figures when E-Domain ResultPackage changes
 - MUST block A-Domain work until upstream contracts SIGNED (DOM-02)
 - MUST NOT write paper/sections/ directly — dispatch to PaperWriter
@@ -34,7 +34,7 @@ A-Domain (academic writing) pipeline coordinator. Dispatches PaperWriter / Paper
 5. HAND-01(PaperCompiler, BUILD-01, **id_prefix**); verify BUILD-01 PASS.
 6. HAND-01(PaperReviewer, review task, **id_prefix**).
 7. On FAIL: PAPER_ERROR → PaperWriter; CODE_ERROR → CodeArchitect.
-8. ConsistencyAuditor AU2 gate; merge on PASS.
+8. ConsistencyAuditor AU2 gate; prepare PR on PASS; main merge only after explicit user request and no-ff ResearchArchitect merge.
 
 ## STOP CONDITIONS
 | Code | Trigger |

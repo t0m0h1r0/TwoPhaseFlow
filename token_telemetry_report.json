@@ -1,18 +1,18 @@
 {
-  "report_id": "CHK-RA-META-REFRESH-001",
-  "generated_at": "2026-05-05",
-  "scope": "v8.0.0-candidate project-local Codex+Claude redeploy after upstream metaprompt sync",
+  "report_id": "CHK-RA-META-MASTER-REFRESH-001",
+  "generated_at": "2026-05-06",
+  "scope": "v8.0.0-candidate project-local Codex+Claude redeploy after upstream research-agent c985b65 sync",
   "status": "project_local_static_pass",
   "method": "manual_static_gate_with_wc_word_proxy; exact tokenizer remains required for full automation",
   "notes": [
     "EnvMetaBootstrapper now requires exact tokenizer counts during full regeneration.",
-    "This report records the initial Skill Capsule footprint and Q3 gate expectations for the meta-kernel change.",
+    "This report records the Skill Capsule footprint and Q3-AUDIT/Q3b gate expectations for the c985b65 meta-kernel change.",
     "Codex and Claude prompt-system artifacts were refreshed from local prompts/meta/ after upstream kernel-only sync.",
     "Generated agents, skills, scripts, and templates remain project-local outputs and were not copied from upstream."
   ],
   "q3_static_gates": {
     "anti_pattern_count": 15,
-    "skill_capsule_count": 6,
+    "skill_capsule_count": 9,
     "requires_skill_capsule_schema": true,
     "requires_duplicate_operation_body_scan": true,
     "requires_effective_context_reserved_minimum": 0.4
@@ -30,12 +30,24 @@
       "word_count_proxy": 84,
       "token_target": 140
     },
+    "SKILL-PAPER-WRITING": {
+      "word_count_proxy": 152,
+      "token_target": 220
+    },
     "SKILL-PROMPT-AUDIT": {
-      "word_count_proxy": 124,
+      "word_count_proxy": 135,
       "token_target": 160
     },
     "SKILL-PRESENTATION-DECK": {
-      "word_count_proxy": 246,
+      "word_count_proxy": 264,
+      "token_target": 220
+    },
+    "SKILL-PRESENTATION-ILLUSTRATION": {
+      "word_count_proxy": 150,
+      "token_target": 180
+    },
+    "SKILL-SCHEME-CODE": {
+      "word_count_proxy": 136,
       "token_target": 220
     },
     "SKILL-TOOL-TRUST": {
@@ -45,16 +57,16 @@
   },
   "codex_target": {
     "agent_prompt_count": 25,
-    "agent_word_count_proxy_total": 2693,
+    "agent_word_count_proxy_total": 2807,
     "largest_role_prompts_word_count_proxy": {
-      "PromptAuditor": 193,
-      "PresentationWriter": 163,
-      "PromptArchitect": 158,
+      "PromptAuditor": 221,
+      "PresentationWriter": 172,
+      "PromptArchitect": 162,
       "ResearchArchitect": 157,
-      "ConsistencyAuditor": 142
+      "CodeWorkflowCoordinator": 154
     },
     "static_prompt_tokens": "deferred_to_exact_tokenizer",
-    "skill_manifest_tokens": "deferred_to_exact_tokenizer",
+    "skill_trigger_tokens": "deferred_to_exact_tokenizer",
     "worst_case_loaded_tokens": "deferred_to_exact_tokenizer",
     "expected_artifact_budget": "target-specific",
     "effective_context_reserved": "PASS_BY_COMPACT_CODEX_PROMPT_PROXY",

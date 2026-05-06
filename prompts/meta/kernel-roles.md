@@ -258,7 +258,7 @@ Binary AU2 gate (10 items) preserved as minimum bar. Rubric adds gradient scorin
 | **Specialist** | All others | Sovereign over own `dev/{domain}/{agent_id}/{task_id}` branch; must attach LOG-ATTACHED with every PR |
 
 ────────────────────────────────────────────────────────
-# § AGENT PROFILE TABLE (replaces 24× BEHAVIORAL_PRIMITIVES YAML blocks)
+# § AGENT PROFILE TABLE (replaces 25× BEHAVIORAL_PRIMITIVES YAML blocks)
 
 Defaults (from _base.yaml): classify_before_act=true, scope_creep=reject, uncertainty_action=stop,
 evidence=always, tool_delegate_numerics=true, cognitive_style=structural_logic.

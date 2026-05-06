@@ -34,7 +34,7 @@ Sole entry point for all research tasks. Classifies work, owns the master pipeli
 2. Classify task: TRIVIAL | FAST-TRACK | FULL-PIPELINE (kernel-workflow.md §PIPELINE MODE).
 3. HAND-01(Coordinator, task) — set branch, expected_verdict, branch_lock_acquired, **id_prefix (v7.1.0)**.
 4. On HAND-02 RETURN:
-   - SUCCESS → continue pipeline or merge to main
+   - SUCCESS → continue pipeline; merge to main only on explicit user request, no-ff
    - FAIL → route to recovery per kernel-workflow.md §STOP-RECOVER MATRIX
    - BLOCKED_REPLAN_REQUIRED → REPLAN(replan_context); log in ACTIVE_LEDGER §REPLAN_LOG
 5. Contested verdict → HAND-04(topic, AgentA, AgentB); await DebateResult.

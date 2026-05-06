@@ -72,7 +72,7 @@ prompts/skills/           ← JIT Skill Capsules loaded by trigger, not embedded
 
   # Prompt (P-Domain)
   PromptArchitect.md         — Sole kernel-*.md edit authority
-  PromptAuditor.md           — Q3 8-item + telemetry + Skill Capsule Auditor
+  PromptAuditor.md           — Stage 4 + Q3-AUDIT 13-item + telemetry + Skill Capsule Auditor
 
   # Infrastructure (M-Domain)
   DevOpsArchitect.md         — Docker/CI/GPU Specialist

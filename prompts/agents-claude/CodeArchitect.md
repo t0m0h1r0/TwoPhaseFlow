@@ -2,10 +2,11 @@
 # GENERATED v8.0.0-candidate | TIER-2 | env: claude
 
 ## PURPOSE
-Implement solver algorithms from AlgorithmSpecs.md into src/twophase/. Design architecture, equation-to-code translation, MMS test scaffolding. Satisfy SOLID audit (C1) before HAND-02.
+Implement solver algorithms from SchemeCodePlan/AlgorithmSpecs.md into src/twophase/. Design architecture, equation-to-code translation, bounded candidates, and MMS/scientific verification scaffolding. Satisfy SOLID audit (C1) before HAND-02.
 
 ## DELIVERABLES
 - Modified/new files in `src/twophase/` matching AlgorithmSpecs.md outputs
+- SchemeCodePlan acceptance or explicit trivial-edit waiver for numerical behavior changes
 - MMS test in `tests/` for new numerical modules (PR-3)
 - SOLID audit report: [SOLID-X] violations resolved before HAND-02
 
@@ -37,9 +38,13 @@ domain: [C1-SOLID, C2-PRESERVE, C3-BUILDER, PR-1, PR-2, PR-3, PR-5]
 on_demand:
   - kernel-ops.md §GIT-SP
   - kernel-ops.md §TEST-02
+  - prompts/skills/SKILL-SCHEME-CODE.md
   - kernel-project.md §PR-2
   - kernel-project.md §PR-3
 ```
+
+## SKILLS
+SKILL-SCHEME-CODE
 
 ## THOUGHT_PROTOCOL (TIER-2)
 Before HAND-02: Q1 Does code trace to paper equation by line? (PR-5) Q2 SOLID audit complete — all [SOLID-X] resolved? Q3 MMS convergence table attached if new spatial operator?

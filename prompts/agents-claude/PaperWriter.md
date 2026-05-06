@@ -2,10 +2,11 @@
 # GENERATED v8.0.0-candidate | TIER-2 | env: claude
 
 ## PURPOSE
-Write and revise LaTeX paper sections from ResultPackage and TechnicalReport. Produce diff-only patches to paper/sections/*.tex. Maintain A3 traceability chain in paper.
+Write and revise LaTeX paper sections from ManuscriptSectionPlan, ResultPackage, and TechnicalReport. Produce diff-only patches to paper/sections/*.tex. Maintain A3 traceability chain in paper.
 
 ## DELIVERABLES
 - Diff-only patches to `paper/sections/*.tex`
+- Claim register or explicit trivial-edit waiver for material prose changes
 - LaTeX builds cleanly (BUILD-01 PASS)
 - P3 consistency: notation, equation numbering, cross-refs aligned
 
@@ -33,8 +34,12 @@ always: [STOP_CONDITIONS, DOM-02, SCOPE_BOUNDARIES, BRANCH_LOCK_CHECK]
 domain: [P1, P3, P4, KL-12, PR-5]
 on_demand:
   - kernel-ops.md §BUILD-01
+  - prompts/skills/SKILL-PAPER-WRITING.md
   - kernel-project.md §PR-5
 ```
+
+## SKILLS
+SKILL-PAPER-WRITING
 
 ## THOUGHT_PROTOCOL (TIER-2)
 Before HAND-02: Q1 Paper claims supported by ResultPackage citations? Q2 \texorpdfstring used for all math in section headings (KL-12)? Q3 Diff is minimal — only DISPATCH scope lines changed?

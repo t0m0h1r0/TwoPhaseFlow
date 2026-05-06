@@ -195,7 +195,7 @@ Required checks:
 | # | Check | Method |
 |---|-------|--------|
 | 1 | project rules count | `grep -c '^## PR-' docs/03_PROJECT_RULES.md` equals 6 |
-| 2 | local agent count | 24 agent files per environment, excluding `_base.yaml` |
+| 2 | local agent count | 25 agent files per environment, excluding `_base.yaml`, matching `kernel-roles.md §AGENT PROFILE TABLE` |
 | 3 | source preserved | source PDF and extracted text exist and are unmodified by deployment |
 | 4 | domain leakage | no project-specific legacy terms outside `kernel-project.md` unless intentional |
 | 5 | handoff schema present | `kernel-roles.md` contains HandoffEnvelope |

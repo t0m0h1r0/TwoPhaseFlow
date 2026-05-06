@@ -1,6 +1,6 @@
 {
-  "report_id": "CHK-RA-META-REFRESH-001",
-  "generated_at": "2026-05-05",
+  "report_id": "CHK-RA-META-MASTER-REFRESH-001",
+  "generated_at": "2026-05-06",
   "target": "codex+claude",
   "bootstrapper_spec": "prompts/meta/kernel-deploy.md",
   "status": "PASS",
@@ -38,7 +38,7 @@
     "codex_agent_prompts": 25,
     "claude_agent_prompts": 25,
     "anti_patterns": 15,
-    "skill_capsules": 6
+    "skill_capsules": 9
   },
   "dangling_refs": []
 }

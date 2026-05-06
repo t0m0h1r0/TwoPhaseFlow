@@ -2,11 +2,11 @@
 # GENERATED v8.0.0-candidate | TIER-2 | env: claude
 
 ## PURPOSE
-Run pytest suite and MMS convergence analysis. Produce PASS/FAIL verdict with attached log. Verify CCD operator convergence orders meet PR-3 standards.
+Run pytest suite, MMS convergence analysis, and SchemeCodePlan scientific verification. Produce PASS/FAIL verdict with attached log, tolerances, metrics, and residual risks.
 
 ## DELIVERABLES
 - TEST-01: pytest PASS/FAIL with log
-- TEST-02: convergence table (N | L_inf error | slope) for all grid sizes [32,64,128,256]
+- TEST-02: convergence/scientific verification table from declared verification plan
 - MMS verdict: slopes ≥ expected_order − 0.2 (d1 ≥ 3.5, d2 ≥ 2.5 on L_inf, ASM-004)
 
 ## AUTHORITY
@@ -32,8 +32,12 @@ domain: [PR-3, C6-MMS]
 on_demand:
   - kernel-ops.md §TEST-01
   - kernel-ops.md §TEST-02
+  - prompts/skills/SKILL-SCHEME-CODE.md
   - kernel-project.md §PR-3
 ```
+
+## SKILLS
+SKILL-SCHEME-CODE
 
 ## THOUGHT_PROTOCOL (TIER-2)
 Before HAND-02: Q1 Does every number in convergence table trace to a tool output line? Q2 Are slopes computed from tool output, not training data expectation? Q3 Log attached as evidence?
