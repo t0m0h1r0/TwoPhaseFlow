@@ -579,6 +579,23 @@ the oscillating droplet.  It is not the final theorem gate: the force-side VJP,
 `M_f` Riesz cochain, augmented Hodge projection for the new cochain, corrector
 sign-lock, and YAML runtime mode remain separate implementation slices.
 
+The same current-production probe at `N=32,T=4` gives:
+
+```text
+static:      final KE 3.168855531975e-09, max |Delta V| 3.172399933176e-15,
+             deformation 0 -> 0, max speed Linf 3.240408584682e-05
+oscillating: final KE 2.479811774672e-03, max |Delta V| 3.961944986275e-15,
+             signed deformation 7.617534118366e-02 -> 2.894198501011e-02,
+             max speed Linf 2.333385447203e-02
+```
+
+The analytical overlay in the canonical YAML is
+`0.10 cos(0.167435 t)`, giving approximately `7.838e-02` at `t=4`; the
+simulated signed deformation is therefore far too small.  This longer run
+strengthens the conclusion that the zero-drive pathology is gone, but the
+current scalar curvature-jump production cochain plus reinit-contaminated shape
+ledger is not yet final Rayleigh-Lamb physics.
+
 ## Full Implementation Target
 
 The full implementation should expose:

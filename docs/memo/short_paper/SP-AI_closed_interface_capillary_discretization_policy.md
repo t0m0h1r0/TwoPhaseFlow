@@ -904,6 +904,15 @@ prove the final variational force, because the production cochain is still the
 legacy scalar curvature-jump cochain.  The next implementation slice is the
 actual pre-reinit transport VJP.
 
+Extending the same probe to `N=32,T=4` preserves the same diagnosis.  The
+static case remains deformation-stationary with final KE
+`3.168855531975e-09` and max volume drift `3.172399933176e-15`.  The
+oscillating case keeps nonzero drive, reaching final KE
+`2.479811774672e-03` and max speed Linf `2.333385447203e-02`, but its signed
+deformation at `t=4` is `2.894198501011e-02` versus the canonical
+Rayleigh-Lamb overlay value `0.10 cos(0.167435*4)≈7.838e-02`.  Thus the
+longer gate confirms motion but not final phase/amplitude correctness.
+
 ## Final Policy
 
 The discretization is settled when the solver can state and verify:
