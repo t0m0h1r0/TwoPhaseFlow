@@ -227,6 +227,24 @@ slice, not the final trace/Riesz construction, because the raw `c` must still
 be replaced by or verified against the full `s=-M_f^{-1}T^Td(sigma S_h)^T`
 object on a fixed trace stratum.
 
+## N32 T1 Validation Note
+
+Remote-first checks on the ch14 stack used `N=32,T=1`, debug diagnostics, and
+0.2-time snapshot figures.
+
+| Case | Final KE | Max snapshot velocity Linf | Max corrected Hodge weighted L2 | Volume drift max | Reading |
+|---|---:|---:|---:|---:|---|
+| static droplet | `5.284015e-09` | `1.833331e-05` | `2.814614e-04` | `1.903440e-15` | bounded but not roundoff static |
+| oscillating droplet | `3.643971e-04` | `9.417805e-03` | `4.477470e-02` | `2.428289e-15` | capillary drive restored |
+
+The old `range_projected` production path produced essentially zero velocity
+on the oscillating droplet because it replaced `c` by `Pi_R c`.  The new
+one-component augmented mode restores nonzero Hodge drive while preserving
+volume and PPE convergence.  The static residual is a remaining theorem
+obligation, not a tuning target: it says the current scalar face-implicit
+curvature cochain is still not the full transport-adjoint surface-energy
+Riesz representative.
+
 ## Full Implementation Target
 
 The full implementation should expose:

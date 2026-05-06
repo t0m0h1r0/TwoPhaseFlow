@@ -548,6 +548,38 @@ CapillaryVariationalCochain
 Once the diagnostic object passes the gates, the same object can become the
 production source for the affine pressure-jump PPE/corrector.
 
+## 8. N=32, T=1 Implementation Check
+
+The first `component_hodge_augmented` run used the canonical ch14 affine-jump
+stack at `N=32,T=1`, with debug diagnostics and 0.2-time snapshot output.
+
+```text
+static droplet:
+  final KE                         5.284015e-09
+  max |Delta V|/V0                 1.903440e-15
+  final deformation                0
+  max snapshot velocity Linf        1.833331e-05
+  max capillary face Linf           9.525267e-05
+  max corrected Hodge weighted L2   2.814614e-04
+
+oscillating droplet:
+  final KE                         3.643971e-04
+  max |Delta V|/V0                 2.428289e-15
+  signed deformation               7.617534e-02 -> 4.334637e-02
+  max snapshot velocity Linf        9.417805e-03
+  max capillary face Linf           1.417884e-02
+  max corrected Hodge weighted L2   4.477470e-02
+```
+
+Interpretation: the zero-drive theorem failure is removed.  The oscillating
+closed interface receives a nonzero corrected Hodge drive instead of the
+previous `~1e-37` kinetic energy freeze.  The static droplet is not yet a
+roundoff static equilibrium; the residual is small compared with the
+oscillating drive but nonzero.  This remaining residual is exactly the reason
+the full trace/Riesz cochain `s=-M_f^{-1}T^Td(sigma S_h)^T` is still required:
+the current scalar face-implicit curvature cochain is not yet proven to be
+the discrete surface-energy gradient.
+
 ## Final Policy
 
 The discretization is settled when the solver can state and verify:
