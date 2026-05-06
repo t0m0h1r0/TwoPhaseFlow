@@ -53,6 +53,7 @@
 | **SP-AF** | [SP-AF_reinit_aware_capillary_hodge_theory.md](SP-AF_reinit_aware_capillary_hodge_theory.md) | **Reinit-aware capillary Hodge theory for static/dynamic droplet separation** | 2026-05-06 | ACTIVE |
 | **SP-AG** | [SP-AG_discrete_reinit_capillary_hodge_contract.md](SP-AG_discrete_reinit_capillary_hodge_contract.md) | **Fully discrete reinit-aware capillary Hodge contract and KKT reinit ledger** | 2026-05-06 | REFERENCE |
 | **SP-AH** | [SP-AH_trace_preserving_reinit_projection.md](SP-AH_trace_preserving_reinit_projection.md) | **Retired fixed-stratum trace-preserving variational reinitialization candidate** | 2026-05-06 | RETIRED |
+| **SP-AI** | [SP-AI_closed_interface_capillary_discretization_policy.md](SP-AI_closed_interface_capillary_discretization_policy.md) | **Closed-interface capillary discretization policy: trace geometry, Riesz pullback, component reactions, and augmented Hodge projection** | 2026-05-07 | ACTIVE |
 
 **Letter collision history**:
 - 2026-04-21: `SP-H_uccd6_hyperviscosity.md` created (UCCD6 short paper).
@@ -76,10 +77,10 @@ This table is the pinned one-page compression.
 | §4 CCD / FCCD / UCCD6 | **SP-G**, **SP-A**, **SP-C**, **SP-N** | SP-H (face-jet primitive) | substantial rewrite |
 | §5 Time integration | **SP-I** | SP-N (CN + UCCD6) | reorganised |
 | §6 Non-uniform grids | **SP-C §5**, **SP-E** | — | major addition |
-| §7 Advection / reinit | **SP-D**, **SP-L**, **SP-K** | SP-H (face-jet HFE), SP-AF (reinit-aware capillary state split), SP-AG (discrete transport/reinit labels as reference), SP-AH (retired fixed-stratum candidate; negative knowledge only) | full rewrite |
+| §7 Advection / reinit | **SP-D**, **SP-L**, **SP-K** | SP-H (face-jet HFE), SP-AF (reinit-aware capillary state split), SP-AG (discrete transport/reinit labels as reference), SP-AH (retired fixed-stratum candidate; negative knowledge only), SP-AI (fixed-stratum capillary trace/transport policy) | full rewrite |
 | §8 Pressure/velocity coupling | **SP-J**, **SP-A** | SP-H (face-jet FVM projection) | substantial rewrite |
-| §9 PPE | **SP-M**, **SP-F**, **SP-J §4** | SP-H (face-jet PPE flux), SP-AE (pressure-Hodge observable), SP-AF (capillary Hodge force gate), SP-AG (weighted discrete pressure range) | substantial rewrite |
-| §10 Complete algorithm | **SP-L**, **SP-I**, **SP-M** | SP-H (face-jet unified pipeline), SP-AF (transport/reinit/projection ledger), SP-AG (G0--G6 discrete gates as reference), SP-AH (retired trace/volume/material variational retraction candidate; not an algorithm route) | full rewrite |
+| §9 PPE | **SP-M**, **SP-F**, **SP-J §4** | SP-H (face-jet PPE flux), SP-AE (pressure-Hodge observable), SP-AF (capillary Hodge force gate), SP-AG (weighted discrete pressure range), SP-AI (component-reaction augmented Hodge projection) | substantial rewrite |
+| §10 Complete algorithm | **SP-L**, **SP-I**, **SP-M** | SP-H (face-jet unified pipeline), SP-AF (transport/reinit/projection ledger), SP-AG (G0--G6 discrete gates as reference), SP-AH (retired trace/volume/material variational retraction candidate; not an algorithm route), SP-AI (diagnostic-to-production capillary cochain gates) | full rewrite |
 
 ---
 
