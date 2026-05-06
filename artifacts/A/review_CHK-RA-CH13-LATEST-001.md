@@ -55,4 +55,14 @@ Root fix: synchronized the conclusion to `projection-native face closure`, V7 sl
 
 ## Round 3 Findings
 
-Pending after Round 2 remediation.
+PASS: no MAJOR+ findings remain.
+
+Checks performed after Round 2 remediation:
+
+- Targeted stale-value and stale-term scans over `paper/sections` found no remaining hits for the old Chapter 13 narrative markers: `1.48`, `2.006`, `face-flux projection`, `fixed-wall Galilean`, `Galilean offset`, `§14 stack`, `production 経路`, `U2 production`, `reference stack`, `Heaviside-Flux-Embedded`, `HFE-filtered curvature`, `production snapshot`, `plot-only`, `RCA`, `root-cause`, and `remote production`.
+- KL-12/heading safety pass corrected the V6 and V9 PDF bookmarks that contained math tokens in section titles.
+- `git diff --check` passed.
+- `make -C paper` passed and produced `paper/main.pdf` (245 pages).
+- Build-log scan for fatal errors, LaTeX errors, undefined control sequences, undefined references/citations, and overfull/underfull boxes found no matches.
+
+Stop rule result: Round 3 closes the loop before the 20-round cap, with MAJOR+ count 0.
