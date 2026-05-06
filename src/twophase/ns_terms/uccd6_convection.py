@@ -34,7 +34,7 @@ if TYPE_CHECKING:
 
 
 class UCCD6ConvectionTerm(IConvectionTerm):
-    """UCCD6-stabilised −(u·∇)u convective acceleration.
+    """UCCD6-stabilised skew-form convective acceleration.
 
     Parameters
     ----------
