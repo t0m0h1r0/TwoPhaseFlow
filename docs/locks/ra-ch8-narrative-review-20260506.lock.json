@@ -15,5 +15,7 @@
     "main_merge_method": "no-ff",
     "after_main_merge": "keep this worktree active"
   },
-  "status": "START"
+  "review_artifact": "artifacts/A/review_CHK-RA-CH8-001.md",
+  "completed": "2026-05-06",
+  "status": "DONE"
 }
