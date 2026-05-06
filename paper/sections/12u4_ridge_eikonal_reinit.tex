@@ -22,7 +22,9 @@ single-shot FMM 型の距離再構成とは区別する．
 \texttt{DGRReinitializer}（DGR 1 段補正）である．
 名称が類似する Ridge--Eikonal reinitializer（single-shot FMM 型；
 $n_\tau$ 反復ではなく ridge--extraction の \texttt{eps\_scale} で band 床に達する）
-は本 U4 の対象ではない．検証対象は上記 2 primitive に限定する．
+は本 U4 の対象ではない．したがって本節名・本文でいう Eikonal は
+Godunov 型の擬似時間再初期化を指し，Ridge--Eikonal は U3/V8/V9 の
+非一様格子・局所厚み側の診断として分離する．検証対象は上記 2 primitive に限定する．
 
 \paragraph{設定．}
 2D 単一円界面 $\phi_0 = R^2 - (x-0.5)^2 - (y-0.5)^2$，$R = 0.25$，$N = 128$．

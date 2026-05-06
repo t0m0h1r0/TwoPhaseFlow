@@ -9,10 +9,9 @@
 
 7 Tier (I--VII) で構成される 9 単体テスト (U1--U9) が完了した．
 表~\ref{tab:verification_summary} に各テストの目的・期待/判定基準・実測/観測値・判定を総括する．
-9 件の単体テストで Part 2 (§\ref{sec:ccd_def}--§\ref{sec:grid}) の
-30 数値コンポーネントのうち 22 件を直接網羅し，
-4 件 (face-jet $J_f$, CLS A→F 6-stage, 運動量対流, IPC projection) は
-複数 primitive の複合要素として本章の Tier 構成に対応する．
+9 件の単体テストは Part 2 (§\ref{sec:ccd_def}--§\ref{sec:grid}) の primitive を
+依存順に検査し，複合要素（face-jet $J_f$, CLS A→F 6-stage, 運動量対流, IPC projection）は
+次章の V 系列で統合効果として再検査する．
 
 \begin{table}[p]
 \centering
@@ -31,7 +30,7 @@ U1-b & DCCD modified wavenumber & $H(\pi)=0$（$\varepsilon_d=1/4$）& $H(\pi)=0
 U1-c & FCCD face value/grad   & $\Ord{h^4}$（面演算子設計次数；§\ref{sec:fccd_derivation}） & $\Ord{h^{4.00}}$/$\Ord{h^{4.00}}$        & \checkmark \\
 U1-d & UCCD6 nodal            & $\Ord{h^6}$（内部点）   & $\Ord{h^{7.00}}$（対称性スーパー収束）        & \checkmark \\
 U2-a & Poisson MMS（DC $k=1,2,3$） & $\Ord{h^2}$/$\Ord{h^4}$/$\Ord{h^7}$ & $2.00/4.18/6.90$ & \checkmark \\
-U2-b & 現行 FVM--PPE + Neumann ゲージ & $\Ord{h^2}$  & $\Ord{h^{2.00}}$        & \checkmark \\
+U2-b & 縮約 FVM--PPE + Neumann ゲージ & $\Ord{h^2}$  & $\Ord{h^{2.00}}$        & \checkmark \\
 \midrule
 \multicolumn{5}{l}{\textbf{Tier II：空間離散・非一様格子}} \\
 \midrule
@@ -48,14 +47,14 @@ U5-b & $\delta_\varepsilon$ vs $h$ scaling（$c=\varepsilon/h$ 最適性）& $c 
 \midrule
 \multicolumn{5}{l}{\textbf{Tier IV：圧力ソルバ}} \\
 \midrule
-U6-a & DC $\omega$--収束（$\rho_l \in \{1,100,1000\}$, $k\in\{2,3\}$, $\omega \in \{0.2..0.9\}$） & $\rho_l=1$ clean，$\rho_l\!\ge\!100$ stall, $\omega$ 増大で残差減 & $\rho_l=1$: $5.19\!\times\!10^{-5}$, $\rho_l=1000$ best at $\omega=0.9, k=3$: $7.0\!\times\!10^{-6}$ converge        & \checkmark \\
+U6-a & DC $\omega$ route guard（$\rho_l \in \{1,100,1000\}$, $k\in\{2,3\}$, $\omega \in \{0.2..0.9\}$） & $\rho_l=1$ clean，高密度比一括 PPE は保証対象外 & $\rho_l=1$: $5.19\!\times\!10^{-5}$；高密度比は残差改善しても分相 PPE+HFE へ切替 & \checkmark guard \\
 U6-b & HFE 1D step extension  & $\Ord{h^6}$              & $\Ord{h^{5.91}}$（1D）   & \checkmark \\
 U6-b & HFE 2D band 診断       & 幾何込み条件付き & effective slope max $11.35$ / med $8.72$ & \checkmark \\
 \midrule
 \multicolumn{5}{l}{\textbf{Tier V：界面--圧力結合}} \\
 \midrule
-U7-a & BF 整合：$j_{gl}=-\sigma\kappa_{lg}$ vs 計算値 & $N\ge64$ で ${<}3\%$ & $0.61\%$（$N=128$） & \checkmark \\
-U7-a & BF mismatch one-step 指標 & match と同精度域 & FD2 mismatch でも $N\ge64$ で ${<}3\%$ & \checkmark \\
+U7-a & 縮約 BF 整合：$j_{gl}=-\sigma\kappa_{lg}$ vs 計算値 & $N\ge64$ で ${<}3\%$ & $0.61\%$（$N=128$） & \checkmark \\
+U7-a & BF mismatch one-step 負対照 & 合格経路ではなく判別力の低さを示す & FD2 mismatch でも $N\ge64$ で ${<}3\%$ に見えるため長時間 V5 へ送る & $\bullet$ \\
 U7-b & face $\mu$ 補間 3 種 & $\Ord{h^2}$ 安定    & $1.91/1.81/1.91$       & \checkmark \\
 \midrule
 \multicolumn{5}{l}{\textbf{Tier VI：時間積分}} \\
@@ -73,18 +72,20 @@ U9   & DCCD-on-pressure 違反   & 差分誤差 $\Ord{h^2}$    & $L_\infty^{\mat
 $\triangle$ の類型——
 \checkmark: 設計精度達成，$\bullet$: negation 成立（規則違反量が予測通り発散；合格扱い），$\times$: 未達（本章では該当なし）．
 本表は Tier 順で配置する（24 サブテスト；U6-b は 1D / 2D で 2 行に分割；U7-a も match / mismatch で 2 行に分割）．
-U6 の一括 PPE 高密度比 sweep は保証対象 primitive ではないため本成果表から除外し，U6 本文では分相 PPE+HFE を必要とする補助診断として扱う．
+U6 の一括 PPE 高密度比 sweep は保証対象 primitive ではないため本成果表から除外し，U6 本文では分相 PPE+HFE を必要とする route guard として扱う．
+U7-a mismatch は負対照であり，FD2 を合格経路として採用しない．
 }
 \end{tabularx}
 \end{table}
 
 \begin{tcolorbox}[resultbox, title={U1--U9 単体検証の総括}]
-9 件すべての単体テストが\textbf{合格}（$\checkmark$ / $\bullet$）を達成．
+9 件の単体テストで，正の検証項目は\textbf{合格}（$\checkmark$），
+負対照・否定検証は想定どおり規則違反または判別力不足を示した（$\bullet$）．
 $\times$（不合格）は本章では該当なし．主要結果：
 \begin{itemize}[noitemsep]
   \item \textbf{空間（一様）：}CCD $\Ord{h^{6.0}}$，FCCD は面演算子設計次数 $\Ord{h^{4.0}}$（§\ref{sec:fccd_derivation}），
         UCCD6 は $\Ord{h^{7.0}}$，PPE Dirichlet DC $k=3$ は $\Ord{h^{6.90}}$，
-        現行 FVM--PPE + Neumann ゲージは $\Ord{h^{2.00}}$．
+        縮約 FVM--PPE + Neumann ゲージは $\Ord{h^{2.00}}$．
   \item \textbf{空間（非一様）：}CCD $\Ord{h^{5.98}}$，
         FCCD face value/grad $\Ord{h^{4.00}}$/$\Ord{h^{4.09}}$，
         GCL は $2.13 \times 10^{-13}$ 機械精度（閾値 $3\!\times\!10^{-13}$ 内），
@@ -105,7 +106,8 @@ $\times$（不合格）は本章では該当なし．主要結果：
   \item \textbf{時間積分：}TVD-RK3 $\Ord{\Delta t^{3.04}}$，EXT2/AB2 $\Ord{\Delta t^{2.05}}$，
         implicit-BDF2 $\Ord{\Delta t^{2.01}}$，3 層 full-operator BDF2 $\Ord{\Delta t^{2.00\text{--}2.03}}$．
   \item \textbf{制約：}DCCD-on-pressure 違反で $\Ord{h^2}$ 発散誤差を確認（否定テスト合格）．
-  \item \textbf{coupling：}BF 整合 Laplace 圧は $N=128$ で $0.61\%$，
+  \item \textbf{coupling：}縮約 BF match の Laplace 圧は $N=128$ で $0.61\%$，
+        FD2 mismatch は 1-step 指標で分離できない負対照として長時間 V5 に送る．
         face $\mu$ 補間は算術/調和/VoF で slope $1.91/1.81/1.91$．
 \end{itemize}
 \end{tcolorbox}
@@ -141,9 +143,9 @@ U 系列と V 系列の対応は，単なる章番号の継承ではなく
 \toprule
 結合効果 & 主に引き継ぐ U primitive & §13 での再検査 \\
 \midrule
-標準 PPE 時間・速度結合 & U2-b, U8 & V1-b（Taylor--Green 渦；standard PPE の $O(\Delta t)$ trend）と V2（Kovasznay 残差）． \\
+単相・縮約 PPE 時間速度結合 & U2-b, U8 & V1-b（Taylor--Green 渦；単相 PPE の $O(\Delta t)$ trend）と V2（Kovasznay 残差）． \\
 BF 圧力--界面バランス & U5, U7, U9 & V3/V5（静止液滴と寄生流れ），V8（非一様静止液滴）． \\
-高密度比 pressure-jump stack & U6, U7, U8 & V6（密度比 sweep）と V7（FCCD, HFE, 分相 PPE/DC, capillary range projection, projection-native face closure, affine pressure-history faces を含む coupled-stack 時間精度）． \\
+高密度比 pressure-jump stack & U6, U8, U9（U7 は縮約 BF 対照） & V6（密度比 sweep）と V7（FCCD, HFE, 分相 PPE/DC, capillary range projection, projection-native face closure, affine pressure-history faces を含む coupled-stack 時間精度）．U7 は Neumann BF 縮約との差分整理にのみ用いる． \\
 非一様格子・局所厚み & U3, U5 & V8（非一様 NS 静止）と V9（range-projected pressure-jump stack 条件下の nominal/local $\varepsilon$ switch）． \\
 CLS 保存移流 & U4, U5, U8 & V10-a/V10-b（一様格子・NS 非連成 CLS 強変形移流；非一様 moving-interface CLS は本章の保証範囲外）． \\
 \bottomrule
