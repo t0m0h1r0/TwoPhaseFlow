@@ -1,0 +1,13 @@
+{
+  "id": "CHK-RA-CH13-LATEST-001",
+  "id_prefix": "RA-CH13-LATEST",
+  "branch": "codex/ra-ch13-latest-narrative-review-20260506",
+  "worktree": ".claude/worktrees/codex-ra-ch13-latest-narrative-review-20260506",
+  "created_at": "2026-05-06",
+  "base": "main@19c1d8ab",
+  "scope": "strict narrative, notation, structure, logic, and latest-content review/remediation for paper chapter 13",
+  "stop_condition": "repeat review/fix until no MAJOR+ findings or review round exceeds 20",
+  "main_merge": "forbidden until explicit user instruction; if later requested, no-ff only and continue working in this worktree",
+  "status": "ACTIVE",
+  "commits": []
+}
