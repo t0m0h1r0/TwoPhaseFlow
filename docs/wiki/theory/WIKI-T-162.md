@@ -377,6 +377,68 @@ Static droplet tests must be phrased as constrained criticality of the same
 arbitrary noncritical perturbations so the implementation proves it computes
 the quotient force for nonconstant modes in general.
 
+## Rigorous Contract Decomposition
+
+`CHK-RA-CH14-RIGOR-THEORY-001` refines the selected remedy into separable
+contracts.  A fixed trace stratum `K` contains the cut graph, oriented
+segments, host grid edges for trace points, component labels, and topology
+hash.  Local coordinates `q_i in (0,1)` place trace points on their host edges:
+
+```text
+x_i(q_i) = (1-q_i)a_i + q_i b_i.
+```
+
+Derivatives are valid only while the same `K` remains active.  Length and
+volume are differentiated as geometry functionals, not as sampled curvature:
+
+```text
+S_h(q) = sum_(i->j) |x_j-x_i|,
+V_m,h(q) = C_m(K) + 0.5 sum_(i->j in m) cross(x_i,x_j).
+```
+
+The transport differential is the derivative of the actual pre-reinit endpoint
+map:
+
+```text
+q_T = Phi_K(q,u,dt),
+T_K = partial Phi_K / partial u.
+```
+
+The VJP gate is the dot-product identity
+
+```text
+(T_K^T g)^T w = g^T (T_K w).
+```
+
+The face cochain is accepted only if the Riesz residuals vanish:
+
+```text
+s^T M_f w + d(sigma S_h)[T_K w] = 0,
+b_m^T M_f w - dV_m,h[T_K w] = 0.
+```
+
+Projection is then purely a reaction removal:
+
+```text
+X=[A_fG_f B],
+h=s-X(X^TM_fX)^+X^TM_f s,
+X^TM_fh=0.
+```
+
+Finally, the corrector sign is locked by energy power on release from rest:
+
+```text
+d(sigma S_h)[T_K a_cap] = -||h||_M^2 + higher-order terms.
+```
+
+This gate catches sign mistakes even when the projection residual is small.
+Reinit remains a separate map and ledger entry:
+
+```text
+Delta E_total =
+  [E_h(q_T)-E_h(q^n)] + [E_h(q^{n+1})-E_h(q_T)].
+```
+
 ## Full Implementation Target
 
 The full implementation should expose:

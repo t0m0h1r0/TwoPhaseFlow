@@ -698,6 +698,75 @@ criticality test of `S_h,V_h`, not a circle detector.  Dynamic validation must
 include arbitrary noncritical closed-interface modes, because the method must
 compute the quotient capillary force, not identify a named benchmark shape.
 
+## 11. Rigorous Contract Decomposition
+
+The implementation should now be separated into theorem-sized objects.  First,
+`ClosedInterfaceStratum` fixes the cut graph, oriented segments, component
+labels, host grid edges for trace points, and a topology hash.  With local
+edge coordinates `q_i`, trace points satisfy:
+
+```text
+x_i(q_i) = (1-q_i)a_i + q_i b_i.
+```
+
+All derivatives are conditional on staying inside this stratum.  If a centered
+probe changes the topology hash, the derivative is invalid and the path must
+fail closed.
+
+Second, `TraceGeometryFunctional` owns the differentiable geometry:
+
+```text
+S_h(q) = sum_(i->j) |x_j-x_i|,
+V_m,h(q) = C_m(K) + 0.5 sum_(i->j in m) cross(x_i,x_j).
+```
+
+For one segment, `d|x_j-x_i| = tau dot (dx_j-dx_i)`.  For one oriented area
+edge, `d[0.5 cross(x_i,x_j)] = 0.5 cross(dx_i,x_j)+0.5 cross(x_i,dx_j)`.
+This makes curvature an interpretation of `dS_h`, not primitive force data.
+
+Third, `TransportLinearization` owns the actual pre-reinit endpoint map:
+
+```text
+q_T = Phi_K(q,u,dt),
+T_K = partial_u Phi_K.
+```
+
+Its VJP must satisfy `(T_K^T g)^T w = g^T(T_K w)`.  A finite-difference VJP is
+acceptable as a diagnostic scaffold only when the stratum hash is unchanged;
+production should use an analytic local VJP with the same dot-product gate.
+
+Fourth, `FaceMetricRiesz` defines the cochains:
+
+```text
+s = -M_f^{-1}T_K^T d(sigma S_h)^T,
+B =  M_f^{-1}T_K^T dV_h^T.
+```
+
+Fifth, `AugmentedHodgeProjector` removes only reactions:
+
+```text
+X=[A_fG_f B],
+h=s-X(X^TM_fX)^+X^TM_f s,
+X^TM_fh=0.
+```
+
+Rank deficiencies affect coefficients, not the projected vector, so validation
+must inspect `h` and the orthogonality residual rather than raw pressure or
+component multipliers.  The corrector sign is then fixed by the power gate
+
+```text
+d(sigma S_h)[T_K a_cap] = -||h||_M^2
+```
+
+to leading order on release from rest.  Finally, the reinit ledger splits:
+
+```text
+Delta E_total =
+  [E_h(q_T)-E_h(q^n)] + [E_h(q^{n+1})-E_h(q_T)].
+```
+
+Only the first bracket is capillary transport work.
+
 ## Final Policy
 
 The discretization is settled when the solver can state and verify:
