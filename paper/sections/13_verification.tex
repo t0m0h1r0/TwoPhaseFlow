@@ -44,8 +44,8 @@ $\times$ & 本稿の保証範囲外または設計未達． \\
 \midrule
 Type-A & 連続方程式の理想化次数ではなく，実際に測る縮約離散 identity に対する文献根拠付き criterion．V1-a, V1-b, V2, V4, V5 で適用． \\
 Type-B & 構造的アルゴリズム修正による合格化．V10-a/b 質量保存軸で Olsson--Kreiss mass correction~\cite{OlssonKreiss2005} を 10 step ごとに適用． \\
-Type-D & 連続方程式・離散構造に由来する theoretical hard limit と整合する条件付き合格．V7（capillary pressure-jump / projection 界面帯制約下の coupled-stack slope）, V10-a 形状軸（fixed-grid CLS 位相/threshold 誤差 + slot under-resolution）, V10-b 形状軸（grid-scale folded filament）で適用． \\
-Operator-stack 診断 & pressure-jump/HFE/projection-native stack と同時に用いる mode/switch の有界性診断．V9 で適用し，local mode の改善効果そのものは主張しない． \\
+Type-D & 連続方程式・離散構造に由来する theoretical hard limit と整合する条件付き合格．V7（range-projected pressure-jump / projection 界面帯制約下の coupled-stack slope）, V10-a 形状軸（fixed-grid CLS 位相/threshold 誤差 + slot under-resolution）, V10-b 形状軸（grid-scale folded filament）で適用． \\
+Operator-stack 診断 & range-projected pressure-jump/HFE/projection-native stack と同時に用いる mode/switch の有界性診断．V9 で適用し，local mode の改善効果そのものは主張しない． \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -60,6 +60,8 @@ Reference operator stack の構成は下記であり，各 V test では \paragr
   \item \textbf{convection}: UCCD6（6 次 upwind compact）
   \item \textbf{curvature}: HFE（Heaviside-Flux-Embedded）
   \item \textbf{PPE}: pressure-jump phase-separated FCCD PPE + defect correction (DC)
+  \item \textbf{capillary Hodge closure}: capillary range projection
+        （式~\eqref{eq:capillary_range_projection}）
   \item \textbf{projection closure}: 同一 $D_fA_fG_f$ による速度補正・浮力残差・face-flux projection
   \item \textbf{pressure history}: affine-jump IPC の履歴圧力を正準面加速度として保存・再利用
   \item \textbf{reinitialization}: Ridge--Eikonal（典型 $10$ step ごと）
@@ -70,24 +72,28 @@ Reference operator stack の構成は下記であり，各 V test では \paragr
 (i) \textbf{単相縮約}（V1, V2）— CCD 微分 + standard projection PPE のみ；
 (ii) \textbf{二相縮約 BF}（V3, V4, V5, V8）— CCD 微分 + Neumann FVM PPE
 （参照点 pin gauge 固定）+ CSF $\kappa_{lg}$（pressure-jump PPE は含まない）；
-(iii) \textbf{reference-stack subset}（V6, V7, V9）— FCCD interface transport
+(iii) \textbf{range-projected pressure-jump subset}（V6, V7, V9）— FCCD interface transport
 + UCCD6 momentum convection + HFE curvature + pressure-jump phase-separated
-PPE + DC + projection-native face closure + affine pressure-history faces
+PPE + DC + capillary range projection + projection-native face closure + affine pressure-history faces
 （reinitialization / mass correction の有無は test ごとに異なる）；
 (iv) \textbf{NS 非連成 CLS advection}（V10-a/b）— FCCD flux-form + TVD-RK3
 （+ Ridge--Eikonal 再初期化 + Olsson--Kreiss mass correction; momentum/PPE
 は含まない受動移流経路）．
+以下では (iii) を短く \textbf{range-projected pressure-jump stack} と呼ぶ．
+``reference stack'' はこの構成を含む上位集合を指す便宜名であり，
+V6/V7/V9 の実測値は capillary range projection を有効化した同一 stack で読む．
 
 \paragraph{圧力出力の取り扱い．}
 PPE 経路により出力 $p$ の物理的意味が異なるため，本章は二種の圧力指標を併用する．
 \textbf{Neumann PPE 経路}（V3/V5/V8）では出力 $p$ は physical pressure であり，
 判定指標は Laplace 圧 $\sigma/r$ に対する相対誤差
 $|\Delta p_{\mathrm{rel}}| \equiv |\Delta p_{\mathrm{meas}} - \sigma/r|/(\sigma/r)$ を用いる．
-\textbf{pressure-jump PPE 経路}（V6/V9）では jump-decomposition により $\sigma/r$ が
+\textbf{pressure-jump PPE 経路}（V3 補助 gate, V6/V7/V9）では jump-decomposition により $\sigma/r$ が
 界面結合に埋め込まれるため，出力 $p$ は projection-corrected pressure であり
 physical Laplace 圧そのものではない．本章は
 $|\Delta p_{\mathrm{corr}}|/(\sigma/r)$ を solver diagnostic として測る
-（Laplace 絶対圧誤差ではない）．
+（Laplace 絶対圧誤差ではない）．V7 は同じ pressure-jump 経路を使うが，
+判定指標は圧力値ではなく参照解に対する速度誤差 slope である．
 
 \paragraph{寄生流れスケールの参照値．}
 寄生流れ振幅の典型上界として capillary Reynolds 数
@@ -145,8 +151,8 @@ V10-b（$T=8$ 単一渦 reversal; §\ref{sec:single_vortex_reversal}）も同 Ty
 質量保存軸 \checkmark / 形状軸 $\triangle$（grid-scale folded filament に対する Eulerian 固定格子の Type-D
 ~\cite{EnrightFedkiwFerzigerMitchell2002}; Rider--Kothe 1998 標準
 $T=2$~\cite{LeVeque1996,RiderKothe1998} の 4 倍の積分時間範囲）の二軸．
-V9（nominal/local $\varepsilon$ switch）は projection-native / affine-history stack と同時に使う条件付き診断 ($\checkmark$)．
-また pressure-jump production 経路については，V3 の補助 gate として
+V9（nominal/local $\varepsilon$ switch）は range-projected pressure-jump stack と同時に使う条件付き診断 ($\checkmark$)．
+また pressure-jump range-projected 経路については，V3 の補助 gate として
 表~\ref{tab:V3_pressure_jump_range_gate} の face-balance 診断を置き，
 式~\eqref{eq:capillary_range_projection} の Hodge 閉包が
 静止 Young--Laplace 状態で補正加速度を丸め誤差まで消すことを確認する．
@@ -197,7 +203,7 @@ V5 & 寄生流れ multistep ($\rho_r$/op) & \autoref{fig:V5_spurious}        & $
 V6 & 密度比収束 ($\rho_r=2..833$)      & \autoref{fig:V6_density_ratio}   & $u_\infty^{\mathrm{end}}$, $|\Delta V_\psi|/V_{\psi,0}$ & \checkmark \\
 V7 & IMEX-BDF2 二相時間精度            & \autoref{fig:V7_imex_bdf2_time}  & $\|e\|_\infty$ slope ($\Delta t$) & $\triangle$ Type-D \\
 V8 & 非一様 NS 静止 (200 step)         & \autoref{fig:V8_nonuniform_static} & $u_\infty^{\mathrm{end}}$, $\Delta p_{\mathrm{rel}}$ & \checkmark \\
-V9 & nominal/local $\varepsilon$ switch (reference stack) & \autoref{fig:V9_local_eps}, \autoref{fig:V9_ch14_stack_field} & $u_\infty^{\mathrm{max}}$, $|\Delta V|/V_0$ & \checkmark stack 診断 \\
+V9 & nominal/local $\varepsilon$ switch (range-projected pressure-jump stack) & \autoref{fig:V9_local_eps}, \autoref{fig:V9_ch14_stack_field} & $u_\infty^{\mathrm{max}}$, $|\Delta V|/V_0$ & \checkmark stack 診断 \\
 V10-a & Zalesak CLS 移流 ($\alpha=1$)  & \autoref{fig:V10_zalesak}, \autoref{fig:V10_zalesak_snapshot} & mass drift, centroid err & \shortstack[l]{mass \checkmark Type-B\\shape $\triangle$ Type-D} \\
 V10-b & 単一渦 reversal ($\alpha=1$, $T=8$) & \autoref{fig:V10_single_vortex} & $L^1$ reversal err, mass drift & \shortstack[l]{mass \checkmark Type-B\\shape $\triangle$ Type-D} \\
 \bottomrule
