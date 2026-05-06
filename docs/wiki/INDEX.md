@@ -1,4 +1,4 @@
-# Wiki Index — 352 entries
+# Wiki Index — 355 entries
 
 ## Active Retrieval Gate
 
@@ -8,7 +8,7 @@ research findings.  Older cards remain listed for provenance, but cards marked
 SUPERSEDED or REFERENCE must not be used as current algorithm policy without
 their curation notes.
 
-## Theory (157)
+## Theory (158)
 
 | REF-ID | Title |
 |--------|-------|
@@ -169,8 +169,9 @@ their curation notes.
 | [WIKI-T-155](theory/WIKI-T-155.md) | Discrete Variational Closure Requires Shared Surface-Energy and Pressure-Work Pairing |
 | [WIKI-T-156](theory/WIKI-T-156.md) | Projection-Native Transport Is a Face-Space Conservation Contract |
 | [WIKI-T-157](theory/WIKI-T-157.md) | ALE Discrete-Gradient Energy Endpoints Are Step-Local |
+| [WIKI-T-158](theory/WIKI-T-158.md) | Pressure-Hodge Visualization Is Fail-Closed, Not Interface-Band Masking |
 
-## Cross-Domain (46)
+## Cross-Domain (47)
 
 | REF-ID | Title |
 |--------|-------|
@@ -220,8 +221,9 @@ their curation notes.
 | [WIKI-X-044](cross-domain/WIKI-X-044.md) | Test Failure Retention Separates Live Contracts from Stale Probes |
 | [WIKI-X-045](cross-domain/WIKI-X-045.md) | Rejected Shortcuts Preserve the Theory Boundary |
 | [WIKI-X-046](cross-domain/WIKI-X-046.md) | Paper Success Narrative and Wiki Trial Ledger Have Different Filters |
+| [WIKI-X-047](cross-domain/WIKI-X-047.md) | Static-Droplet RCA Consolidates Projection, Geometry, and Output Contracts |
 
-## Experiment (61)
+## Experiment (62)
 
 | REF-ID | Title |
 |--------|-------|
@@ -287,6 +289,7 @@ their curation notes.
 | [WIKI-E-059](experiment/WIKI-E-059.md) | Projection Underconvergence Was a Real N64 Pressure RCA Component |
 | [WIKI-E-060](experiment/WIKI-E-060.md) | Pressure Oscillation RCA Must Separate Force Cochains from Plot Representatives |
 | [WIKI-E-061](experiment/WIKI-E-061.md) | N64 Non-DC Trial Matrix Separates Contracts from Probes |
+| [WIKI-E-062](experiment/WIKI-E-062.md) | Static Droplet Pressure Images Must Use Hodge Representatives |
 
 ## Paper (16)
 

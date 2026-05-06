@@ -49,6 +49,7 @@
 | **SP-AB** | [SP-AB_affine_jump_oriented_interface_stress.md](SP-AB_affine_jump_oriented_interface_stress.md) | **Affine jump and oriented Young--Laplace interface-stress closure** | 2026-04-30 | ACTIVE |
 | **SP-AC** | [SP-AC_ale_discrete_gradient_capillary_work.md](SP-AC_ale_discrete_gradient_capillary_work.md) | **ALE discrete gradient and transport/remap-adjoint capillary pressure work** | 2026-05-05 | ACTIVE |
 | **SP-AD** | [SP-AD_ridge_eikonal_transport_variational_coupling.md](SP-AD_ridge_eikonal_transport_variational_coupling.md) | **Variational coupling of Ridge-Eikonal projection and projection-native interface transport** | 2026-05-06 | ACTIVE |
+| **SP-AE** | [SP-AE_pressure_hodge_static_droplet_lessons.md](SP-AE_pressure_hodge_static_droplet_lessons.md) | **Pressure-Hodge observables and static-droplet closure lessons** | 2026-05-06 | ACTIVE |
 
 **Letter collision history**:
 - 2026-04-21: `SP-H_uccd6_hyperviscosity.md` created (UCCD6 short paper).
@@ -74,7 +75,7 @@ This table is the pinned one-page compression.
 | §6 Non-uniform grids | **SP-C §5**, **SP-E** | — | major addition |
 | §7 Advection / reinit | **SP-D**, **SP-L**, **SP-K** | SP-H (face-jet HFE) | full rewrite |
 | §8 Pressure/velocity coupling | **SP-J**, **SP-A** | SP-H (face-jet FVM projection) | substantial rewrite |
-| §9 PPE | **SP-M**, **SP-F**, **SP-J §4** | SP-H (face-jet PPE flux) | substantial rewrite |
+| §9 PPE | **SP-M**, **SP-F**, **SP-J §4** | SP-H (face-jet PPE flux), SP-AE (pressure-Hodge observable) | substantial rewrite |
 | §10 Complete algorithm | **SP-L**, **SP-I**, **SP-M** | SP-H (face-jet unified pipeline) | full rewrite |
 
 ---

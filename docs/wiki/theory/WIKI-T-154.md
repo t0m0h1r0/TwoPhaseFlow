@@ -7,6 +7,7 @@ tags: [pressure, hodge_representative, diffuse_interface, diagnostics]
 sources:
   - path: paper/sections/09f_pressure_summary.tex
   - path: paper/sections/13f_error_budget.tex
+  - path: docs/wiki/theory/WIKI-T-158.md
   - path: docs/02_ACTIVE_LEDGER.md
 ---
 
@@ -22,8 +23,8 @@ is an internal representative, not a directly observable phase pressure.
 
 - Bulk pressure contrast and face pressure acceleration can remain stable while
   raw nodal values in `0.05 < psi < 0.95` oscillate.
-- Hodge or phase-bulk representatives are appropriate output views because
-  they match the face-space object used by momentum.
+- Hodge representatives are appropriate output views because they reconstruct
+  a scalar from the face-space object used by momentum.
 - Raw pressure snapshots remain useful diagnostics, but not evidence of a
   physical pressure field in the band.
 
@@ -33,8 +34,10 @@ Reading `fields/pressure` at the smeared interface as the physical scalar
 pressure confuses gauge/extension data with phase pressure.  It can misdiagnose
 a visualization representative error as a force-balance failure.
 
+Masking the band as "undefined" is also rejected.  It hides information instead
+of reconstructing the pressure-work representative; see [[WIKI-T-158]].
+
 ## Implication
 
-Pressure plots for affine-jump runs should use `pressure_hodge` or phase-masked
-representatives, while analyses of momentum coupling should inspect the face
-acceleration/cochain diagnostics.
+Pressure plots for affine-jump runs should use `pressure_hodge`.  Analyses of
+momentum coupling should inspect the face acceleration/cochain diagnostics.
