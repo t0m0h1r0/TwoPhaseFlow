@@ -16,5 +16,6 @@
     "main_merge_method": "no-ff",
     "after_main_merge": "keep_this_worktree_active"
   },
-  "status": "START"
+  "completed": "2026-05-06",
+  "status": "DONE"
 }
