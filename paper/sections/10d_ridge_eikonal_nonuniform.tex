@@ -124,11 +124,12 @@ $D<0$ のときは一次元単調更新 $d=\min(a_x+h_x,\,a_y+h_y)$ を採用す
 
 \noindent
 $\varepsilon_\text{scale}$ は「再構成された符号付き距離幅を
-局所格子幅とどの程度整合させるか」を決める無次元因子であり，
-一様格子の既定値を非一様格子へ移植する際にも
-式~\eqref{eq:eps_local} の空間因子により自然に吸収される．
-本稿では以降，代表値として $\varepsilon_\text{scale}=1.4$ を用いるが，
-感度評価と補正条件は本節以降で扱う．
+局所格子幅とどの程度整合させるか」を決める無次元因子である．
+本稿の標準幅保存経路では $\varepsilon_\text{scale}=1$ とし，
+$\varepsilon_\text{scale}\ne1$ は §~\ref{sec:xi_sdf_reinit} の幅拡大係数 $f>1$ と同じく
+感度・比較条件として明示された場合に限る．
+したがって非一様格子の既定記述は，空間倍率による隠れた幅正則化ではなく，
+D3 の物理空間 FMM と Stage F の $\phi$ 空間体積閉鎖を組にした幅保存経路である．
 
 \paragraph{W — 壁閉包補正}
 壁面に接する界面は領域内部の多様体ではなく，閉領域上の
@@ -206,7 +207,8 @@ $\{\sigma_\text{eff}(\bx_{i,j})\}_{i,j}$ として一度だけ定義する．
         本節ローカルな逆数メトリクス
         $\mathsf{X}_\xi = \mathrm{d}x/\mathrm{d}\xi = 1/J_x^{\mathrm{main}}$ から
         $h_x(i) = \mathsf{X}_\xi(\xi_i)\Delta\xi$ として得られる．
-  \item 基準幅 $h_\text{ref} = (L_x L_y / (N_x N_y))^{1/2}$ は
+  \item 基準幅
+        $h_\text{ref} = \bigl((L_x/(N_x-1))(L_y/(N_y-1))\bigr)^{1/2}$ は
         スカラ定数として格子生成時に決定．
   \item ALE（\S\ref{sec:grid_ale}）時間変化格子では
         $\sigma_\text{eff}$ を格子更新ごとに再計算する．
@@ -345,11 +347,13 @@ $\xiridge$ から $\phi$ への再構成式
 ノードごとに $\varepsilon_\text{local}(\bx_{i,j})$ を用いる．
 
 \noindent\textbf{体積保存の制約}：
-$\varepsilon_\text{scale}$ は一様格子での較正値を基準に置くが，
+$\varepsilon_\text{scale}$ は標準幅保存経路では $1$ に固定し，
 非一様格子で許容されるのは，Ridge--Eikonal 再構成後の体積誤差が
-指定した保存許容範囲内に留まる場合に限る．
-許容範囲を満たさない場合は，$\varepsilon_\text{scale}$ を空間倍率
-$h_\text{ref}/h_\text{min}$ と組み合わせる別較正問題として扱い，
+Stage F の $\phi$ 空間補正で指定許容範囲内へ閉じる場合に限る．
+許容範囲を満たさない場合は，$\varepsilon_\text{scale}$ を
+$h_\text{ref}/h_\text{min}$ と組み合わせて調整するのではなく，
+格子モニタ，D3 種点集合，または Stage F 受理条件の失敗として扱う．
+$\varepsilon_\text{scale}\ne1$ の空間倍率較正は比較・感度検証であり，
 本章の固定格子標準閉包には含めない．
 界面適合格子族（\S\ref{sec:grid_density}）では
 $h(\bx) \approx h_\text{ref}$ が界面近傍で成立するため，
