@@ -29,6 +29,7 @@ depends_on:
   - "[[WIKI-T-153]]"
   - "[[WIKI-T-154]]"
   - "[[WIKI-T-158]]"
+  - "[[WIKI-T-159]]"
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-157]]"
   - "[[WIKI-E-062]]"
@@ -64,7 +65,8 @@ algorithm policy.
 | Capillary jump | [[WIKI-X-039]], [[WIKI-X-040]] | Use oriented affine interface stress and face acceleration, not a regular pressure field. |
 | PPE residual | [[WIKI-T-152]], [[WIKI-E-059]] | Production projection accuracy is the high-order residual contract, not fixed DC iteration count. |
 | Pressure representative | [[WIKI-T-154]], [[WIKI-T-158]], [[WIKI-E-060]], [[WIKI-E-062]] | Raw interface-band pressure is diagnostic; read Hodge representatives and face cochains, never masked-band substitutes. |
-| ALE/remap energy | [[WIKI-T-155]], [[WIKI-T-157]] | Variational curvature work needs shared pressure-work pairing and step-local energy endpoints. |
+| Reinit-aware capillary Hodge | [[WIKI-T-159]], [[WIKI-T-155]], [[WIKI-T-157]] | Build capillary work from the physical transport endpoint, audit reinit as trace-preserving projection or metric defect, and use the weighted Hodge gate for static/dynamic separation. |
+| ALE/remap energy | [[WIKI-T-155]], [[WIKI-T-157]], [[WIKI-T-159]] | Variational curvature work needs shared pressure-work pairing, labelled transport/reinit endpoints, and step-local energy accounting. |
 | Paper/wiki split | [[WIKI-X-046]], [[WIKI-E-061]] | Put successful contracts in the paper; preserve failed controls and trial variants in the wiki. |
 | Negative shortcuts | [[WIKI-X-045]] | Damping/CFL/smoothing/caps/hyperviscosity are retained as rejected detours, not paper success claims. |
 | Verification reading | [[WIKI-E-040]], [[WIKI-X-040]] | V-series labels encode what was certified; stale FFT/CCD-LU/CN readings are historical only. |
@@ -113,6 +115,8 @@ They are retained with a bounded reading:
   underconvergence, face cochains, scalar representatives, and curvature theory;
 - static-droplet pressure output must be Hodge-reconstructed from saved face
   cochains; masked interface-band plots are retired;
+- reinit-induced deformation under zero velocity is projection defect unless
+  the transport/reinit split proves trace and surface-energy preservation;
 - N64 static-grid, `fccdface`, `transportvar`, phase/density variants, and
   other non-DC probes remain useful controls only with their acceptance gates;
 - rejected shortcuts such as damping, smoothing, curvature caps, hyperviscosity,
