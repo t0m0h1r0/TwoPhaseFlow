@@ -1238,7 +1238,7 @@ def test_affine_jump_constructor_requires_face_flux_projection_path():
         TwoPhaseNSSolver(
             N, N, L, L,
             bc_type="wall",
-            advection_scheme="weno5",
+            advection_scheme="dissipative_ccd",
             convection_scheme="ccd",
             ppe_solver="fvm_iterative",
             ppe_coefficient_scheme="phase_separated",
@@ -1837,23 +1837,21 @@ def test_surface_tension_uses_configured_gradient_operator():
     assert solver._surface_tension_grad_op is not solver._pressure_grad_op
 
 
-def test_weno5_advection_constructed_from_scheme():
-    """YAML-advertised WENO5 path must not silently fall back to DCCD."""
-    from twophase.levelset.advection import LevelSetAdvection
+def test_weno5_advection_rejected_from_public_scheme_registry():
+    """WENO5 is a direct-import reference, not a public solver-core route."""
+    from twophase.levelset.interfaces import ILevelSetAdvection
+    from twophase.simulation.scheme_build_ctx import AdvectionBuildCtx
 
-    solver = TwoPhaseNSSolver(
-        N, N, L, L, bc_type="wall",
-        advection_scheme="weno5",
-        convection_scheme="ccd",
-        ppe_solver="fvm_iterative",
-        ppe_defect_correction=False,
-        ppe_coefficient_scheme="phase_density",
-        ppe_interface_coupling_scheme="none",
-        pressure_gradient_scheme="ccd",
-        surface_tension_scheme="none",
+    backend = Backend(use_gpu=False)
+    ctx = AdvectionBuildCtx(
+        backend=backend,
+        grid=Grid(GridConfig(N=(N, N), L=(L, L)), backend),
+        ccd=None,
+        bc_type="wall",
+        fccd=None,
     )
-    assert isinstance(solver._adv, LevelSetAdvection)
-    assert solver._fccd is None
+    with pytest.raises(ValueError, match="weno5"):
+        ILevelSetAdvection.from_scheme("weno5", ctx)
 
 
 def test_fccd_psi_bimodal_preserved():
@@ -1883,7 +1881,7 @@ def test_fccd_psi_bimodal_preserved():
         ridge_sigma_0=3.0,
         reproject_mode="variable_density_only",
         phi_primary_transport=True,
-        advection_scheme="fccd_flux",
+            advection_scheme="dissipative_ccd",
         convection_scheme="fccd_flux",
     )
     psi = _mode2_ic(solver)

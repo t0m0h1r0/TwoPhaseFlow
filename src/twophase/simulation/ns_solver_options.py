@@ -70,7 +70,7 @@ class SolverPPEOptions:
     pressure_scheme: str | None = None
     ppe_coefficient_scheme: str = "phase_separated"
     ppe_interface_coupling_scheme: str = "affine_jump"
-    capillary_range_projection: str = "none"
+    capillary_range_projection: str = "auto"
     ppe_iteration_method: str = "gmres"
     ppe_tolerance: float = 1.0e-8
     ppe_max_iterations: int = 500

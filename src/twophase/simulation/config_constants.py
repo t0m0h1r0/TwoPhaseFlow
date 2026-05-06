@@ -1,6 +1,6 @@
 """Compatibility constants for experiment config parsing."""
 
-_ADVECTION_SCHEMES = ("dissipative_ccd", "weno5", "fccd_nodal", "fccd_flux")
+_ADVECTION_SCHEMES = ("dissipative_ccd", "fccd_nodal", "fccd_flux")
 _ADVECTION_SCHEME_ALIASES = {"fccd": "fccd_flux"}
 _CONVECTION_SCHEMES = ("ccd", "fccd_nodal", "fccd_flux", "uccd6")
 _CONVECTION_SCHEME_ALIASES = {"fccd": "fccd_flux"}
@@ -53,8 +53,9 @@ _POISSON_INTERFACE_COUPLING_ALIASES = {
     "legacy_jump": "jump_decomposition",
     "legacy_jump_decomposition": "jump_decomposition",
 }
-_CAPILLARY_RANGE_PROJECTION_MODES = ("none", "range_projected")
+_CAPILLARY_RANGE_PROJECTION_MODES = ("auto", "none", "range_projected")
 _CAPILLARY_RANGE_PROJECTION_ALIASES = {
+    "default": "auto",
     "off": "none",
     "false": "none",
     "disabled": "none",

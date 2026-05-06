@@ -20,6 +20,7 @@ from twophase.config import SimulationConfig, GridConfig, FluidConfig, NumericsC
 from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
 from twophase.ns_terms.convection import ConvectionTerm
+from twophase.ns_terms.uccd6_convection import UCCD6ConvectionTerm
 from twophase.ns_terms.viscous import ViscousTerm
 from twophase.ns_terms.gravity import GravityTerm
 from twophase.ns_terms.surface_tension import SurfaceTensionTerm
@@ -80,6 +81,43 @@ def test_convection_linear_u(backend):
     expected = -X
     err = np.max(np.abs(result[0] - expected))
     assert err < 1e-8, f"Convection -(u·∇)u error {err:.2e}"
+
+
+def test_uccd6_convection_uses_skew_symmetric_ccd_form(backend):
+    """UCCD6 bulk advection uses 0.5[(u·∇)u + ∇·(u⊗u)], not plain u·∇u."""
+    cfg = SimulationConfig(
+        grid=GridConfig(ndim=2, N=(16, 16), L=(1.0, 1.0)),
+        fluid=FluidConfig(Re=10., Fr=1., We=5.),
+        numerics=NumericsConfig(bc_type="periodic"),
+    )
+    grid = Grid(cfg.grid, backend)
+    ccd = CCDSolver(grid, backend, bc_type="periodic")
+    term = UCCD6ConvectionTerm(backend, grid, ccd, sigma=1.0e-4)
+
+    x = np.linspace(0.0, 1.0, 17)
+    y = np.linspace(0.0, 1.0, 17)
+    X, Y = np.meshgrid(x, y, indexing="ij")
+    u = np.sin(2.0 * np.pi * X) * np.cos(2.0 * np.pi * Y)
+    v = -np.cos(2.0 * np.pi * X) * np.sin(2.0 * np.pi * Y)
+
+    ctx = NSComputeContext(velocity=[u, v], ccd=ccd, rho=np.ones_like(u), mu=1.0)
+    result = term.compute(ctx)
+
+    expected = []
+    for j, u_j in enumerate((u, v)):
+        acc = np.zeros_like(u_j)
+        for k, u_k in enumerate((u, v)):
+            d1, d2 = ccd.differentiate(u_j, k)
+            conservative = ccd.first_derivative(u_k * u_j, k)
+            acc -= 0.5 * (u_k * d1 + conservative)
+            _, d4 = ccd.differentiate(d2, k)
+            _, d6 = ccd.differentiate(d4, k)
+            _, d8 = ccd.differentiate(d6, k)
+            acc -= 1.0e-4 * ((1.0 / 16.0) ** 7) * np.max(np.abs(u_k)) * d8
+        expected.append(acc)
+
+    np.testing.assert_allclose(result[0], expected[0], rtol=1.0e-12, atol=1.0e-12)
+    np.testing.assert_allclose(result[1], expected[1], rtol=1.0e-12, atol=1.0e-12)
 
 
 # ── Test 2: Viscous term ──────────────────────────────────────────────────

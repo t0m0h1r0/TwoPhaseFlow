@@ -238,7 +238,8 @@ class NumericsConfig:
     # 境界条件の種類: BCType.WALL または BCType.PERIODIC
     bc_type: BCType = BCType.WALL
     # CLS 移流スキーム:
-    #   'fccd_flux' (デフォルト, §6) | 'dissipative_ccd' | 'weno5' | 'fccd'
+    #   'fccd_flux' (デフォルト, §6) | 'dissipative_ccd' | 'fccd'
+    # WENO5 is retained only as a direct-import reference implementation.
     # FCCD は CHK-158 / SP-D — 4次精度 face-centered compact scheme.
     advection_scheme: str = "fccd_flux"
     # 運動量対流スキーム: 'uccd6' (デフォルト, §6) | 'ccd' | 'fccd'
@@ -272,9 +273,9 @@ class NumericsConfig:
             f"bc_type は BCType でなければならない: '{self.bc_type}'"
         )
         assert self.advection_scheme in (
-            "dissipative_ccd", "weno5", "fccd_nodal", "fccd_flux",
+            "dissipative_ccd", "fccd_nodal", "fccd_flux",
         ), (
-            f"advection_scheme は 'dissipative_ccd', 'weno5', 'fccd' "
+            f"advection_scheme は 'dissipative_ccd', 'fccd' "
             f"のいずれか: '{self.advection_scheme}'"
         )
         assert self.convection_scheme in (
@@ -311,7 +312,7 @@ class NumericsConfig:
                 f"epsilon_factor={self.epsilon_factor} < 1.2 with advection_scheme="
                 "'dissipative_ccd' risks instability for nonlinear flows "
                 "(We > 100, density ratio > 100). "
-                "Consider epsilon_factor >= 1.5 or advection_scheme='weno5'. "
+                "Consider epsilon_factor >= 1.5 or advection_scheme='fccd_flux'. "
                 "(§5 warn:adv_risks)",
                 UserWarning,
                 stacklevel=2,

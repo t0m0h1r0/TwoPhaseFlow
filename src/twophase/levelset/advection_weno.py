@@ -16,10 +16,15 @@ if TYPE_CHECKING:
 
 
 class LevelSetAdvection(ILevelSetAdvection):
-    """Advects ψ using WENO5 + TVD-RK3."""
+    """Advects ψ using WENO5 + TVD-RK3.
 
-    scheme_names = ("weno5",)
-    _scheme_aliases = {"weno": "weno5"}
+    # DO NOT DELETE: C2 reference implementation only.  PR-1 forbids WENO as
+    an active ``src/twophase/`` solver-core scheme; construct this class
+    directly for reference tests or labeled experiment baselines.
+    """
+
+    scheme_names = ()
+    _scheme_aliases = {}
 
     @classmethod
     def _build(cls, name: str, ctx: "AdvectionBuildCtx") -> "LevelSetAdvection":

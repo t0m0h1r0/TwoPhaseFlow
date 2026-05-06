@@ -23,7 +23,7 @@ class ILevelSetAdvection(SchemeRegistryMixin, ABC):
     """Abstract interface for CLS field advection operators.
 
     Implementations:
-        - LevelSetAdvection        (WENO5 + TVD-RK3, reference scheme)
+        - LevelSetAdvection        (WENO5 + TVD-RK3, C2 direct-import reference)
         - DissipativeCCDAdvection  (DCCD + TVD-RK3, paper-primary §5)
         - FCCDLevelSetAdvection    (FCCD + TVD-RK3)
     """
