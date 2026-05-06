@@ -30,10 +30,9 @@ interface:
     base_factor: 1.5
   geometry:
     curvature:
-      # P2 reduced-ALE variational surface energy route: pressure-jump work
-      # uses a finite-step discrete gradient that accounts for the pre-remap
-      # fitted-grid surface energy.
-      method: transport_variational_p2_ale_discrete_gradient
+      # Scalar face-native Young-Laplace jump; the invalid P2 ALE face-cochain
+      # route is fail-closed for pressure-jump production configs.
+      method: face_implicit
   reinitialization:
     algorithm: ridge_eikonal
     schedule:

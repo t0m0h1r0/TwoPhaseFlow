@@ -289,8 +289,8 @@ def test_ch14_static_droplet_yaml_uses_base_dynamic_route():
     assert cfg.run.cfl == pytest.approx(1.0)
     assert cfg.run.interface_tracking_enabled is True
     assert cfg.run.interface_tracking_method == "psi_direct"
-    assert cfg.run.curvature_method == "transport_variational_p2_ale_discrete_gradient"
-    assert cfg.run.reinit_every == 1
+    assert cfg.run.curvature_method == "face_implicit"
+    assert cfg.run.reinit_every == 0
     assert cfg.run.convection_time_scheme == "imex_bdf2"
     assert cfg.run.viscous_time_scheme == "implicit_bdf2"
     assert cfg.run.viscous_dc_max_iterations == 12
@@ -320,10 +320,9 @@ def test_ch14_canonical_yamls_share_base_numerical_stack():
     for path in sorted(config_dir.glob("*.yaml")):
         cfg = ExperimentConfig.from_yaml(path)
         assert cfg.run.advection_scheme == "fccd_flux", path.name
-        assert cfg.run.curvature_method == (
-            "transport_variational_p2_ale_discrete_gradient"
-        ), path.name
-        assert cfg.run.reinit_every == 1, path.name
+        assert cfg.run.curvature_method == "face_implicit", path.name
+        expected_reinit = 0 if path.name == "ch14_static_droplet.yaml" else 1
+        assert cfg.run.reinit_every == expected_reinit, path.name
         assert cfg.run.convection_scheme == "uccd6", path.name
         assert cfg.run.convection_time_scheme == "imex_bdf2", path.name
         assert cfg.run.viscous_time_scheme == "implicit_bdf2", path.name
@@ -750,6 +749,38 @@ def test_ale_discrete_gradient_curvature_method_parse():
         },
     }))
     assert cfg.run.curvature_method == "transport_variational_p2_ale_discrete_gradient"
+
+
+def test_pressure_jump_rejects_unvalidated_p2_ale_face_cochain_route():
+    with pytest.raises(ValueError, match="not a validated pressure_jump"):
+        ExperimentConfig.from_dict(_minimal({
+            "interface": {
+                "geometry": {
+                    "curvature": {
+                        "method": "transport_variational_p2_ale_discrete_gradient",
+                    },
+                },
+            },
+            "physics": {"surface_tension": 0.072},
+            "numerics": {
+                "momentum": {
+                    "terms": {
+                        "surface_tension": {
+                            "formulation": "pressure_jump",
+                            "gradient": "none",
+                        },
+                    },
+                },
+                "projection": {
+                    "poisson": {
+                        "operator": {
+                            "coefficient": "phase_separated",
+                            "interface_coupling": "affine_jump",
+                        },
+                    },
+                },
+            },
+        }))
 
 
 @pytest.mark.parametrize("adv", ["bogus", "ccd"])

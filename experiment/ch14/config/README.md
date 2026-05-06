@@ -153,9 +153,10 @@ component unchanged except for the base field.
   On nonuniform grids, `local`/`xi_cells` is allowed only with
   `surface_tension.formulation: pressure_jump` or `none`; CSF uses `nominal`.
 - `geometry.curvature`: interface-geometry reconstruction used to obtain κ.
-  ch14 production YAMLs use `transport_variational_p2_ale_discrete_gradient`,
-  the P2 reduced-ALE discrete-gradient route that makes pressure-jump work
-  track the finite-step fitted-grid surface-energy change.
+  ch14 production YAMLs use `face_implicit`, the scalar face-native
+  Young-Laplace pressure-jump geometry.  The P2 ALE discrete-gradient
+  face-cochain route is not a validated production pressure-jump path until
+  its pressure-jump range projection passes the static-droplet Hodge gate.
 - `reinitialization`: geometry restoration algorithm in pseudo-time; this is not
   physical time integration.
 
@@ -183,6 +184,8 @@ frequency:
   tracking cleanup while transporting the interface in physical time.
 - `interface.reinitialization.schedule.every_steps`: full CLS profile restoration
   in pseudo-time after advection.
+  `ch14_static_droplet.yaml` sets this to `0` because a static-equilibrium
+  validation must not add unaccounted pseudo-time surface-energy work.
 
 This follows WIKI-X-027: interface advection and reinitialization use different
 time axes and should not be placed as sibling `run` knobs or mixed in one
@@ -295,11 +298,11 @@ The dynamic ch14 YAMLs share the production stack:
   determines the tracking variable. The flux-locus form is the term default.
 - `interface.transport.time_integrator: tvd_rk3` — co-located with the spatial
   scheme in the same `transport:` block.
-- `interface.geometry.curvature.method: transport_variational_p2_ale_discrete_gradient`
-  — P2 reduced-ALE variational surface energy route for pressure-jump work on
-  fitted grids.
-- `interface.reinitialization.schedule.every_steps: 1` — Ridge--Eikonal profile
-  restoration is applied every physical step in the canonical ch14 route.
+- `interface.geometry.curvature.method: face_implicit` — scalar face-native
+  Young-Laplace pressure-jump geometry on fitted grids.
+- `interface.reinitialization.schedule.every_steps` — Ridge--Eikonal profile
+  restoration is applied every physical step in dynamic ch14 routes; the
+  static-droplet equilibrium route sets it to `0`.
 - `momentum.terms.convection.spatial: uccd6` + `time_integrator: imex_bdf2` —
   WIKI-T-062 positions UCCD6 as the order-preserving upwind CCD remedy for
   transport/Gibbs control.
