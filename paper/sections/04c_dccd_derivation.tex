@@ -1,11 +1,11 @@
 % paper/sections/04c_dccd_derivation.tex
 %
-% §4.4  DCCD の導出形 + 実装デフォルト：中心 CCD 散逸ゼロ → -D_2^CCD 散逸チャンネル → spectral filter
-%        本稿での DCCD は CLS 移流の実装デフォルト（§6）．
-%        用途別の具体組合せは §\ref{sec:time_int} 比較表を参照．
+% §4.4  DCCD の導出形：中心 CCD 散逸ゼロ → -D_2^CCD 散逸チャンネル → spectral filter
+%        DCCD は節点中心 CCD の外殻 post-filter であり，標準 CLS 移流は §6 の FCCD 面フラックスへ委ねる．
+%        用途別の具体組合せは §\ref{sec:scheme_per_variable} と §\ref{sec:time_int} を参照．
 %
 % ═══════════════════════════════════════════════════════════════════════════════
-\subsection{\DCCD{} フィルタ：導出形と実装デフォルト}
+\subsection{\DCCD{} フィルタ：導出形と適用境界}
 \label{sec:dccd_derivation}
 \phantomsection\label{sec:dissipative_ccd}%
 \phantomsection\label{sec:dccd_motivation}%
@@ -28,7 +28,7 @@ $\omega_1(\xi),\omega_2(\xi)$ の挙動から，
 実用シミュレーションでは離散化誤差・非線形相互作用・初期データ不規則性が
 このモードを励起し，スプリアス振動として顕在化する．
 
-\medskip\noindent\textbf{導出形と実装デフォルトの 2 段構成．}
+\medskip\noindent\textbf{導出形と post-filter 形の 2 段構成．}
 本節では DCCD を以下の 2 段で示す：
 \begin{itemize}[leftmargin=*, itemsep=2pt, topsep=2pt]
   \item \textbf{導出形}（§\ref{sec:dccd_embedding}）：
@@ -36,7 +36,7 @@ $\omega_1(\xi),\omega_2(\xi)$ の挙動から，
         \textbf{実数 Hermite 正定値}な偶数次演算子 $-D_2^{\CCD}$ を散逸チャンネルとして並列付加する筋道．
         DCCD の散逸チャンネルが「アドホックな数値粘性」ではなく
         中心系の対称性と CCD が既に解いている量の有効再利用であることを明らかにする．
-  \item \textbf{実装デフォルト}（§\ref{sec:dccd_spectral_filter}--§\ref{sec:dccd_adaptive}）：
+  \item \textbf{post-filter 形}（§\ref{sec:dccd_spectral_filter}--§\ref{sec:dccd_adaptive}）：
         伝達関数 $H(\xi)=1-4\varepsilon_d\sin^2(\xi/2)$ による
         スペクトル post-filter 形式．
         導出形 PDE はその低波数極限に対応する．
@@ -82,12 +82,12 @@ CCD 自身の $D_2^{\CCD}$ を用いることが肝要で，
 UCCD6（§\ref{sec:uccd6_def}）で展開する．）
 
 % -------------------------------------------------------------------------------
-\subsubsection{実装デフォルト：スペクトルフィルタとの関係}
+\subsubsection{post-filter 形：スペクトルフィルタとの関係}
 \label{sec:dccd_spectral_filter}
 \phantomsection\label{sec:dccd_filter_theory}%
 % -------------------------------------------------------------------------------
 
-実装デフォルト DCCD は定数 $\varepsilon$ を
+DCCD の post-filter 形は定数 $\varepsilon$ を
 スペクトル伝達関数：
 \begin{equation}
   H(\xi) = 1 - 4\varepsilon_d\sin^2(\xi/2),
@@ -172,7 +172,7 @@ $\varepsilon_d>1/4$ では高波数で符号が反転するため本稿では採
       後続の検証章（§\ref{sec:verify_summary}）で確認対象とし，本節では十分条件として主張しない．
 \item \textbf{大 $\varepsilon$ の放物型時間刻み制約．}
       適応スイッチ $S(\psi)=(2\psi-1)^2$ が散逸を bulk に局在化させ，
-      $\varepsilon_d\le 0.05$ の実装デフォルト設定で非拘束．
+      $\varepsilon_d\le 0.05$ の弱フィルタ設定で非拘束．
 \end{enumerate}
 
 % -------------------------------------------------------------------------------
@@ -180,33 +180,33 @@ $\varepsilon_d>1/4$ では高波数で符号が反転するため本稿では採
 \label{sec:dccd_role}
 % -------------------------------------------------------------------------------
 
-以上の導出は，実装デフォルト DCCD が\textbf{節点中心 CCD に対する外殻 post-filter} として
+以上の導出は，DCCD が\textbf{節点中心 CCD に対する外殻 post-filter} として
 作用する設計であることを確立する．
 DCCD のスペクトル設計・スイッチ $S(\psi)$・精度影響・境界条件・保存性は，
 以下の要約として本節に集約する：
 
 \begin{itemize}
-  \item \textbf{DCCD は移流の安定化専用}である．
+  \item \textbf{DCCD は節点中心 CCD の安定化 post-filter である．}
         節点 CCD の散逸ゼロチャンネルへ post-filter 形式で散逸を加える設計であり，
-        面位置で評価する量に対する整合性は本スキーム単独では保証されず，
-        面中心化が要請される場合は FCCD（§\ref{sec:fccd_def}）が用いられる．
+        面位置で評価する量に対する整合性は本スキーム単独では保証されない．
+        したがって本稿の標準 CLS 移流は FCCD 面フラックス（§\ref{sec:advection_motivation}）で閉じ，
+        DCCD は節点中心経路の比較・補助安定化に限定する．
   \item \textbf{界面近傍は非線形スイッチで無効化}される．
         $S(\psi)=(2\psi-1)^2$ は bulk（$\psi\in\{0,1\}$）で $1$，
         界面帯（$\psi=0.5$）で $0$ を取り，
         CSF 体積力評価位置での余計な散逸を避ける．
   \item \textbf{体積保存は外殻修正}で担保．
         スペクトルフィルタ自体は \(\int u\,dx\) 不変ではないため，
-        §\ref{sec:cls_advection} の CLS 体積補正（$\int\psi$ 再正規化）を要する．
-        等密度SSPRK3検証（$\varepsilon_d=0.05$，$N=64$ 設定）では
-        フィルタのみの体積損失 $\sim 10^{-4}\cdot T$（$T$：シミュレーション時間）が
-        観測され，CLS 再正規化で機械精度まで圧縮される
-        （詳細な検証値は §\ref{sec:verify_cls_advection} に提示する）．
+        節点中心の比較経路で保存量を評価する場合は，
+        §\ref{sec:dccd_mass_conservation} の質量閉鎖条件を併記しなければならない．
+        標準 CLS 経路では，FCCD 保存形面フラックスで輸送し，
+        clamp 後の総量残差を §\ref{sec:cls_mass_correction} の Stage B/F で閉じる．
   \item \textbf{UCCD6 との対照}．
         UCCD6（§\ref{sec:uccd6_def}）は散逸を\textbf{演算子内部}に埋め込み，
         DCCD は\textbf{外殻 post-filter} として加える．
-        両スキームの用途別割当（bulk 移流／CLS 移流／再初期化圧縮項など）と
-        等密度検証／変密度一括／分相 PPE における具体的な組合せは
-        §\ref{sec:time_int} の比較表に集約する．
+        両スキームの用途別割当は §\ref{sec:scheme_per_variable} で定める：
+        CLS $\psi$ は FCCD 面フラックス，運動量 bulk は UCCD6，圧力・毛管ジャンプを含む
+        Balanced--Force 面閉包には DCCD を入れない．
 \end{itemize}
 
 \noindent
@@ -227,24 +227,26 @@ CLS 変数 $\psi$ に基づく適応制御アルゴリズムを与える．
 本節では DCCD の散逸強度パラメータ $\varepsilon_d$ と
 適応制御スイッチ $S(\psi)$ の \textbf{数値設計}を扱う．
 スキーム単独の数値特性（フィルタ伝達関数・安定性条件・収束性）が中心であり，
-具体的な用途章割当（CLS 移流・チェッカーボード抑制・曲率帯制限など）の
-機構詳細は当該章（§~\ref{sec:cls_advection} 以降）に委ねる．
+具体的な用途章割当（標準 CLS 移流・運動量 bulk 移流・圧力面閉包・曲率帯制限など）の
+機構詳細は当該章（§~\ref{sec:scheme_per_variable} 以降）に委ねる．
 
-表~\ref{tab:dccd_usage_map} に，本稿で DCCD が採る代表的なパラメータ設定を一覧する．
+表~\ref{tab:dccd_usage_map} に，DCCD を節点中心 post-filter として用いる場合の
+代表的なパラメータ設定を一覧する．標準経路での演算子割当は
+§\ref{sec:scheme_per_variable} に従う．
 
 \begin{table}[htbp]
 \centering
 \caption{DCCD フィルタのパラメータ設計一覧}
 \label{tab:dccd_usage_map}
-\PaperCaptionNote{用途章割当の機構詳細は §\ref{sec:cls_advection} 以降で述べる．}
+\PaperCaptionNote{DCCD は節点中心 CCD の post-filter 設計であり，標準 CLS 移流・圧力面閉包の主演算子ではない．用途章割当の機構詳細は §\ref{sec:scheme_per_variable} 以降で述べる．}
 \small
 \begin{tabular}{llcl}
 \hline
 適用シナリオ & $\varepsilon_d$ & 適応制御 & 設計根拠 \\
 \hline
-$C^0$ tanh プロファイル移流（界面）
-  & 0.05 & あり（$S(\psi)$） & 界面プロファイル保持 \\
-平滑場・チェッカーボード抑制
+$C^0$ tanh プロファイルの節点中心比較経路
+  & 0.05 & あり（$S(\psi)$） & 標準 FCCD 経路に対する比較・感度評価 \\
+平滑場・節点中心ノイズ抑制
   & $1/4$ & なし（固定） & 単調減衰上限・Nyquist 完全抑制 \\
 高次導関数の帯制限
   & 0.05 & あり（$S(\psi)$） & 数値振動を界面外で抑制 \\
@@ -337,11 +339,11 @@ $0\le 1+\mu\le1$ であり，定数係数の場合と同じ
           \quad i = 1, \ldots, N-2
         \]
   \item \textbf{後続計算への引き渡し：}
-        フィルタ適用済みの $(\tilde{f}', \tilde{f}'')$ を CLS 移流，曲率計算，
-        速度勾配評価に用いる．
-        PPE 右辺・Corrector 発散のチェッカーボード抑制には，
-        本適応制御ではなく $\varepsilon_d=1/4$ の固定フィルタ
-        （§~\ref{sec:collocate}）を用いる．
+        フィルタ適用済みの $(\tilde{f}', \tilde{f}'')$ は，節点中心 CCD 経路の
+        比較・補助安定化または高次導関数の帯制限に用いる．
+        標準 CLS 輸送は FCCD 面フラックスで閉じ，PPE 右辺・Corrector 発散の
+        $2\Delta x$ 抑制は圧力場をフィルタするのではなく，面フラックス/Rhie--Chow 型の
+        同一ロカス閉包として扱う（§~\ref{sec:collocate}, §~\ref{sec:dccd_pressure_nofilt}）．
 \end{enumerate}
 
 \textbf{2 次元への拡張：}
