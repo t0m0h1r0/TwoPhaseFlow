@@ -50,6 +50,7 @@
 | **SP-AC** | [SP-AC_ale_discrete_gradient_capillary_work.md](SP-AC_ale_discrete_gradient_capillary_work.md) | **ALE discrete gradient and transport/remap-adjoint capillary pressure work** | 2026-05-05 | ACTIVE |
 | **SP-AD** | [SP-AD_ridge_eikonal_transport_variational_coupling.md](SP-AD_ridge_eikonal_transport_variational_coupling.md) | **Variational coupling of Ridge-Eikonal projection and projection-native interface transport** | 2026-05-06 | ACTIVE |
 | **SP-AE** | [SP-AE_pressure_hodge_static_droplet_lessons.md](SP-AE_pressure_hodge_static_droplet_lessons.md) | **Pressure-Hodge observables and static-droplet closure lessons** | 2026-05-06 | ACTIVE |
+| **SP-AF** | [SP-AF_reinit_aware_capillary_hodge_theory.md](SP-AF_reinit_aware_capillary_hodge_theory.md) | **Reinit-aware capillary Hodge theory for static/dynamic droplet separation** | 2026-05-06 | ACTIVE |
 
 **Letter collision history**:
 - 2026-04-21: `SP-H_uccd6_hyperviscosity.md` created (UCCD6 short paper).
@@ -73,10 +74,10 @@ This table is the pinned one-page compression.
 | §4 CCD / FCCD / UCCD6 | **SP-G**, **SP-A**, **SP-C**, **SP-N** | SP-H (face-jet primitive) | substantial rewrite |
 | §5 Time integration | **SP-I** | SP-N (CN + UCCD6) | reorganised |
 | §6 Non-uniform grids | **SP-C §5**, **SP-E** | — | major addition |
-| §7 Advection / reinit | **SP-D**, **SP-L**, **SP-K** | SP-H (face-jet HFE) | full rewrite |
+| §7 Advection / reinit | **SP-D**, **SP-L**, **SP-K** | SP-H (face-jet HFE), SP-AF (reinit-aware capillary state split) | full rewrite |
 | §8 Pressure/velocity coupling | **SP-J**, **SP-A** | SP-H (face-jet FVM projection) | substantial rewrite |
-| §9 PPE | **SP-M**, **SP-F**, **SP-J §4** | SP-H (face-jet PPE flux), SP-AE (pressure-Hodge observable) | substantial rewrite |
-| §10 Complete algorithm | **SP-L**, **SP-I**, **SP-M** | SP-H (face-jet unified pipeline) | full rewrite |
+| §9 PPE | **SP-M**, **SP-F**, **SP-J §4** | SP-H (face-jet PPE flux), SP-AE (pressure-Hodge observable), SP-AF (capillary Hodge force gate) | substantial rewrite |
+| §10 Complete algorithm | **SP-L**, **SP-I**, **SP-M** | SP-H (face-jet unified pipeline), SP-AF (transport/reinit/projection ledger) | full rewrite |
 
 ---
 

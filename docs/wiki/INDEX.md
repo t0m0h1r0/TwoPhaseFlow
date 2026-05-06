@@ -1,4 +1,4 @@
-# Wiki Index — 356 entries
+# Wiki Index — 357 entries
 
 ## Active Retrieval Gate
 
@@ -8,7 +8,7 @@ research findings.  Older cards remain listed for provenance, but cards marked
 SUPERSEDED or REFERENCE must not be used as current algorithm policy without
 their curation notes.
 
-## Theory (158)
+## Theory (159)
 
 | REF-ID | Title |
 |--------|-------|
@@ -170,6 +170,7 @@ their curation notes.
 | [WIKI-T-156](theory/WIKI-T-156.md) | Projection-Native Transport Is a Face-Space Conservation Contract |
 | [WIKI-T-157](theory/WIKI-T-157.md) | ALE Discrete-Gradient Energy Endpoints Are Step-Local |
 | [WIKI-T-158](theory/WIKI-T-158.md) | Pressure-Hodge Visualization Is Fail-Closed, Not Interface-Band Masking |
+| [WIKI-T-159](theory/WIKI-T-159.md) | Reinit-Aware Capillary Hodge Theory |
 
 ## Cross-Domain (47)
 
