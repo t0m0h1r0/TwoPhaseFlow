@@ -175,7 +175,8 @@ N 軸での非単調挙動（$\Delta t = h/4$ 固定下で短波長 spurious mod
   \item \textbf{設定忠実性} — 各実験は表に示す物理設定
         （$\sigma$, $\rho_l/\rho_g$, $\Re$, BC）で評価する．
         スキームは reference operator stack（FCCD 界面輸送，Ridge--Eikonal,
-        HFE/分相 PPE，capillary range projection，UCCD6 対流，IMEX-BDF2）を基準とし，FD/単純 upwind/解析輸送は
+        HFE/分相 PPE，capillary range projection，projection-native face closure，
+        affine pressure-history faces，UCCD6 対流，IMEX-BDF2）を基準とし，FD/単純 upwind/解析輸送は
         比較基線または条件付き縮約テストとして明示する場合に限る．
         V10-b の単一渦 reversal は，NS 連成なしの固定一様格子上で Ridge--Eikonal と質量修正を含む強変形 CLS 移流テストとして扱う．
   \item \textbf{対応関係} — 各実験は「目的 → 設定 → 結果 → 判定」の順に記述する．

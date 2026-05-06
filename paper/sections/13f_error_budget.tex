@@ -159,7 +159,9 @@ V10-b-shape & 単一渦 reversal 形状軸 & grid-scale folded filament の Eule
   \item 単相 NS：CCD 内点 6 次空間 + AB2 predictor 2 次時間設計は component level で維持する．
         統合縮約実験では，Kovasznay wall residual は $O(h^4)$，
         standard PPE TGV time trend は $O(\Delta t)$ として判定する．
-  \item 二相 NS：分相 PPE + DC + HFE + capillary range projection + projection-native face closure + affine pressure-history faces 構成が密度比 $\le 833$ でロバスト（V6）．
+  \item 二相 NS：range-projected pressure-jump stack
+        （分相 PPE + DC + HFE + capillary range projection + projection-native face closure + affine pressure-history faces）が
+        密度比 $\le 833$ でロバスト（V6）．
         ただし時間方向の実効次数は界面処理に律速されるため，
         \textbf{$\Delta t$ を $h_{\min}$ より小さく取る安全ファクタ}（CFL $\le 0.4$）が推奨．
   \item 非一様格子：$\alpha>1$ の NS 静止問題と nominal/local $\varepsilon$ switch は V8/V9 で検証し，
@@ -187,8 +189,9 @@ V10-b-shape & 単一渦 reversal 形状軸 & grid-scale folded filament の Eule
   \item V4 (\autoref{sec:galilean_offset}) —
         固定壁系の uniform-offset residual に対する $O(\|\bU\|)$ boundedness．
   \item V6, V7 (\autoref{sec:density_ratio_sweep},
-        \autoref{sec:imex_bdf2_twophase_time}) — 分相 PPE \eqref{eq:split_ppe} +
-        DC + HFE + capillary range projection に対する密度比安定性と二相時間精度．
+        \autoref{sec:imex_bdf2_twophase_time}) — range-projected pressure-jump stack
+        （分相 PPE \eqref{eq:split_ppe} + DC + HFE + capillary range projection +
+        projection-native face closure + affine pressure-history faces）に対する密度比安定性と二相時間精度．
   \item V8 (\autoref{sec:nonuniform_ns_static}) — 非一様 NS に対する静止液滴
         $\Delta p_{\mathrm{rel}}$ 維持．
   \item V9 (\autoref{sec:local_eps_validation}) — range-projected pressure-jump stack 上の nominal/local $\varepsilon$ switch に対する

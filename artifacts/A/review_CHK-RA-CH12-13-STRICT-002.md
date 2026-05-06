@@ -30,4 +30,14 @@ Status: fixed in `paper/sections/12h_summary.tex`.
 
 ## Round 2 Findings
 
-Pending.
+### MAJOR-4 — §12 still abbreviated the V6/V7/V9 stack as pre-range-projection pressure-jump PPE
+
+After Round 1, §13 defines V6/V7/V9 as the `range-projected pressure-jump stack`, but §12 design-map and U6/U7 bridge text still says only `pressure-jump 分相 PPE+HFE stack` or `pressure-jump stack`. That abbreviation drops the decisive latest closure terms: capillary range projection, projection-native face closure, and affine pressure-history faces. A reader entering through §12 could therefore think §13 is merely the older phase-separated PPE+HFE path. Root fix: make §12 exit wording and adjacent §13 summary wording name the same stack components as §13's canonical definition.
+
+Status: fixed in `paper/sections/12_component_verification.tex`, `12h_summary.tex`, `12u2_ccd_poisson_ppe_bc.tex`, `12u6_split_ppe_dc_hfe.tex`, `12u7_bf_static_droplet.tex`, `13_verification.tex`, `13b_twophase_static.tex`, and `13f_error_budget.tex`.
+
+### MINOR-1 — V10 prose referenced a non-existent heading name
+
+V10-a/V10-b cite `各 V test の判定再分類`, while §13's actual heading is `各 V test の判定整理`. Root fix: use the actual heading name consistently.
+
+Status: fixed in `paper/sections/13e_nonuniform_ns.tex`.
