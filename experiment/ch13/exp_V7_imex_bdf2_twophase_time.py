@@ -9,7 +9,8 @@ operators as §14:
   - FCCD interface transport + TVD-RK3,
   - UCCD6 momentum convection + IMEX-BDF2,
   - direct-ψ filtered curvature and ridge-eikonal reinitialization,
-  - pressure-jump phase-separated FCCD PPE with defect correction.
+  - pressure-jump phase-separated FCCD PPE with capillary range projection
+    and defect correction.
 
 The finest step count is used as the Richardson reference.  This is a
 diagnostic of the coupled stack, not a pure BDF2 unit test.

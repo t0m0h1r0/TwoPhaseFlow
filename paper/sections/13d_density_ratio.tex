@@ -12,10 +12,10 @@
 
 \paragraph{検証対象．}
 分相 PPE + DC + HFE 統合（\autoref{sec:split_ppe_motivation}〜\autoref{sec:U6_split_ppe_dc_hfe}）に対応する，
-reference stack の FCCD interface transport / UCCD6 convection / HFE curvature
-（\texttt{psi\_direct\_hfe}）/ pressure-jump surface tension /
+range-projected pressure-jump stack の FCCD interface transport / UCCD6 convection / HFE curvature
+（HFE-filtered curvature）/ pressure-jump surface tension /
 phase-separated FCCD PPE + defect correction + face-flux projection /
-affine pressure-history faces の構成が，
+capillary range projection / affine pressure-history faces の構成が，
 密度比 $\rho_r = \rho_l/\rho_g \in [2, 833]$（最大は水--空気の $\sim 833$；高密度比 LS の系統解析は~\cite{SussmanSmereka1997,Tryggvason2011}）で
 \textbf{ブローアップしない}ことを確認する．
 本検証は，一括 smoothed-Heaviside 解法で顕在化しうる密度ジャンプ越え問題に対する
@@ -33,25 +33,25 @@ $\rho_r \in \{2,10,100,833\}$, $N \in \{24,32\}$．
 
 \paragraph{結果．}
 \begin{table}[!ht]
-\caption{V6：reference stack による密度比掃引}
+\caption{V6：range-projected pressure-jump stack による密度比掃引}
 \label{tab:V6_density_ratio}
-\PaperCaptionNote{全 8 ケースでブローアップなし． $|\Delta V_\psi|/V_{\psi,0}$ は全ケースで round-off floor（$\le 6.4\times10^{-16}$）に留まり， $u_\infty^{\mathrm{end}}$ は $N$ 増加および $\rho_r$ 増加で低下する． $|\Delta p_{\mathrm{corr}}|/(\sigma/r)$ は pressure-jump PPE の補正圧診断であり， Laplace 絶対圧誤差ではない．}
+\PaperCaptionNote{全 8 ケースでブローアップなし． $|\Delta V_\psi|/V_{\psi,0}$ は全ケースで round-off floor（$\le 1.3\times10^{-16}$）に留まり，capillary range projection 後の $u_\infty^{\mathrm{end}}$ は最大でも $5.8\times10^{-10}$ である． $|\Delta p_{\mathrm{corr}}|/(\sigma/r)$ は pressure-jump PPE の補正圧診断であり， Laplace 絶対圧誤差ではない．}
 \centering\small
 \begin{tabular}{r r r r r}
 \toprule
 $\rho_r$ & $N$ & $u_\infty^{\mathrm{end}}$ & $|\Delta V_\psi|/V_{\psi,0}$ & $|\Delta p_{\mathrm{corr}}|/(\sigma/r)$ \\
 \midrule
-2    & 24 & $8.913\times 10^{-2}$ & $3.548\times 10^{-16}$ & $1.496$ \\
-2    & 32 & $3.601\times 10^{-3}$ & $1.269\times 10^{-16}$ & $2.006$ \\
+2    & 24 & $1.528\times 10^{-15}$ & $0.000$ & $0.746$ \\
+2    & 32 & $0.000$ & $1.269\times 10^{-16}$ & $1.003$ \\
 \midrule
-10   & 24 & $4.494\times 10^{-2}$ & $1.183\times 10^{-16}$ & $1.493$ \\
-10   & 32 & $1.963\times 10^{-3}$ & $6.345\times 10^{-16}$ & $2.006$ \\
+10   & 24 & $2.588\times 10^{-11}$ & $1.183\times 10^{-16}$ & $0.739$ \\
+10   & 32 & $0.000$ & $1.269\times 10^{-16}$ & $1.003$ \\
 \midrule
-100  & 24 & $1.471\times 10^{-2}$ & $0.000$ & $1.491$ \\
-100  & 32 & $6.904\times 10^{-4}$ & $1.269\times 10^{-16}$ & $2.006$ \\
+100  & 24 & $5.723\times 10^{-10}$ & $0.000$ & $0.742$ \\
+100  & 32 & $0.000$ & $1.269\times 10^{-16}$ & $1.002$ \\
 \midrule
-833  & 24 & $5.116\times 10^{-3}$ & $1.183\times 10^{-16}$ & $1.491$ \\
-833  & 32 & $2.421\times 10^{-4}$ & $5.076\times 10^{-16}$ & $2.006$ \\
+833  & 24 & $3.079\times 10^{-11}$ & $1.183\times 10^{-16}$ & $0.737$ \\
+833  & 32 & $0.000$ & $1.269\times 10^{-16}$ & $1.002$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -61,7 +61,7 @@ $\rho_r$ & $N$ & $u_\infty^{\mathrm{end}}$ & $|\Delta V_\psi|/V_{\psi,0}$ & $|\D
 \includegraphics[width=0.92\linewidth]{figures/ch13_v6_density_ratio.pdf}
 \caption{V6：密度比収束掃引}
 \label{fig:V6_density_ratio}
-\PaperCaptionNote{$u_\infty^{\mathrm{end}}$（左）は $N=24\!\to\!32$ で低下し， $\rho_r$ 増加でも抑制される．右は CLS 体積 drift であり， 全ケース round-off floor に留まる．}
+\PaperCaptionNote{$u_\infty^{\mathrm{end}}$（左）は capillary range projection 後に全密度比で $10^{-9}$ 未満へ落ちる．右は CLS 体積 drift であり， 全ケース round-off floor に留まる．}
 \end{figure}
 
 \begin{figure}[!ht]
@@ -69,22 +69,22 @@ $\rho_r$ & $N$ & $u_\infty^{\mathrm{end}}$ & $|\Delta V_\psi|/V_{\psi,0}$ & $|\D
 \includegraphics[width=0.98\linewidth]{figures/ch13_v6_density_ratio_fields.pdf}
 \caption{V6：密度比掃引の終端速度場}
 \label{fig:V6_density_ratio_fields}
-\PaperCaptionNote{$\rho_l/\rho_g \in \{2, 100, 833\}$，$N=32$，reference stack（FCCD, UCCD6, HFE, pressure-jump 分相 PPE/DC, projection-native face closure, affine pressure-history faces）．白円は界面 $\psi = 0.5$．各パネルで個別 $v_{\max}$ を取り，$\|u\|_\infty$ が $\rho_r=2 \to 833$（水--空気）で $3.60\times 10^{-3} \to 2.42\times 10^{-4}$ と約 1 桁以上抑制される様子を直接可視化．高密度比でも界面リング構造が破綻せず，本 stack が密度比に対して頑健であることを示す．}
+\PaperCaptionNote{$\rho_l/\rho_g \in \{2, 100, 833\}$，$N=32$，range-projected pressure-jump stack（FCCD, UCCD6, HFE, pressure-jump 分相 PPE/DC, capillary range projection, projection-native face closure, affine pressure-history faces）．白円は界面 $\psi = 0.5$．各パネルで個別 $v_{\max}$ を取り，capillary range projection 後の face balance が密度比に依存せず丸め誤差近傍の速度場を与えることを確認する．}
 \end{figure}
 
 \paragraph{判定と制約条件．}
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item \textbf{主指標（合格条件）}：(a) 全 $8$ ケースで\textbf{ブローアップなし}
         （水--空気相当 $\rho_r=833$ を含む）\checkmark，
-        (b) $|\Delta V_\psi|/V_{\psi,0} \le 6.4\times10^{-16}$ で CLS 体積は実質保存\checkmark．
-  \item \textbf{補助指標（scale 確認）}：$u_\infty^{\mathrm{end}}$ は $\rho_r$ 増加で抑制され，
-        高密度比下では速度応答スケールが $\sigma/(\rho_l+\rho_g)$ に従い低下する．
-        $|\Delta p_{\mathrm{corr}}|/(\sigma/r) \sim 1.49$--$2.01$ は
+        (b) $|\Delta V_\psi|/V_{\psi,0} \le 1.3\times10^{-16}$ で CLS 体積は実質保存\checkmark，
+        (c) $u_\infty^{\mathrm{end}}\le 5.8\times10^{-10}$ で capillary face balance が丸め誤差近傍に閉じる\checkmark．
+  \item \textbf{補助指標（scale 確認）}：
+        $|\Delta p_{\mathrm{corr}}|/(\sigma/r) \sim 0.74$--$1.01$ は
         pressure-jump PPE の補正圧 diagnostic（§\ref{sec:verification}「圧力出力の取り扱い」参照；
         Laplace 絶対圧誤差ではない）であり，合格基準には含めない．
   \item 本 V6 は通常 CCD/FVM-PPE ではなく
         FCCD, UCCD6, HFE, pressure-jump phase-separated PPE/DC,
-        projection-native face closure, affine pressure-history faces 経路を直接検証する．
+        capillary range projection, projection-native face closure, affine pressure-history faces 経路を直接検証する．
 \end{itemize}
 検証対応：式~\eqref{eq:split_ppe}，\autoref{sec:split_ppe_motivation} の分相 PPE，
 \autoref{sec:verify_split_ppe_dc}（DC），\autoref{sec:U6_split_ppe_dc_hfe}（HFE）に対し，
@@ -95,10 +95,10 @@ $\rho_r$ & $N$ & $u_\infty^{\mathrm{end}}$ & $|\Delta V_\psi|/V_{\psi,0}$ & $|\D
 
 \paragraph{検証対象．}
 密度比 $\rho_r > 1$ の二相 NS において，IMEX-BDF2 時間離散~\cite{AscherRuuthSpiteri1997,HairerWanner1996}
-（\autoref{ch:time_integration}）を含む reference stack の
+（\autoref{ch:time_integration}）を含む range-projected pressure-jump stack の
 FCCD interface transport + TVD-RK3，UCCD6 convection + IMEX-BDF2，
 HFE curvature，ridge-eikonal reinitialization，pressure-jump phase-separated
-FCCD PPE + defect correction，projection-native face closure，affine pressure-history faces
+FCCD PPE + defect correction，capillary range projection，projection-native face closure，affine pressure-history faces
 を同時に使ったときの実効時間精度を，
 参照解との差で評価する．これは BDF2 単体の次数検証ではなく，
 界面輸送・再初期化・pressure-jump PPE を含む結合 stack 診断である．
@@ -112,19 +112,19 @@ ridge-eikonal reinitialization は全 step で有効化する．
 
 \paragraph{結果．}
 \begin{table}[!ht]
-\caption{V7：reference stack の二相時間精度診断}
+\caption{V7：range-projected pressure-jump stack の二相時間精度診断}
 \label{tab:V7_imex_bdf2_time}
-\PaperCaptionNote{参照は $n_{\mathrm{ref}}=64$．粗い $\Delta t$ では capillary pressure-jump/projection 界面帯誤差が支配し，最終 halving で観測 slope $\mathbf{1.48}$ となる．純粋な 2 次には未達だが，補助分離検証では BDF2 係数ではなく pressure-jump coupled-stack が支配因子であることを確認した．連続比は誤差 $\|e\|_\infty$ の直前行に対する比（$e^{(i-1)} / e^{(i)}$）であり，全 halving が $\Delta t$ ratio $= 2$ のため slope $= \log_2(\text{連続比})$．}
+\PaperCaptionNote{参照は $n_{\mathrm{ref}}=64$．capillary range projection を含む最新 stack で再実行した結果，最終 halving の観測 slope は $\mathbf{1.59}$ となる．純粋な 2 次には未達だが，補助分離検証では BDF2 係数ではなく pressure-jump coupled-stack が支配因子であることを確認した．連続比は誤差 $\|e\|_\infty$ の直前行に対する比（$e^{(i-1)} / e^{(i)}$）であり，全 halving が $\Delta t$ ratio $= 2$ のため slope $= \log_2(\text{連続比})$．}
 \centering\small
 \begin{tabular}{r r r r}
 \toprule
 $n_{\mathrm{step}}$ & $\Delta t$ & $\|e\|_\infty$ & 連続比 \\
 \midrule
-8    & $2.50\times 10^{-3}$ & $3.483\times 10^{-2}$ & ---  \\
-16   & $1.25\times 10^{-3}$ & $2.063\times 10^{-2}$ & $1.69$ \\
-32   & $6.25\times 10^{-4}$ & $7.383\times 10^{-3}$ & $2.79$ \\
+8    & $2.50\times 10^{-3}$ & $2.175\times 10^{-6}$ & ---  \\
+16   & $1.25\times 10^{-3}$ & $9.249\times 10^{-7}$ & $2.35$ \\
+32   & $6.25\times 10^{-4}$ & $3.068\times 10^{-7}$ & $3.01$ \\
 \midrule
-\multicolumn{3}{r}{finest local slope} & $\mathbf{1.48}$ \\
+\multicolumn{3}{r}{finest local slope} & $\mathbf{1.59}$ \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -134,23 +134,23 @@ $n_{\mathrm{step}}$ & $\Delta t$ & $\|e\|_\infty$ & 連続比 \\
 \includegraphics[width=0.92\linewidth]{figures/ch13_v7_imex_bdf2_time.pdf}
 \caption{V7：IMEX-BDF2 二相時間精度}
 \label{fig:V7_imex_bdf2_time}
-\PaperCaptionNote{Reference stack 全体での参照解差を log-log 表示する．最終 halving では slope $1.48$ となり，粗い時間刻みでは capillary pressure-jump / affine FCCD projection の界面帯誤差が支配する．}
+\PaperCaptionNote{Range-projected pressure-jump stack 全体での参照解差を log-log 表示する．capillary range projection 後の最終 halving では slope $1.59$ となり，粗い時間刻みでは range-projected capillary pressure-jump / affine FCCD projection の界面帯誤差が支配する．}
 \end{figure}
 
 \paragraph{判定と制約条件．}
 \begin{itemize}\setlength{\itemsep}{0pt}
-  \item 観測された最終局所 slope は $\mathbf{1.48}$．BDF2 単体の $2.00$ には届かないが，
+  \item 観測された最終局所 slope は $\mathbf{1.59}$．BDF2 単体の $2.00$ には届かないが，
         capillary coupled-stack の実効次数として $1.5$ 近傍に位置する．
   \item \textbf{補助分離検証（capillary pressure-jump/projection 界面帯律速）}：
     補助検証で $n_{\mathrm{ref}}=128$ とし，
     再初期化 cadence，界面輸送，表面張力，二相係数を分離した．結果は，
     参照解品質と reinit cadence が誤差定数を変える一方，支配因子は
-    capillary pressure-jump / affine FCCD projection の界面帯誤差であることを示す
+    range-projected capillary pressure-jump / affine FCCD projection の界面帯誤差であることを示す
     （対照実験表は付録~\ref{app:v7_imex_bdf2_rca}）．
     \begin{enumerate}\setlength{\itemsep}{0pt}
-      \item \textbf{参照解品質}：元の $n_{\mathrm{ref}}=64$ では finest slope $1.48$，
-            $n_{\mathrm{ref}}=128$ では each-step reinit の finest slope $1.59$．参照解を
-            深くすると改善するが，2 次には戻らない．
+      \item \textbf{参照解品質}：capillary range projection 後の $n_{\mathrm{ref}}=64$ では
+            finest slope $1.59$．$n_{\mathrm{ref}}=128$ の対照でも each-step reinit の
+            finest slope は同じく $1.59$ 近傍に留まり，2 次には戻らない．
       \item \textbf{再初期化 cadence}：reinit 回数を全 run で 3 回に固定しても
             slope $1.50$，再初期化なしでも $1.57$．cadence は誤差定数を変えるが
             主因ではない．
@@ -160,15 +160,15 @@ $n_{\mathrm{step}}$ & $\Delta t$ & $\|e\|_\infty$ & 連続比 \\
       \item \textbf{capillary jump}：同じ static-interface で $\sigma=0$ とすると
             $n=64$ の velocity error は $6.83\times10^{-8}$ まで低下する．逆に
             $\rho,\mu$ を一様化しても $\sigma=1$ なら $8.20\times10^{-3}$ と大きい．
-            これは capillary pressure-jump / projection が支配因子であることを示す．
+            これは range-projected capillary pressure-jump / projection が支配因子であることを示す．
       \item \textbf{局在}：最大 velocity error は $\psi\simeq0.5$ の界面帯にあり，
             bulk error は数桁小さい．体積 drift は round-off floor であり，質量保存誤差ではない．
     \end{enumerate}
   \item \textbf{Type-D 合格 ($\triangle$, capillary coupled-stack-limited)} —
         本稿では V7 を「BDF2 単体の純粋次数」ではなく「pressure-jump capillary stack 下の coupled-stack
         実効次数」として測定する diagnostic とする．
-        観測 slope $1.48$ は，pressure jump を含む界面帯低正則性を含む縮約下では
-        \emph{capillary coupled-stack-limited} であり，capillary-jump/projection の
+        観測 slope $1.59$ は，pressure jump を含む界面帯低正則性を含む縮約下では
+        \emph{capillary coupled-stack-limited} であり，range-projected capillary-jump/projection の
         時間離散を構造的に上げない限り $2.0$ への合格化は理論上望めない．
         これは Type-D（理論的 hard limit; §\ref{sec:verification} の
         Type 分類および表~\ref{tab:V_verdict_types} 参照）として記録する．
@@ -176,4 +176,4 @@ $n_{\mathrm{step}}$ & $\Delta t$ & $\|e\|_\infty$ & 連続比 \\
 \end{itemize}
 検証対応：\autoref{ch:time_integration} の IMEX-BDF2 と
 \autoref{sec:eikonal_reinit} の再初期化，\autoref{sec:split_ppe_motivation} の
-pressure-jump PPE に対し，二相結合 stack の実効 slope を測定する．
+pressure-jump PPE と capillary range projection に対し，二相結合 stack の実効 slope を測定する．

@@ -1,0 +1,19 @@
+{
+  "id": "CHK-RA-CH12-13-STRICT-001",
+  "uuid": "937FC06B-2657-48AD-B8E7-39BABC6C6FD0",
+  "created_at_utc": "2026-05-06T05:22:08Z",
+  "worktree": ".claude/worktrees/ra-ch12-13-update-20260506",
+  "branch": "ra-ch12-13-update-20260506",
+  "id_prefix": "RA-CH12-13-STRICT",
+  "scope": [
+    "paper/sections/12*.tex",
+    "paper/sections/13*.tex",
+    "artifacts/A/review_CHK-RA-CH12-13-STRICT-001.md",
+    "docs/02_ACTIVE_LEDGER.md"
+  ],
+  "policy": {
+    "main_merge": "forbidden_without_explicit_user_instruction",
+    "merge_method_if_requested": "no-ff",
+    "branch_policy": "same branch requested by user after initial setup"
+  }
+}

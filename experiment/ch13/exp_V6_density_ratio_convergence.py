@@ -10,7 +10,7 @@ used in §14 and V9:
   - UCCD6 momentum convection,
   - direct-ψ curvature with interface-limited filtering (psi_direct_filtered),
   - pressure-jump surface tension embedded in phase-separated FCCD PPE,
-  - defect-correction PPE and face-flux projection.
+  - defect-correction PPE, capillary range projection, and face-flux projection.
 
 This replaces the legacy reduced smoothed-density CSF/PPE sweep retained at
 ``experiment/ch13/legacy/exp_V6_density_ratio_convergence_legacy.py``.

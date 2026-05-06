@@ -74,7 +74,8 @@ $N$ & $h$ & $\Delta p_{\mathrm{meas}}$ & $|\Delta p_{\mathrm{rel}}|$ & $u_\infty
   \item V3 の寄生流れは CSF $\kappa_{lg}$ 推定の高周波誤差が支配的で，
         V5（$\mathrm{We}=10$）で $\rho_r$ / 演算子（CCD vs FD）依存性を
         final-time ベースで切り分ける．V3 は $\mathrm{We}=1$ で V5 ($\mathrm{We}=10$) より
-        毛管力が 1 桁小さいため寄生流れ絶対値の桁も異なる
+        毛管圧力スケールが 1 桁大きく，さらに V3 は peak，V5 は final-time を読むため，
+        寄生流れ絶対値を同じ収束列として比較しない
         （表~\ref{tab:V_settings} の We 値および集計量の差 [V3 peak / V5 final] が併存する）．
 \end{itemize}
 検証対応：式~\eqref{eq:bf_fccd_unification} と \autoref{sec:csf} の曲率評価に対し，
@@ -82,7 +83,7 @@ $N$ & $h$ & $\Delta p_{\mathrm{meas}}$ & $|\Delta p_{\mathrm{rel}}|$ & $u_\infty
 
 \paragraph{pressure-jump range projection による静止液滴 face-balance gate．}
 上の V3 は CSF/BF 縮約経路の長時間診断である．
-一方，水--空気級の production 経路では，表面張力を
+一方，水--空気級の pressure-jump 経路では，表面張力を
 CSF 体積力ではなく §~\ref{sec:split_ppe_pressure_jump_formulation} の
 向き付き pressure-jump として閉じる．この経路の静止液滴平衡は，
 圧力差 $\Delta p=\sigma/r$ だけでなく，
