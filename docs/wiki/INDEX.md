@@ -1,4 +1,4 @@
-# Wiki Index — 357 entries
+# Wiki Index — 358 entries
 
 ## Active Retrieval Gate
 
@@ -8,7 +8,7 @@ research findings.  Older cards remain listed for provenance, but cards marked
 SUPERSEDED or REFERENCE must not be used as current algorithm policy without
 their curation notes.
 
-## Theory (159)
+## Theory (161)
 
 | REF-ID | Title |
 |--------|-------|
@@ -171,6 +171,8 @@ their curation notes.
 | [WIKI-T-157](theory/WIKI-T-157.md) | ALE Discrete-Gradient Energy Endpoints Are Step-Local |
 | [WIKI-T-158](theory/WIKI-T-158.md) | Pressure-Hodge Visualization Is Fail-Closed, Not Interface-Band Masking |
 | [WIKI-T-159](theory/WIKI-T-159.md) | Reinit-Aware Capillary Hodge Theory |
+| [WIKI-T-160](theory/WIKI-T-160.md) | Discrete Reinit-Aware Capillary Hodge Reference |
+| [WIKI-T-161](theory/WIKI-T-161.md) | Retired Fixed-Stratum Variational Reinit Candidate |
 
 ## Cross-Domain (47)
 
@@ -312,7 +314,6 @@ their curation notes.
 | [WIKI-P-014](paper/WIKI-P-014.md) | Verification Grammar: U-Series Certificates, V-Series Identity Tests, and Type-A/B/D |
 | [WIKI-P-015](paper/WIKI-P-015.md) | Chapters 1-13 Use Failure-Mode to Contract Traceability |
 | [WIKI-P-016](paper/WIKI-P-016.md) | Appendices Are Proof Layers for Main-Text Contracts |
-| [WIKI-P-017](paper/WIKI-P-017.md) | Paper Build Hygiene: Zero-Warning Float Placement |
 
 ## Meta (31)
 
