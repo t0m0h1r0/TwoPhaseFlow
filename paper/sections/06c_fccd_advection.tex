@@ -5,16 +5,18 @@
 %        §4.5 FCCD の面中心行列 M^FCCD を速度移流に転用する経路を示す．
 %
 % ═══════════════════════════════════════════════════════════════════════════════
-\subsection{FCCD 移流：節点出力版 Option C と面フラックス版 Option B}
+\subsection{FCCD 面移流演算子：面ロカス閉包と参照再構成}
 \label{sec:fccd_advection}
 % ═══════════════════════════════════════════════════════════════════════════════
 
 \noindent\textbf{Part 1 連続定式化との関係：}
-本節の FCCD 移流演算子は §~\ref{sec:onefluid}（§2 One-Fluid NS，式~\eqref{eq:NS_onefluid}）の
-運動量移流項 $(\bu\cdot\bnabla)\bu$ を Balanced--Force 整合（§~\ref{sec:balanced_force}）で
-離散化するために用いる．本稿では bulk 速度に UCCD6 対流
-（§~\ref{sec:uccd6_def}）を主実装とし，本節 FCCD 移流は CSF 表面張力項
-（§~\ref{sec:fccd_bf_sub_system}）と圧力勾配との 3 項整合のために必要となる．
+本節の FCCD 面移流演算子は §~\ref{sec:onefluid}（§2 One-Fluid NS，
+式~\eqref{eq:NS_onefluid}）の運動量移流項を，
+Balanced--Force の同一面ロカス原理（§~\ref{sec:balanced_force}）と整合する形で
+記述するための演算子契約である．本稿の標準 bulk 運動量移流は
+UCCD6（§~\ref{sec:uccd6_def}）であり，FCCD 面フラックス形は
+pressure/CSF/convective flux を同一 face-to-node divergence で閉じる
+発展的な面ロカス構成，および §~\ref{sec:pure_fccd_dns} の純 FCCD DNS 構成で用いる．
 
 本節では \S\ref{sec:fccd_def} で導入した面中心 FCCD 演算子
 $\mathbf{M}^{\FCCD}$（式~\eqref{eq:fccd_composite_matrix}）を
@@ -22,16 +24,18 @@ $\mathbf{M}^{\FCCD}$（式~\eqref{eq:fccd_composite_matrix}）を
 Balanced--Force 原理（\S\ref{sec:balanced_force}）が要求する
 「$\bnabla p,\,\sigma\kappa_{lg}\bnabla\psi,\,\bnabla\cdot(\bu\otimes\bu)$
 \textbf{3 項すべてが同一の面中心演算子}で離散化される」条件を完結させる．
-現行実装の節点版 CCD 移流は pressure/CSF を面中心 FCCD に置換しても
-\textbf{移流だけが節点中心に残る}ため BF 残差が $\mathcal{O}(h^2)$ に
-退化する（本稿の数値検証による）．
-これを 2 経路で解消する：
+節点版の運動量移流を pressure/CSF 面ロカスと混在させると，
+\textbf{移流だけが節点中心に残る}ため，静的 BF 条件は保てても
+動的 RHS に節点--面の往復誤差が残る．
+本節では 2 つの役割を区別する：
 \begin{itemize}
-  \item \textbf{Option C（節点出力）}：面中心 FCCD 勾配を R$_4$
-        Hermite 再構成で節点に戻し，従来の AB2 履歴バッファ互換．
-  \item \textbf{Option B（面フラックス）}：保存形
+  \item \textbf{節点再構成形（Option C）}：面中心 FCCD 勾配を R$_4$
+        Hermite 再構成で節点に戻す参照構成．既存の節点 RHS と比較するときの
+        精度分解に用いる．
+  \item \textbf{保存形面フラックス（Option B）}：
         $\bnabla\cdot(\bu\otimes\bu)$ を FCCD 面値 $\mathbf{P}_f$ で
-        組み立て，面ダイバージェンスで節点に戻す．BF 整合性が最強．
+        組み立て，面ダイバージェンスで節点に戻す．動的 BF ロカス整合を
+        最も直接に満たす構成である．
 \end{itemize}
 
 % -------------------------------------------------------------------------------
@@ -99,18 +103,18 @@ $\mathcal{O}(H^2)$ 誤差を $\mathbf{q}$ で相殺する：
   \label{eq:fccd_adv_option_c}
 \end{equation}
 
-\noindent\textbf{Option C の利点}：
-出力が節点値なので既存の AB2 履歴バッファ / PPE RHS /
-CSF $\sigma\kappa_{lg}\bnabla\psi$ / Rhie--Chow がすべて無変更．
-既存の節点 CCD 1 次微分作用素を FCCD 節点勾配作用素
-（面値再構成 + 面 $\to$ 節点投影 R$_4$）に置換するだけで実装完了．
+\noindent\textbf{Option C の役割}：
+出力が節点値なので，節点中心 RHS を保ったまま
+FCCD 面勾配の影響だけを切り出して比較できる．
+したがって Option C は節点中心経路との精度差を説明する参照構成であり，
+標準の二相 face-closure を置き換えるものではない．
 
 \noindent\textbf{Option C の限界}：
 R$_4$ の面→節点変換で BF 整合性が\textbf{部分的に}回復するに留まる．
 圧力と CSF が面中心 FCCD で動く一方，移流だけは R$_4$ 経由の
 節点に戻っているため，節点-面-節点の往復で
 $\mathcal{O}(H^4)$ 誤差が 2 重に蓄積する．
-製品実装では Option B が推奨．
+面ロカス閉包を主張する箇所では Option B を用いる．
 
 % -------------------------------------------------------------------------------
 \subsubsection{Option B：保存形 FCCD 面フラックス}
@@ -168,8 +172,8 @@ $\langle\mathbf{P}_f\mathbf{u},\mathbf{M}^{\FCCD}\mathbf{v}\rangle_f
 \label{sec:fccd_adv_bf_theorem}
 % -------------------------------------------------------------------------------
 
-\begin{theorem}[FCCD pressure/CSF の静的 BF 整合性]\label{thm:fccd_adv_bf}
-$\bnabla p$（FCCD）と $\sigma\kappa_{lg}\bnabla\psi$（FCCD 面形）を
+\begin{theorem}[FCCD 面ロカスの静的 BF 整合性]\label{thm:fccd_adv_bf}
+一括 CSF 経路で $\bnabla p$ と $\sigma\kappa_{lg}\bnabla\psi$ を
 \textbf{共通の面中心演算子}
 $\mathbf{M}^{\FCCD}$（\S\ref{sec:fccd_def} 式~\eqref{eq:fccd_composite_matrix}）で
 離散化すれば，静止状態 $\bu\equiv 0$ での離散運動量バランスの
@@ -187,8 +191,8 @@ BF 残差は
 \S\ref{sec:fccd_nonuniform}（非一様）で $\Ord{H^3}$．
 (A2) PPE 可解条件 $\sum_i (D_h\bu^*)_i = 0$（離散発散の総和零；
 Neumann BC 下の compatibility）が満たされる．
-(A3) 本定理は\textbf{CSF-baseline PPE}（変密度一括 PPE + smoothed Heaviside
-CSF；§\ref{sec:projection_derivation}）の設定．分相 PPE / GFM ジャンプ条件版
+(A3) 本定理は\textbf{一括 CSF PPE}（変密度一括 PPE + smoothed Heaviside
+CSF；§\ref{sec:projection_derivation}）の設定．分相 affine-jump PPE 版
 （§\ref{sec:split_ppe_pressure_jump_formulation}）は別建ての
 Corollary~\ref{cor:fccd_split_ppe_bf}．\\
 \textbf{論証}：$\bu\equiv 0$ では対流項は恒等的に零であるため，
@@ -201,15 +205,16 @@ $\Ord{H^4}/\Ord{H^3}$．差分 $G_h p - f_\sigma$ では主項が打ち消し合
 well-defined であることから $G_h p$ の評価が有効．$\square$
 \end{proof}
 
-\begin{corollary}[分相 PPE での FCCD-BF 整合]
+\begin{corollary}[分相 affine-jump PPE での FCCD-BF 整合]
 \label{cor:fccd_split_ppe_bf}
-分相 PPE + GFM ジャンプ条件（§\ref{sec:split_ppe_framework}）を採用した場合，
-本定理は速度補正 $\delta\bu = -\Delta t\,\bnabla p^{n+1}/\rho$ の勾配と
-界面ジャンプ $j_{gl}=-\sigma\kappa_{lg}$ の片側評価に
-\textbf{同一の FCCD 演算子 $\mathbf{M}^{\FCCD}$} を適用すれば
-そのまま成立する（CSF 体積力経路は使用しない；
-代わりに HFE で延長された片側 $p$ 場に FCCD を適用）．
-証明は本定理と同一の line-of-argument に従う．
+分相 affine-jump PPE（§\ref{sec:split_ppe_framework}）を採用した場合，
+CSF 体積力は予測段階から外れ，毛管効果は
+$J_p^\chi=-\sigma\kappa_{lg}$ の face cochain として PPE/corrector に入る．
+このとき BF 整合性は，HFE が供給する片側 Hermite データを
+§\ref{sec:split_ppe_pressure_jump_formulation} のジャンプ補正付き面法則へ渡し，
+さらに §\ref{sec:split_ppe_capillary_range_projection} の
+$D_f A_f G_f$ 値域射影後の cochain を正準面補正へ渡すことで成立する．
+節点延長圧力の raw 勾配を速度補正へ直接渡す経路はこの corollary の仮定ではない．
 \end{corollary}
 
 \noindent\textbf{動的移流ロカス命題}：
@@ -263,7 +268,7 @@ $F^{(k,j)}_{f_{-1/2}} = u^{(k)}_f\cdot u^{(j)}_f$ は
 物理的無滑り運動量フラックス零と一致．
 
 % -------------------------------------------------------------------------------
-\subsubsection{実装・コスト・段階移行}
+\subsubsection{実装・コスト・役割分担}
 \label{sec:fccd_adv_impl}
 % -------------------------------------------------------------------------------
 
@@ -276,17 +281,16 @@ CCD ブロック三重対角解は\textbf{1 軸あたり 1 回のみ}．
 $\mathcal{O}(N)$ 乗算のみで，
 演算量は純 CCD 移流の 1.3--1.5$\times$．
 
-\noindent\textbf{段階移行パス}：
-\begin{enumerate}
-  \item \textbf{Stage 1}：pressure/CSF のみ FCCD 化（\S\ref{sec:balanced_force}），
-        移流は従来の節点 CCD を維持．
-        BF 残差は pressure/CSF 精度に律速され $\mathcal{O}(H^2)$ 止まり．
-  \item \textbf{Stage 2}：Option C 導入で移流を R$_4$ 経由の節点中心 FCCD に．
-        $\mathcal{O}(H^2)$ フロアは残るが係数が小さくなる．
-  \item \textbf{Stage 3}：Option B で保存形面フラックスに完全移行．
-        動的移流ロカスを pressure/CSF と一致させ，面中心 RHS として閉じる．
-\end{enumerate}
-製品コンフィグは Stage 3，
-回帰検証には Stage 1/2 を \texttt{fccd\_bf\_mode} フラグで切替可能．
+\noindent\textbf{本稿内での役割分担}：
+\begin{itemize}
+  \item 標準 bulk 運動量移流は UCCD6（§\ref{sec:uccd6_def}）で担う．
+  \item 一括 CSF 経路の BF 説明では，共通面ロカスとして
+        pressure/CSF/convective flux の整合条件を本節の Option B で表現できる．
+  \item 分相 affine-jump 経路では，毛管効果は CSF 体積力ではなく
+        §\ref{sec:split_ppe_pressure_jump_formulation} の face cochain として入り，
+        capillary range projection 後に正準面補正へ渡る．
+  \item Option C は節点中心 RHS と面中心 RHS の差を切り分ける参照構成であり，
+        標準 face-closure の代替ではない．
+\end{itemize}
 
 % ═══════════════════════════════════════════════════════════════════════════════
