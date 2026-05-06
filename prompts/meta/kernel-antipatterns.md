@@ -1,13 +1,13 @@
-# kernel-antipatterns.md — Anti-Pattern Library v8.0.0-candidate
+# kernel-antipatterns.md — Anti-Pattern Library v8.1.0-candidate
 # Replaces: meta-antipatterns.md (24KB → ~10KB, -58%).
-# AP-01..AP-15 in compact format (detect/mitigate/severity/inject).
+# AP-01..AP-16 in compact format (detect/mitigate/severity/inject).
 # FOUNDATION: kernel-constitution.md §AXIOMS ← READ FIRST
 #
-# Injection rules: kernel-deploy.md §Stage 3 AP injection.
-# TIER-1: CRITICAL only (AP-03, AP-05). TIER-2: CRITICAL + HIGH. TIER-3: all.
+# Injection rules: kernel-deploy.md §Stage 3 - Generate Agent Prompts.
+# TIER-1: role-relevant CRITICAL. TIER-2: add role-relevant HIGH. TIER-3: all applicable within budget.
 # Total injection budget: ≤ 200 tokens per agent (LA-4).
 
-<meta_section id="META-ANTIPATTERNS" version="7.0.0" axiom_refs="A1,phi1,phi7">
+<meta_section id="META-ANTIPATTERNS" version="8.1.0-candidate" axiom_refs="A1,phi1,phi7">
 <purpose>Failure mode catalogue. Agents self-check injected APs before each output. Detection criteria self-checkable in single turn.</purpose>
 <authority>PromptArchitect adds new APs after observing failure in execution. EnvMetaBootstrapper injects per tier and inject list.</authority>
 <rules>
@@ -127,18 +127,23 @@
 **inject:** ResearchArchitect, TaskPlanner, CodeWorkflowCoordinator, PaperWorkflowCoordinator, ExperimentRunner, TestRunner, DevOpsArchitect, PromptArchitect, PromptAuditor, ConsistencyAuditor, WikiAuditor, Librarian
 
 ────────────────────────────────────────────────────────
+## AP-16: Decorative Metaphor Drift *(v8.1.0-candidate)*
+**detect:** Presentation illustration language is vivid but lacks a `lead_message` + `source_refs` map; the image could be swapped with another attractive metaphor without changing the argument; reverse readback is missing or says something broader/different than the slide claim.
+**mitigate:** Run VISUAL-CONCEPT-01. Bind every visual role to a source element, list excluded meanings, and revise until reverse readback is PASS/PARTIAL with explicit residual gaps. Material FAIL after two revisions → BLOCKED_REPLAN_REQUIRED with STOP-06.
+**severity:** HIGH
+**inject:** PresentationWriter, PaperReviewer, PaperWorkflowCoordinator
+
+────────────────────────────────────────────────────────
 # § SELF-CHECK TABLE (injection format for generated agent prompts)
 
-EnvMetaBootstrapper generates this table per agent based on tier and inject list:
+EnvMetaBootstrapper generates this table per agent based on tier and inject list.
+Rows below define the schema only; do not copy non-applicable AP examples into a role prompt:
 
 ```markdown
 ### Anti-Patterns (check before output)
 | AP | Pattern | Self-check question |
 |----|---------|-------------------|
-| AP-03 | Verification Theater | Did I produce independent evidence (tool output)? |
-| AP-05 | Convergence Fabrication | Does every number trace to a log line? |
-| AP-08 | Phantom State | Did I verify branch/counter/file by tool, not memory? |
-| AP-09 | Context Collapse | Did I re-read STOP conditions in the last 5 turns? |
+| {AP-id} | {short pattern} | {role-relevant self-check question} |
 ```
 
-Injection budget: ≤ 200 tokens. TIER-1: AP-03, AP-05 only. TIER-2: add AP-04, AP-06, AP-09. TIER-3: all applicable.
+Injection budget: ≤ 200 tokens. TIER-1: role-relevant CRITICAL APs only. TIER-2: add role-relevant HIGH APs. TIER-3: add remaining applicable APs only while staying under budget.

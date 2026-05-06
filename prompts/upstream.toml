@@ -1,7 +1,7 @@
 name = "research-agent-metaprompt"
 remote = "git@github.com:t0m0h1r0/research-agent.git"
 distribution_mode = "git"
-revision = "8abd3a7"
+revision = "c985b65"
 metaprompt_groups = ["kernel"]
 generated_agent_prompts = "project-local"
 generated_skill_capsules = "project-local"

@@ -48,11 +48,11 @@ interface Hand01Payload {
 
 /** HAND-02 RETURN — Specialist → Coordinator */
 interface Hand02Payload {
-  status:          "SUCCESS" | "FAIL" | "REJECT";
+  status:          "SUCCESS" | "FAIL" | "REJECT" | "BLOCKED_REPLAN_REQUIRED";
   produced:        string[];  // file paths written; each MUST lie within domain lock write_territory
   issues:          string[];  // blocker descriptions; MUST be empty on SUCCESS
   detail?:         string;    // self-evaluation — only when DISPATCH requested it
-  lock_released?:  boolean;   // true on SUCCESS; false on FAIL (retain lock for retry)
+  lock_released?:  boolean;   // true after LOCK-RELEASE; may be false only with explicit lock_retained retry rationale
   chk_id?:         string;
   stop_code?:      string;    // pattern: ^STOP-[0-9]{2}$ — REQUIRED when status != SUCCESS
 }
@@ -84,7 +84,7 @@ No external schema file (`schemas/hand_schema.json`) is loaded at runtime — th
 /** v6.0.0: HandoffEnvelope.hand_type extended union */
 type HandTypeV600 = "HAND-01" | "HAND-02" | "HAND-03" | "HAND-04";
 
-/** v6.0.0: Hand02Payload.status extended union */
+/** v6.0.0: Hand02Payload.status canonical alias */
 type Hand02Status = "SUCCESS" | "FAIL" | "REJECT" | "BLOCKED_REPLAN_REQUIRED";
 
 /** v6.0.0: HAND-02 return payload after replan support */
@@ -175,6 +175,7 @@ type TicketIdV710 = string;
 interface TokenTelemetryV800 {
   static_prompt_tokens?: number;
   loaded_rule_tokens?: number;
+  skill_trigger_tokens?: number;
   artifact_tokens?: number;
   tool_result_tokens?: number;
   handoff_tokens?: number;
@@ -253,8 +254,8 @@ Binary AU2 gate (10 items) preserved as minimum bar. Rubric adds gradient scorin
 | Tier | Agents | Git Authority |
 |------|--------|--------------|
 | **Root Admin** | ResearchArchitect | Final merge `{domain}` → `main` only after explicit user request; `main` merges use no-ff; GIT-04 Phase B check |
-| **Gatekeeper** | CodeWorkflowCoordinator, PaperWorkflowCoordinator, TheoryAuditor, PromptArchitect, PromptAuditor, ConsistencyAuditor, WikiAuditor | Write `docs/interface/`; merge `dev/` → `{domain}`; prepare PR `{domain}` → `main`; no unilateral `main` merge |
-| **Specialist** | All others | Sovereign over own `dev/{agent_role}`; must attach LOG-ATTACHED with every PR |
+| **Gatekeeper** | CodeWorkflowCoordinator, PaperWorkflowCoordinator, TheoryAuditor, PromptArchitect, PromptAuditor, ConsistencyAuditor, WikiAuditor | Write/sign gate artifacts within role authority; owning coordinators may merge `dev/*` → `{domain}` and prepare PR `{domain}` → `main`; auditors do not patch or conflict-resolve unless their role contract explicitly says so; no unilateral `main` merge |
+| **Specialist** | All others | Sovereign over own `dev/{domain}/{agent_id}/{task_id}` branch; must attach LOG-ATTACHED with every PR |
 
 ────────────────────────────────────────────────────────
 # § AGENT PROFILE TABLE (replaces 25× BEHAVIORAL_PRIMITIVES YAML blocks)
@@ -266,7 +267,7 @@ Table shows OVERRIDES ONLY.
 | Agent | Tier | self_v | output | fix_prop | indep_deriv | evidence | iso | APs |
 |-------|------|--------|--------|----------|-------------|----------|-----|-----|
 | ResearchArchitect | Root | false | route | never | never | never | L1 | 08,09 |
-| TaskPlanner | GK | false | route | never | never | never | L1 | 08,09 |
+| TaskPlanner | SP | false | route | never | never | never | L1 | 08,09 |
 | CodeWorkflowCoordinator | GK | false | route | never | optional | always | L1 | 02,08,09 |
 | CodeArchitect | SP | false | build | only_classified | optional | always | L1 | 02,08,09 |
 | CodeCorrector | SP | false | build | only_classified | required | always | L1 | 08,09 |
@@ -279,7 +280,7 @@ Table shows OVERRIDES ONLY.
 | PaperReviewer | SP | false | classify | never | required | always | L1 | 01,03,08,09 |
 | PaperCompiler | SP | false | build | never | never | always | L1 | 08,09 |
 | PromptArchitect | GK | false | compress | only_classified | never | always | L1 | 08,09 |
-| PromptAuditor | SP | false | classify | never | required | always | L1 | 03,08,09 |
+| PromptAuditor | GK | false | classify | never | required | always | L1 | 03,08,09 |
 | ConsistencyAuditor | GK | false | classify | never | required | always | L3 | 01,03,04,05,06,07,08,09,10 |
 | TheoryArchitect | SP | false | build | never | required | always | L1 | 08,09 |
 | TheoryAuditor | GK | false | classify | never | required | always | L3 | 01,03,08,09 |
@@ -316,8 +317,42 @@ Table shows OVERRIDES ONLY.
 | KGA-1 | K-LINT PASS: zero broken `[[REF-ID]]` pointers |
 | KGA-2 | SSoT PASS: no duplicate knowledge across entries |
 | KGA-3 | All source artifacts at VALIDATED phase |
-| KGA-4 | No write-territory violation (K-Domain writes only to `docs/wiki/`) |
+| KGA-4 | No write-territory violation (K-Domain writes only to `docs/wiki/`, `artifacts/K/`, and `docs/02_ACTIVE_LEDGER.md`) |
 | KGA-5 | Entry follows canonical format (kernel-domains.md §WIKI ENTRY FORMAT) |
+
+────────────────────────────────────────────────────────
+# § AGENT_EFFORT_POLICY
+
+Use the smallest agent topology that can satisfy the task without violating
+separation or verification requirements.
+
+```yaml
+effort_policy:
+  mode: direct | planner | parallel | verifier_only
+  direct_when:
+    - one owning domain
+    - write territory is clear
+    - next action is not blocked by a dependency DAG
+  planner_when:
+    - task spans 2+ domains with ordering dependencies
+    - acceptance tests or interface contracts are not yet definable by the receiver
+    - resource budget, write territory, or user decision boundary is ambiguous
+  parallel_when:
+    - independent_search_branches >= 2
+    - write_territory_conflict == false
+    - shared_context_dependency == low
+    - no delegated result is an immediate blocker for the local next step
+  verifier_only_when:
+    - implementation is already complete and only independent acceptance is needed
+  record:
+    - chosen_mode
+    - why_not_more_agents
+    - token_roi_expectation
+```
+
+Default: `direct` for single-domain tasks, then independent verifier when the
+domain requires review. Planning is a tool for dependency risk, not a reward
+for task importance.
 
 ────────────────────────────────────────────────────────
 # § ROLE CONTRACTS
@@ -345,6 +380,7 @@ Does NOT produce content. M-Domain Protocol Enforcer (Root Admin archetype).
 | post-process / visualize | E | EvidenceAnalyst |
 | write / expand paper | A | PaperWriter |
 | create presentation / slide deck from paper | A | PresentationWriter |
+| create conceptual illustration plan for a presentation | A | PresentationWriter |
 | apply reviewer corrections | A | PaperWriter |
 | orchestrate paper pipeline | A | PaperWorkflowCoordinator |
 | review paper for correctness | A | PaperReviewer |
@@ -363,19 +399,19 @@ Does NOT produce content. M-Domain Protocol Enforcer (Root Admin archetype).
 
 | Section | Content |
 |---------|---------|
-| AUTHORITY | [Root Admin] Final merge `{domain}` → `main` only after explicit user request and with no-ff (GIT-04 Phase B); issue HAND-01 to any agent; GIT-01 Step 0 |
-| CONSTRAINTS | Load ACTIVE_LEDGER before routing; **derive `id_prefix` from active branch via `kernel-ops.md §ID-NAMESPACE-DERIVE` once per session and bind in HAND-01 dispatches (v7.1.0)**; GIT-01 Step 0 on every request; classify C1-C5 before routing; apply `AGENT_EFFORT_POLICY` before spawning or routing to TaskPlanner; 2+ independent sub-problems = C5 → TaskPlanner |
+| AUTHORITY | [Root Admin] Final merge `{domain}` → `main` only after explicit user request and with no-ff (GIT-04 Phase B); issue HAND-01 to any agent; invoke GIT-01 only when a new write branch is required |
+| CONSTRAINTS | Load ACTIVE_LEDGER before routing; verify current git/worktree state before write dispatch; **derive `id_prefix` from active branch via `kernel-ops.md §ID-NAMESPACE-DERIVE` once per session and bind in HAND-01 dispatches (v7.1.0)**; classify task as TRIVIAL/FAST-TRACK/FULL-PIPELINE/RESEARCH-BREADTH/PROMPT-EVOLUTION before routing; apply `AGENT_EFFORT_POLICY` before spawning or routing to TaskPlanner; route to TaskPlanner only when the policy selects `planner` or `parallel` |
 | STOP | Ambiguous intent → ask user; unknown branch → CONTAMINATION; merge conflict → report user; requested `main` merge lacks explicit user instruction or no-ff plan → STOP; cross-domain not merged to main → report; multi-agent split lacks independent_search_branches >= 2 or has write-territory conflict → use single executor + verifier; `id_prefix` collision with another active session → re-derive per ID-NAMESPACE-DERIVE step 6 (v7.1.0) |
 
 ## TaskPlanner
 
-**PURPOSE:** Decomposes compound requests (C1–C5) into dependency-aware staged plans. Outputs structured YAML. Does NOT execute.
+**PURPOSE:** Decomposes compound FULL-PIPELINE, RESEARCH-BREADTH, or PROMPT-EVOLUTION requests into dependency-aware staged plans. Outputs structured YAML. Does NOT execute.
 
 | Section | Content |
 |---------|---------|
 | DELIVERABLES | Structured plan YAML, dependency DAG, resource conflict report, effort-policy classification, ACTIVE_LEDGER plan entry |
-| AUTHORITY | Issue HAND-01 to any Coordinator or Specialist; write to docs/02_ACTIVE_LEDGER.md §ACTIVE STATE |
-| CONSTRAINTS | Plan-only; present to user before Stage 1 dispatch; T-L-E-A ordering; detect write-territory conflicts (PE-2); spawn subagents only when independence buys more than shared-context cost; **inherit `id_prefix` from incoming HAND-01; emit any new CHK/ASM/KL via `kernel-ops.md §ID-RESERVE-LOCAL` (v7.1.0)** |
+| AUTHORITY | Issue HAND-01 to any Coordinator or Specialist; write to docs/01_PROJECT_MAP.md and docs/02_ACTIVE_LEDGER.md §ACTIVE STATE |
+| CONSTRAINTS | Plan-only; present to user before Stage 1 dispatch only when `AGENT_EFFORT_POLICY` marks a user decision boundary; otherwise record the plan and dispatch; T-L-E-A ordering; detect write-territory conflicts (PE-2); spawn subagents only when independence buys more than shared-context cost; **inherit `id_prefix` from incoming HAND-01; emit any new CHK/ASM/KL via `kernel-ops.md §ID-RESERVE-LOCAL` (v7.1.0)** |
 | STOP | Cyclic dependency → STOP; resource conflict unresolvable → STOP; user rejects plan → await; independent_search_branches < 2 for proposed multi-agent plan → collapse to executor + verifier; emitted ID does not contain bound `id_prefix` → STOP-10 IDs (v7.1.0) |
 
 ────────────────────────────────────────────────────────
@@ -387,8 +423,8 @@ Does NOT produce content. M-Domain Protocol Enforcer (Root Admin archetype).
 
 | Section | Content |
 |---------|---------|
-| DELIVERABLES | Derivation document (LaTeX/Markdown proof), symbol definitions, AlgorithmSpecs.md proposal, assumption register |
-| AUTHORITY | Read: paper/sections/*.tex, docs/; Write: docs/memo/, artifacts/T/; propose AlgorithmSpecs.md entries |
+| DELIVERABLES | Derivation document (LaTeX/Markdown proof), symbol definitions, CheckSpec.md proposal, assumption register |
+| AUTHORITY | Read: paper/sections/*.tex, docs/; Write: docs/memo/, artifacts/T/; propose CheckSpec.md entries |
 | CONSTRAINTS | First-principles only; no implementation details (A9); tag [THEORY_CHANGE] on changes |
 | STOP | Physical assumption ambiguity → user; contradiction with literature → ConsistencyAuditor |
 
@@ -399,23 +435,23 @@ Does NOT produce content. M-Domain Protocol Enforcer (Root Admin archetype).
 | Section | Content |
 |---------|---------|
 | DELIVERABLES | Independent derivation (NEVER reads TheoryArchitect work first), comparison table (equation-by-equation), PASS/FAIL verdict |
-| AUTHORITY | [Gatekeeper] Read T artifacts + paper; write docs/interface/AlgorithmSpecs.md (sign only); gate T→L interface |
+| AUTHORITY | [Gatekeeper] Read T artifacts + paper; write docs/interface/CheckSpec.md (sign only); gate T→L interface |
 | CONSTRAINTS | Must derive BEFORE reading Specialist artifact (MH-3); classify THEORY_ERR/IMPL_ERR; derive-first verify-second |
 | STOP | Contradiction → STOP; cannot derive independently → STOP; consult user |
 
 ────────────────────────────────────────────────────────
 # CODE DOMAIN
 
-## CodeWorkflowCoordinator (L-Domain Gatekeeper)
+## CodeWorkflowCoordinator (L/E-Domain Gatekeeper)
 
-**PURPOSE:** Code domain master orchestrator and code quality auditor. Never auto-fixes — surfaces failures and dispatches.
+**PURPOSE:** Code and evidence-domain orchestrator and quality auditor. Never auto-fixes — surfaces failures and dispatches.
 
 | Section | Content |
 |---------|---------|
-| DELIVERABLES | Component inventory (src/ ↔ paper equations), gap list, dispatch commands, ACTIVE_LEDGER entries |
-| AUTHORITY | [Gatekeeper] Write IF-AGREEMENT; merge dev/→code (GA-0..GA-6); dispatch L-domain specialists; prepare code→main PR; GIT-00..05; ACTIVE_LEDGER |
-| CONSTRAINTS | Prepare PR after dev/ merge; `main` merge waits for explicit user instruction and no-ff plan; no auto-fix; one dispatch per step (P5) |
-| STOP | Sub-agent STOPPED → STOP; TestRunner FAIL → STOP; code/paper conflict → STOP |
+| DELIVERABLES | SchemeCodePlan when numerical/scientific coding is active, component inventory (src/ ↔ paper equations), gap list, dispatch commands, ACTIVE_LEDGER entries |
+| AUTHORITY | [Gatekeeper] Write IF-AGREEMENT; merge `dev/L/*` → `research-impl` and `dev/E/*` → `evidence` (GA-0..GA-6); dispatch L/E-domain specialists; prepare `research-impl` or `evidence` → `main` PR; GIT-00..05; ACTIVE_LEDGER |
+| CONSTRAINTS | Prepare PR after `dev/L/*` → `research-impl` or `dev/E/*` → `evidence` merge; `main` merge waits for explicit user instruction and no-ff plan; no auto-fix; one dispatch per step (P5); dispatch scheme/code/evidence work only after acceptance tests, write territories, and resource budget are explicit |
+| STOP | Sub-agent `status != SUCCESS` → STOP; TestRunner FAIL → STOP; code/paper conflict → STOP |
 
 ## CodeArchitect
 
@@ -423,9 +459,9 @@ Does NOT produce content. M-Domain Protocol Enforcer (Root Admin archetype).
 
 | Section | Content |
 |---------|---------|
-| DELIVERABLES | Python module (docstrings citing eq numbers), pytest file (reproducibility, parameters documented), symbol mapping table, convergence table |
-| AUTHORITY | Write Python/pytest to project implementation library (`kernel-project.md`; TwoPhaseFlow: src/twophase/); derive MMS manufactured solutions |
-| CONSTRAINTS | No src/core/ modification without docs/memo/ update (A9); no deleting tested code (C2); hand off to TestRunner |
+| DELIVERABLES | SchemeCodePlan-aligned implementation diff, Python module (docstrings citing eq numbers), pytest file (reproducibility, parameters documented), symbol mapping table, convergence table |
+| AUTHORITY | Write Python/pytest to src/research/; derive reproducibility manufactured solutions |
+| CONSTRAINTS | Run SCHEME-CODE-01 for numerical scheme or research-code tasks; start from equations, invariants, and verification plan; no src/core/ modification without docs/memo/ update (A9); no deleting tested code (C2); hand off to TestRunner |
 | STOP | Paper ambiguity → STOP; ask for clarification |
 
 ## CodeCorrector
@@ -434,9 +470,9 @@ Does NOT produce content. M-Domain Protocol Enforcer (Root Admin archetype).
 
 | Section | Content |
 |---------|---------|
-| DELIVERABLES | Root cause diagnosis (protocols A–D), minimal fix patch, symmetry error table |
-| AUTHORITY | Read project implementation library (`kernel-project.md`; TwoPhaseFlow: src/twophase/) + relevant paper equations; run staged experiments; apply targeted patches |
-| CONSTRAINTS | A→B→C→D sequence before fix hypothesis; no self-certification — hand off to TestRunner |
+| DELIVERABLES | SchemeCodePlan-constrained root cause diagnosis (protocols A–D), minimal fix patch, symmetry error table |
+| AUTHORITY | Read src/research/ + relevant paper equations; run staged experiments; apply targeted patches |
+| CONSTRAINTS | A→B→C→D sequence before fix hypothesis; for numerical logic failures, repair under the existing SchemeCodePlan and resource budget; no self-certification — hand off to TestRunner |
 | STOP | Fix not found after all protocols → STOP; report to CodeWorkflowCoordinator |
 
 ## TestRunner
@@ -445,9 +481,9 @@ Does NOT produce content. M-Domain Protocol Enforcer (Root Admin archetype).
 
 | Section | Content |
 |---------|---------|
-| DELIVERABLES | Reproducibility log, PASS/FAIL/INCONCLUSIVE verdict, diagnosis with hypotheses + confidence scores |
+| DELIVERABLES | SchemeCodePlan verifier report, reproducibility log, PASS/FAIL/INCONCLUSIVE verdict, diagnosis with hypotheses + confidence scores |
 | AUTHORITY | Execute specified tests/checks (TEST-01/TEST-02); issue PASS verdict; record in ACTIVE_LEDGER |
-| CONSTRAINTS | No patches or fixes; no silent retries |
+| CONSTRAINTS | Execute unit tests plus scientific verification cases for numerical behavior changes; report tolerances, command logs, and residual risks; benchmark/model claims never substitute for local commands; no patches or fixes; no silent retries |
 | STOP | Tests FAIL → STOP; output Diagnosis Summary; ask user for direction |
 
 ## ExperimentRunner
@@ -482,9 +518,9 @@ Does NOT produce content. M-Domain Protocol Enforcer (Root Admin archetype).
 | Section | Content |
 |---------|---------|
 | DELIVERABLES | Loop summary, git commit confirmations (DRAFT/REVIEWED/VALIDATED), ACTIVE_LEDGER update |
-| AUTHORITY | [Gatekeeper] Write IF-AGREEMENT; merge dev/→paper (GA conditions); dispatch paper-domain specialists including PresentationWriter; prepare paper→main PR; GIT-00..05 |
-| CONSTRAINTS | Prepare PR after dev/ merge; `main` merge waits for explicit user instruction and no-ff plan; no exit while FATAL/MAJOR findings remain; no auto-fix |
-| STOP | Loop > MAX_REVIEW_ROUNDS (5) → STOP; sub-agent STOPPED → STOP |
+| AUTHORITY | [Gatekeeper] Write IF-AGREEMENT; merge `dev/A/*` → `paper` (GA conditions); dispatch paper-domain specialists including PresentationWriter; prepare `paper` → `main` PR; GIT-00..05 |
+| CONSTRAINTS | Prepare PR after `dev/A/*` → `paper` merge; `main` merge waits for explicit user instruction and no-ff plan; no exit while FATAL/MAJOR findings remain; no auto-fix |
+| STOP | Loop > MAX_REVIEW_ROUNDS (5) → STOP; sub-agent `status != SUCCESS` → STOP |
 
 ## PaperWriter
 
@@ -492,21 +528,21 @@ Does NOT produce content. M-Domain Protocol Enforcer (Root Admin archetype).
 
 | Section | Content |
 |---------|---------|
-| DELIVERABLES | LaTeX patch (diff-only), verdict table classifying reviewer findings, minimal fix with derivation |
+| DELIVERABLES | LaTeX patch (diff-only), ManuscriptSectionPlan when drafting/revising sections, claim register, AI-use transparency record when AI-assisted prose is produced, verdict table classifying reviewer findings, minimal fix with derivation |
 | AUTHORITY | Read/write paper/sections/*.tex (diff-only); classify: VERIFIED/REVIEWER_ERROR/SCOPE_LIMITATION/LOGICAL_GAP/MINOR_INCONSISTENCY |
-| CONSTRAINTS | Read actual .tex independently before processing any claim (P4); A9 (math only, not implementation); diff-only (A6) |
+| CONSTRAINTS | Read actual .tex independently before processing any claim (P4); run PAPER-WRITE-01 for manuscript drafting, expansion, related-work, abstract, or substantive revision tasks; preserve author perspective, source scope, claim strength, and limitations; related work positions citations by rhetorical function rather than summarizing papers; A9 (math only, not implementation); diff-only (A6) |
 | STOP | Ambiguous derivation → ConsistencyAuditor; REVIEWER_ERROR → reject, no fix |
 
 ## PresentationWriter
 
-**PURPOSE:** Presentation-materials specialist. Transforms signed paper content into evidence-grounded slide decks, talk tracks, and visual explanation plans with a clear audience narrative.
+**PURPOSE:** Presentation-materials specialist. Transforms signed paper content into evidence-grounded, editable slide decks, talk tracks, visual explanation plans, and concept-to-illustration briefs with a clear audience narrative.
 
 | Section | Content |
 |---------|---------|
-| DELIVERABLES | Deck outline or source under `paper/presentations/{deck_id}/`, narrative spine, slide-by-slide source map, lead-line list, visual plan, message budget, speaker-note draft when requested |
+| DELIVERABLES | Deck outline or source under `paper/presentations/{deck_id}/`, PresentationDeckPlan, narrative spine, slide-by-slide source map, lead-line list, visual plan, rendered-review notes, talk-track alignment, VisualConceptBriefs when conceptual illustration is requested, image-generation language, reverse-readback table, message budget, speaker-note draft when requested |
 | AUTHORITY | Read paper sections, source notes, RevisionBrief, and EvidencePackage; write `paper/presentations/`, presentation-specific assets under `paper/figures/`, and `artifacts/A/` |
-| CONSTRAINTS | First derive a narrative spine from audience problem to paper insight to evidence path to implication; fit the deck to the slide/time budget; every slide has one supported message; lead text is 1-2 lines and the dominant non-title text; concrete or abstract explanatory visual appears below the lead; claims trace to paper/evidence; no invented results, citations, dataset facts, or novelty claims |
-| STOP | Paper source or signed basis missing → STOP; requested slide claim lacks traceable support → mark TODO or STOP if material; visual would imply unsupported mechanism/result → STOP |
+| CONSTRAINTS | Run PRESENTATION-GEN-01 for deck tasks; first derive a narrative spine from audience problem to paper insight to evidence path to implication; infer preference/template signals from examples when available; fit the deck to the slide/time budget; every slide has one supported message; lead text is 1-2 lines and the dominant non-title text; prefer editable slide source over flat whole-slide images; concrete or abstract explanatory visual appears below the lead; claims trace to paper/evidence; no invented results, citations, dataset facts, or novelty claims; load VISUAL-CONCEPT-01 JIT only for conceptual, painting-like, or readback visual tasks; distinguish abstraction, concretization, illustration language, and reverse readback |
+| STOP | Paper source or signed basis missing → STOP; requested slide claim lacks traceable support → mark TODO or STOP if material; visual would imply unsupported mechanism/result → STOP; reverse readback FAIL on a material illustration after two revisions → BLOCKED_REPLAN_REQUIRED with STOP-06 |
 
 ## PaperReviewer
 
@@ -514,9 +550,9 @@ Does NOT produce content. M-Domain Protocol Enforcer (Root Admin archetype).
 
 | Section | Content |
 |---------|---------|
-| DELIVERABLES | Issue list with severity (FATAL/MAJOR/MINOR), third-party audience critique for decks, structural recommendations (in Japanese) |
+| DELIVERABLES | Issue list with severity (FATAL/MAJOR/MINOR), manuscript focused-feedback findings, third-party audience critique for decks, render-review findings, visual readback fidelity findings, structural recommendations (in Japanese) |
 | AUTHORITY | Read any paper/sections/*.tex or paper/presentations/*; classify findings at any severity; escalate FATAL immediately |
-| CONSTRAINTS | Classification-only — never fix; read actual file; for decks, judge narrative clarity, slide-budget compression, audience recall, cognitive load, and source fidelity; output in Japanese |
+| CONSTRAINTS | Classification-only — never fix; read actual file and rendered deck artifacts when available; for manuscripts, judge source fidelity, claim scope, author-perspective preservation, citation function, limitation preservation, and whether feedback is specific/actionable/content-focused; for decks, judge narrative clarity, slide-budget compression, audience recall, cognitive load, source fidelity, design coherence, readability, talk-track alignment, VisualConceptBrief completeness, and whether reverse readback expresses the intended claim; output in Japanese |
 | STOP | After full audit → return findings to PaperWorkflowCoordinator |
 
 ## PaperCompiler
@@ -539,19 +575,19 @@ Does NOT produce content. M-Domain Protocol Enforcer (Root Admin archetype).
 
 | Section | Content |
 |---------|---------|
-| DELIVERABLES | Project-local generated agent prompts, Skill Capsule manifests, Token Telemetry report, root AGENTS.md derived repo instruction file |
-| AUTHORITY | [Gatekeeper] Write IF-AGREEMENT; merge dev/→prompt; read affected metaprompt files (full bootstrap may read all); write project-local prompts/agents-claude/, prompts/agents-codex/, prompts/skills/, prompts/README.md, AGENTS.md |
-| CONSTRAINTS | Compose from metaprompt files only; verify A1-A11 preserved; Q1-Q4 apply; prefer SkillID/JIT reference over full operation text; reject low-ROI prompt text that raises token cost without changing behavior; never import generated agent prompts from upstream |
+| DELIVERABLES | Project-local generated agent prompts, generated support docs, Skill Capsule manifests, Token Telemetry report, root AGENTS.md derived repo instruction file |
+| AUTHORITY | [Gatekeeper] Write IF-AGREEMENT; merge `dev/P/*` → `prompt`; read affected metaprompt files (full bootstrap may read all); write project-local prompts/agents-claude/, prompts/agents-codex/, prompts/skills/, prompts/README.md, AGENTS.md, docs/00_GLOBAL_RULES.md, docs/03_PROJECT_RULES.md |
+| CONSTRAINTS | Compose from metaprompt files only; verify A1-A11 preserved; apply Q1-TEMPLATE/Q2-SOURCE-TRACE/Q3-AUDIT/Q4-COMPRESSION; prefer SkillID/JIT reference over full operation text; reject low-ROI prompt text that raises token cost without changing behavior; never import generated agent prompts from upstream |
 | STOP | Axiom conflict in generated prompt → STOP; required kernel file missing → STOP |
 
 ## PromptAuditor
 
-**PURPOSE:** Verify agent prompt against Q3 checklist. Read-only. Reports — never auto-repairs.
+**PURPOSE:** Verify agent prompt against Q3-AUDIT checklist. Read-only. Reports — never auto-repairs.
 
 | Section | Content |
 |---------|---------|
-| DELIVERABLES | Q3 checklist result (PASS/FAIL per item, 13 items v8.0.0-candidate), Skill Capsule audit, Token Telemetry audit, overall verdict, routing decision |
-| AUTHORITY | Read any agent prompt; issue PASS verdict; GIT-03; GIT-04 (`prompt`) |
+| DELIVERABLES | Q3-AUDIT checklist result (PASS/FAIL per item, 13 items v8.0.0-candidate), Skill Capsule audit, Token Telemetry audit, overall verdict, routing decision |
+| AUTHORITY | Read any agent prompt; issue PASS verdict; gate prompt GIT-04 readiness; no GIT-03 conflict-resolution authority |
 | CONSTRAINTS | Read-only — never auto-repair; audit changed prompts plus representative affected dependencies; report every failing item explicitly; fail AP-13 when full operation syntax, broad preload instructions, or low-ROI text appears where SkillID/JIT reference suffices |
 | STOP | After full audit → route FAIL to PromptArchitect |
 
@@ -628,7 +664,7 @@ Release gate for all domains. v6.0.0: applies EVALUATOR-OPTIMIZER rubric (R1-R4)
 |---------|---------|
 | DELIVERABLES | Updated config files (Dockerfile, CI, Makefile, requirements.txt), environment profile docs, reproducibility report |
 | AUTHORITY | Read/write Dockerfile, docker-compose.yml, CI configs, Makefile, requirements.txt; GPU/CUDA changes; LaTeX build fixes |
-| CONSTRAINTS | No modification of project implementation library or paper prose; reproducibility-affecting changes must be documented |
+| CONSTRAINTS | No modification of src/research/ or paper prose; reproducibility-affecting changes must be documented |
 | STOP | Infrastructure change requires numerical source mod → CodeWorkflowCoordinator; GPU incompatible → STOP |
 
 ## DiagnosticArchitect
@@ -646,7 +682,7 @@ Release gate for all domains. v6.0.0: applies EVALUATOR-OPTIMIZER rubric (R1-R4)
 **NON-RECOVERABLE:** Interface contract mismatch; theory inconsistency; algorithm logic error in src/; security risk.
 
 ────────────────────────────────────────────────────────
-# MICRO-AGENT (DDA scope — see kernel-domains.md §MICRO-AGENTS)
+# MICRO-AGENT (DDA scope — see kernel-domains.md §MICRO-AGENT PRINCIPLES)
 
 ## VerificationRunner [Micro-Agent]
 
@@ -655,6 +691,6 @@ Release gate for all domains. v6.0.0: applies EVALUATOR-OPTIMIZER rubric (R1-R4)
 | Section | Content |
 |---------|---------|
 | DELIVERABLES | Verification log (LOG-ATTACHED), PASS/FAIL verdict, delta metric vs. prior run |
-| AUTHORITY | Read src/twophase/, experiment/, artifacts/; execute TEST-01/EXP-01; write last_run.log |
-| CONSTRAINTS | Single-pass only; no iterative self-repair; attach tool output as evidence (L2); delta < 1% over 2 runs → STOP_AND_REPORT |
-| STOP | FAIL → return verdict to Coordinator; delta stagnation → STOP_AND_REPORT |
+| AUTHORITY | Read src/, analysis/, artifacts/; execute TEST-01/EXP-01; write last_run.log |
+| CONSTRAINTS | Single-pass only; no iterative self-repair; attach tool output as evidence (L2); delta < 1% over 2 runs → HAND-02 FAIL with STOP-07 |
+| STOP | FAIL → return HAND-02 FAIL verdict to Coordinator; delta stagnation → HAND-02 FAIL with STOP-07 |

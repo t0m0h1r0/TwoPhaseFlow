@@ -16,11 +16,11 @@ Violation = CONTAMINATION (DOM-02) → STOP immediately.
 **§B Broken Symmetry:** Every task has exactly two roles: Specialist (creates) and Gatekeeper/Auditor
 (falsifies, NEVER reads Specialist reasoning first). Same agent = audit trail destroyed.
 Isolation levels: see §B.1 table below. Phantom Reasoning Guard = HAND-03 C6.
-<see_also>kernel-ops.md §HAND-03, kernel-roles.md §COVE-MANDATE</see_also>
+<see_also>kernel-ops.md §HAND-03, kernel-roles.md §COVE MANDATE</see_also>
 
 **§C Falsification Loop:** TheoryAuditor falsifies equations; ConsistencyAuditor falsifies
 cross-domain consistency. Finding a contradiction = high-value success, not failure.
-<see_also>kernel-ops.md §AUDIT-02, kernel-roles.md §AU2-GATE</see_also>
+<see_also>kernel-ops.md §AUDIT-02, kernel-roles.md §GATEKEEPER APPROVAL</see_also>
 
 ## §B.1: Achievable Isolation Levels
 
@@ -42,7 +42,7 @@ Default when uncertain: one level higher.
 
 ```
 Layer 1 — Static Foundation (Immutable)
-  kernel-constitution.md — φ1–φ7, A1–A11, LA-1–LA-5, MH-1–3, system targets
+  kernel-constitution.md — φ1–φ7, A1–A11, LA-1–LA-6, MH-1–3, system targets
 
 Layer 2 — Dynamic Execution (Operational)
   kernel-roles.md    — per-agent role contracts, SCHEMA-IN-CODE, CoVe mandate
@@ -51,13 +51,13 @@ Layer 2 — Dynamic Execution (Operational)
 
 Layer 3 — Orchestration (Process)
   kernel-workflow.md    — P-E-V-A loop, STOP-RECOVER MATRIX, v6.0.0 protocols
-  kernel-deploy.md      — EnvMetaBootstrapper, tiered generation, Q3 validation
+  kernel-deploy.md      — EnvMetaBootstrapper, tiered generation, Q3-AUDIT validation
 
 Layer P — Project Profile (swappable per project)
   kernel-project.md     — PR-1..PR-6 project-specific rules
 
 Layer S — Safety
-  kernel-antipatterns.md — AP-01..AP-15 compact catalogue
+  kernel-antipatterns.md — AP-01..AP-16 compact catalogue
 
 Project-Local Derived Prompt-System Artifacts
   prompts/agents-{env}/ — executable role prompts generated in each receiving project
@@ -69,9 +69,9 @@ Project-Local Derived Prompt-System Artifacts
 
 **Interface Contract flow (T-L-E-A, mandatory ordering):**
 ```
-T -> AlgorithmSpecs.md -> L -> SolverAPI_vX.py -> E -> ResultPackage/ -> A
+T → CheckSpec.md → L → AnalysisAPI_vX.md → E → EvidencePackage/ → A
                                                ↑
-                               RevisionBrief.md (T + E jointly → A)
+                              RevisionBrief.md (T + E jointly → A)
 ```
 
 **Authority rule:** kernel-constitution.md wins on axiom intent; docs/00_GLOBAL_RULES.md wins on rule
@@ -273,10 +273,10 @@ theory / discretization / implementation / verification.
 - Never discard meaning without explicit deprecation.
 
 ## A8: Git Governance  ← φ4 + φ5
-- Branches: `main` (protected); `code`, `paper`, `prompt` (domain integration staging); direct main edits forbidden.
-- `dev/{agent_role}`: individual workspaces — sovereign per agent; no cross-agent access.
+- Branches: `main` (protected); domain integration branches are named in `kernel-domains.md §DOMAIN REGISTRY`; direct main edits forbidden.
+- `dev/{domain}/{agent_id}/{task_id}`: individual workspaces — sovereign per agent/task; no cross-agent access.
 - `docs/interface/`: shared inter-domain agreements (schemas, API definitions) — writable only by Gatekeepers.
-- Merge path: dev/{agent_role} → {domain} (Gatekeeper PR) → main (Root Admin PR) after VALIDATED phase.
+- Merge path: `dev/{domain}/{agent_id}/{task_id}` → `{domain}` integration branch (Gatekeeper PR) → `main` (Root Admin PR) after VALIDATED phase.
 - Commits at coherent milestones; recorded in docs/02_ACTIVE_LEDGER.md.
 
 ### A8.1: Worktree-First Parallelism (v5.1)
@@ -299,8 +299,8 @@ A8.1 is gated; A8 is unconditional.
 - Infrastructure may import research implementation; research implementation must never import infrastructure.
 - Direct access to research implementation internals from infrastructure = CRITICAL_VIOLATION — escalate immediately.
 
-Note: "research implementation" and "infrastructure" here refer to code-layer architecture within the Code domain,
-NOT to the meta-system's project domains (Code/Paper/Prompt/Audit). See kernel-domains.md for domains.
+Note: "research implementation" and "infrastructure" here refer to code-layer architecture within the L-domain implementation layer,
+NOT to the meta-system domain registry (T/L/E/A/M/P/Q/K). See kernel-domains.md for domains.
 
 ## A10: Meta-Governance  ← φ6 (Single Source, Derived Artifacts)
 - Upstream repository SSoT: `kernel/` contains shared metaprompt rules and axioms.
@@ -325,7 +325,7 @@ Wiki entries are compiled from VALIDATED artifacts; internal reasoning is unveri
 
 | Level | When to use | Agent action |
 |-------|------------|--------------|
-| **STOP-HARD** | Security/integrity violation; contamination; broken symmetry; main-branch commit by non-Root-Admin; missing upstream contract (FULL-PIPELINE only) | Halt immediately. Issue RETURN STOPPED. Do NOT proceed. Require explicit user resolution. |
+| **STOP-HARD** | Security/integrity violation; contamination; broken symmetry; main-branch commit by non-Root-Admin; missing upstream contract (FULL-PIPELINE only), or required verification failure | Halt current action immediately. Issue HAND-02 with the status prescribed by `kernel-ops.md §STOP CONDITIONS` Action and include `stop_code`. Do NOT proceed past the failed gate without Coordinator/User resolution. |
 | **STOP-SOFT** | Protocol advisory violation; non-blocking quality issue; token budget exceeded; minor scope ambiguity | Log to ACTIVE_LEDGER §PROTOCOL-VIOLATION. Proceed. Report to coordinator in RETURN token. |
 | **WARN** | Style inconsistency; suboptimal but correct; FAST-TRACK missing optional gate | Annotate in RETURN token `warnings` field. Do not log to LEDGER. Proceed. |
 
@@ -375,7 +375,7 @@ RULE_MANIFEST:
     code:   [C1-SOLID, C2-PRESERVE, A9-SOVEREIGNTY, reproducibility-STANDARD]
     paper:  [P1-LATEX, P4-SKEPTICISM, KL-12]
     theory: [A3-TRACEABILITY, AU1-AUTHORITY]
-    prompt: [Q1-TEMPLATE, Q3-AUDIT, Q4-COMPRESSION]
+    prompt: [Q1-TEMPLATE, Q2-SOURCE-TRACE, Q3-AUDIT, Q4-COMPRESSION]
     audit:  [AU2-GATE, PROCEDURES-A-E]
   on_demand:   # JIT pointers — read ONLY when that operation is needed; NEVER preload all
     HAND-01: "kernel-ops.md §HAND-01"
@@ -384,6 +384,10 @@ RULE_MANIFEST:
     GIT-SP:  "kernel-ops.md §GIT-SP"
     AUDIT-01: "kernel-ops.md §AUDIT-01"
     AUDIT-02: "kernel-ops.md §AUDIT-02"
+    SCHEME-CODE-01: "kernel-ops.md §SCHEME-CODE-01"
+    PAPER-WRITE-01: "kernel-ops.md §PAPER-WRITE-01"
+    PRESENTATION-GEN-01: "kernel-ops.md §PRESENTATION-GEN-01"
+    VISUAL-CONCEPT-01: "kernel-ops.md §VISUAL-CONCEPT-01"
 ```
 
 Token savings: ~30-40% vs static embedding. Trade-off (one extra file read at execution) is acceptable.

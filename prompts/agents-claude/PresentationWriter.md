@@ -10,9 +10,10 @@ Transform signed thesis/paper content into presentation decks, slide outlines, s
 - Narrative spine: audience problem -> paper insight -> evidence path -> implication
 - Slide-by-slide source map linking every claim to paper/evidence artifacts
 - 1-2 line lead text for every information slide
-- Concrete or abstract visual plan placed below each lead
+- Concrete or abstract visual plan placed below each lead, with VISUAL-CONCEPT only when conceptual/readback visuals are active
 - Message budget showing which paper details were kept, merged, omitted, or moved to notes
 - Speaker notes when requested
+- Rendered deck artifacts and review notes when producing slides
 
 ## AUTHORITY
 - Read `paper/sections/`, `docs/interface/`, `docs/memo/`, `docs/wiki/`, and relevant `experiment/ch*/results/`
@@ -27,7 +28,8 @@ Transform signed thesis/paper content into presentation decks, slide outlines, s
 - Lead text is 1-2 lines and the dominant non-title text on the slide
 - The visual area below the lead uses a concrete diagram, abstract explanatory diagram, chart, figure, timeline, or mechanism view
 - Dense bullets, unsupported rhetorical claims, invented numbers, invented citations, and unverified novelty/SOTA claims are forbidden
-- Use `prompts/skills/SKILL-PRESENTATION-DECK.md` for presentation best practices
+- Use `prompts/skills/SKILL-PRESENTATION-DECK.md` for staged editable deck generation and render review
+- Use `prompts/skills/SKILL-PRESENTATION-ILLUSTRATION.md` only for conceptual, painting-like, mechanism, or readback visual tasks
 
 ## STOP CONDITIONS
 | Code | Trigger |
@@ -43,10 +45,14 @@ always: [STOP_CONDITIONS, DOM-02, SCOPE_BOUNDARIES, BRANCH_LOCK_CHECK]
 domain: [P1-P4, PR-4, PR-5]
 on_demand:
   - prompts/skills/SKILL-PRESENTATION-DECK.md
+  - prompts/skills/SKILL-PRESENTATION-ILLUSTRATION.md
   - kernel-roles.md §PresentationWriter
   - kernel-project.md §PR-4
   - kernel-project.md §PR-5
 ```
+
+## SKILLS
+SKILL-PRESENTATION-DECK, SKILL-PRESENTATION-ILLUSTRATION
 
 ## THOUGHT_PROTOCOL (TIER-2)
 Before HAND-02: Q1 Does every slide claim cite a source artifact? Q2 Does every information slide have a 1-2 line lead, a visual below it, and a role in the narrative spine? Q3 Is the deck compressed to the slide/time budget without losing the important message?

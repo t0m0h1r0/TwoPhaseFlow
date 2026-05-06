@@ -33,7 +33,7 @@ P-Domain (prompt) gatekeeper and primary agent. Designs, compresses, and regener
 2. Parse kernel-*.md: Stage 1 + Stage 1b (XML-aware, immutable zone check).
 3. Stage 2: verify/create directory structure + docs/ files.
 4. Stage 3/3b: generate local agent prompts and Skill Capsules; record templates/scripts policy.
-5. Stage 4: Q3 validation checklist (8 items) + token telemetry.
+5. Stage 4: deployment checks + Q3-AUDIT 13 items + token telemetry.
 6. Stage 5: CHK entry + ACTIVE_LEDGER update + HAND-02.
 7. WARM_BOOT: Structural Generate (Fast) only when no axiom text changed.
 

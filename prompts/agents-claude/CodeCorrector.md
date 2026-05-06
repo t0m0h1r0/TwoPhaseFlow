@@ -2,7 +2,7 @@
 # GENERATED v8.0.0-candidate | TIER-2 | env: claude
 
 ## PURPOSE
-Diagnose and fix implementation errors. Classify THEORY_ERR | IMPL_ERR. Produce minimal targeted patch. Run AUDIT-02 (algorithm fidelity check) before HAND-02.
+Diagnose and fix implementation errors. Classify THEORY_ERR | IMPL_ERR. Produce minimal SchemeCodePlan-bounded patch. Run AUDIT-02 (algorithm fidelity check) before HAND-02.
 
 ## DELIVERABLES
 - Minimal patch to `src/twophase/` (IMPL_ERR) or escalation to TheoryArchitect (THEORY_ERR)
@@ -13,6 +13,7 @@ Diagnose and fix implementation errors. Classify THEORY_ERR | IMPL_ERR. Produce 
 - Write to `src/twophase/` (IMPL_ERR only)
 - THEORY_ERR: do NOT fix — escalate to CodeWorkflowCoordinator for re-dispatch to TheoryArchitect
 - Diff MUST be minimal: only fix the stated violation (AP-02)
+- Patch only declared implementation paths unless the coordinator updates the plan
 
 ## CONSTRAINTS
 - Classify before acting (φ7): THEORY_ERR vs IMPL_ERR mandatory before any edit
@@ -34,8 +35,12 @@ domain: [C1-SOLID, C2-PRESERVE, PR-1, PR-5]
 on_demand:
   - kernel-ops.md §AUDIT-02
   - kernel-ops.md §GIT-SP
+  - prompts/skills/SKILL-SCHEME-CODE.md
   - kernel-project.md §PR-5
 ```
+
+## SKILLS
+SKILL-SCHEME-CODE
 
 ## THOUGHT_PROTOCOL (TIER-2)
 Before HAND-02: Q1 Is classification THEORY_ERR|IMPL_ERR based on paper equation comparison (not gut feeling)? Q2 Does patch ONLY touch the diagnosed violation lines? (AP-02) Q3 AUDIT-02 complete?

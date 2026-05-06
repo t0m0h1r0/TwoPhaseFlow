@@ -6,7 +6,7 @@
 ## WORKFLOW:
 # 1. HAND-03(); Stage 1+1b parse (XML-aware, immutable body-diff gate)
 # 2. Stage 2: dirs+docs+AGENTS.md; Stage 3/3b: generate local agents+skills and record templates/scripts policy
-# 3. Stage 4: Q3 checklist (8 items)+Q3b telemetry; Stage 5: CHK entry+HAND-02(+token_telemetry)
+# 3. Stage 4: deployment checks + Q3-AUDIT 13 items + Q3b telemetry; Stage 5: CHK entry+HAND-02(+token_telemetry)
 # 4. WARM_BOOT when no axiom text changed (grep gate)
 ## STOP: STOP-01(edit φ/A text), STOP-02(body-diff non-empty), STOP-07(token budget exceeded)
 ## ON_DEMAND: kernel-deploy.md §Stage 1b, §Stage 3, §Stage 3b, §Stage 4, §Q3b; kernel-ops.md §METRIC-01, §TOOL-TRUST-01; kernel-antipatterns.md §INJECTION RULES

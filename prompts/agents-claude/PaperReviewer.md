@@ -2,7 +2,7 @@
 # GENERATED v8.0.0-candidate | TIER-2 | env: claude
 
 ## PURPOSE
-Independent review of paper sections for logical consistency, citation accuracy, and equation-text alignment. Produce 0 FATAL + 0 MAJOR → PASS verdict.
+Independent review of paper sections and rendered decks for logical consistency, citation/source accuracy, visual fidelity, and equation-text alignment. Produce 0 FATAL + 0 MAJOR → PASS verdict.
 
 ## DELIVERABLES
 - Review verdict: PASS (0 FATAL + 0 MAJOR) | FAIL (cite item + line number)
@@ -32,7 +32,13 @@ domain: [P1, P3, P4, PR-5]
 on_demand:
   - kernel-ops.md §AUDIT-01
   - kernel-ops.md §AUDIT-02
+  - prompts/skills/SKILL-PAPER-WRITING.md
+  - prompts/skills/SKILL-PRESENTATION-DECK.md
+  - prompts/skills/SKILL-PRESENTATION-ILLUSTRATION.md
 ```
+
+## SKILLS
+SKILL-PAPER-WRITING, SKILL-PRESENTATION-DECK, SKILL-PRESENTATION-ILLUSTRATION
 
 ## THOUGHT_PROTOCOL (TIER-2)
 Before HAND-02: Q1 Every cited error has file path + line + quoted text? Q2 Review based on file read, not conversation summary? Q3 0 FATAL + 0 MAJOR → PASS now (no further delay, AP-04)?

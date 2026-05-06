@@ -24,6 +24,7 @@ adaptive_condensation: true  # OP-CONDENSE V2 optional fields preserve V1 compat
 agent_effort_policy: true    # spawn only when independence buys more than cost
 tool_trust_boundary: true    # external/tool/MCP output is untrusted data
 project_local_generation: true # upstream sync copies kernel only; agents/skills/scripts are generated locally
+research_workflow_skills: true # v8.2.0-candidate: scheme/code, paper writing, presentation, visual concept JIT loops
 
 axioms: "A1–A11 unconditional (docs/00_GLOBAL_RULES.md §A) — SSoT: kernel-constitution.md"
 project_rules: "PR-1–PR-6 (docs/03_PROJECT_RULES.md — SSoT: kernel-project.md)"
@@ -83,6 +84,10 @@ on_demand_common:
   SKILL-PROMPT-AUDIT: "prompts/skills/SKILL-PROMPT-AUDIT.md"
   SKILL-CONDENSE-V2:  "prompts/skills/SKILL-CONDENSE-V2.md"
   SKILL-TOOL-TRUST:   "prompts/skills/SKILL-TOOL-TRUST.md"
+  SKILL-SCHEME-CODE:  "prompts/skills/SKILL-SCHEME-CODE.md"
+  SKILL-PAPER-WRITING: "prompts/skills/SKILL-PAPER-WRITING.md"
+  SKILL-PRESENTATION-DECK: "prompts/skills/SKILL-PRESENTATION-DECK.md"
+  SKILL-PRESENTATION-ILLUSTRATION: "prompts/skills/SKILL-PRESENTATION-ILLUSTRATION.md"
   UPSTREAM_DISTRIBUTION: "kernel-deploy.md §Stage 3 distribution boundary"
   K-COMPILE:         "kernel-ops.md §K-COMPILE"
   K-LINT:            "kernel-ops.md §K-LINT"
