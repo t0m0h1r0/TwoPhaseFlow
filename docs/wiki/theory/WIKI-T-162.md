@@ -316,6 +316,28 @@ maximum physical-transport field delta was `6.436583e-07`, while the maximum
 reinit-leg delta was `1.778247e-01`.  This confirms that reinit can dominate
 the apparent shape change and must not be counted as capillary work.
 
+## Phase-Error RCA
+
+The remaining phase/static error is not caused by the one-component projection
+removing the dynamic mode.  A remote `N=32,T=1` no-reinit probe with
+`capillary_range_projection:none` gave the same early Rayleigh-Lamb stiffness
+as `component_hodge_augmented`: `omega≈0.14017`, or about `70%` of the
+reference stiffness.  The projection is still necessary for the static
+component reaction: static `none` produced KE `5.026189e-06`, while static
+component mode gave `5.284015e-09`.
+
+The slow no-reinit phase is also not an early grid-remap artifact.  A
+static-grid no-reinit `N=32,T=4` component probe gave `omega≈0.13976`, matching
+the dynamic-grid no-reinit result through `T=4`.
+
+The current cause is therefore force-side: the scalar `face_implicit`
+capillary cochain, even after component augmentation, is not yet the
+fixed-stratum Riesz representative of `d(sigma S_h)`.  It removes the constant
+component reaction but does not provide the correct surface-energy Hessian for
+resolved nonconstant modes.  Reinit is a separate measurement/energy
+contaminant: it can shift phase and energy strongly, but it does not explain
+the no-reinit under-stiffness.
+
 ## Full Implementation Target
 
 The full implementation should expose:
