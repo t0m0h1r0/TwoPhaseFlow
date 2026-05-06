@@ -890,7 +890,19 @@ Remote validation through the project wrapper passed:
 598 passed, 32 skipped in 43.43s
 ```
 
-The next implementation slice is the actual pre-reinit transport VJP.
+An N32/T1 ch14 regression gate was then run with the same production physics
+still active.  Static and oscillating droplets completed remotely with finite
+fields and snapshot PDFs.  Static kept zero deformation with final KE
+`5.284015367708e-09` and max volume drift `2.918607938522e-15`; the oscillating
+case developed capillary drive with final KE `3.643971286909e-04`, max speed
+Linf `1.321312837017e-02`, and signed deformation
+`7.617534118366e-02 -> 4.334636515834e-02`.
+
+This gate proves no regression from the geometry slice and confirms the old
+zero-drive state is absent in the current component-Hodge path.  It does not
+prove the final variational force, because the production cochain is still the
+legacy scalar curvature-jump cochain.  The next implementation slice is the
+actual pre-reinit transport VJP.
 
 ## Final Policy
 

@@ -562,9 +562,22 @@ touches are irregular and fail closed.  Remote validation:
 598 passed, 32 skipped in 43.43s
 ```
 
-This slice proves the geometry layer only.  The force-side VJP, `M_f` Riesz
-cochain, augmented Hodge projection, corrector sign-lock, YAML runtime mode,
-and ch14 N32 validation remain separate slices.
+The follow-up N32/T1 ch14 regression gate completed remotely with visualization
+for both static and oscillating droplets:
+
+```text
+static:      final KE 5.284015367708e-09, max |Delta V| 2.918607938522e-15,
+             deformation 0 -> 0, max speed Linf 2.546460883371e-05
+oscillating: final KE 3.643971286909e-04, max |Delta V| 2.428288862556e-15,
+             signed deformation 7.617534118366e-02 -> 4.334636515834e-02,
+             max speed Linf 1.321312837017e-02
+```
+
+The result is a regression pass for the geometry slice and confirms that the
+current component-Hodge production path still has nonzero capillary drive for
+the oscillating droplet.  It is not the final theorem gate: the force-side VJP,
+`M_f` Riesz cochain, augmented Hodge projection for the new cochain, corrector
+sign-lock, and YAML runtime mode remain separate implementation slices.
 
 ## Full Implementation Target
 
