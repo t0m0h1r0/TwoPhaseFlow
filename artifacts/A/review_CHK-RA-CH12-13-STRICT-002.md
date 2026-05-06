@@ -52,4 +52,11 @@ Status: fixed in `paper/sections/12_component_verification.tex`, `13_verificatio
 
 ## Round 4 Findings
 
-Pending.
+Targeted scans after the Round 3 fixes found no remaining MAJOR+ issues.
+
+- Stale values / old-stack wording: no matches for old V7 slope `1.48`, old V6 pressure ratio `2.006`, old V9 volume floor `3.79e-8`, pre-range-projection `pressure-jump 分相 PPE+HFE stack`, or `V6/V7/V9 pressure-jump stack`.
+- Process-history wording: no matches for `過去表`, `変更点`, `全バージョン`, `試行錯誤`, `fixed_reinit_count`, `no-reinit`, `CFL 半減`, `追加診断`, `再実行`, `再生成`, `当初`, `revised criterion`, or `判定キー変更`. The only remaining scan hit is `格子再生成`, used as a technical moving-grid term in V8/V9 coverage limits.
+- Traceability: §12 summary rows now use unique row IDs `U6-b1`, `U6-b2`, `U7-a1`, and `U7-a2`.
+- Validation: `git diff --check` passed; `make -B -C paper` passed and generated `paper/main.pdf` (246 pages). Fatal/error/undefined/overfull scans passed. The only log warning is `Text page 147 contains only floats`, a non-fatal layout warning outside the review findings.
+
+Stop condition met at Round 4: no MAJOR+ findings remain.
