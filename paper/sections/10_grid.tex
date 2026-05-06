@@ -21,18 +21,18 @@
 \begin{tcolorbox}[warnbox, title={非一様格子の適用範囲}]
 \label{box:nonuniform_scope_contract}
 本章が本文で確定するのは，
-\textbf{固定 $\varepsilon_\Gamma$（CLS/CSF 界面厚み）を保った非一様格子上で，
+\textbf{固定 $\varepsilon_\Gamma$（CLS/Heaviside 界面厚み）を保った非一様格子上で，
 CCD/FCCD，Ridge--Eikonal，PPE/速度補正が同じ格子幾何を参照するための離散契約}
 である．
-現行の検証済み非一様経路は，固定非一様格子上の静止 BF 縮約試験と，
+本稿で検証する非一様経路は，固定非一様格子上の静止 BF 縮約試験と，
 range-projected pressure-jump/HFE/projection-native stack 上の有限時間
-nominal/local-$\varepsilon$ switch 診断である（§~\ref{sec:nonuniform_grid_ns}）．
+固定幅・局所幅診断である（§~\ref{sec:nonuniform_grid_ns}）．
 毎ステップ界面追随格子は，保存的再写像，速度再投影，履歴リセット，
 HFE 延長データと界面面幾何の再構築，および壁面境界条件での
 PPE--速度補正面演算子統一が同時に成立する場合にだけ標準化できる
 \emph{閉包条件}として述べる．
 時間固定格子は，界面が初期精細化帯内に留まる静止・小変形問題での
-検証済み縮約経路である．
+縮約検証経路である．
 一方，移動界面で上記閉包を欠く簡略再生成は，比較・診断経路に限る．
 \end{tcolorbox}
 
@@ -369,7 +369,7 @@ CCD の $\Ord{h^6}$ 空間精度が $\Ord{h}$ または $\Ord{h^2}$ に低下す
 
 格子は物理時間 $t=0$ における初期水準集合値 $\phi^{(0)}$ から
 §~\ref{sec:grid_gen} の構成で生成する（初期化順序全体は付録~\ref{app:bootstrap} 参照）．
-非一様格子の現行検証済み経路は固定格子上の縮約試験であり，
+非一様格子で本稿が検証する経路は固定格子上の縮約試験であり，
 物理時間ステップごとに現在の界面から格子を再生成する
 \textbf{界面追随格子}は，以下の保存・再投影・履歴リセット条件を満たすときにだけ
 標準経路として扱える．
@@ -377,7 +377,7 @@ CCD の $\Ord{h^6}$ 空間精度が $\Ord{h}$ または $\Ord{h^2}$ に低下す
 
 \begin{tcolorbox}[mybox, title={固定格子経路と追従格子経路}]
 \label{box:grid_modes}
-\textbf{時間固定格子（検証済み縮約・比較経路）：}
+\textbf{時間固定格子（縮約検証・比較経路）：}
 $t=0$ に $\phi^{(0)}$ から格子を生成し，全時間段階で同一格子を使用する（$\bm{v}_\text{mesh}=0$）．
 格子運動に由来する ALE 項は消えるため，格子再生成による一次時間誤差を持ち込まない．
 界面が初期精細化帯内に留まる問題（定常または有限時間の小変形問題）では空間解像度が維持される．
@@ -504,7 +504,7 @@ $B_f^{\mathrm{nu}}=s_fj_f/H_f$ を\textbf{必ず再構築}する．
 したがって界面追随格子を標準経路として採用する場合は，毎ステップ再生成と同時に
 式~\eqref{eq:ale_conservative_update} 相当の保存的再写像，速度再投影，履歴リセット，
 式~\eqref{eq:regrid_face_geometry} の界面面幾何再構築を行う．
-固定格子（Mode 1）は現行検証済み縮約経路，毎ステップ再生成（Mode 2）は
+固定格子（Mode 1）は縮約検証経路，毎ステップ再生成（Mode 2）は
 上記閉包が揃う場合に限る追従格子経路である．
 
 \begin{center}
@@ -527,7 +527,7 @@ $B_f^{\mathrm{nu}}=s_fj_f/H_f$ を\textbf{必ず再構築}する．
 \label{sec:eps_spatial_variable}
 % ─────────────────────────────────────────────────────────────────────────────
 
-本章の標準経路では，CLS/CSF の界面厚み $\varepsilon_\Gamma$ は空間的に固定する．
+本章の標準経路では，CLS/Heaviside の界面厚み $\varepsilon_\Gamma$ は空間的に固定する．
 この選択により，Heaviside/デルタ関数の振幅，圧力ジャンプ面幾何，
 速度補正が同じ界面厚みを参照する．
 一方，非一様格子では一様な $\varepsilon_\Gamma = C_\varepsilon h$ の代わりに，

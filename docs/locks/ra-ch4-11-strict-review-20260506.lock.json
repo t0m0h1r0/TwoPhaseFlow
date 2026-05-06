@@ -1,0 +1,11 @@
+{
+  "branch": "codex/ra-ch4-11-strict-review-20260506",
+  "branch_slug": "codex-ra-ch4-11-strict-review-20260506",
+  "session_id": "CHK-RA-CH4-11-STRICT-001",
+  "worktree_path": ".claude/worktrees/codex-ra-ch4-11-strict-review-20260506",
+  "holder_agent": "Codex",
+  "acquired_at": "2026-05-06T00:00:00+09:00",
+  "expires_at": "2026-05-07T00:00:00+09:00",
+  "meta_version": "5.1.0",
+  "id_prefix": "RA-CH4-11-STRICT"
+}

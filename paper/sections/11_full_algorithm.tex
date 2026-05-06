@@ -234,13 +234,13 @@ Ridge--Eikonal を実行した場合は必ず Stage F の $\phi$ 空間一様シ
   \end{cases}
 \]
 反復型 Godunov/WENO--HJ Eikonal solver を比較経路として選ぶ場合だけ，
-仮想時間 $\tau$ の CFL と停止条件を §~\ref{sec:cls_compression} の実装ガイドに従って別管理する．
-標準経路の本質は反復回数や cadence tuning ではなく，
+仮想時間 $\tau$ の CFL と停止条件を §~\ref{sec:cls_compression} の比較経路条件に従って別管理する．
+標準経路の本質は反復回数や再初期化頻度の調整ではなく，
 物理輸送 $\delta\psi_T$，幾何射影 $\delta\psi_\Pi$，
 および Stage F の $\phi$ 空間一様シフトを別々の離散 identity として閉じる点にある．
 狭いスロットやトポロジー変化を含む検証では，
 局所角劣化を $Q_\Gamma$ だけで判定しないため，§~\ref{sec:xi_sdf_reinit} の
-適用範囲に従って実行 cadence と比較経路を明示する．
+適用範囲に従って再初期化の実行条件と比較経路を明示する．
 
 % ── 第3段 ──────────────────────────────────────────────────────────────
 \paragraph{第3段：界面幾何・物性更新}
