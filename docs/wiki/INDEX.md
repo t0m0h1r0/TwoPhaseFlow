@@ -1,4 +1,4 @@
-# Wiki Index — 355 entries
+# Wiki Index — 356 entries
 
 ## Active Retrieval Gate
 
@@ -311,6 +311,7 @@ their curation notes.
 | [WIKI-P-014](paper/WIKI-P-014.md) | Verification Grammar: U-Series Certificates, V-Series Identity Tests, and Type-A/B/D |
 | [WIKI-P-015](paper/WIKI-P-015.md) | Chapters 1-13 Use Failure-Mode to Contract Traceability |
 | [WIKI-P-016](paper/WIKI-P-016.md) | Appendices Are Proof Layers for Main-Text Contracts |
+| [WIKI-P-017](paper/WIKI-P-017.md) | Paper Build Hygiene: Zero-Warning Float Placement |
 
 ## Meta (31)
 

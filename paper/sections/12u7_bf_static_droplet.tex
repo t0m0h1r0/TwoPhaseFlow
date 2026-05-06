@@ -40,7 +40,7 @@ $\mu$ を含む face 量を統一的に扱うため，
 
 \paragraph{結果．}
 
-\begin{table}[!ht]
+\begin{table}[!htbp]
 \caption{U7-a：縮約 BF 静止液滴 1 ステップ圧力跳び再現}
 \label{tab:U7_bf}
 \PaperCaptionNote{$N=32$ では under--resolved（match の $\Delta p$ 相対誤差 93\%）；match は $N \ge 64$ で 2.1\% 以下，$N=128$ で 0.61\% に到達．mismatch は同じ 1-step 指標では match と分離せず，合格経路ではなく負対照として扱う．parasitic velocity $\|u\|_\infty$ は match で $N=64$ が $7.57\!\times\!10^{-5}$，$N=128$ が $2.99\!\times\!10^{-5}$．N=64 → 128 で漸近的に $\Ord{h^{1.4}}$（緩収束；CSF curvature の評価誤差律速）．}
@@ -66,8 +66,8 @@ $N=64\!\to\!128$ slope $1.34 \approx \Ord{h^{1.4}}$：CSF curvature 評価誤差
 寄生流れ完全消去ではなく $h$ 細分化により単調減衰することを示す．}
 \end{table}
 
-\begin{table}[!ht]
-\caption{U7-b：face $\mu$ 補間誤差}
+\begin{table}[!htbp]
+\caption{U7-b：face \texorpdfstring{$\mu$}{mu} 補間誤差}
 \label{tab:U7_face_mu}
 \PaperCaptionNote{$\mu_l/\mu_g = 100$，界面非整合グリッドで $L_\infty$ 誤差を測る．算術平均と VoF 重み付けは同等 ($\Ord{h^2}$)．調和平均は係数のみ大きいが収束次数は同じ ($\Ord{h^2}$)．3 種ともジャンプ条件下で安定．}
 \centering\small
@@ -86,15 +86,15 @@ $512$ & $0.0020$    & $0.457$ & $1.18$   & $0.457$ \\
 \end{tabular}
 \end{table}
 
-\begin{figure}[!ht]
+\begin{figure}[!htbp]
 \centering
 \includegraphics[width=0.88\linewidth]{figures/ch12_u7_bf_static_droplet}
-\caption{U7：縮約 BF 静止液滴 1 ステップ + face $\mu$ 補間}
+\caption{U7：縮約 BF 静止液滴 1 ステップ + face \texorpdfstring{$\mu$}{mu} 補間}
 \label{fig:ch12_u7}
 \PaperCaptionNote{$N=128$ で BF 結合の Young--Laplace 跳び $\Delta p = \sigma/R$ 再現誤差 $0.61\%$；face $\mu$ 補間（算術／調和／VoF 重み付け）はいずれも $\Ord{h^2}$，slope $\approx 1.9$．}
 \end{figure}
 
-\begin{figure}[!ht]
+\begin{figure}[!htbp]
 \centering
 \includegraphics[width=0.98\linewidth]{figures/ch12_u7_parasitic_vortex.pdf}
 \caption{U7：寄生流れ場（match と FD2 mismatch 負対照）}
