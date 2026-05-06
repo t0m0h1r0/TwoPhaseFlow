@@ -124,13 +124,10 @@ PPE と速度補正が共有する face 複体の値域条件である．
 
 この gate 以降の圧力可視化は，式~\eqref{eq:capillary_pressure_face_cochain}
 の face cochain から復元した Hodge 代表を用いる．
-したがって本稿の production snapshot では `pressure\_hodge' を
-`pressure\_t*.pdf' として出力し，interface band を NaN で消す
-`pressure\_bulk' 型の図は採用しない．
-実際，保存済みの静止液滴データ（$N=64,T=1$ および $N=32,T=4$）は
-plot-only で Hodge 圧力へ再描画でき，それぞれ 6 枚および 21 枚の
-`pressure\_t*.pdf' を生成する．この確認は数値軌道を変えず，
-「何を圧力として読むか」という出力契約だけを検証するものである．
+したがって pressure-jump 経路では \texttt{pressure\_hodge} を圧力図の契約とし，
+interface band を NaN で消す \texttt{pressure\_bulk} 型の図は採用しない．
+この確認は数値軌道を変えず，「何を圧力として読むか」という出力契約だけを
+検証するものである．
 
 \subsubsection{V5：CCD 勾配による寄生流れ抑制 — 長時間多ステップ診断}
 \label{sec:spurious_multistep}

@@ -3,7 +3,7 @@
 % 付録 G: 検証の補足解析
 %   G.1 PPE 離散化の選択（§12.5 から移動）
 %   G.2 HFE の smoothed-Heaviside 圧力場への適合性（§12.4 から移動）
-%   G.3 V7 IMEX-BDF2 二相時間精度 RCA（§13.4 補足）
+%   G.3 V7 IMEX-BDF2 二相時間精度の支配因子解析（§13.4 補足）
 % ═══════════════════════════════════════════════════════════════════════════════
 \section{検証の補足解析}
 \label{sec:appendix_verification}
@@ -126,16 +126,16 @@ HFE の適用範囲は以下のように明確に規定される：
 \end{enumerate}
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsection{V7 IMEX-BDF2 二相時間精度の原因分析}
+\subsection{V7 IMEX-BDF2 二相時間精度の支配因子解析}
 \label{app:v7_imex_bdf2_rca}
 % ─────────────────────────────────────────────────────────────────────────────
 
-本付録は §~\ref{sec:imex_bdf2_twophase_time} の V7 に対する追加 RCA
-（root-cause analysis）を記録する．結論は，観測 slope $1.48$--$1.59$ が
+本付録は §~\ref{sec:imex_bdf2_twophase_time} の V7 に対する支配因子解析を記録する．
+結論は，最新の range-projected stack で観測される slope $1.59$ が
 IMEX-BDF2 単体の係数誤りではなく，
 \textbf{capillary pressure-jump / affine FCCD projection が界面帯で作る低正則性・分裂誤差}
 に支配される，というものである．
-したがって V7 は BDF2 単体次数の試験ではなく，§~\ref{sec:validation} と同じ
+したがって V7 は BDF2 単体次数の試験ではなく，
 capillary coupled stack の実効時間精度診断として読む．
 BDF2 単体の設計次数は U8（§~\ref{sec:U8_time_integration}）で独立に検証済みである．
 
@@ -149,7 +149,7 @@ $n_{\mathrm{ref}}=128$ を参照解に用いた．
 
 \begin{table}[htbp]
 \centering\scriptsize
-\caption{V7 RCA：対照実験による支配因子の切り分け}
+\caption{V7 支配因子解析：対照実験による切り分け}
 \label{tab:v7_rca_controls}
 \begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{34mm}r r X}
 \toprule
@@ -182,14 +182,14 @@ $\rho,\mu$ を一様化しても $\sigma=1$ なら大誤差が残り，密度・
 
 \begin{table}[htbp]
 \centering\scriptsize
-\caption{V7 RCA：仮説監査}
+\caption{V7 支配因子解析：仮説監査}
 \label{tab:v7_rca_hypotheses}
 \begin{tabularx}{\linewidth}{>{\raggedright\arraybackslash}p{9mm}X>{\raggedright\arraybackslash}p{23mm}X}
 \toprule
 ID & 仮説 & 判定 & 根拠 \\
 \midrule
 H01 & $n_{\mathrm{ref}}=64$ が粗すぎる & 副次因子 &
-ref128 で slope は $1.48\to1.59$ に改善するが，2 次には戻らない．\\
+参照解を深くしても slope は $1.59$ 近傍に留まり，2 次には戻らない．\\
 H02 & step-based reinit cadence が主因 & 反証 &
 全系列で reinit 回数を固定しても slope $1.50$．\\
 H03 & 再初期化そのものが主因 & 反証 &
@@ -225,7 +225,7 @@ H17 & 壁境界条件が支配 & 反証 &
 H18 & volume/mass drift が速度 norm を汚染 & 反証 &
 体積 drift は round-off floor に留まる．\\
 H19 & GPU/CPU 経路差が原因 & 非支持 &
-remote production path は本文値を再現し，局在構造も物理対照と整合する．\\
+本文の計算経路は V7 の本文値を再現し，局在構造も物理対照と整合する．\\
 H20 & V7 を純粋 BDF2 次数検証として読むべき & 反証 &
 V7 は capillary pressure-jump coupled-stack 診断であり，純粋 BDF2 は U8 が担う．\\
 \bottomrule

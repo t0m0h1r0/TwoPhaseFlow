@@ -1,0 +1,31 @@
+{
+  "id": "CHK-RA-CH13-LATEST-001",
+  "id_prefix": "RA-CH13-LATEST",
+  "branch": "codex/ra-ch13-latest-narrative-review-20260506",
+  "worktree": ".claude/worktrees/codex-ra-ch13-latest-narrative-review-20260506",
+  "created_at": "2026-05-06",
+  "base": "main@19c1d8ab",
+  "scope": "strict narrative, notation, structure, logic, and latest-content review/remediation for paper chapter 13",
+  "stop_condition": "repeat review/fix until no MAJOR+ findings or review round exceeds 20",
+  "main_merge": "forbidden until explicit user instruction; if later requested, no-ff only and continue working in this worktree",
+  "status": "DONE",
+  "completed_at": "2026-05-06",
+  "review_artifact": "artifacts/A/review_CHK-RA-CH13-LATEST-001.md",
+  "rounds": {
+    "round_1": "FAIL: MAJOR-1..5 and MINOR-1 fixed",
+    "round_2": "FAIL: MAJOR-6 fixed",
+    "round_3": "PASS: MAJOR+ 0 / FATAL 0"
+  },
+  "validation": [
+    "targeted stale-term/value scans PASS",
+    "git diff --check PASS",
+    "make -C paper PASS (paper/main.pdf, 245 pages)",
+    "paper/main.log fatal/error/undefined/overfull/underfull scan PASS"
+  ],
+  "commits": [
+    "34d2cdaf",
+    "2c748f08",
+    "026b35be",
+    "8bacb22b"
+  ]
+}
