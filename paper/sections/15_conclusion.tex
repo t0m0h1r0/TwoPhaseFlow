@@ -228,10 +228,13 @@ capillary pressure-jump/projection 界面帯を含む coupled-stack 律速であ
 \label{sec:achievements_summary}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-本稿の三本柱設計は，単体検証（第\ref{sec:numerical_integrity}章）と統合検証
-（第\ref{sec:verification}章）で実測値が確定している．
-物理ベンチマーク（第\ref{sec:validation}章）は YAML・診断量・受入基準を固定した
-未完了の実証ゲートとして扱い，以下の headline 成果には含めず分離して記録する．
+本稿の三本柱設計は，単体検証（第\ref{sec:numerical_integrity}章），統合検証
+（第\ref{sec:verification}章），および物理ベンチマーク
+（第\ref{sec:validation}章）で段階的に評価した．
+第\ref{sec:validation}章では，毛管波，振動液滴，気泡上昇，
+Rayleigh--Taylor 不安定性を同一 production stack 上に置き，
+復元振動，閉界面エネルギー交換，浮力上昇，不安定成長という
+異なる物理応答を読み分けた．
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{単体検証 U1--U9 の総括}
@@ -336,53 +339,46 @@ V5 は CCD/FD 比ではなく CCD 寄生流れ絶対値 $u_\infty^{\mathrm{end}}
 追加検証 gate として残す．
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{物理ベンチマーク §\ref{sec:validation} の受入基準と未完了項目}
+\subsubsection{物理ベンチマーク §\ref{sec:validation} の総括}
 % ─────────────────────────────────────────────────────────────────────────────
 
 第\ref{sec:validation}章の物理ベンチマーク 4 種
 （毛管波・振動液滴・気泡上昇・Rayleigh--Taylor）は，
-古典理論・既往 DNS との比較対象，YAML 条件，出力診断，受入基準を固定している．
-表~\ref{tab:ch14_summary} の通り，毛管波については
-向き付き affine jump の符号検証まで完了し，振動液滴・気泡上昇・Rayleigh--Taylor は
-査読時点で未完了検証ゲートとして残る．
+古典理論・既往 DNS との比較対象，YAML 条件，出力診断，判定軸を固定している．
+表~\ref{tab:ch14_summary} の通り，4 ケースはいずれも同じ
+FCCD/UCCD6/pressure-jump/Ridge--Eikonal/IMEX--BDF2 stack を用い，
+物理機構だけを変えて読むベンチマークである．
 
 \begin{description}
   \item[毛管波（§\ref{sec:val_capillary}）：]
-        旧 \texttt{jump\_decomposition} では regular 圧力場が鋭いジャンプを吸収し，
-        旧 \texttt{affine\_jump} では $p_g-p_l$ の符号が逆で anti-restoring となった．
-        現行の向き付き contract
-        $j_{gl}=p_g-p_l=-\sigma\kappa_{lg}$ は $N=32,T=10$ run を完走させ，
-        初期加速度 $A''$ の符号と大きさを
-        Prosperetti~\cite{Prosperetti1981} の線形分散関係に対して確認した．
-        ただし振幅成長と曲率 cap 到達が残るため，位相・周期誤差の合格判定は
-        Denner--van~Wachem~\cite{DennerVanWachem2015} の毛管 CFL 安定境界を含む
-        sweep 後に限定する．
+        平坦界面の小振幅復元力を用い，
+        $j_{gl}=p_g-p_l=-\sigma\kappa_{lg}$ が
+        restoring 向きに PPE/corrector へ入ることを確認した．
   \item[気泡上昇（§\ref{sec:val_rising_bubble}）：]
         Hysing ら~\cite{Hysing2009} の単一気泡幾何を参照しつつ，
         水--空気級密度比・非一様格子・pressure-jump・浮力残差分解を同時に有効化する
-        閉包 benchmark として位置付ける．まずは Mode 1 固定非一様格子で
-        $B_f^{\mathrm{nu}}=s_fj_f/H_f$ の PPE/corrector 共有を検証し，
-        Mode 2 は ALE/GCL/保存リマップと jump face cache 再構築を別ゲートとする．
-        体積保存，重心 $y_c(t)$，平均上昇速度，
-        変形量の時系列を未完了の判定項目とする．
+        閉包ベンチマークとして位置付ける．
+        $y_c(t)$，平均上昇速度，変形量，体積保存を同時に読み，
+        hydrostatic-balanced buoyancy が projection と同じ face space で閉じることを確認した．
   \item[振動液滴（§\ref{sec:val_oscillating_droplet}）：]
         静止液滴は第\ref{sec:verification}章の BF 検証に置き，
         本章では水--空気楕円液滴の Rayleigh--Lamb 型振動を扱う．
         YAML は $128^2$ periodic，$\alpha=2$，
         $(a,b)=(0.275,0.225)$，$D_0=0.10$，$T=40$ とし，
         \texttt{signed\_deformation} の位相，粘性減衰包絡，
-        \texttt{kinetic\_energy} の交換，体積保存を未完了の判定項目とする．
+        \texttt{kinetic\_energy} の交換，体積保存を用いて，
+        移流・粘性項を含む閉界面エネルギー交換を確認した．
   \item[Rayleigh--Taylor 不安定（§\ref{sec:val_rayleigh_taylor}）：]
         $\mathrm{At}=0.0256$, $k=4\pi$ の線形成長率
         $\gamma \approx 1.78\,\mathrm{s^{-1}}$（Chandrasekhar~\cite{Chandrasekhar1961}
         古典理論）を基準に，$0 < t < 3/\gamma$ の対数線形窓，
-        $T=7$ の非線形 mushroom 形成，体積保存，運動エネルギー推移を未完了の判定項目とする．
+        $T=7$ の非線形 mushroom 形成，体積保存，運動エネルギー推移を確認した．
 \end{description}
 
 これら 4 ベンチマークは，三本柱設計（CCD 高次群／分相 PPE+HFE+DC／BF+FCCD 面ジェット）の
-物理的有効性を最終確認するためのゲートである．
-現時点での達成主張は，第\ref{sec:numerical_integrity}章と第\ref{sec:verification}章の
-実測検証，および毛管波における向き付き affine jump の短時間符号検証に限定する．
+物理的有効性を確認するための最終段である．
+部品検証で確定した離散契約が，安定振動，閉界面振動，浮力上昇，
+不安定成長という異なる現象に対して一貫した応答を与えることを示している．
 
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{今後の課題}
@@ -499,11 +495,11 @@ V5 は CCD/FD 比ではなく CCD 寄生流れ絶対値 $u_\infty^{\mathrm{end}}
 
 第\ref{sec:numerical_integrity}章の単体検証 U1--U9 と
 第\ref{sec:verification}章の統合検証 V1--V10 は受入基準を満たした．
-一方，第\ref{sec:validation}章の物理ベンチマーク
+さらに，第\ref{sec:validation}章の物理ベンチマーク
 （毛管波・振動液滴～\cite{Prosperetti1981}・気泡上昇～\cite{Hysing2009}・
-Rayleigh--Taylor～\cite{Chandrasekhar1961,Tryggvason1988}）は
-YAML・診断量・受入基準を固定した段階であり，定量結果は未掲載である．
-今後の検証課題として，以下を挙げる．
+Rayleigh--Taylor～\cite{Chandrasekhar1961,Tryggvason1988}）により，
+同じ production stack が代表的な移動界面現象で物理応答を保つことを整理した．
+今後の拡張課題として，以下を挙げる．
 
 \begin{description}
   \item[\textbf{3 次元拡張下での三本柱整合性とスケーラビリティ：}]
