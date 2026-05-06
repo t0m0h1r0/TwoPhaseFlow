@@ -9,7 +9,7 @@ sources:
   - path: docs/wiki/INDEX.md
     description: "Wiki inventory before CHK-RA-WIKI-CURATION-001 curation"
   - path: docs/02_ACTIVE_LEDGER.md
-    description: "Current ResearchArchitect ledger through 2026-05-05"
+    description: "Current ResearchArchitect ledger through 2026-05-06"
   - path: paper/sections/06b_advection.tex
     description: "Current CLS advection contract: FCCD face-flux transport"
   - path: paper/sections/11_full_algorithm.tex
@@ -18,6 +18,10 @@ sources:
     description: "Current verification reading for V1/V6/V7/V9/V10"
   - path: docs/wiki/cross-domain/WIKI-X-040.md
     description: "Recent research insight digest and stale-contract list"
+  - path: docs/wiki/theory/WIKI-T-160.md
+    description: "Fully discrete reinit-aware capillary Hodge reference and defect-ledger lesson"
+  - path: docs/wiki/theory/WIKI-T-161.md
+    description: "Retired fixed-stratum variational reinit candidate; negative knowledge only"
 depends_on:
   - "[[WIKI-X-037]]"
   - "[[WIKI-X-040]]"
@@ -30,6 +34,8 @@ depends_on:
   - "[[WIKI-T-154]]"
   - "[[WIKI-T-158]]"
   - "[[WIKI-T-159]]"
+  - "[[WIKI-T-160]]"
+  - "[[WIKI-T-161]]"
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-157]]"
   - "[[WIKI-E-062]]"
@@ -45,7 +51,7 @@ consumers:
   - domain: paper
     usage: "Keep wiki retrieval synchronized with current paper terminology"
 compiled_by: ResearchArchitect
-compiled_at: 2026-05-05
+compiled_at: 2026-05-06
 ---
 
 # Curated Wiki Retrieval Map
@@ -65,8 +71,8 @@ algorithm policy.
 | Capillary jump | [[WIKI-X-039]], [[WIKI-X-040]] | Use oriented affine interface stress and face acceleration, not a regular pressure field. |
 | PPE residual | [[WIKI-T-152]], [[WIKI-E-059]] | Production projection accuracy is the high-order residual contract, not fixed DC iteration count. |
 | Pressure representative | [[WIKI-T-154]], [[WIKI-T-158]], [[WIKI-E-060]], [[WIKI-E-062]] | Raw interface-band pressure is diagnostic; read Hodge representatives and face cochains, never masked-band substitutes. |
-| Reinit-aware capillary Hodge | [[WIKI-T-159]], [[WIKI-T-155]], [[WIKI-T-157]] | Build capillary work from the physical transport endpoint, audit reinit as trace-preserving projection or metric defect, and use the weighted Hodge gate for static/dynamic separation. |
-| ALE/remap energy | [[WIKI-T-155]], [[WIKI-T-157]], [[WIKI-T-159]] | Variational curvature work needs shared pressure-work pairing, labelled transport/reinit endpoints, and step-local energy accounting. |
+| Reinit-aware capillary Hodge | [[WIKI-T-159]], [[WIKI-T-160]], [[WIKI-T-155]], [[WIKI-T-157]], [[WIKI-T-161]] | Build capillary work from the labelled physical transport endpoint; use the production weighted Hodge residual for static/dynamic separation; read [[WIKI-T-160]] for discrete defect-ledger requirements and [[WIKI-T-161]] only as the retired fixed-stratum candidate, not as a current implementation route. |
+| ALE/remap energy | [[WIKI-T-160]], [[WIKI-T-155]], [[WIKI-T-157]], [[WIKI-T-159]], [[WIKI-T-161]] | Variational curvature work needs shared pressure-work pairing, labelled transport/reinit endpoints, named reinit residuals/defects, and step-local energy accounting; [[WIKI-T-161]] is negative knowledge about an abandoned retraction surface. |
 | Paper/wiki split | [[WIKI-X-046]], [[WIKI-E-061]] | Put successful contracts in the paper; preserve failed controls and trial variants in the wiki. |
 | Negative shortcuts | [[WIKI-X-045]] | Damping/CFL/smoothing/caps/hyperviscosity are retained as rejected detours, not paper success claims. |
 | Verification reading | [[WIKI-E-040]], [[WIKI-X-040]] | V-series labels encode what was certified; stale FFT/CCD-LU/CN readings are historical only. |
@@ -116,7 +122,10 @@ They are retained with a bounded reading:
 - static-droplet pressure output must be Hodge-reconstructed from saved face
   cochains; masked interface-band plots are retired;
 - reinit-induced deformation under zero velocity is projection defect unless
-  the transport/reinit split proves trace and surface-energy preservation;
+  [[WIKI-T-160]] trace, surface-energy, and volume identity gates pass;
+- the fixed-stratum trace-preserving entropy-dual retraction in [[WIKI-T-161]]
+  is retained as a failed candidate after ch14 N=32, T=10 abnormal-shape
+  validation; do not implement its YAML surface from this card;
 - N64 static-grid, `fccdface`, `transportvar`, phase/density variants, and
   other non-DC probes remain useful controls only with their acceptance gates;
 - rejected shortcuts such as damping, smoothing, curvature caps, hyperviscosity,
