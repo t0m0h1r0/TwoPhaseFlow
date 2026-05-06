@@ -12,7 +12,7 @@ production stack:
   - UCCD6 momentum convection,
   - direct-ψ curvature with interface-limited filtering (``psi_direct_filtered``),
   - pressure-jump surface tension embedded in phase-separated FCCD PPE,
-  - face-flux projection.
+  - capillary range projection and face-flux projection.
 
 Cases
 -----
@@ -174,6 +174,7 @@ def _case_config(N: int, alpha: float, eps_mode: str) -> ExperimentConfig:
                         "discretization": "fccd",
                         "coefficient": "phase_separated",
                         "interface_coupling": "affine_jump",
+                        "capillary_range_projection": "range_projected",
                     },
                     "solver": {
                         "kind": "defect_correction",
@@ -215,6 +216,10 @@ def _assert_ch14_stack(cfg: ExperimentConfig, solver: TwoPhaseNSSolver) -> dict:
         "PPE": (cfg.run.ppe_solver, "fccd_iterative"),
         "PPE coefficient": (cfg.run.ppe_coefficient_scheme, "phase_separated"),
         "PPE coupling": (cfg.run.ppe_interface_coupling_scheme, "affine_jump"),
+        "capillary range projection": (
+            cfg.run.capillary_range_projection,
+            "range_projected",
+        ),
         "reinitialization": (cfg.run.reinit_method, "ridge_eikonal"),
     }
     mismatches = [

@@ -35,7 +35,7 @@ def ch14_circle_config(
     step_diagnostics: bool = False,
     initial_velocity: dict | None = None,
 ) -> ExperimentConfig:
-    """Build a circle-droplet config using the §14 FCCD/UCCD6/filtered-curvature/PPE stack."""
+    """Build a circle-droplet config using the §14 FCCD/UCCD6/Hodge-closed PPE stack."""
     if (cfl is None) == (dt is None):
         raise ValueError("exactly one of cfl or dt must be provided")
     if alpha <= 1.0:
@@ -135,6 +135,7 @@ def ch14_circle_config(
                         "discretization": "fccd",
                         "coefficient": "phase_separated",
                         "interface_coupling": "affine_jump",
+                        "capillary_range_projection": "range_projected",
                     },
                     "solver": {
                         "kind": "defect_correction",
@@ -179,6 +180,10 @@ def assert_ch14_stack(cfg: ExperimentConfig, solver: TwoPhaseNSSolver, label: st
         "PPE": (cfg.run.ppe_solver, "fccd_iterative"),
         "PPE coefficient": (cfg.run.ppe_coefficient_scheme, "phase_separated"),
         "PPE coupling": (cfg.run.ppe_interface_coupling_scheme, "affine_jump"),
+        "capillary range projection": (
+            cfg.run.capillary_range_projection,
+            "range_projected",
+        ),
         "reinitialization": (cfg.run.reinit_method, "ridge_eikonal"),
     }
     mismatches = [
