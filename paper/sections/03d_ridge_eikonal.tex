@@ -12,7 +12,7 @@
 
 \paragraph{本節の 2 用途．}
 Ridge--Eikonal 経路は論文中で次の 2 つの目的で用いられる：
-\textbf{(A) 飽和帯フォールバック．}~$|\bnabla\psi|\to 0$ となる飽和帯
+\textbf{(A) 飽和帯補助再構成．}~$|\bnabla\psi|\to 0$ となる飽和帯
 （§~\ref{sec:cls_advection}）ではロジット逆変換 $\phi = \varepsilon\ln((1-\psi)/\psi)$
 の数値退化によって $\phi$ が直接得られないため，
 $\psi=0.5$ 零等値面から FMM を起動して $\phi$ を再構成する
@@ -25,7 +25,7 @@ $\psi=0.5$ 零等値面から FMM を起動して $\phi$ を再構成する
 \begin{tcolorbox}[defbox, title={本節の位置づけ}]
 本節は，第~\ref{sec:levelset}章で導入した CLS 基本経路
 （保存形移流・再初期化・$\psi$ 直接曲率）を\textbf{置き換える}ものではなく，
-飽和帯フォールバックとトポロジー変化時の\textbf{補助経路}を与えるものである．
+飽和帯補助再構成とトポロジー変化時の\textbf{補助経路}を与えるものである．
 本章では連続定式化と再構成の論理に焦点を当て，
 CCD/FCCD の離散演算子，非一様格子実装，感度較正の詳細は
 第~\ref{sec:CCD}章，第~\ref{sec:grid}章，および
