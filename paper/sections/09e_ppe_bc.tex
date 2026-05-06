@@ -28,9 +28,10 @@ PPE 演算子の条件数に直接影響する．
 （§~\ref{sec:varrho_ppe_limitation}；
 ここで「精度プラトー」は，反復が収束しても誤差ノルムが格子細分化に対して
 設計次数で低減しない現象を指す）．
-この本質的制約に対する解決策として，§~\ref{sec:split_ppe_framework} で\textbf{分相 PPE 解法}を定式化した．
-以下の安定化戦略は，smoothed-Heaviside 一括 PPE を低密度比で用いる場合の条件数緩和策である．
-水--空気級の高密度比では smoothed-Heaviside 一括 PPE を主たる閉包とせず，分相 PPE と界面ジャンプ条件を用いる．
+この本質的制約に対する本章の解答は，§~\ref{sec:split_ppe_framework} の
+\textbf{分相 pressure-jump PPE} である．
+smoothed-Heaviside 一括 PPE に対する条件数緩和は，低密度比の対照モデルを破綻させないための
+補助的な解析であり，水--空気級の高密度比に対する主閉包ではない．
 可変係数演算子 $\mathcal{L}_h$ の係数 $a_{i+1/2} = 2/(\rho_i+\rho_{i+1})$ は，
 液相（$\rho \approx \rho_l$）と気相（$\rho \approx \rho_g$）の格子面で
 $\Ord{\rho_l/\rho_g}$ の比率を持つため，行列の条件数は
@@ -41,7 +42,7 @@ $\Ord{\rho_l/\rho_g}$ の比率を持つため，行列の条件数は
 \end{equation}
 と見積もられる．
 
-\noindent\textbf{条件数緩和と高密度比での切替条件：}
+\noindent\textbf{モデル境界と採用閉包：}
 \begin{itemize}
   \item \textbf{面係数 $2/(\rho_L+\rho_R)$（式~\eqref{eq:af_exact}）：}
         低次フラックス形基準離散化のフラックス連続性から自然に導かれる

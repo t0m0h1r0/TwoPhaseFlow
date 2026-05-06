@@ -1,0 +1,22 @@
+{
+  "task_id": "CHK-RA-CH9-002",
+  "branch": "codex/ra-ch9-renewed-review-20260506",
+  "worktree": ".claude/worktrees/codex-ra-ch9-renewed-review-20260506",
+  "scope": [
+    "paper/sections/09_ccd_poisson.tex",
+    "paper/sections/09b_split_ppe.tex",
+    "paper/sections/09c_hfe.tex",
+    "paper/sections/09d_defect_correction.tex",
+    "paper/sections/09e_ppe_bc.tex",
+    "paper/sections/09f_pressure_summary.tex",
+    "artifacts/A/review_CHK-RA-CH9-002.md",
+    "docs/02_ACTIVE_LEDGER.md"
+  ],
+  "merge_policy": {
+    "main_merge": "forbidden_until_explicit_user_instruction",
+    "main_merge_method": "no_ff",
+    "after_main_merge": "continue_in_same_worktree"
+  },
+  "status": "active",
+  "created": "2026-05-06"
+}
