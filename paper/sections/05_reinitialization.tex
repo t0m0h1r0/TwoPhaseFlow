@@ -123,17 +123,18 @@ $M = \sum_{i,j} \psi_{i,j}\,\Delta V_{i,j}$ に置き換え，
 支配的な形状誤差源は，各再初期化呼び出しにおける
 界面再構成ステップの累積的プロファイル歪みである．
 
-そこで，再初期化の呼び出しを体積モニタ $M(\tau) = \int \psi(1-\psi)\,\mathrm{d}V$
-に基づく適応的トリガーに置き換える：
+そこで，再初期化の呼び出しは固定頻度ではなく，界面帯の品質量
+$Q_\Gamma = \int \psi(1-\psi)\,\mathrm{d}V$ に基づいて判定する：
 \begin{equation}
   \text{再初期化の実行条件：}\quad
-  \frac{M(\tau)}{M_{\mathrm{ref}}} > \theta_{\mathrm{reinit}}
+  \frac{Q_\Gamma}{Q_{\Gamma,\mathrm{ref}}} > \theta_{\mathrm{reinit}}
   \label{eq:adaptive_reinit_trigger}
 \end{equation}
-ここで $M_{\mathrm{ref}}$ は直前の再初期化直後の $M$ 値，
+ここで $Q_{\Gamma,\mathrm{ref}}$ は直前の許容プロファイル確定時の
+$Q_\Gamma$ 値，
 $\theta_{\mathrm{reinit}}$ は界面太り度の許容比を与える閾値パラメタ
 であり，具体値は対象検証の条件として明示する．
-$M(\tau)$ は界面プロファイルの太り度を表し，
+$Q_\Gamma$ は界面プロファイルの太り度を表し，
 $\psi = H_\varepsilon(-\phi)$ の平衡形からの逸脱に比例して増大する．
 適応トリガー導入による再初期化回数の削減効果と形状誤差改善は
 §~\ref{sec:verify_dccd_conservation} を参照．
@@ -214,9 +215,12 @@ DCCD/圧縮--拡散型の節点中心比較経路（§~\ref{sec:dissipative_ccd}
 §~\ref{sec:verify_dccd_conservation} で数値検証している．
 $n_{\mathrm{reinit}}$ を増加させると分裂反復が増え，膨張は悪化する．
 
-\textbf{Direct Geometric Reinitialization（DGR）．}
-この構造的膨張を補正するため，logit 逆変換と勾配正規化に基づく
-厚み補正を形状再初期化とは\textbf{独立に}適用する：
+\textbf{Direct Geometric Reinitialization（DGR）の位置付け．}
+DGR はこの構造的膨張を同定し，分裂型比較経路の幅誤差を切り分けるための
+診断的な厚み補正である．標準の Stage D/F 経路は
+Ridge--Eikonal 距離再構成と $\phi$ 空間質量閉鎖で完結し，
+DGR を隠れた後処理として追加しない．DGR を比較・診断目的で明示的に用いる場合だけ，
+logit 逆変換と勾配正規化に基づく次の補正を別経路として適用する：
 \begin{enumerate}
   \item 実効厚の推定：界面帯域（$0.05 < \psi < 0.95$）で
     $\varepsilon_{\mathrm{eff}} = \mathrm{median}\!\left[\psi(1-\psi)/|\bnabla\psi|\right]$
@@ -242,7 +246,7 @@ DGR が $|\bnabla\phi_{\mathrm{sdf}}| \approx 1$ を保証するので
 界面の物理的変位 $\delta x = \delta\phi / |\bnabla\phi| \approx \delta\phi$ は
 曲率非依存の一様シフトとなり形状を変えない（DGR 幅保存性）．
 
-\textbf{注意：} 非採用の $\psi$ 空間補正経路では
+\textbf{注意：} 標準経路では，次の $\psi$ 空間補正を再初期化後に用いない．
 $\psi \leftarrow \psi_{\mathrm{new}} + (\delta M / \sum w)\,w$，
 $w = 4\psi_{\mathrm{new}}(1-\psi_{\mathrm{new}})$ を使用していた．
 この補正による界面変位は $\delta x \propto w/|\bnabla\psi|$ であり，
@@ -254,10 +258,11 @@ $\phi$ 空間補正はこの質量保存の問題を解決する．
 根本原因は質量補正ではなくシャープニングの非一様性である
 （定量比較は §~\ref{sec:val_capillary} を参照）．
 
-\textbf{運用：}
-DGR は形状修復（圧縮--拡散）とは独立に，物理時間ステップ単位で適用する．
-形状再初期化が界面プロファイルを tanh 形に整形し，
-DGR がその直後（または独立に）界面厚を $\varepsilon$ に復元する．
+\textbf{比較経路での用法：}
+DGR は圧縮--拡散型の分裂経路が作る幅膨張を分離評価するために用いる．
+標準アルゴリズムの 1 物理時間ステップでは，Stage D が零点集合から
+符号距離場を再構成し，Stage F が式~\eqref{eq:cls_phi_mass_correction}
+と同じ $\phi$ 空間閉鎖で液相体積を閉じる．
 界面幅維持精度および面積誤差改善の定量結果は
 §~\ref{sec:verify_dccd_conservation} を参照．
 
@@ -266,7 +271,7 @@ DGR のグローバル $\varepsilon_{\mathrm{eff}}$ 推定は
 界面厚の膨張と狭い形状特徴（スロット等）を区別できない．
 Zalesak スロット円板~\cite{Zalesak1979}のように界面幅 $\sim 6\varepsilon$ の狭い構造を含む場合，
 DGR がスロット内部を液相に充填してしまうため\textbf{適用してはならない}．
-鋭い幾何形状では，固定頻度の補助距離再構成や FMM/ξ-SDF 比較経路を
+鋭い幾何形状では，零点集合からの Ridge--Eikonal/FMM/ξ-SDF 距離再構成を
 検証条件として明示する．
 
 \textbf{適用制限（2）：$\sigma > 0$ で界面振動を伴う系（界面折れ）．}
@@ -275,8 +280,9 @@ $|\bnabla\psi| \to 0$ となる局所的な折れ（fold）が生じうる．
 DGR の中央値 $\varepsilon_{\mathrm{eff}}$ 推定は fold セルに対しロバストであるため
 fold を検出できず，後段 CCD Laplacian が非物理的な曲率スパイクを生成し
 CSF 力が増大して発散する．したがって $\sigma>0$ で界面振動を伴うベンチマークには
-\textbf{分裂再初期化のみ}を用いる（DGR の後段追加は不可；
-発散シナリオの定量検証は §~\ref{sec:val_capillary}）．
+\textbf{DGR の後段追加を用いない}．必要な再構成は Ridge--Eikonal 系の
+零点集合保存・体積閉鎖条件で扱い，発散シナリオの定量検証は
+§~\ref{sec:val_capillary} に置く．
 
 
 % ─────────────────────────────────────────────────────────────────────────────
@@ -324,7 +330,7 @@ Eikonal 方程式 \cite{Sussman1994}
         §~\ref{sec:U4_ridge_eikonal_reinit} の単体検証を参照）：}
         Godunov 一次風上差分~\cite{RouyTourin1992}で式~\eqref{eq:eikonal_pde} を仮想時間積分
         （\S\ref{sec:scheme_per_variable} 表で $\phi$ 再初期化に WENO--HJ~\cite{JiangPeng2000} を推奨する記述は
-        変密度・分相プロダクションの高精度オプション；等密度SSPRK3検証では Godunov で十分．
+        変密度・分相条件での高精度比較経路；等密度 SSPRK3 検証では Godunov で十分．
         反復解法に代わる直接法として Fast Sweeping Method~\cite{Zhao2005} が知られる）
         \begin{equation}
           \phi^{(k+1)} = \phi^{(k)} - \Delta\tau\,\operatorname{sgn}(\phi_0)\,
@@ -337,7 +343,7 @@ Eikonal 方程式 \cite{Sussman1994}
         ここで $\varepsilon_\xi$ は §\ref{sec:cls_advection}
         の界面幅係数 $C_\varepsilon$ と同一のスカラー定数
         （$\varepsilon = C_\varepsilon\Delta x_{\min}$ より $\varepsilon_\xi = C_\varepsilon \approx 1.0\sim 2.0$）；
-        本節 alg は ξ計算座標で $\varepsilon_\xi$ 表記を採用し，
+        本節では ξ 計算座標で $\varepsilon_\xi$ 表記を採用し，
         §\ref{sec:cls_advection}/§\ref{sec:intro} と表記体系のみ異なる
         同一物理量を表す．
         一様格子では $\varepsilon(i,j) = \varepsilon$（スカラーに帰着）；
@@ -412,10 +418,10 @@ Ridge--Eikonal（次項 ξ 空間符号距離関数法）の動機である．
 累積ドリフトが構造的に存在しない．Gaussian 補助場 $\xiridge$ と非一様 FMM を用いる
 完全形は §~\ref{sec:ridge_eikonal_nu_grid} で扱う．
 
-\begin{tcolorbox}[algbox, title={ξ-SDF 再初期化アルゴリズム (Strategy B)}]
+\begin{tcolorbox}[algbox, title={ξ-SDF 再初期化アルゴリズム}]
 \begin{enumerate}
   \item \textbf{ロジット反転：}
-        $\phi_{\mathrm{raw}}(i,j) = \varepsilon\ln\!\bigl(\psi(i,j)/(1{-}\psi(i,j))\bigr)$
+        $\phi_{\mathrm{raw}}(i,j) = \varepsilon\ln\!\bigl((1{-}\psi(i,j))/\psi(i,j)\bigr)$
         （飽和クランプ付き）
   \item \textbf{零点交差の検出（線形補間）：}$\phi_{\mathrm{raw}}$ の符号が変化する隣接セル対を探索し，
         格子座標上の交差位置を線形補間で決定する．
@@ -501,18 +507,15 @@ $\delta\phi$ として別に監視する．
 $\sigma>0$ で界面振動を伴う系では表面張力の空間集中
 （$\sim\varepsilon^{-1}$ スケール）が PPE 投影残差を介して
 体積誤差に伝播し得る．
-分裂法は拡散 PDE により界面幅を非意図的に
-$\varepsilon_{\mathrm{eff}}\sim$ 拡大方向にずらすことで，
-表面張力の集中を緩和し体積誤差を抑制している．
-ξ-SDF にこの正則化を明示的に与えるため，
-再構成の Heaviside 幅に $\varepsilon$ 比例の拡大係数 $f$ を導入し，
+この効果を標準経路の隠れた正則化として処理してはならない．
+幅拡大係数 $f$ は，Ridge--Eikonal 距離再構成の感度を測る
+明示的な比較パラメタとしてのみ導入し，
 \begin{equation}
-  \psi_{\mathrm{new}}(i,j) = H_{f\varepsilon_\xi}\!\bigl(\phi_\xi(i,j)\bigr)
+  \psi_{\mathrm{new}}(i,j) = H_{f\varepsilon_\xi}\!\bigl(-\phi_\xi(i,j)\bigr)
   \label{eq:xi_sdf_wide}
 \end{equation}
-を採用する．代表ベンチマークで用いる値は
-§~\ref{sec:val_capillary} の実験条件で明示し，
-$f{=}1$ との系統比較は感度検証の対象として分離する．
+と書く．標準の幅保存経路は $f{=}1$ であり，$f>1$ を使う場合は
+§~\ref{sec:val_capillary} の感度検証条件として明示し，標準計算と混同しない．
 非一様格子では式~\eqref{eq:xi_sdf_wide} の定数幅をそのまま用いず，
 §~\ref{sec:ridge_eikonal_nu_grid} の D3 非一様 FMM と
 D4 空間依存 $\varepsilon_\text{local}(\bx)$ へ置き換える．
@@ -522,17 +525,17 @@ D4 空間依存 $\varepsilon_\text{local}(\bx)$ へ置き換える．
   \item $\sigma=0$ 問題（受動移流・静的形状）：ξ-SDF（$f{=}1$）または FMM~\cite{Sethian1996}．
         反復なしで $C^0$ 連続な符号距離場を解析的に構築し，
         Godunov 由来のドリフト累積を排除する．
-  \item $\sigma>0$ 問題（界面振動を伴う系）：ξ-SDF（$f>1$ で
-        $\varepsilon$ 幅拡大による正則化を併用），または分裂法単独．
-        採用値は §~\ref{sec:val_capillary} の実験条件で明示し，
-        $f$ 較正は感度検証の対象とする．
+  \item $\sigma>0$ 問題（界面振動を伴う系）：Ridge--Eikonal/FMM/ξ-SDF の
+        零点集合保存と Stage F の体積閉鎖を標準条件とする．
+        $f>1$ の幅拡大や分裂法単独は比較・感度検証として明示し，
+        標準経路の安定化として黙示的に採用しない．
 \end{itemize}
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{再初期化の実装ガイドと収束判定}
 % ─────────────────────────────────────────────────────────────────────────────
 
-\begin{tcolorbox}[mybox, title={実装ガイド：再初期化の定量的運用}]
+\begin{tcolorbox}[mybox, title={運用指針：再初期化の定量的条件}]
 \textbf{反復有無の切り分け：}
 本稿の Ridge--Eikonal／$\xi$-SDF／FMM 補助経路は 1 ショット距離再構成であり，
 仮想時間ループを持たない．以下の停止条件は，
@@ -543,12 +546,12 @@ Hamilton--Jacobi CFL に基づく $\Delta\tau_\mathrm{HJ}\le C_\mathrm{HJ}\Delta
 放物型 CFL は \S~\ref{warn:cls_dtau_stability} の比較参照に限る．
 
 \medskip
-\noindent\textbf{収束モニター：} $M(\tau) = \int_\Omega \psi(1-\psi)\,dV$ を使用する．
+\noindent\textbf{品質モニター：} $Q_\Gamma = \int_\Omega \psi(1-\psi)\,dV$ を使用する．
 基準値
 \begin{equation}
-  M_{\mathrm{ref}} = \int_\Omega H_\varepsilon(-\phi_0)\bigl(1-H_\varepsilon(-\phi_0)\bigr)\,dV
+  Q_{\Gamma,\mathrm{ref}} = \int_\Omega H_\varepsilon(-\phi_0)\bigl(1-H_\varepsilon(-\phi_0)\bigr)\,dV
 \end{equation}
-に対して $M(\tau)/M_{\mathrm{ref}}$ が閾値 $\theta_{\mathrm{reinit}}$ を超えたときのみ再初期化を実行する
+に対して $Q_\Gamma/Q_{\Gamma,\mathrm{ref}}$ が閾値 $\theta_{\mathrm{reinit}}$ を超えたときのみ再初期化を実行する
 （適応的再初期化；§~\ref{sec:adaptive_reinit}．具体値は対象検証の条件として明示する）．
 軽微な乱れでは3～5ステップ，界面トポロジー変化直後は10～20ステップ程度が目安．
 
@@ -559,14 +562,14 @@ Hamilton--Jacobi CFL に基づく $\Delta\tau_\mathrm{HJ}\le C_\mathrm{HJ}\Delta
   \item \textbf{残差収束：}
         $\|\psi^{m+1} - \psi^m\|_{L^\infty} < \delta_{\tau}$（推奨：$\delta_\tau = 10^{-4}$）
   \item \textbf{ステップ数上限：}
-        $m \ge N_{\tau,\max}$（推奨：$N_{\tau,\max} = 5$；CLS の lift-and-redistribute が
-        1 回で $M(\tau)/M_{\mathrm{ref}}$ を閾値以下まで戻すため通常運転ではこれで十分．
+        $m \ge N_{\tau,\max}$（推奨：$N_{\tau,\max} = 5$；反復比較経路では
+        少数反復で $Q_\Gamma/Q_{\Gamma,\mathrm{ref}}$ を閾値以下まで戻すことを確認する．
         トポロジー変化直後のみ $N_{\tau,\max} = 20$ に引き上げる．
         反復数による Eikonal 誤差の減衰は §~\ref{sec:U4_ridge_eikonal_reinit}
         の単体検証で確認する）
 \end{enumerate}
 反復型 Eikonal 経路で物理タイムステップあたりの再初期化ステップ数（1--5 程度）が
-少なすぎる場合は $M(\tau)$ の時系列を記録し，蓄積的な乱れを検知すること．
+少なすぎる場合は $Q_\Gamma$ の時系列を記録し，蓄積的な乱れを検知すること．
 
 \noindent\textbf{トレードオフ：}
 再初期化不足 → プロファイル崩れ・曲率誤差増大；
