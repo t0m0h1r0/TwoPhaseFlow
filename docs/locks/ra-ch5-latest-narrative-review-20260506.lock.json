@@ -1,0 +1,11 @@
+{
+  "branch": "ra-ch5-latest-narrative-review-20260506",
+  "branch_slug": "ra-ch5-latest-narrative-review-20260506",
+  "id_prefix": "RA-CH5-LATEST",
+  "session_id": "BC58268C-29EE-4F86-8ABF-6AD31CD74FE7",
+  "worktree_path": ".claude/worktrees/ra-ch5-latest-narrative-review-20260506",
+  "holder_agent": "ResearchArchitect",
+  "acquired_at": "2026-05-06T05:45:03Z",
+  "expires_at": "2026-05-07T05:45:03Z",
+  "meta_version": "5.1.0"
+}
