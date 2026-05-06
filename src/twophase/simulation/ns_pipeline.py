@@ -773,8 +773,13 @@ class TwoPhaseNSSolver:
                 )
         advance_face = getattr(self._transport, "advance_with_face_velocity", None)
         step_diag_enabled = bool(getattr(getattr(self, "_step_diag", None), "enabled", False))
+        record_projection_fields = bool(
+            getattr(self, "_record_interface_projection_fields", False)
+        )
         if hasattr(self._transport, "record_reinit_projection"):
-            self._transport.record_reinit_projection = step_diag_enabled
+            self._transport.record_reinit_projection = (
+                step_diag_enabled or record_projection_fields
+            )
         if state.face_velocity_components is not None and callable(advance_face):
             state.psi = advance_face(
                 state.psi,
@@ -788,6 +793,8 @@ class TwoPhaseNSSolver:
             )
         state.interface_projection_diagnostics = zero_reinit_projection_diagnostics()
         reinit_projection = getattr(self._transport, "last_reinit_projection", None)
+        if record_projection_fields and reinit_projection:
+            state.interface_projection_fields = dict(reinit_projection)
         if (
             step_diag_enabled
             and reinit_projection
@@ -829,6 +836,7 @@ class TwoPhaseNSSolver:
                     xp.asarray(1.0, dtype=state.psi.dtype),
                 )
             self._projected_face_components = None
+            state.interface_projection_fields = None
         return state
 
     def _materialise_step_fields(
@@ -1010,6 +1018,7 @@ class TwoPhaseNSSolver:
         """Advance one timestep from a grouped request object."""
         state = self._prepare_step_inputs(request)
         state = self._advance_interface_stage(state)
+        self._last_interface_projection_fields = state.interface_projection_fields
         state = self._materialise_step_fields(state)
         state = self._surface_tension_stage(state)
         state = self._predict_velocity_stage(state)

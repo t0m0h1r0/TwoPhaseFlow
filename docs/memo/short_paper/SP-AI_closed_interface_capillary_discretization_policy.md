@@ -634,6 +634,20 @@ smoothing, caps, or another projection of the force into the pressure range.
 The remedy is to finish the fixed-stratum virtual-work cochain and to record
 the physical transport endpoint separately from the reinit endpoint.
 
+The first implementation slice of that endpoint ledger now stores, at snapshot
+steps and checkpoint snapshots,
+
+```text
+fields/psi_before_transport,
+fields/psi_after_transport_before_reinit,
+fields/psi_after_reinit.
+```
+
+A remote `N=16,T=0.04` reinit-every-step smoke exported all three fields.  Its
+maximum transport-leg change was `6.436583e-07`, while its maximum reinit-leg
+change was `1.778247e-01`, directly showing why deformation changes must be
+split before they are interpreted as capillary motion.
+
 ## Final Policy
 
 The discretization is settled when the solver can state and verify:

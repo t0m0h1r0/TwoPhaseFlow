@@ -38,7 +38,16 @@ def _add_snapshot_series(flat: dict, snaps) -> None:
         return
 
     flat["fields/times"] = np.asarray([snap["t"] for snap in snaps], dtype=float)
-    for field in ("psi", "u", "v", "p", "rho"):
+    for field in (
+        "psi",
+        "u",
+        "v",
+        "p",
+        "rho",
+        "psi_before_transport",
+        "psi_after_transport_before_reinit",
+        "psi_after_reinit",
+    ):
         if field in snaps[0]:
             flat[f"fields/{field}"] = np.stack(
                 [np.asarray(snap[field]) for snap in snaps], axis=0,
@@ -78,6 +87,11 @@ def _snapshots_from_field_series(results: dict) -> list[dict]:
         "v": "fields/v",
         "p": "fields/pressure" if "fields/pressure" in results else "fields/p",
         "rho": "fields/rho",
+        "psi_before_transport": "fields/psi_before_transport",
+        "psi_after_transport_before_reinit": (
+            "fields/psi_after_transport_before_reinit"
+        ),
+        "psi_after_reinit": "fields/psi_after_reinit",
     }
     grid_coords = []
     axis = 0

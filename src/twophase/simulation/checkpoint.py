@@ -326,7 +326,16 @@ def _capture_results(
             arrays[f"debug/{key}"] = np.asarray([entry[key] for entry in debug_history])
     if snapshots:
         arrays["snapshots/times"] = np.asarray([snap["t"] for snap in snapshots], dtype=float)
-        for field in ("psi", "u", "v", "p", "rho"):
+        for field in (
+            "psi",
+            "u",
+            "v",
+            "p",
+            "rho",
+            "psi_before_transport",
+            "psi_after_transport_before_reinit",
+            "psi_after_reinit",
+        ):
             if field in snapshots[0]:
                 arrays[f"snapshots/{field}"] = np.stack(
                     [np.asarray(snap[field]) for snap in snapshots], axis=0
@@ -369,7 +378,16 @@ def _restore_snapshots(arrays: dict[str, np.ndarray]) -> list[dict[str, Any]]:
     snapshots = []
     for idx, time in enumerate(arrays["snapshots/times"]):
         snap: dict[str, Any] = {"t": float(time)}
-        for field in ("psi", "u", "v", "p", "rho"):
+        for field in (
+            "psi",
+            "u",
+            "v",
+            "p",
+            "rho",
+            "psi_before_transport",
+            "psi_after_transport_before_reinit",
+            "psi_after_reinit",
+        ):
             key = f"snapshots/{field}"
             if key in arrays:
                 snap[field] = arrays[key][idx]

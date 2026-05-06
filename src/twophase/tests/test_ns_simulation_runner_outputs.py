@@ -29,6 +29,9 @@ def test_snapshot_fields_are_saved_as_npz_series():
                 np.full((1, 2), 7.0),
                 np.full((2, 1), 8.0),
             ],
+            "psi_before_transport": np.full((2, 2), -1.0),
+            "psi_after_transport_before_reinit": np.full((2, 2), 0.25),
+            "psi_after_reinit": np.full((2, 2), 0.5),
             "grid_coords": [np.array([0.0, 1.0]), np.array([0.0, 1.0])],
         },
         {
@@ -42,6 +45,9 @@ def test_snapshot_fields_are_saved_as_npz_series():
                 np.full((1, 2), 9.0),
                 np.full((2, 1), 10.0),
             ],
+            "psi_before_transport": np.full((2, 2), -2.0),
+            "psi_after_transport_before_reinit": np.full((2, 2), 0.75),
+            "psi_after_reinit": np.full((2, 2), 1.5),
             "grid_coords": [np.array([0.0, 1.0]), np.array([0.0, 1.0])],
         },
     ]
@@ -56,6 +62,10 @@ def test_snapshot_fields_are_saved_as_npz_series():
     assert flat["fields/p"].shape == (2, 2, 2)
     assert flat["fields/pressure"].shape == (2, 2, 2)
     assert flat["fields/rho"].shape == (2, 2, 2)
+    assert flat["fields/psi_before_transport"].shape == (2, 2, 2)
+    assert flat["fields/psi_after_transport_before_reinit"].shape == (2, 2, 2)
+    assert flat["fields/psi_after_reinit"].shape == (2, 2, 2)
+    assert np.all(flat["fields/psi_after_transport_before_reinit"][1] == 0.75)
     assert flat["fields/pressure_accel_faces/0"].shape == (2, 1, 2)
     assert flat["fields/pressure_accel_faces/1"].shape == (2, 2, 1)
     assert flat["fields/grid_coords/0"].tolist() == [0.0, 1.0]
@@ -71,6 +81,9 @@ def test_snapshot_fields_reconstruct_plot_snapshots():
         "fields/pressure": np.full((2, 2, 2), 3.0),
         "fields/pressure_accel_faces/0": np.full((2, 1, 2), 7.0),
         "fields/pressure_accel_faces/1": np.full((2, 2, 1), 8.0),
+        "fields/psi_before_transport": np.full((2, 2, 2), -1.0),
+        "fields/psi_after_transport_before_reinit": np.full((2, 2, 2), 0.25),
+        "fields/psi_after_reinit": np.full((2, 2, 2), 0.5),
         "fields/grid_coords/0": np.array([0.0, 1.0]),
         "fields/grid_coords/1": np.array([0.0, 1.0]),
     }
@@ -81,6 +94,9 @@ def test_snapshot_fields_reconstruct_plot_snapshots():
     assert snaps[0]["psi"].shape == (2, 2)
     assert snaps[1]["u"].shape == (2, 2)
     assert np.all(snaps[0]["p"] == 3.0)
+    assert np.all(snaps[0]["psi_before_transport"] == -1.0)
+    assert np.all(snaps[1]["psi_after_transport_before_reinit"] == 0.25)
+    assert np.all(snaps[1]["psi_after_reinit"] == 0.5)
     assert np.all(snaps[0]["pressure_accel_faces"][0] == 7.0)
     assert np.all(snaps[1]["pressure_accel_faces"][1] == 8.0)
     assert len(snaps[0]["grid_coords"]) == 2

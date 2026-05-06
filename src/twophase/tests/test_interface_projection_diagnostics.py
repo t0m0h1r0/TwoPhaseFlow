@@ -281,3 +281,9 @@ def test_psi_direct_transport_records_reinit_projection_pair():
     assert projection["triggered"] is True
     np.testing.assert_allclose(projection["psi_before"], psi)
     np.testing.assert_allclose(projection["psi_after"], result)
+    np.testing.assert_allclose(projection["psi_before_transport"], psi)
+    np.testing.assert_allclose(
+        projection["psi_after_transport_before_reinit"],
+        psi,
+    )
+    np.testing.assert_allclose(projection["psi_after_reinit"], result)

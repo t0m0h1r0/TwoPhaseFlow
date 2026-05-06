@@ -185,6 +185,9 @@ def test_checkpoint_roundtrip_restores_solver_runtime_state(tmp_path):
             {
                 "t": 0.125,
                 "psi": np.ones((3, 3)),
+                "psi_before_transport": np.zeros((3, 3)),
+                "psi_after_transport_before_reinit": np.full((3, 3), 0.25),
+                "psi_after_reinit": np.full((3, 3), 0.5),
                 "pressure_accel_faces": [
                     np.full((2, 3), 9.0),
                     np.full((3, 2), 10.0),
@@ -206,6 +209,9 @@ def test_checkpoint_roundtrip_restores_solver_runtime_state(tmp_path):
     assert restored_solver._ppe_solver.invalidated is True
     assert state["results"]["times"].tolist() == [0.0, 0.125]
     assert state["snapshots"][0]["t"] == 0.125
+    assert np.all(state["snapshots"][0]["psi_before_transport"] == 0.0)
+    assert np.all(state["snapshots"][0]["psi_after_transport_before_reinit"] == 0.25)
+    assert np.all(state["snapshots"][0]["psi_after_reinit"] == 0.5)
     assert np.all(state["snapshots"][0]["pressure_accel_faces"][0] == 9.0)
     assert np.all(state["snapshots"][0]["pressure_accel_faces"][1] == 10.0)
     assert state["debug_history"] == [{"kappa_max": 1.0}]

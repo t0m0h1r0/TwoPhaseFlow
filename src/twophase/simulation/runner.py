@@ -122,6 +122,8 @@ def run_simulation(
             dt = min(dt_budget.dt, T - t)
         if dt < 1e-12:
             break
+        will_snapshot = snap_idx < len(snap_times) and t + dt >= snap_times[snap_idx]
+        solver._record_interface_projection_fields = bool(will_snapshot)
 
         step_index = step
         grid_will_rebuild = (
@@ -183,6 +185,19 @@ def run_simulation(
                     _to_h(component).copy()
                     for component in solver._p_prev_accel_face_components
                 ]
+            projection_fields = getattr(
+                solver,
+                "_last_interface_projection_fields",
+                None,
+            )
+            if projection_fields:
+                for field in (
+                    "psi_before_transport",
+                    "psi_after_transport_before_reinit",
+                    "psi_after_reinit",
+                ):
+                    if field in projection_fields:
+                        snap_entry[field] = _to_h(projection_fields[field]).copy()
             if solver._alpha_grid > 1.0:
                 snap_entry["grid_coords"] = [c.copy() for c in solver._grid.coords]
             snaps.append(snap_entry)

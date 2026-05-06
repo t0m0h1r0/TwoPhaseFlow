@@ -290,6 +290,32 @@ B =  M_f^{-1} T^T [dV_m]^T
 and a stored `q^n -> q_T -> q^{n+1}` ledger that separates capillary transport
 from reinitialization.
 
+## Endpoint Ledger Implementation Slice
+
+The first diagnostic implementation of the split ledger stores the endpoint
+fields at snapshot steps:
+
+```text
+fields/psi_before_transport
+fields/psi_after_transport_before_reinit
+fields/psi_after_reinit
+```
+
+The same fields are preserved in checkpoint snapshots and reconstructed by the
+plot-only runner.  This is not a force change.  It simply makes the state split
+observable so later checks can measure
+
+```text
+q^n -> q_T      physical transport
+q_T -> q^{n+1} reinit/profile/mass-closure projection
+```
+
+separately.  On a remote `N=16,T=0.04` endpoint smoke with reinit every step,
+the exported NPZ contained all three arrays with shape `(3,17,17)`.  The
+maximum physical-transport field delta was `6.436583e-07`, while the maximum
+reinit-leg delta was `1.778247e-01`.  This confirms that reinit can dominate
+the apparent shape change and must not be counted as capillary work.
+
 ## Full Implementation Target
 
 The full implementation should expose:
