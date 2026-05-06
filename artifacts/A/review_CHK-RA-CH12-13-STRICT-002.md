@@ -41,3 +41,15 @@ Status: fixed in `paper/sections/12_component_verification.tex`, `12h_summary.te
 V10-a/V10-b cite `各 V test の判定再分類`, while §13's actual heading is `各 V test の判定整理`. Root fix: use the actual heading name consistently.
 
 Status: fixed in `paper/sections/13e_nonuniform_ns.tex`.
+
+## Round 3 Findings
+
+### MAJOR-5 — Manuscript-facing guidance still used process-history language
+
+Round 3 scans found manuscript text saying tables contain `再生成した数値`, that `過去表` values are not reused, and that V5 uses a `Type-A revised criterion` with a `判定キー変更`. These are internal research/workflow statements, not final-paper claims. Root fix: rewrite them as final evidence policy and final criteria: tables contain the adopted verification values, and V5 is judged by the CCD absolute spurious-current scale.
+
+Status: fixed in `paper/sections/12_component_verification.tex`, `13_verification.tex`, `13b_twophase_static.tex`, and `13e_nonuniform_ns.tex`.
+
+## Round 4 Findings
+
+Pending.
