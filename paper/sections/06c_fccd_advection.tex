@@ -15,16 +15,18 @@
 Balanced--Force の同一面ロカス原理（§~\ref{sec:balanced_force}）と整合する形で
 記述するための演算子契約である．本稿の標準 bulk 運動量移流は
 UCCD6（§~\ref{sec:uccd6_def}）であり，FCCD 面フラックス形は
-pressure/CSF/convective flux を同一 face-to-node divergence で閉じる
-発展的な面ロカス構成，および §~\ref{sec:pure_fccd_dns} の純 FCCD DNS 構成で用いる．
+縮約 CSF 経路で圧力・毛管・対流フラックスを同一 face-to-node divergence で閉じる場合，
+または標準 pressure-jump 経路で毛管 face cochain と動的対流フラックスのロカスを比較する場合の
+面ロカス構成として用いる．純 FCCD DNS 構成での役割は §~\ref{sec:pure_fccd_dns} で境界づける．
 
 本節では \S\ref{sec:fccd_def} で導入した面中心 FCCD 演算子
 $\mathbf{M}^{\FCCD}$（式~\eqref{eq:fccd_composite_matrix}）を
 速度移流項へ拡張し（保存型射影法での速度移流の標準解説は~\cite{BellColella1989}），
-Balanced--Force 原理（\S\ref{sec:balanced_force}）が要求する
+Balanced--Force 原理（\S\ref{sec:balanced_force}）を一括 CSF 縮約で読む場合に現れる
 「$\bnabla p,\,\sigma\kappa_{lg}\bnabla\psi,\,\bnabla\cdot(\bu\otimes\bu)$
 \textbf{3 項すべてが同一の面中心演算子}で離散化される」条件を完結させる．
-節点版の運動量移流を pressure/CSF 面ロカスと混在させると，
+標準 pressure-jump 経路では，この条件を毛管 face cochain と正準面補正の同一ロカス条件として読み替える．
+節点版の運動量移流を圧力・毛管面ロカスと混在させると，
 \textbf{移流だけが節点中心に残る}ため，静的 BF 条件は保てても
 動的 RHS に節点--面の往復誤差が残る．
 本節では 2 つの役割を区別する：
@@ -111,7 +113,7 @@ FCCD 面勾配の影響だけを切り出して比較できる．
 
 \noindent\textbf{Option C の限界}：
 R$_4$ の面→節点変換で BF 整合性が\textbf{部分的に}回復するに留まる．
-圧力と CSF が面中心 FCCD で動く一方，移流だけは R$_4$ 経由の
+縮約 CSF 経路の圧力・毛管項が面中心 FCCD で動く一方，移流だけは R$_4$ 経由の
 節点に戻っているため，節点-面-節点の往復で
 $\mathcal{O}(H^4)$ 誤差が 2 重に蓄積する．
 面ロカス閉包を主張する箇所では Option B を用いる．
@@ -172,7 +174,7 @@ $\langle\mathbf{P}_f\mathbf{u},\mathbf{M}^{\FCCD}\mathbf{v}\rangle_f
 \label{sec:fccd_adv_bf_theorem}
 % -------------------------------------------------------------------------------
 
-\begin{theorem}[FCCD 面ロカスの静的 BF 整合性]\label{thm:fccd_adv_bf}
+\begin{theorem}[縮約 CSF 経路での FCCD 面ロカス静的 BF 整合性]\label{thm:fccd_adv_bf}
 一括 CSF 経路で $\bnabla p$ と $\sigma\kappa_{lg}\bnabla\psi$ を
 \textbf{共通の面中心演算子}
 $\mathbf{M}^{\FCCD}$（\S\ref{sec:fccd_def} 式~\eqref{eq:fccd_composite_matrix}）で
@@ -196,8 +198,8 @@ CSF；§\ref{sec:projection_derivation}）の設定．分相 affine-jump PPE 版
 （§\ref{sec:split_ppe_pressure_jump_formulation}）は別建ての
 Corollary~\ref{cor:fccd_split_ppe_bf}．\\
 \textbf{論証}：$\bu\equiv 0$ では対流項は恒等的に零であるため，
-静的 BF 残差は圧力勾配と CSF の演算子一致だけで決まる．
-残る $\bnabla p$ と CSF は (A1) より同一の
+静的 BF 残差は圧力勾配と縮約 CSF 毛管項の演算子一致だけで決まる．
+残る $\bnabla p$ と縮約 CSF 毛管項は (A1) より同一の
 $\mathbf{M}^{\FCCD}$ で評価され，両項の切断誤差は同一表現
 $\Ord{H^4}/\Ord{H^3}$．差分 $G_h p - f_\sigma$ では主項が打ち消し合い
 （同一演算子・同一格子点・同一切断），$\|\mathbf{R}_\text{BF}\|_\infty$ は
@@ -218,13 +220,13 @@ $D_f A_f G_f$ 値域射影後の cochain を正準面補正へ渡すことで成
 \end{corollary}
 
 \noindent\textbf{動的移流ロカス命題}：
-非零速度場では，対流フラックスも圧力・CSF と同じ面ロカスに置かれて初めて
+非零速度場では，対流フラックスも圧力・毛管 cochain と同じ面ロカスに置かれて初めて
 運動量 RHS 全体が同一の面中心空間で閉じる．
 Option C（R$_4$ 経由の節点中心）は節点--面--節点の往復を残すため，
 静的 BF 定理の直接の仮定ではないが，動的計算ではロカス不一致の残差源になり得る．
 Option B は $\bnabla\cdot(\bu\otimes\bu)$ を面フラックスとして構成し，
-pressure/CSF/convective flux の 3 項を同一の face-to-node divergence で戻す
-動的整合化のための設計である．
+縮約 CSF 経路では圧力・毛管・対流の 3 項を，標準 pressure-jump 経路では
+毛管 face cochain と対流 face flux の比較基準を，同一の face-to-node divergence で読むための設計である．
 
 % -------------------------------------------------------------------------------
 \subsubsection{運動量方程式の閉形}
@@ -240,8 +242,9 @@ FCCD Option B で閉じた運動量更新：
 \end{equation}
 ここで $\mathcal{V}(\bu)=\bnabla\cdot[\mu(\bnabla\bu+\bnabla\bu^T)]$ は
 §\ref{sec:onefluid}（§2 NS 既定形）と §\ref{sec:viscous_3layer}（§6.3 3 層粘性）
-で定義された粘性演算子．右辺は粘性・圧力・CSF・重力すべて\textbf{面中心}で評価し
-node\_divergence で節点に戻す．
+で定義された粘性演算子．この式は縮約 CSF 経路の面ロカスを示す代表形であり，
+右辺は粘性・圧力・縮約毛管項・重力を\textbf{面中心}で評価し
+面ダイバージェンスで節点に戻す．
 PPE RHS は自然に $\bnabla_h\cdot\bu^*$ が FCCD 面ダイバージェンスで
 表現され，ループが閉じる．
 
@@ -268,7 +271,7 @@ $F^{(k,j)}_{f_{-1/2}} = u^{(k)}_f\cdot u^{(j)}_f$ は
 物理的無滑り運動量フラックス零と一致．
 
 % -------------------------------------------------------------------------------
-\subsubsection{実装・コスト・役割分担}
+\subsubsection{演算量・役割分担}
 \label{sec:fccd_adv_impl}
 % -------------------------------------------------------------------------------
 
@@ -284,8 +287,8 @@ $\mathcal{O}(N)$ 乗算のみで，
 \noindent\textbf{本稿内での役割分担}：
 \begin{itemize}
   \item 標準 bulk 運動量移流は UCCD6（§\ref{sec:uccd6_def}）で担う．
-  \item 一括 CSF 経路の BF 説明では，共通面ロカスとして
-        pressure/CSF/convective flux の整合条件を本節の Option B で表現できる．
+  \item 一括 CSF 縮約経路の BF 説明では，共通面ロカスとして
+        圧力・毛管・対流フラックスの整合条件を本節の Option B で表現できる．
   \item 分相 affine-jump 経路では，毛管効果は CSF 体積力ではなく
         §\ref{sec:split_ppe_pressure_jump_formulation} の face cochain として入り，
         capillary range projection 後に正準面補正へ渡る．

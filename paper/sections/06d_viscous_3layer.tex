@@ -254,7 +254,7 @@ $\psi\in[0,1]$ なら $\rho\in[\rho_g,\rho_l]$ が代数的に保証される．
 \textbf{Face 上の $\mu$} は face-flux 型の粘性評価や
 implicit-BDF2 Helmholtz の低次補正演算子（§\ref{sec:time_viscous}，§7.4）へ
 拡張する場合に必要となる補助量である．
-現行の §6.3 A3 経路は cell-center $\mu_{i,j}$ で
+本稿の §6.3 A3 経路は cell-center $\mu_{i,j}$ で
 \eqref{eq:viscous_layerC_x},\eqref{eq:viscous_layerC_y} を組むため，
 face $\mu$ は既定の応力発散経路ではなく補助規則として位置付ける．
 2 種の評価方法：
@@ -303,7 +303,7 @@ $\rho^{n+1}, \mu^{n+1}$ は time-stepping ordering の中で
 \begin{enumerate}
   \item Stage F の最終質量閉鎖後の $\psi^{n+1}$ から \eqref{eq:rho_update}, \eqref{eq:mu_update}
         で cell-center $\rho^{n+1}, \mu^{n+1}$ を更新．
-  \item 現行の cell-centered 応力発散では cell-center $\mu^{n+1}$ を
+  \item 本稿の cell-centered 応力発散では cell-center $\mu^{n+1}$ を
         Layer B の応力組立に直接用いる．
   \item face/corner ロカスを持つ拡張配置では，
         \eqref{eq:mu_face_arith}--\eqref{eq:mu_face_harm} または
