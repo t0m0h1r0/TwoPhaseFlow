@@ -111,7 +111,7 @@ Layer A の bulk 部分と，界面帯で滑らかと判定された接線方向
 
 せん断応力 $\tau_{xy}$ はセルロカス上で\textbf{一回だけ定義}し，
 x-/y-運動量方程式の両方で同じ配列を参照する．
-face/corner ロカスを持つ staggered 実装へ拡張する場合は，
+face/corner ロカスを持つ staggered 応力配置へ拡張する場合は，
 同じ共有原則の下で $\mu$ をそのロカスへ低次平均する：
 \begin{equation}
   \mu_{i+1/2,j+1/2}^\text{arith}
@@ -127,7 +127,7 @@ face/corner ロカスを持つ staggered 実装へ拡張する場合は，
   \label{eq:viscous_mu_corner_harm}
 \end{equation}
 
-現行のコロケート実装では，この拡張平均を既定経路には入れず，
+標準のコロケート応力配置では，この拡張平均を既定経路には入れず，
 cell-center $\mu_{i,j}$ で構成した共有 $\tau_{xy,i,j}$ を用いる．
 同じ式で別々に計算すると数値非対称が入り，離散エネルギー評価が崩れる．
 
@@ -146,7 +146,7 @@ Layer A の勾配の負随伴として働く場合，応力発散形と共有 $\
 = \mu(\partial_y u + \partial_x v)^2$ から導かれる．
 等号は $\mathbf{D}(\bu)\equiv 0$（歪速度テンソル恒等零；
 剛体並進・剛体回転で成立する）でのみ成立．
-非一様格子，one-sided 境界，および界面帯の normal/tangent fallback では
+非一様格子，one-sided 境界，および界面帯の normal/tangent 低次化では
 \eqref{eq:viscous_energy_identity} を厳密恒等式とは主張せず，
 共有 $\tau_{xy}$ と単一の応力発散を正の人工生成を避けるための設計条件として用いる．
 
@@ -177,7 +177,7 @@ bulk（界面から遠い）& CCD & 応力発散形 \\
 \end{tabular}
 \end{center}
 
-\noindent\textbf{Phi/Psi-gated bulk Laplacian ショートカット}：
+\noindent\textbf{Phi/Psi-gated bulk Laplacian 縮約}：
 bulk では $\bnabla\mu=0$ のため \eqref{eq:viscous_exact_decomposition} は
 $\mu\nabla^2\bu$ に簡約する．
 $\psi$ による領域分割で
@@ -272,7 +272,7 @@ face $\mu$ は既定の応力発散経路ではなく補助規則として位置
   \item CLS 拡散界面の基準経路では，粘性は $\mu(\psi)$ の体積平均として扱うため
         算術平均を用いる（§\ref{sec:onefluid}）．
   \item 調和平均は，sharp-interface 的な直列抵抗則を仮定する感度評価または
-        代替実装の比較用に限定する．
+        代替配置の比較用に限定する．
   \item 高粘性比の CLS 拡散界面で調和平均を既定にすると，
         高粘性相の寄与を過小評価し得るため，本稿の基準規則にはしない．
 \end{itemize}
@@ -285,8 +285,8 @@ face $\mu$ は既定の応力発散経路ではなく補助規則として位置
 非対角応力 $\tau_{xy}$ を保持する\textbf{コーナー} $(i+1/2, j+1/2)$ では
 4 点平均（算術 \eqref{eq:viscous_mu_corner_arith} または調和
 \eqref{eq:viscous_mu_corner_harm}）を用いる．
-これは staggered/corner 応力実装へ拡張する場合の規則であり，
-現行のコロケート応力発散では cell-center $\mu$ と共有 $\tau_{xy,i,j}$ を用いる．
+これは staggered/corner 応力配置へ拡張する場合の規則であり，
+標準のコロケート応力発散では cell-center $\mu$ と共有 $\tau_{xy,i,j}$ を用いる．
 共有配列原則は \S\ref{sec:viscous_corner}（§6.3）を参照．
 
 % -------------------------------------------------------------------------------
@@ -301,7 +301,7 @@ $\rho^{n+1}, \mu^{n+1}$ は time-stepping ordering の中で
         で cell-center $\rho^{n+1}, \mu^{n+1}$ を更新．
   \item 現行の cell-centered 応力発散では cell-center $\mu^{n+1}$ を
         Layer B の応力組立に直接用いる．
-  \item face/corner ロカスを持つ拡張実装では，
+  \item face/corner ロカスを持つ拡張配置では，
         \eqref{eq:mu_face_arith}--\eqref{eq:mu_face_harm} または
         \eqref{eq:viscous_mu_corner_arith}--\eqref{eq:viscous_mu_corner_harm}
         で低次平均を評価する．

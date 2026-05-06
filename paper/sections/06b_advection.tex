@@ -66,10 +66,10 @@ $F_i = [(\psi u)_{f,i+1/2} - (\psi u)_{f,i-1/2}]/h$ を求める
 FCCD は\textbf{保存型 FVM のテレスコーピング構造}を持ち，
 $\psi$ プロファイル kink での節点 CCD overshoot を経由しないため，
 clamp 前のフラックス評価では総量変化を境界フラックスで閉じる．
-WENO5 は本稿の主実装には用いない（§\ref{sec:verify_weno5_vs_dccd} で FCCD と WENO5 を定量比較）．\footnote{本稿の実装確立前の旧実装では帯状散逸付き節点 CCD を CLS 移流に使用していた．
+WENO5 は本稿の主経路には用いない（§\ref{sec:verify_weno5_vs_dccd} で FCCD と WENO5 を定量比較）．\footnote{FCCD 標準化前の節点中心比較経路では帯状散逸付き節点 CCD を CLS 移流に使用していた．
 当該手法は線形フィルタによる近似的安定化に依存し，非周期境界での厳密質量保存を満たさない．
 FCCD への移行は保存型構造による flux-level conservation と界面安定性の両立を理由とする．
-旧実装の理論的詳細と歴史的経緯は §~\ref{sec:dissipative_ccd}（§4.4）を参照．}
+節点中心比較経路の理論的詳細は §~\ref{sec:dissipative_ccd}（§4.4）を参照．}
 
 % ─────────────────────────────────────────────────────────────────────────────
 \subsubsection{気液界面移流の困難と純 CCD の限界}
