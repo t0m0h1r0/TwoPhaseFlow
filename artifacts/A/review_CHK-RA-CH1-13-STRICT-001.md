@@ -40,3 +40,13 @@ Findings:
 
 Remediation:
 - Updated U6 and the V5/V8 bridge text to name V6/V7/V9 as the integrated behavior tied to the U6 primitive, while preserving V6/V7 as the density/time axes and V9 as the nominal/local switch boundedness diagnostic.
+
+## Round 3
+
+Verdict: FAIL before remediation; no MAJOR findings, wording cleanup required before pass.
+
+Findings:
+- MINOR-3: U2 used "現行" for the Neumann-gauge reduced PPE, which reads like version history rather than a paper-level contract.
+
+Remediation:
+- Replaced the U2 wording with "本稿の" so the statement names the adopted contract rather than the current implementation state.
