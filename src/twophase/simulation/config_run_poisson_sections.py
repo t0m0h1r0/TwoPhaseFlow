@@ -58,12 +58,17 @@ def parse_run_poisson_settings(*, layout: dict, projection: dict) -> dict:
             f"{layout['paths']['poisson_interface_coupling']} must be 'none' "
             "when poisson coefficient is 'phase_density'."
         )
+    capillary_projection_default = (
+        "range_projected"
+        if poisson_interface_coupling == "affine_jump"
+        else "none"
+    )
     capillary_range_projection = validate_choice(
         _CAPILLARY_RANGE_PROJECTION_ALIASES.get(
-            str(poisson_operator.get("capillary_range_projection", "none"))
+            str(poisson_operator.get("capillary_range_projection", capillary_projection_default))
             .strip()
             .lower(),
-            poisson_operator.get("capillary_range_projection", "none"),
+            poisson_operator.get("capillary_range_projection", capillary_projection_default),
         ),
         _CAPILLARY_RANGE_PROJECTION_MODES,
         layout["paths"]["poisson_capillary_range_projection"],

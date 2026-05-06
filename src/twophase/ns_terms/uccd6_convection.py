@@ -2,9 +2,10 @@
 
 Implements the NS-system extension of UCCD6 (WIKI-X-023, SP-H):
 
-    [−(u·∇)u]_j  +  σ · max|u_k| · h_k^7 · (−D2^CCD)^4 u_j   (axis-wise)
+    -0.5[(u·∇)u_j + ∇·(u_j u)] + σ · max|u_k| · h_k^7 · (−D2^CCD)^4 u_j
 
-- Advection part   : standard −u_k · (D1^CCD u_j)_k, matches ``ConvectionTerm``.
+- Advection part   : CCD skew form, matching WIKI-X-023 and §11 operator
+  notation; the plain non-conservative CCD form is comparison-only.
 - Hyperviscosity   : positive semi-definite, O(h^7) subdominant dissipation on
   well-resolved modes, ~σ·max|u|/h at Nyquist. Analogous to a spectral LES
   filter embedded in the discrete operator.
@@ -33,7 +34,7 @@ if TYPE_CHECKING:
 
 
 class UCCD6ConvectionTerm(IConvectionTerm):
-    """UCCD6-stabilised −(u·∇)u convective acceleration.
+    """UCCD6-stabilised skew-form convective acceleration.
 
     Parameters
     ----------
@@ -84,7 +85,7 @@ class UCCD6ConvectionTerm(IConvectionTerm):
         ctx_or_velocity,
         ccd: "CCDSolver | None" = None,
     ) -> List:
-        """Return −(u·∇)u − σ·|u|·h^7·(−D2)^4 u per component.
+        """Return skew CCD advection minus σ·|u|·h^7·(−D2)^4 u.
 
         Parameters
         ----------
@@ -113,7 +114,9 @@ class UCCD6ConvectionTerm(IConvectionTerm):
             for k in range(ndim):
                 u_k = velocity_components[k]
                 d1, d2 = ccd_op.differentiate(u_j, k)
-                acc = acc - u_k * d1
+                advective = u_k * d1
+                conservative = ccd_op.first_derivative(u_k * u_j, k)
+                acc = acc - 0.5 * (advective + conservative)
                 _, d4 = ccd_op.differentiate(d2, k)
                 _, d6 = ccd_op.differentiate(d4, k)
                 _, d8 = ccd_op.differentiate(d6, k)

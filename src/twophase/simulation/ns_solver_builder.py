@@ -104,7 +104,7 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
                 getattr(run, "ppe_interface_coupling_scheme", "affine_jump")
             ),
             capillary_range_projection=str(
-                getattr(run, "capillary_range_projection", "none")
+                getattr(run, "capillary_range_projection", "auto")
             ),
             ppe_iteration_method=str(getattr(run, "ppe_iteration_method", "gmres")),
             ppe_tolerance=float(getattr(run, "ppe_tolerance", 1.0e-8)),

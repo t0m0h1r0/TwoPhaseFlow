@@ -1,0 +1,9 @@
+{
+  "id": "CHK-RA-SRC-SCHEME-STRICT-001",
+  "branch": "codex/src-scheme-strict-review-20260506",
+  "worktree": ".claude/worktrees/codex-src-scheme-strict-review-20260506",
+  "created_at": "2026-05-06",
+  "scope": "strict src computational-scheme fidelity, GPU-first, and SOLID review with root-cause fixes",
+  "stop_condition": "no MAJOR+ findings or review round > 20",
+  "main_merge": "forbidden until explicit user instruction; no-ff only if later requested; continue in this worktree after any later merge"
+}

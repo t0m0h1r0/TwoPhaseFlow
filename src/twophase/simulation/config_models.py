@@ -97,7 +97,7 @@ class RunCfg:
     pressure_scheme: str = "fccd_matrixfree"
     ppe_coefficient_scheme: str = "phase_separated"
     ppe_interface_coupling_scheme: str = "affine_jump"
-    capillary_range_projection: str = "none"
+    capillary_range_projection: str = "auto"
     surface_tension_scheme: str = "pressure_jump"
     curvature_method: str = "psi_direct_filtered"
     convection_time_scheme: str = "imex_bdf2"
