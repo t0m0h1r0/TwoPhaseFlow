@@ -1638,6 +1638,105 @@ def test_range_projected_capillary_jump_replaces_hodge_face_component():
     np.testing.assert_allclose(state.pressure_correction_face_components[0], 0.0)
 
 
+def test_component_hodge_augmented_capillary_jump_removes_static_reaction():
+    """The augmented mode removes only the unit component Hodge reaction."""
+    from twophase.simulation.ns_step_services import solve_ns_pressure_stage
+    from twophase.simulation.ns_step_state import NSStepState
+
+    shape = (2, 2)
+    arr = np.zeros(shape)
+    static_jump_face = np.full(shape, 3.0)
+
+    class ComponentAugmentedFluxRecorder:
+        def divergence(self, components):
+            return np.zeros(shape)
+
+        def divergence_from_faces(self, face_components):
+            return np.zeros(shape)
+
+        def pressure_fluxes(self, pressure, rho, **kwargs):
+            pressure_arr = np.asarray(pressure)
+            override = kwargs.get("capillary_jump_components")
+            if override is not None:
+                return [pressure_arr - np.asarray(override[0])]
+            context = kwargs["interface_stress_context"]
+            jump = context.pressure_jump_gas_minus_liquid
+            if jump is None:
+                return [pressure_arr]
+            if np.allclose(jump, 1.0):
+                return [pressure_arr - np.ones(shape)]
+            return [pressure_arr - static_jump_face]
+
+        def reconstruct_nodes(self, face_components):
+            return face_components
+
+    class ZeroProjectionSolver:
+        def __init__(self):
+            self.last_base_pressure = np.zeros(shape)
+
+        def set_interface_jump_context(self, **kwargs):
+            self.context_sigma = kwargs["sigma"]
+
+        def solve(self, rhs, rho, dt=0.0, p_init=None):
+            self.last_base_pressure = np.zeros_like(rhs)
+            return np.zeros_like(rhs)
+
+        def apply_interface_jump(self, base_pressure):
+            return np.asarray(base_pressure)
+
+    state = NSStepState(
+        psi=np.array([[1.0, 1.0], [0.0, 0.0]]),
+        u=arr,
+        v=arr,
+        dt=1.0e-3,
+        rho_l=1000.0,
+        rho_g=1.0,
+        sigma=2.0,
+        mu=0.0,
+        g_acc=0.0,
+        rho_ref=500.5,
+        mu_l=None,
+        mu_g=None,
+        bc_hook=None,
+        step_index=0,
+        rho=np.ones(shape),
+        kappa=np.ones(shape),
+        f_x=np.zeros(shape),
+        f_y=np.zeros(shape),
+        u_star=np.zeros(shape),
+        v_star=np.zeros(shape),
+    )
+    backend = type(
+        "BackendStub",
+        (),
+        {"xp": np, "is_gpu": lambda self: False, "to_host": lambda self, arr: arr},
+    )()
+    ppe_runtime = type(
+        "PPERuntime",
+        (),
+        {
+            "ppe_solver_name": "fccd_iterative",
+            "ppe_coefficient_scheme": "phase_separated",
+            "ppe_interface_coupling_scheme": "affine_jump",
+            "capillary_range_projection": "component_hodge_augmented",
+        },
+    )()
+
+    state, _, _ = solve_ns_pressure_stage(
+        state,
+        backend=backend,
+        div_op=ComponentAugmentedFluxRecorder(),
+        ppe_solver=ZeroProjectionSolver(),
+        p_prev_dev=None,
+        surface_tension_scheme="pressure_jump",
+        face_native_predictor_state=True,
+        ppe_runtime=ppe_runtime,
+    )
+
+    np.testing.assert_allclose(state.pressure_accel_face_components[0], 0.0)
+    np.testing.assert_allclose(state.pressure_correction_face_components[0], 0.0)
+
+
 def test_phase_separated_pressure_jump_stack_one_step_no_nan():
     """Executable SP-M smoke: phase-separated FCCD PPE + pressure_jump."""
     solver = TwoPhaseNSSolver(

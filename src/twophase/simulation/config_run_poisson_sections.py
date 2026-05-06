@@ -59,7 +59,7 @@ def parse_run_poisson_settings(*, layout: dict, projection: dict) -> dict:
             "when poisson coefficient is 'phase_density'."
         )
     capillary_projection_default = (
-        "range_projected"
+        "component_hodge_augmented"
         if poisson_interface_coupling == "affine_jump"
         else "none"
     )

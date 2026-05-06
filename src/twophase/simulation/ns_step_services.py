@@ -20,6 +20,7 @@ from ..coupling.transport_variational_capillary import (
     p2_trace_surface_energy_gradient_2d,
 )
 from .interface_projection_diagnostics import (
+    capillary_component_hodge_augmented_projection,
     capillary_jump_range_projection,
     capillary_face_cochain_diagnostics,
     zero_capillary_face_diagnostics,
@@ -934,7 +935,12 @@ def solve_ns_pressure_stage(
         )
         range_projection = None
         pressure_flux_eval_kwargs = pressure_flux_kwargs
-        if getattr(ppe_runtime, "capillary_range_projection", "none") == "range_projected":
+        capillary_projection_mode = getattr(
+            ppe_runtime,
+            "capillary_range_projection",
+            "none",
+        )
+        if capillary_projection_mode == "range_projected":
             range_projection = capillary_jump_range_projection(
                 xp=xp,
                 div_op=div_op,
@@ -945,6 +951,18 @@ def solve_ns_pressure_stage(
             pressure_flux_eval_kwargs = dict(pressure_flux_kwargs)
             pressure_flux_eval_kwargs["capillary_jump_components"] = (
                 range_projection["range_projection_components"]
+            )
+        elif capillary_projection_mode == "component_hodge_augmented":
+            range_projection = capillary_component_hodge_augmented_projection(
+                xp=xp,
+                div_op=div_op,
+                ppe_solver=ppe_solver,
+                rho=state.rho,
+                pressure_flux_kwargs=pressure_flux_kwargs,
+            )
+            pressure_flux_eval_kwargs = dict(pressure_flux_kwargs)
+            pressure_flux_eval_kwargs["capillary_jump_components"] = (
+                range_projection["corrected_jump_components"]
             )
         full_pressure_faces = div_op.pressure_fluxes(
             state.pressure_increment,

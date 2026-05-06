@@ -194,15 +194,20 @@ def normalise_ns_ppe_runtime(
     capillary_range_projection = str(
         getattr(options, "capillary_range_projection", "auto")
     ).strip().lower()
-    if capillary_range_projection not in {"auto", "none", "range_projected"}:
+    if capillary_range_projection not in {
+        "auto",
+        "none",
+        "range_projected",
+        "component_hodge_augmented",
+    }:
         raise ValueError(
             "Unsupported capillary_range_projection="
             f"'{getattr(options, 'capillary_range_projection', None)}'. "
-            "Use auto|none|range_projected."
+            "Use auto|none|range_projected|component_hodge_augmented."
         )
     if capillary_range_projection == "auto":
         capillary_range_projection = (
-            "range_projected"
+            "component_hodge_augmented"
             if (
                 surface_tension_scheme == "pressure_jump"
                 and ppe_interface_coupling_scheme == "affine_jump"

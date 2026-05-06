@@ -8,8 +8,10 @@ Symbol mapping
 ``D_f``      -> ``div_op.divergence_from_faces``.
 ``a_f``      -> capillary/pressure-jump face cochain.
 
-These helpers are diagnostic only.  They do not alter the interface transport,
-Ridge-Eikonal reconstruction, PPE solve, or velocity corrector.
+The range projection helpers are diagnostic by default.  The
+component-augmented helper also returns a corrected face cochain for the
+velocity corrector when explicitly selected by the runtime configuration; it
+does not alter interface transport or Ridge-Eikonal reconstruction.
 """
 
 from __future__ import annotations
@@ -42,6 +44,12 @@ _FACE_ZERO_DIAGNOSTICS = {
     "capillary_jump_weighted_l2": 0.0,
     "capillary_range_projection_weighted_l2": 0.0,
     "capillary_hodge_weighted_l2": 0.0,
+    "capillary_corrected_jump_linf": 0.0,
+    "capillary_corrected_jump_weighted_l2": 0.0,
+    "capillary_component_hodge_linf": 0.0,
+    "capillary_component_hodge_weighted_l2": 0.0,
+    "capillary_component_hodge_coefficient_linf": 0.0,
+    "capillary_component_hodge_denominator": 0.0,
 }
 
 
@@ -121,6 +129,10 @@ def capillary_face_cochain_diagnostics(
     range_projection_components=None,
     hodge_residual_components=None,
     face_weight_components=None,
+    corrected_jump_components=None,
+    component_hodge_residual_components=None,
+    component_hodge_coefficients=None,
+    component_hodge_denominator=None,
 ) -> dict[str, float]:
     """Measure the post-PPE face cochain left in the projection face space.
 
@@ -183,6 +195,38 @@ def capillary_face_cochain_diagnostics(
         face_weight_components,
         dtype=face_linf.dtype,
     )
+    corrected_jump_linf = _optional_face_components_linf(
+        xp,
+        corrected_jump_components,
+        dtype=face_linf.dtype,
+    )
+    corrected_jump_weighted_l2 = _optional_face_components_weighted_l2(
+        xp,
+        corrected_jump_components,
+        face_weight_components,
+        dtype=face_linf.dtype,
+    )
+    component_hodge_linf = _optional_face_components_linf(
+        xp,
+        component_hodge_residual_components,
+        dtype=face_linf.dtype,
+    )
+    component_hodge_weighted_l2 = _optional_face_components_weighted_l2(
+        xp,
+        component_hodge_residual_components,
+        face_weight_components,
+        dtype=face_linf.dtype,
+    )
+    component_hodge_coefficient_linf = _optional_scalar_linf(
+        xp,
+        component_hodge_coefficients,
+        dtype=face_linf.dtype,
+    )
+    component_hodge_denominator_value = _optional_scalar_value(
+        xp,
+        component_hodge_denominator,
+        dtype=face_linf.dtype,
+    )
     solved = xp.asarray(
         1.0 if hodge_residual_components is not None else 0.0,
         dtype=face_linf.dtype,
@@ -203,6 +247,12 @@ def capillary_face_cochain_diagnostics(
                     jump_weighted_l2,
                     projection_weighted_l2,
                     hodge_weighted_l2,
+                    corrected_jump_linf,
+                    corrected_jump_weighted_l2,
+                    component_hodge_linf,
+                    component_hodge_weighted_l2,
+                    component_hodge_coefficient_linf,
+                    component_hodge_denominator_value,
                 ]
             )
         )
@@ -219,6 +269,12 @@ def capillary_face_cochain_diagnostics(
         "capillary_jump_weighted_l2": values[8],
         "capillary_range_projection_weighted_l2": values[9],
         "capillary_hodge_weighted_l2": values[10],
+        "capillary_corrected_jump_linf": values[11],
+        "capillary_corrected_jump_weighted_l2": values[12],
+        "capillary_component_hodge_linf": values[13],
+        "capillary_component_hodge_weighted_l2": values[14],
+        "capillary_component_hodge_coefficient_linf": values[15],
+        "capillary_component_hodge_denominator": values[16],
     }
 
 
@@ -293,6 +349,89 @@ def capillary_jump_range_projection(
     }
 
 
+def capillary_component_hodge_augmented_projection(
+    *,
+    xp,
+    div_op,
+    ppe_solver,
+    rho,
+    pressure_flux_kwargs: dict[str, Any],
+) -> dict[str, Any]:
+    """Return the one-component augmented Hodge capillary cochain.
+
+    Let ``c`` be the capillary jump cochain and ``b`` the unit component
+    pressure-jump cochain on the same cut-face complex.  Adding the component
+    volume reaction to the pressure range is equivalent to removing the
+    ``M_f``-orthogonal component of the pressure-range Hodge residual along
+    ``h_b = b - Π_R b``.  The corrected cochain
+    ``c - beta h_b`` has the same divergence as ``c`` up to the projection
+    solve residual, so the PPE source remains the same while the corrector no
+    longer treats the static component reaction as physical acceleration.
+    """
+    raw_projection = capillary_jump_range_projection(
+        xp=xp,
+        div_op=div_op,
+        ppe_solver=ppe_solver,
+        rho=rho,
+        pressure_flux_kwargs=pressure_flux_kwargs,
+    )
+    component_projection = capillary_jump_range_projection(
+        xp=xp,
+        div_op=div_op,
+        ppe_solver=ppe_solver,
+        rho=rho,
+        pressure_flux_kwargs=_unit_component_jump_pressure_flux_kwargs(
+            xp,
+            pressure_flux_kwargs,
+        ),
+    )
+    face_weights = raw_projection["face_weight_components"]
+    component_hodge_faces = component_projection["hodge_residual_components"]
+    raw_hodge_faces = raw_projection["hodge_residual_components"]
+    denominator = _face_components_weighted_dot(
+        xp,
+        component_hodge_faces,
+        component_hodge_faces,
+        face_weights,
+    )
+    numerator = _face_components_weighted_dot(
+        xp,
+        raw_hodge_faces,
+        component_hodge_faces,
+        face_weights,
+    )
+    safe_denominator = xp.where(
+        denominator > 0.0,
+        denominator,
+        xp.ones_like(denominator),
+    )
+    beta = xp.where(denominator > 0.0, numerator / safe_denominator, 0.0)
+    corrected_jump_faces = [
+        jump_face - beta * component_hodge_face
+        for jump_face, component_hodge_face in zip(
+            raw_projection["capillary_jump_components"],
+            component_hodge_faces,
+            strict=True,
+        )
+    ]
+    augmented_hodge_faces = [
+        raw_hodge_face - beta * component_hodge_face
+        for raw_hodge_face, component_hodge_face in zip(
+            raw_hodge_faces,
+            component_hodge_faces,
+            strict=True,
+        )
+    ]
+    return {
+        **raw_projection,
+        "hodge_residual_components": augmented_hodge_faces,
+        "corrected_jump_components": corrected_jump_faces,
+        "component_hodge_residual_components": component_hodge_faces,
+        "component_hodge_coefficients": beta,
+        "component_hodge_denominator": denominator,
+    }
+
+
 def _face_components_linf(xp, face_components) -> Any:
     maxima = [xp.max(xp.abs(xp.asarray(component))) for component in face_components]
     if not maxima:
@@ -326,6 +465,41 @@ def _optional_face_components_weighted_l2(
     if not terms:
         return xp.asarray(0.0, dtype=dtype)
     return xp.sqrt(xp.sum(xp.stack(terms)))
+
+
+def _face_components_weighted_dot(
+    xp,
+    left_components,
+    right_components,
+    face_weight_components,
+) -> Any:
+    terms = []
+    for axis, (left, right) in enumerate(
+        zip(left_components, right_components, strict=True)
+    ):
+        left_arr = xp.asarray(left)
+        right_arr = xp.asarray(right)
+        if face_weight_components is None:
+            terms.append(xp.sum(left_arr * right_arr))
+        else:
+            terms.append(
+                xp.sum(left_arr * right_arr * xp.asarray(face_weight_components[axis]))
+            )
+    if not terms:
+        return xp.asarray(0.0)
+    return xp.sum(xp.stack(terms))
+
+
+def _optional_scalar_linf(xp, scalar, *, dtype) -> Any:
+    if scalar is None:
+        return xp.asarray(0.0, dtype=dtype)
+    return xp.max(xp.abs(xp.asarray(scalar)))
+
+
+def _optional_scalar_value(xp, scalar, *, dtype) -> Any:
+    if scalar is None:
+        return xp.asarray(0.0, dtype=dtype)
+    return xp.asarray(scalar, dtype=dtype)
 
 
 def _face_components_divergence_linf(xp, div_op, face_components, *, dtype) -> Any:
@@ -408,6 +582,23 @@ def _zero_jump_pressure_flux_kwargs(pressure_flux_kwargs: dict[str, Any]) -> dic
             context,
             pressure_jump_gas_minus_liquid=None,
             sigma=0.0,
+        )
+    return kwargs
+
+
+def _unit_component_jump_pressure_flux_kwargs(
+    xp,
+    pressure_flux_kwargs: dict[str, Any],
+) -> dict[str, Any]:
+    kwargs = dict(pressure_flux_kwargs)
+    context = kwargs.get("interface_stress_context")
+    if context is not None:
+        kwargs["interface_stress_context"] = replace(
+            context,
+            pressure_jump_gas_minus_liquid=xp.ones_like(context.psi),
+            kappa_lg=None,
+            sigma=0.0,
+            cut_face_quadrature=False,
         )
     return kwargs
 
