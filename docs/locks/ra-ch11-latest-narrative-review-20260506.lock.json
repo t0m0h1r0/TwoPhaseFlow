@@ -1,0 +1,21 @@
+{
+  "id": "CHK-RA-CH11-LATEST-001",
+  "branch": "codex/ra-ch11-latest-narrative-review-20260506",
+  "worktree": ".claude/worktrees/codex-ra-ch11-latest-narrative-review-20260506",
+  "scope": [
+    "paper/sections/11_full_algorithm.tex",
+    "paper/sections/11c_dccd_bootstrap.tex",
+    "paper/sections/11d_pure_fccd_dns.tex",
+    "adjacent paper consistency references",
+    "review artifact",
+    "ledger"
+  ],
+  "status": "active",
+  "created": "2026-05-06",
+  "policy": {
+    "merge_to_main": "forbidden_until_explicit_user_instruction",
+    "merge_method": "no-ff_when_requested",
+    "continue_same_worktree_after_merge": true,
+    "commit_coherent_units": true
+  }
+}

@@ -5,16 +5,13 @@
 % ═════════════════════════════════════════════════════════════════════════════
 
 \noindent
-DCCD post-filter の散逸強度 $\varepsilon_{d,\max}$ の設計値・
-適応散逸制御則・離散手順
-（コンパクト系のスペクトルフィルタ設計指針は~\cite{Lele1992}，
-時間発展との整合性は~\cite{Carpenter1994}）
-（\S\ref{sec:dccd_params}, \S\ref{sec:dccd_eps_design}, \S\ref{sec:dccd_adaptive}，
-表~\ref{tab:dccd_usage_map}，式~\eqref{eq:eps_max},
-\eqref{eq:adaptive_eps}，手順~\ref{alg:dccd}）は
-DCCD 導出章（§\ref{sec:dccd_derivation} 末尾，第~\ref{sec:CCD}章）で定義した．
-§11 の標準更新手順は，これを CLS 移流や圧力面閉包の主演算子として再導入せず，
-§\ref{sec:scheme_per_variable} の演算子割当に従う．
+本節は時間発展を開始する前の幾何・圧力・格子メトリクスの整合化と，
+その後の $\Delta t$ 制御だけを扱う．
+DCCD post-filter は §\ref{sec:dccd_derivation} の節点中心 CCD 外殻設計であり，
+§11 の標準更新手順では CLS 移流，圧力面閉包，または二相 pressure-jump stack の
+主演算子として再導入しない．
+本章の演算子割当は §\ref{sec:scheme_per_variable} に従い，
+二相圧力閉包は分相 PPE + HFE + DC + face-cochain 補正で閉じる．
 
 % ═════════════════════════════════════════════════════════════════════════════
 \subsection{初期整合化：ブートストラップと時刻0の界面面幾何}
