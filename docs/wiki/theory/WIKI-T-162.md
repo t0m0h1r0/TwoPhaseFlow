@@ -483,6 +483,56 @@ and prove finite-difference consistency of `S_h` and `V_h` on unchanged
 strata.  Production coupling comes later, after transport VJP, Riesz residual,
 augmented projection, and corrector sign-lock tests pass.
 
+## YAML UX Policy
+
+`CHK-RA-CH14-YAML-UX-001` defines the user-facing configuration contract.  The
+new law must not be hidden behind `curvature`, and reaction projection must not
+reuse the old force-deleting name.  The readable form is:
+
+```yaml
+capillary_force:
+  formulation: pressure_jump
+  source: closed_interface_riesz
+  closed_interface:
+    topology: fail_closed
+    transport_adjoint:
+      endpoint: before_reinit
+poisson:
+  operator:
+    capillary_reaction_projection: pressure_component_hodge
+```
+
+Meaning:
+
+```text
+source
+  chooses the raw capillary cochain construction.
+
+closed_interface
+  chooses the fixed-stratum geometry and transport-adjoint contract.
+
+capillary_reaction_projection
+  removes only pressure/component reactions in the same M_f metric.
+```
+
+Legacy scalar pressure-jump configs may keep:
+
+```yaml
+capillary_force:
+  source: curvature_jump
+  curvature: face_implicit
+poisson:
+  operator:
+    capillary_range_projection: component_hodge_augmented
+```
+
+For `source: closed_interface_riesz`, the parser should reject `curvature`,
+`capillary_range_projection`, boolean aliases, benchmark names, Rayleigh
+rescaling knobs, damping fixes, curvature caps, and smoothing workarounds.
+Diagnostics should be theorem gates such as Riesz-work residual, Hodge
+orthogonality, corrector sign power, and reinit energy split, not
+shape-specific labels.
+
 ## Full Implementation Target
 
 The full implementation should expose:

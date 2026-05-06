@@ -801,6 +801,56 @@ The first source commit should stop at slice 1.  It cannot change production
 physics, and it locates failures in the geometry layer before PPE signs,
 projection rank, or Rayleigh phase are involved.
 
+## 13. YAML UX Policy
+
+The YAML must keep the mathematical roles visible.  The new law is not a
+curvature method; it is a capillary source:
+
+```yaml
+capillary_force:
+  formulation: pressure_jump
+  source: closed_interface_riesz
+```
+
+The full explicit form is:
+
+```yaml
+capillary_force:
+  formulation: pressure_jump
+  source: closed_interface_riesz
+  closed_interface:
+    trace_space: p1_fixed_stratum
+    surface_energy: sharp_length
+    component_volume: oriented_area
+    topology: fail_closed
+    transport_adjoint:
+      endpoint: before_reinit
+      operator: fccd_level_set
+    diagnostics:
+      mode: strict
+poisson:
+  operator:
+    capillary_reaction_projection: pressure_component_hodge
+```
+
+The legacy scalar route can keep:
+
+```yaml
+capillary_force:
+  source: curvature_jump
+  curvature: face_implicit
+poisson:
+  operator:
+    capillary_range_projection: component_hodge_augmented
+```
+
+For `closed_interface_riesz`, the parser should fail closed if users provide
+`curvature`, `capillary_range_projection`, boolean projection aliases,
+benchmark names, Rayleigh scaling, damping fixes, curvature caps, or smoothing
+workarounds.  Diagnostics should be named after theorem gates: stratum hash,
+geometry finite-difference residual, transport VJP residual, Riesz work
+residual, Hodge orthogonality, corrector sign power, and reinit energy split.
+
 ## Final Policy
 
 The discretization is settled when the solver can state and verify:
