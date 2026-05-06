@@ -331,6 +331,15 @@ def _capture_results(
                 arrays[f"snapshots/{field}"] = np.stack(
                     [np.asarray(snap[field]) for snap in snapshots], axis=0
                 )
+        if "pressure_accel_faces" in snapshots[0]:
+            for axis, _ in enumerate(snapshots[0]["pressure_accel_faces"]):
+                arrays[f"snapshots/pressure_accel_faces/{axis}"] = np.stack(
+                    [
+                        np.asarray(snap["pressure_accel_faces"][axis])
+                        for snap in snapshots
+                    ],
+                    axis=0,
+                )
         if "grid_coords" in snapshots[0]:
             for axis, coord in enumerate(snapshots[0]["grid_coords"]):
                 arrays[f"snapshots/grid_coords/{axis}"] = np.asarray(coord)
@@ -352,6 +361,11 @@ def _restore_snapshots(arrays: dict[str, np.ndarray]) -> list[dict[str, Any]]:
     while f"snapshots/grid_coords/{axis}" in arrays:
         grid_coords.append(arrays[f"snapshots/grid_coords/{axis}"])
         axis += 1
+    pressure_accel_faces = []
+    axis = 0
+    while f"snapshots/pressure_accel_faces/{axis}" in arrays:
+        pressure_accel_faces.append(arrays[f"snapshots/pressure_accel_faces/{axis}"])
+        axis += 1
     snapshots = []
     for idx, time in enumerate(arrays["snapshots/times"]):
         snap: dict[str, Any] = {"t": float(time)}
@@ -359,6 +373,10 @@ def _restore_snapshots(arrays: dict[str, np.ndarray]) -> list[dict[str, Any]]:
             key = f"snapshots/{field}"
             if key in arrays:
                 snap[field] = arrays[key][idx]
+        if pressure_accel_faces:
+            snap["pressure_accel_faces"] = [
+                np.asarray(component[idx]) for component in pressure_accel_faces
+            ]
         if grid_coords:
             snap["grid_coords"] = [coord.copy() for coord in grid_coords]
         snapshots.append(snap)

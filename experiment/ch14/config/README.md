@@ -37,18 +37,20 @@ members inside the `.npz`, preserving array dtype bytes losslessly; JSON is used
 only for non-numerical metadata such as the manifest and debug key names.
 
 The five production configs emit periodic snapshots with `psi`, `velocity`,
-and `pressure` fields. The runner stores these in `data.npz` under `fields/psi`,
-`fields/velocity`, and `fields/pressure` (plus compatibility fields
-`fields/u`, `fields/v`, and `fields/p`).
+and Hodge-reconstructed pressure figures. The runner stores raw fields in
+`data.npz` under `fields/psi`, `fields/velocity`, and `fields/pressure`
+(plus compatibility fields `fields/u`, `fields/v`, and `fields/p`), and stores
+the affine face pressure cochain under `fields/pressure_accel_faces/<axis>`.
 
 For affine pressure-jump runs, `fields/pressure` is the stored scalar
 representative associated with the face pressure cochain.  The sharp-interface
 pressure is single-valued only inside each phase and has a jump on the
 interface.  Production pressure figures should therefore use `snapshot_series`
 field `pressure_hodge`, which reconstructs a phase-wise Hodge representative
-from the stored affine face pressure cochain.  If old data do not contain that
-cochain, `pressure_bulk` is the conservative fallback: it masks the diffuse
-interface layer instead of smoothing or clipping it.
+from the stored affine face pressure cochain.  This is fail-closed: if old data
+do not contain that cochain, plotting must stop and the data must be regenerated.
+Do not mask the fitted interface band as "undefined"; that hides the pressure
+representative instead of testing the discrete pressure-work contract.
 
 The schema is organized by *what the setting means*, not by where the current
 Python implementation stores it.

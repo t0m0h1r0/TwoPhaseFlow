@@ -211,52 +211,18 @@ def pressure_snapshot(
     return fig
 
 
-def masked_bulk_pressure(
-    pressure: np.ndarray,
-    psi: np.ndarray,
-    *,
-    gas_max_psi: float = 0.05,
-    liquid_min_psi: float = 0.95,
-) -> np.ndarray:
-    """Return the one-sided pressure field defined away from ``Γ_h``.
+def masked_bulk_pressure(*args, **kwargs) -> np.ndarray:
+    """Retired compatibility hook for the former masked pressure plot.
 
-    A3 mapping:
-      Equation: sharp-interface pressure is a phase-wise scalar with a jump
-      on ``Γ``; the point value on ``Γ`` is not a single-valued physical
-      observable.
-      Discretization: affine-jump IPC stores the physical pressure work in
-      the face cochain ``A_f(G_f p-B_f(j))``; the nodal scalar inside the
-      diffuse transition layer is only a representative/gauge field.
-      Code: for visualization, retain only gas/liquid bulk nodes and mark the
-      diffuse interface layer as undefined instead of smoothing or capping it.
+    DO NOT DELETE (C2): this name was once tested and may appear in old local
+    notebooks.  It is intentionally fail-closed because masking
+    ``0.05 < psi < 0.95`` hides the pressure representative in the fitted
+    interface region.  Use ``pressure_hodge_snapshot`` for production pressure
+    visualization, or ``pressure_snapshot`` for the stored raw scalar.
     """
-    pressure_arr = np.asarray(pressure)
-    psi_arr = np.asarray(psi)
-    bulk = (psi_arr <= float(gas_max_psi)) | (psi_arr >= float(liquid_min_psi))
-    return np.where(bulk, pressure_arr, np.nan)
-
-
-def _draw_bulk_pressure_band_contours(
-    ax,
-    X: np.ndarray,
-    Y: np.ndarray,
-    psi: np.ndarray,
-    *,
-    gas_max_psi: float,
-    liquid_min_psi: float,
-    enabled: bool,
-) -> None:
-    """Draw the two mask thresholds that bound undefined interface pressure."""
-    if not enabled:
-        return
-    ax.contour(
-        X,
-        Y,
-        psi.T,
-        levels=[float(gas_max_psi), float(liquid_min_psi)],
-        colors="0.55",
-        linestyles="--",
-        linewidths=0.6,
+    raise ValueError(
+        "masked_bulk_pressure is retired: interface-band pressure must not be "
+        "hidden. Use pressure_hodge for the face-cochain representative."
     )
 
 
@@ -265,51 +231,16 @@ def pressure_bulk_snapshot(
     results: dict,
     cfg: "ExperimentConfig",
 ) -> plt.Figure:
-    """Render the phase-wise pressure and mask undefined interface nodes."""
-    context = build_snapshot_plot_context(spec, results, cfg)
-    grid = cfg.grid
-    pressure = remap_snapshot_field(context, context.snap["p"])
-    gas_max_psi = float(spec.get("gas_max_psi", 0.05))
-    liquid_min_psi = float(spec.get("liquid_min_psi", 0.95))
-    bulk_pressure = masked_bulk_pressure(
-        pressure,
-        context.psi,
-        gas_max_psi=gas_max_psi,
-        liquid_min_psi=liquid_min_psi,
-    )
-    title = spec.get("title", f"Bulk pressure at t = {context.t_val:.3f}")
-    cmap = spec.get("cmap", "RdBu_r")
+    """Retired masked bulk-pressure renderer.
 
-    fig, ax = plt.subplots(figsize=(4, 4 * grid.LY / grid.LX))
-    im = ax.pcolormesh(
-        context.X,
-        context.Y,
-        bulk_pressure.T,
-        cmap=cmap,
-        vmin=spec.get("vmin"),
-        vmax=spec.get("vmax"),
-        shading="nearest",
+    DO NOT DELETE (C2): old local YAMLs may still name ``pressure_bulk``.
+    The former implementation hid the fitted interface band; that is now a
+    fail-closed configuration error rather than a fallback visualization.
+    """
+    raise ValueError(
+        "pressure_bulk is retired because it hides interface-band pressure. "
+        "Use snapshot_series field 'pressure_hodge' instead."
     )
-    if spec.get("colorbar", True):
-        fig.colorbar(im, ax=ax, label="p (bulk phases)")
-    _draw_bulk_pressure_band_contours(
-        ax,
-        context.X,
-        context.Y,
-        context.psi,
-        gas_max_psi=gas_max_psi,
-        liquid_min_psi=liquid_min_psi,
-        enabled=bool(spec.get("bulk_band_contours", True)),
-    )
-    if spec.get("contour", True):
-        ax.contour(
-            context.X, context.Y, context.psi.T, levels=[0.5], colors="k", linewidths=0.8
-        )
-    ax.set_aspect("equal")
-    ax.set_xlabel(spec.get("xlabel", "x"))
-    ax.set_ylabel(spec.get("ylabel", "y"))
-    ax.set_title(title)
-    return fig
 
 
 def pressure_hodge_snapshot(
@@ -321,40 +252,36 @@ def pressure_hodge_snapshot(
     context = build_snapshot_plot_context(spec, results, cfg)
     grid = cfg.grid
     if "pressure_accel_faces" not in context.snap:
-        pressure = remap_snapshot_field(context, context.snap["p"])
-        hodge_pressure = masked_bulk_pressure(
-            pressure,
-            context.psi,
-            gas_max_psi=float(spec.get("gas_max_psi", 0.05)),
-            liquid_min_psi=float(spec.get("liquid_min_psi", 0.95)),
+        raise ValueError(
+            "pressure_hodge requires pressure_accel_faces in saved snapshots; "
+            "regenerate data with the current affine pressure-jump runner."
         )
-    else:
-        original_psi = np.asarray(context.snap["psi"])
-        original_pressure = np.asarray(context.snap["p"])
-        original_rho = np.asarray(context.snap.get("rho"))
-        if original_rho.shape != original_pressure.shape:
-            original_rho = (
-                cfg.physics.rho_l * original_psi
-                + cfg.physics.rho_g * (1.0 - original_psi)
-            )
-        coords = context.snap.get("grid_coords")
-        if coords is None:
-            coords = [
-                np.linspace(0.0, grid.LX, grid.NX + 1),
-                np.linspace(0.0, grid.LY, grid.NY + 1),
-            ]
-        hodge_native = phase_hodge_pressure_representative(
-            psi=original_psi,
-            rho=original_rho,
-            pressure=original_pressure,
-            pressure_accel_faces=[
-                np.asarray(component)
-                for component in context.snap["pressure_accel_faces"]
-            ],
-            coords=[np.asarray(coord) for coord in coords],
-            phase_threshold=float(spec.get("phase_threshold", 0.5)),
+    original_psi = np.asarray(context.snap["psi"])
+    original_pressure = np.asarray(context.snap["p"])
+    original_rho = np.asarray(context.snap.get("rho"))
+    if original_rho.shape != original_pressure.shape:
+        original_rho = (
+            cfg.physics.rho_l * original_psi
+            + cfg.physics.rho_g * (1.0 - original_psi)
         )
-        hodge_pressure = remap_snapshot_field(context, hodge_native)
+    coords = context.snap.get("grid_coords")
+    if coords is None:
+        coords = [
+            np.linspace(0.0, grid.LX, grid.NX + 1),
+            np.linspace(0.0, grid.LY, grid.NY + 1),
+        ]
+    hodge_native = phase_hodge_pressure_representative(
+        psi=original_psi,
+        rho=original_rho,
+        pressure=original_pressure,
+        pressure_accel_faces=[
+            np.asarray(component)
+            for component in context.snap["pressure_accel_faces"]
+        ],
+        coords=[np.asarray(coord) for coord in coords],
+        phase_threshold=float(spec.get("phase_threshold", 0.5)),
+    )
+    hodge_pressure = remap_snapshot_field(context, hodge_native)
     title = spec.get("title", f"Hodge pressure at t = {context.t_val:.3f}")
     cmap = spec.get("cmap", "RdBu_r")
 
@@ -427,9 +354,6 @@ def build_snapshot_series_renderers() -> dict[str, Callable]:
         "velocity": lambda snap, cfg: velocity_snapshot({"t_idx": 0}, {"snapshots": [snap]}, cfg),
         "psi": lambda snap, cfg: snapshot({"t_idx": 0}, {"snapshots": [snap]}, cfg),
         "pressure": lambda snap, cfg: pressure_snapshot({"t_idx": 0}, {"snapshots": [snap]}, cfg),
-        "pressure_bulk": lambda snap, cfg: pressure_bulk_snapshot(
-            {"t_idx": 0}, {"snapshots": [snap]}, cfg
-        ),
         "pressure_hodge": lambda snap, cfg: pressure_hodge_snapshot(
             {"t_idx": 0}, {"snapshots": [snap]}, cfg
         ),

@@ -772,8 +772,9 @@ class TwoPhaseNSSolver:
                     )
                 )
         advance_face = getattr(self._transport, "advance_with_face_velocity", None)
+        step_diag_enabled = bool(getattr(getattr(self, "_step_diag", None), "enabled", False))
         if hasattr(self._transport, "record_reinit_projection"):
-            self._transport.record_reinit_projection = bool(self._step_diag.enabled)
+            self._transport.record_reinit_projection = step_diag_enabled
         if state.face_velocity_components is not None and callable(advance_face):
             state.psi = advance_face(
                 state.psi,
@@ -788,7 +789,7 @@ class TwoPhaseNSSolver:
         state.interface_projection_diagnostics = zero_reinit_projection_diagnostics()
         reinit_projection = getattr(self._transport, "last_reinit_projection", None)
         if (
-            self._step_diag.enabled
+            step_diag_enabled
             and reinit_projection
             and reinit_projection.get("triggered", False)
         ):

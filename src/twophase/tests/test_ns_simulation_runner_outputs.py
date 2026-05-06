@@ -25,6 +25,10 @@ def test_snapshot_fields_are_saved_as_npz_series():
             "v": np.full((2, 2), 2.0),
             "p": np.full((2, 2), 3.0),
             "rho": np.full((2, 2), 1000.0),
+            "pressure_accel_faces": [
+                np.full((1, 2), 7.0),
+                np.full((2, 1), 8.0),
+            ],
             "grid_coords": [np.array([0.0, 1.0]), np.array([0.0, 1.0])],
         },
         {
@@ -34,6 +38,10 @@ def test_snapshot_fields_are_saved_as_npz_series():
             "v": np.full((2, 2), 5.0),
             "p": np.full((2, 2), 6.0),
             "rho": np.full((2, 2), 1.2),
+            "pressure_accel_faces": [
+                np.full((1, 2), 9.0),
+                np.full((2, 1), 10.0),
+            ],
             "grid_coords": [np.array([0.0, 1.0]), np.array([0.0, 1.0])],
         },
     ]
@@ -48,6 +56,8 @@ def test_snapshot_fields_are_saved_as_npz_series():
     assert flat["fields/p"].shape == (2, 2, 2)
     assert flat["fields/pressure"].shape == (2, 2, 2)
     assert flat["fields/rho"].shape == (2, 2, 2)
+    assert flat["fields/pressure_accel_faces/0"].shape == (2, 1, 2)
+    assert flat["fields/pressure_accel_faces/1"].shape == (2, 2, 1)
     assert flat["fields/grid_coords/0"].tolist() == [0.0, 1.0]
 
 
@@ -59,6 +69,8 @@ def test_snapshot_fields_reconstruct_plot_snapshots():
         "fields/u": np.ones((2, 2, 2)),
         "fields/v": np.full((2, 2, 2), 2.0),
         "fields/pressure": np.full((2, 2, 2), 3.0),
+        "fields/pressure_accel_faces/0": np.full((2, 1, 2), 7.0),
+        "fields/pressure_accel_faces/1": np.full((2, 2, 1), 8.0),
         "fields/grid_coords/0": np.array([0.0, 1.0]),
         "fields/grid_coords/1": np.array([0.0, 1.0]),
     }
@@ -69,6 +81,8 @@ def test_snapshot_fields_reconstruct_plot_snapshots():
     assert snaps[0]["psi"].shape == (2, 2)
     assert snaps[1]["u"].shape == (2, 2)
     assert np.all(snaps[0]["p"] == 3.0)
+    assert np.all(snaps[0]["pressure_accel_faces"][0] == 7.0)
+    assert np.all(snaps[1]["pressure_accel_faces"][1] == 8.0)
     assert len(snaps[0]["grid_coords"]) == 2
 
 
