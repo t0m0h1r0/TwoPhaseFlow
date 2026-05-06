@@ -50,3 +50,15 @@ Findings:
 
 Remediation:
 - Replaced the U2 wording with "本稿の" so the statement names the adopted contract rather than the current implementation state.
+
+## Round 4
+
+Verdict: PASS. MAJOR+ findings: 0.
+
+Checks:
+- Stale process/version wording scan: PASS.
+- Latest V7 wording scan (`再初期化頻度と曲率の時間遅れ`, old slope `1.48`, old HFE expansions): PASS.
+- Traceability scan for unintended V6/V7-only stack mentions: PASS; the remaining V6/V7 listing in `13f_error_budget.tex` is intentional because V9 is listed in the next bullet as the same stack's nominal/local switch diagnostic.
+- `git diff --check`: PASS.
+- `make -B -C paper`: PASS (`paper/main.pdf`, 247 pages).
+- Build log fatal/error/undefined-control/undefined-reference/undefined-citation/overfull/underfull scan: PASS; non-fatal existing layout warning: `Text page 148 contains only floats`.
