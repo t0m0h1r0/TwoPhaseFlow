@@ -107,6 +107,21 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
     if reinit_threshold <= 1.0:
         raise ValueError("interface.reinitialization.schedule.threshold must be > 1.0")
     reinit_every = int(reinit_schedule.get("every_steps", 0))
+    reinit_volume_constraint = str(
+        options.reinit_profile.get("volume_constraint", "diffuse_mass")
+    ).strip().lower().replace("-", "_")
+    if reinit_volume_constraint not in {
+        "diffuse_mass",
+        "psi_mass",
+        "sharp_phase_volume",
+        "sharp_volume",
+        "sharp_area",
+    }:
+        raise ValueError(
+            "interface.reinitialization.profile.volume_constraint must be "
+            "'diffuse_mass' or 'sharp_phase_volume', "
+            f"got {reinit_volume_constraint!r}"
+        )
     return RunCfg(
         T_final=opt_float(options.time_cfg["final"]),
         max_steps=int(options.time_cfg["max_steps"]) if "max_steps" in options.time_cfg else None,
@@ -151,6 +166,7 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
         reinit_method=options.reinit_method,
         dgr_phi_smooth_C=float(options.reinit_profile.get("dgr_phi_smooth_C", 0.0)),
         ridge_sigma_0=options.ridge_sigma_0,
+        reinit_volume_constraint=reinit_volume_constraint,
         advection_scheme=options.operator_settings["advection_scheme"],
         convection_scheme=options.operator_settings["convection_scheme"],
         ppe_solver=options.operator_settings["ppe_solver"],

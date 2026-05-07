@@ -59,6 +59,7 @@ class SolverInterfaceOptions:
     dgr_phi_smooth_C: float = 0.0
     reinit_eps_scale: float = 1.0
     ridge_sigma_0: float = 3.0
+    reinit_volume_constraint: str = "diffuse_mass"
 
 
 @dataclass(frozen=True)

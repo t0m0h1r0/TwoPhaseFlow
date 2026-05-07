@@ -193,8 +193,11 @@ class PhiPrimaryTransport(ILevelSetTransport):
             phi = self.reconstruct.phi_from_psi(psi)
             psi = self.reconstruct.psi_from_phi(phi)
 
-        # Restore original mass
-        psi = apply_mass_correction(xp, psi, dV_pre, M_pre)
+        # Restore diffuse mass unless reinit already enforced sharp volume.
+        if not (
+            reinit_triggered and getattr(self.reinitializer, "preserves_sharp_volume", False)
+        ):
+            psi = apply_mass_correction(xp, psi, dV_pre, M_pre)
         if record_projection:
             self.last_reinit_projection = _transport_projection_record(
                 xp,
@@ -249,7 +252,10 @@ class PhiPrimaryTransport(ILevelSetTransport):
             phi = self.reconstruct.phi_from_psi(psi)
             psi = self.reconstruct.psi_from_phi(phi)
 
-        psi = apply_mass_correction(xp, psi, dV_pre, M_pre)
+        if not (
+            reinit_triggered and getattr(self.reinitializer, "preserves_sharp_volume", False)
+        ):
+            psi = apply_mass_correction(xp, psi, dV_pre, M_pre)
         if record_projection:
             self.last_reinit_projection = _transport_projection_record(
                 xp,
@@ -367,7 +373,9 @@ class PsiDirectTransport(ILevelSetTransport):
             if self.reinit_trigger_mode == "adaptive":
                 self._reinit_reference_monitor = max(self._volume_monitor(psi), 1.0e-30)
 
-        if self.mass_correction:
+        if self.mass_correction and not (
+            reinit_triggered and getattr(self.reinitializer, "preserves_sharp_volume", False)
+        ):
             psi = apply_mass_correction(xp, psi, dV, M_pre)
 
         if record_projection:
@@ -415,7 +423,9 @@ class PsiDirectTransport(ILevelSetTransport):
             if self.reinit_trigger_mode == "adaptive":
                 self._reinit_reference_monitor = max(self._volume_monitor(psi), 1.0e-30)
 
-        if self.mass_correction:
+        if self.mass_correction and not (
+            reinit_triggered and getattr(self.reinitializer, "preserves_sharp_volume", False)
+        ):
             psi = apply_mass_correction(xp, psi, dV, M_pre)
 
         if record_projection:

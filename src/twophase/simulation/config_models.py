@@ -90,6 +90,7 @@ class RunCfg:
     reinit_method: str | None = None
     dgr_phi_smooth_C: float = 0.0
     ridge_sigma_0: float = 3.0
+    reinit_volume_constraint: str = "diffuse_mass"
     advection_scheme: str = "fccd_flux"
     convection_scheme: str = "uccd6"
     ppe_solver: str = "fccd_iterative"

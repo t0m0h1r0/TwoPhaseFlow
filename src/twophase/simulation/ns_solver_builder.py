@@ -92,6 +92,9 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             dgr_phi_smooth_C=float(getattr(run, "dgr_phi_smooth_C", 0.0)),
             reinit_eps_scale=float(getattr(run, "reinit_eps_scale", 1.0)),
             ridge_sigma_0=float(getattr(run, "ridge_sigma_0", 3.0)),
+            reinit_volume_constraint=str(
+                getattr(run, "reinit_volume_constraint", "diffuse_mass")
+            ),
         ),
         ppe=SolverPPEOptions(
             ppe_solver=str(getattr(run, "ppe_solver", "fccd_iterative")),

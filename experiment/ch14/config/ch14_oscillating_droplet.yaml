@@ -40,6 +40,7 @@ interface:
     profile:
       eps_scale: 1.4
       ridge_sigma_0: 3.0
+      volume_constraint: sharp_phase_volume
 
 physics:
   phases:

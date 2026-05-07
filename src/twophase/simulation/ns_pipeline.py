@@ -148,6 +148,7 @@ class TwoPhaseNSSolver:
         dgr_phi_smooth_C: float = 0.0,
         reinit_eps_scale: float = 1.0,
         ridge_sigma_0: float = 3.0,
+        reinit_volume_constraint: str = "diffuse_mass",
         advection_scheme: str = "fccd_flux",
         convection_scheme: str = "uccd6",
         ppe_solver: str = "fccd_iterative",
@@ -250,6 +251,7 @@ class TwoPhaseNSSolver:
                 dgr_phi_smooth_C=dgr_phi_smooth_C,
                 reinit_eps_scale=reinit_eps_scale,
                 ridge_sigma_0=ridge_sigma_0,
+                reinit_volume_constraint=reinit_volume_constraint,
             ),
             ppe=SolverPPEOptions(
                 ppe_solver=ppe_solver,
@@ -408,6 +410,7 @@ class TwoPhaseNSSolver:
                 dgr_phi_smooth_C=interface_options.dgr_phi_smooth_C,
                 reinit_eps_scale=self._interface_runtime.reinit_eps_scale,
                 ridge_sigma_0=float(interface_options.ridge_sigma_0),
+                reinit_volume_constraint=interface_options.reinit_volume_constraint,
             ),
         )
 

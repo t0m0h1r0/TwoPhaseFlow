@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from ..coupling.closed_interface_geometry import liquid_area_2d
 from .heaviside import invert_heaviside
 from .interfaces import IReinitializer
 from .ridge_eikonal_extractor import RidgeExtractor
@@ -40,6 +41,7 @@ class RidgeEikonalReinitializer(IReinitializer):
         mass_correction: bool = True,
         h_ref: float | None = None,
         ridge_zero_seeds: bool = False,
+        volume_constraint: str = "diffuse_mass",
     ):
         self._xp = backend.xp
         self._backend = backend
@@ -48,6 +50,7 @@ class RidgeEikonalReinitializer(IReinitializer):
         self._eps = float(eps)
         self._eps_scale = float(eps_scale)
         self._mass_correction = mass_correction
+        self._volume_constraint = _canonical_volume_constraint(volume_constraint)
         self._ridge_zero_seeds = bool(ridge_zero_seeds)
         self._bc_axes = boundary_axes(getattr(ccd, "bc_type", "wall"), grid.ndim)
         self._wall_axes = tuple(axis == "wall" for axis in self._bc_axes)
@@ -77,6 +80,11 @@ class RidgeEikonalReinitializer(IReinitializer):
         )
         self._fmm = NonUniformFMM(grid, backend=backend)
 
+    @property
+    def preserves_sharp_volume(self) -> bool:
+        """Whether reinitialization applies a sharp P1 phase-volume constraint."""
+        return self._mass_correction and self._volume_constraint == "sharp_phase_volume"
+
     def update_grid(self, grid) -> None:
         self._grid = grid
         xp = self._xp
@@ -104,6 +112,9 @@ class RidgeEikonalReinitializer(IReinitializer):
         sync_periodic_image_nodes(psi, self._bc_axes)
         dV = self._dV
         M_old = xp.sum(psi * dV)
+        V_old = None
+        if self.preserves_sharp_volume:
+            V_old = self._sharp_phase_volume(psi)
 
         phi = invert_heaviside(xp, psi, self._eps_local)
         sync_periodic_image_nodes(phi, self._bc_axes)
@@ -144,7 +155,6 @@ class RidgeEikonalReinitializer(IReinitializer):
         sync_periodic_image_nodes(psi_new, self._bc_axes)
 
         if self._mass_correction:
-            w = psi_new * (1.0 - psi_new) / self._eps_local
             if self._wall_contacts:
                 constrained_band = self._wall_contacts.constraint_mask(
                     xp,
@@ -155,19 +165,217 @@ class RidgeEikonalReinitializer(IReinitializer):
             else:
                 constrained_band = self._wall_contact_band(phi, phi_sdf)
             free_mask = xp.where(constrained_band, 0.0, 1.0)
-            w = w * free_mask
-            W = xp.sum(w * dV)
-            W_safe = xp.where(W > 1e-14, W, 1.0)
-            gate = xp.where(W > 1e-14, 1.0, 0.0)
-            M_new = xp.sum(psi_new * dV)
-            delta_phi = gate * (M_old - M_new) / W_safe
-            phi_sdf = phi_sdf + delta_phi * free_mask
-            sync_periodic_image_nodes(phi_sdf, self._bc_axes)
-            psi_new = _sigmoid_xp(xp, phi_sdf, self._eps_local)
-            psi_new = self._wall_contacts.impose_on_wall_trace(xp, self._grid, psi_new)
-            sync_periodic_image_nodes(psi_new, self._bc_axes)
+            if self._volume_constraint == "sharp_phase_volume":
+                phi_sdf, psi_new = self._apply_sharp_phase_volume_constraint(
+                    phi_sdf,
+                    free_mask=free_mask,
+                    target_volume=V_old,
+                    target_mass=M_old,
+                    dV=dV,
+                )
+            else:
+                w = psi_new * (1.0 - psi_new) / self._eps_local
+                w = w * free_mask
+                W = xp.sum(w * dV)
+                W_safe = xp.where(W > 1e-14, W, 1.0)
+                gate = xp.where(W > 1e-14, 1.0, 0.0)
+                M_new = xp.sum(psi_new * dV)
+                delta_phi = gate * (M_old - M_new) / W_safe
+                phi_sdf = phi_sdf + delta_phi * free_mask
+                sync_periodic_image_nodes(phi_sdf, self._bc_axes)
+                psi_new = _sigmoid_xp(xp, phi_sdf, self._eps_local)
+                psi_new = self._wall_contacts.impose_on_wall_trace(xp, self._grid, psi_new)
+                sync_periodic_image_nodes(psi_new, self._bc_axes)
 
         return psi_new
+
+    def _psi_from_shifted_phi(
+        self,
+        phi_sdf,
+        delta_phi,
+        free_mask,
+        *,
+        profile_scale: float = 1.0,
+    ):
+        xp = self._xp
+        eps_profile = self._eps_local * float(profile_scale)
+        psi = _sigmoid_xp(xp, phi_sdf + float(delta_phi) * free_mask, eps_profile)
+        psi = self._wall_contacts.impose_on_wall_trace(xp, self._grid, psi)
+        sync_periodic_image_nodes(psi, self._bc_axes)
+        return psi
+
+    def _sharp_phase_volume(self, psi) -> float:
+        value = liquid_area_2d(
+            xp=self._xp,
+            grid=self._grid,
+            psi=psi,
+            phase_threshold=0.5,
+        )
+        if hasattr(value, "get"):
+            value = value.get()
+        return float(value)
+
+    def _apply_sharp_phase_volume_constraint(
+        self,
+        phi_sdf,
+        *,
+        free_mask,
+        target_volume: float | None,
+        target_mass,
+        dV,
+    ):
+        """Apply the Lagrange multiplier shift enforcing ``V_Gamma``.
+
+        A constant signed-distance shift is the discrete volume multiplier for
+        the fixed-topology reinitialization projection: it preserves
+        ``|grad(phi)|=1`` away from explicitly pinned wall-contact bands while
+        solving the sharp P1 constraint ``V_h(phi + lambda)=V_target``.  A
+        second scalar profile-width multiplier then restores the diffuse CLS
+        mass without moving that zero level.
+        """
+        xp = self._xp
+        if target_volume is None:
+            raise ValueError("sharp phase-volume correction requires a target volume")
+        target = float(target_volume)
+        domain_volume = float(np.prod(self._grid.L))
+        tol = max(1.0e-12, 1.0e-10 * max(domain_volume, 1.0))
+        psi_zero = self._psi_from_shifted_phi(phi_sdf, 0.0, free_mask)
+        volume_zero = self._sharp_phase_volume(psi_zero)
+        if abs(volume_zero - target) <= tol:
+            psi_zero = self._apply_diffuse_mass_profile_constraint(
+                phi_sdf,
+                target_mass=target_mass,
+                dV=dV,
+            )
+            return phi_sdf, psi_zero
+        if target < -tol or target > domain_volume + tol:
+            raise ValueError(
+                "sharp phase-volume target is outside domain volume: "
+                f"target={target:.16e}, domain={domain_volume:.16e}"
+            )
+        direction = 1.0 if volume_zero < target else -1.0
+        lo = 0.0
+        hi = max(self._h_min, 1.0e-12) * direction
+        max_shift = max(float(max(self._grid.L)), self._h_min)
+        for _ in range(40):
+            volume_hi = self._sharp_phase_volume(
+                self._psi_from_shifted_phi(phi_sdf, hi, free_mask)
+            )
+            if (direction > 0.0 and volume_hi >= target - tol) or (
+                direction < 0.0 and volume_hi <= target + tol
+            ):
+                break
+            hi *= 2.0
+            if abs(hi) > max_shift:
+                raise ValueError(
+                    "failed to bracket sharp phase-volume correction: "
+                    f"target={target:.16e}, V0={volume_zero:.16e}, "
+                    f"last_shift={hi:.16e}"
+                )
+        else:
+            raise ValueError("failed to bracket sharp phase-volume correction")
+
+        left = min(lo, hi)
+        right = max(lo, hi)
+        psi_mid = psi_zero
+        mid = 0.0
+        for _ in range(48):
+            mid = 0.5 * (left + right)
+            psi_mid = self._psi_from_shifted_phi(phi_sdf, mid, free_mask)
+            volume_mid = self._sharp_phase_volume(psi_mid)
+            if abs(volume_mid - target) <= tol:
+                break
+            if volume_mid < target:
+                left = mid
+            else:
+                right = mid
+        phi_shifted = phi_sdf + float(mid) * free_mask
+        sync_periodic_image_nodes(phi_shifted, self._bc_axes)
+        psi_mid = self._apply_diffuse_mass_profile_constraint(
+            phi_shifted,
+            target_mass=target_mass,
+            dV=dV,
+        )
+        return phi_shifted, psi_mid
+
+    def _apply_diffuse_mass_profile_constraint(self, phi_sdf, *, target_mass, dV):
+        """Restore ``sum psi*dV`` by changing profile width, not zero level."""
+        xp = self._xp
+        target = self._scalar_float(target_mass)
+        dV = xp.asarray(dV)
+        tol = max(1.0e-12, 1.0e-10 * max(abs(target), 1.0))
+
+        def psi_at(scale: float):
+            psi = _sigmoid_xp(xp, phi_sdf, self._eps_local * float(scale))
+            psi = self._wall_contacts.impose_on_wall_trace(xp, self._grid, psi)
+            sync_periodic_image_nodes(psi, self._bc_axes)
+            return psi
+
+        def residual(scale: float) -> tuple[float, object]:
+            psi = psi_at(scale)
+            mass = self._scalar_float(xp.sum(psi * dV))
+            return mass - target, psi
+
+        residual_one, psi_one = residual(1.0)
+        if abs(residual_one) <= tol:
+            return psi_one
+
+        scales = [
+            1.0 / 16.0,
+            1.0 / 12.0,
+            1.0 / 8.0,
+            1.0 / 6.0,
+            1.0 / 4.0,
+            1.0 / 3.0,
+            1.0 / 2.0,
+            2.0 / 3.0,
+            1.0,
+            1.5,
+            2.0,
+            3.0,
+            4.0,
+            6.0,
+            8.0,
+            12.0,
+            16.0,
+        ]
+        samples: list[tuple[float, float]] = []
+        for scale in scales:
+            value, _ = residual(scale)
+            if abs(value) <= tol:
+                return psi_at(scale)
+            samples.append((scale, value))
+
+        bracket = None
+        for left, right in zip(samples[:-1], samples[1:]):
+            if left[1] * right[1] < 0.0:
+                bracket = (left[0], right[0])
+                break
+        if bracket is None:
+            raise ValueError(
+                "failed to bracket diffuse-mass profile correction without "
+                "moving the sharp interface"
+            )
+
+        left, right = bracket
+        psi_mid = psi_one
+        for _ in range(48):
+            mid = 0.5 * (left + right)
+            value_mid, psi_mid = residual(mid)
+            if abs(value_mid) <= tol:
+                return psi_mid
+            value_left, _ = residual(left)
+            if value_left * value_mid <= 0.0:
+                right = mid
+            else:
+                left = mid
+        return psi_mid
+
+    @staticmethod
+    def _scalar_float(value) -> float:
+        if hasattr(value, "get"):
+            value = value.get()
+        return float(value)
 
     def _wall_contact_band(self, phi_raw, phi_sdf):
         """Return a mask that pins wall-contact seeds during mass correction."""
@@ -208,3 +416,24 @@ class RidgeEikonalReinitializer(IReinitializer):
             contact_weight[:, -2:] = xp.maximum(contact_weight[:, -2:], top_flag)
         contact_band = (contact_weight > 0.0) & near_interface
         return contact_band
+
+
+def _canonical_volume_constraint(value: str) -> str:
+    normalized = str(value).strip().lower().replace("-", "_")
+    aliases = {
+        "diffuse": "diffuse_mass",
+        "diffuse_mass": "diffuse_mass",
+        "psi_mass": "diffuse_mass",
+        "sharp": "sharp_phase_volume",
+        "sharp_area": "sharp_phase_volume",
+        "sharp_volume": "sharp_phase_volume",
+        "sharp_phase_area": "sharp_phase_volume",
+        "sharp_phase_volume": "sharp_phase_volume",
+    }
+    if normalized not in aliases:
+        raise ValueError(
+            "ridge_eikonal volume_constraint must be "
+            "'diffuse_mass' or 'sharp_phase_volume', "
+            f"got {value!r}"
+        )
+    return aliases[normalized]
