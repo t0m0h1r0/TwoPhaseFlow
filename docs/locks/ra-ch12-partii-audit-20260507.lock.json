@@ -1,0 +1,11 @@
+{
+  "branch": "codex/ra-ch12-partii-audit-20260507",
+  "branch_slug": "ra-ch12-partii-audit-20260507",
+  "id_prefix": "RA-CH12-PARTII",
+  "session_id": "2563D7B0-2AC3-42B0-8189-6F99242ED28C",
+  "worktree_path": ".claude/worktrees/codex-ra-ch12-partii-audit-20260507",
+  "holder_agent": "ResearchArchitect",
+  "acquired_at": "2026-05-07T14:11:51Z",
+  "expires_at": "2026-05-08T14:11:51Z",
+  "meta_version": "5.1.0"
+}
