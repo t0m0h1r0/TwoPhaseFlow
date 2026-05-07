@@ -18,7 +18,11 @@ from .plot_vector import (
     plot_streamlines,
 )
 from .plot_fields import (
+    DEFAULT_SPEED_CMAP,
+    DEFAULT_VECTOR_CMAP,
+    draw_clean_velocity_arrows,
     field_with_contour,
+    positive_range,
     streamlines_colored,
     velocity_arrows,
     symmetric_range,
@@ -33,7 +37,11 @@ __all__ = [
     "plot_velocity",
     "plot_vorticity",
     "plot_streamlines",
+    "DEFAULT_SPEED_CMAP",
+    "DEFAULT_VECTOR_CMAP",
+    "draw_clean_velocity_arrows",
     "field_with_contour",
+    "positive_range",
     "streamlines_colored",
     "velocity_arrows",
     "symmetric_range",

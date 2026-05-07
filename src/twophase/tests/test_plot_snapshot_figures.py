@@ -8,11 +8,13 @@ from twophase.tools.plot_snapshot_figures import (
     masked_bulk_pressure,
     pressure_bulk_snapshot,
     pressure_hodge_snapshot,
+    velocity_snapshot,
 )
 from twophase.tools.plot_factory import generate_figures
 from twophase.tools.pressure_representatives import (
     phase_hodge_pressure_representative,
 )
+from twophase.simulation.visualization import plot_velocity
 
 
 def test_masked_bulk_pressure_is_retired_fail_closed():
@@ -143,3 +145,61 @@ def test_pressure_hodge_snapshot_requires_face_cochain():
 
     with pytest.raises(ValueError, match="requires pressure_accel_faces"):
         pressure_hodge_snapshot({"t_idx": 0}, {"snapshots": [snap]}, cfg)
+
+
+def test_velocity_snapshot_uses_normalized_speed_colored_quiver():
+    cfg = SimpleNamespace(
+        grid=SimpleNamespace(LX=1.0, LY=1.0, NX=2, NY=2),
+    )
+    u = np.array(
+        [
+            [1.0, 0.0, -2.0],
+            [0.0, 0.0, 0.0],
+            [3.0, 4.0, 0.0],
+        ]
+    )
+    v = np.array(
+        [
+            [0.0, 2.0, 0.0],
+            [0.0, 0.0, 0.0],
+            [4.0, -3.0, 0.0],
+        ]
+    )
+    snap = {
+        "t": 0.0,
+        "psi": np.ones((3, 3)),
+        "u": u,
+        "v": v,
+    }
+
+    fig = velocity_snapshot(
+        {"t_idx": 0, "quiver_stride": 1},
+        {"snapshots": [snap]},
+        cfg,
+    )
+
+    quivers = [artist for artist in fig.axes[0].collections if hasattr(artist, "U")]
+    assert len(quivers) == 1
+    quiver = quivers[0]
+    assert np.nanmax(np.sqrt(quiver.U ** 2 + quiver.V ** 2)) <= 1.0 + 1.0e-12
+    np.testing.assert_allclose(quiver.get_array(), np.sqrt(u.ravel() ** 2 + v.ravel() ** 2))
+    plt.close(fig)
+
+
+def test_plot_velocity_uses_clean_default_quiver_style():
+    class GridStub:
+        ndim = 2
+
+        def meshgrid(self):
+            coords = np.linspace(0.0, 1.0, 3)
+            return np.meshgrid(coords, coords, indexing="ij")
+
+    u = np.ones((3, 3))
+    v = np.zeros((3, 3))
+
+    fig = plot_velocity(u, v, GridStub(), quiver_stride=1)
+
+    quivers = [artist for artist in fig.axes[0].collections if hasattr(artist, "U")]
+    assert len(quivers) == 1
+    assert quivers[0].cmap.name == "hot"
+    plt.close(fig)

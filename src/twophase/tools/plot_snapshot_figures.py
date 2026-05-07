@@ -22,6 +22,12 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 
+from ..simulation.visualization.plot_fields import (
+    DEFAULT_SPEED_CMAP,
+    DEFAULT_VECTOR_CMAP,
+    draw_clean_velocity_arrows,
+    positive_range,
+)
 from .pressure_representatives import phase_hodge_pressure_representative
 
 if TYPE_CHECKING:
@@ -143,31 +149,42 @@ def velocity_snapshot(
     v = remap_snapshot_field(context, context.snap["v"])
     speed = np.sqrt(u ** 2 + v ** 2)
     title = spec.get("title", f"Velocity at t = {context.t_val:.3f}")
-    cmap = spec.get("cmap", "viridis")
+    cmap = spec.get("cmap", DEFAULT_SPEED_CMAP)
+    vector_cmap = spec.get("vector_cmap", DEFAULT_VECTOR_CMAP)
     stride = int(spec.get("quiver_stride", 4))
+    speed_vmax = spec.get("speed_vmax")
+    if speed_vmax is None:
+        speed_vmax = positive_range(speed)
 
     fig, ax = plt.subplots(figsize=(4, 4 * grid.LY / grid.LX))
-    im = ax.pcolormesh(context.X, context.Y, speed.T, cmap=cmap, shading="nearest")
+    im = ax.pcolormesh(
+        context.X,
+        context.Y,
+        speed.T,
+        cmap=cmap,
+        vmin=0.0,
+        vmax=float(speed_vmax),
+        shading="nearest",
+    )
     if spec.get("colorbar", True):
-        fig.colorbar(im, ax=ax, label="|u|")
+        cb = fig.colorbar(im, ax=ax, label="|u|", fraction=0.046, pad=0.04)
+        cb.ax.tick_params(labelsize=8)
     if spec.get("contour", True):
         ax.contour(
             context.X, context.Y, context.psi.T, levels=[0.5], colors="k", linewidths=0.8
         )
-    us = u[::stride, ::stride].T
-    vs = v[::stride, ::stride].T
-    sp = np.sqrt(us ** 2 + vs ** 2)
-    sp_safe = np.maximum(sp, 1e-14)
-    ax.quiver(
-        context.X[::stride],
-        context.Y[::stride],
-        us / sp_safe,
-        vs / sp_safe,
-        sp,
-        cmap="hot",
-        alpha=0.8,
-        scale=30,
-        width=0.003,
+    Xq, Yq = np.meshgrid(context.X, context.Y, indexing="ij")
+    draw_clean_velocity_arrows(
+        ax,
+        Xq,
+        Yq,
+        u,
+        v,
+        stride=stride,
+        normalize=bool(spec.get("normalize_arrows", True)),
+        cmap=vector_cmap,
+        scale=float(spec.get("quiver_scale", 30.0)),
+        width=float(spec.get("quiver_width", 0.003)),
     )
     ax.set_aspect("equal")
     ax.set_xlabel(spec.get("xlabel", "x"))
