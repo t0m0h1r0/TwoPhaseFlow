@@ -203,6 +203,16 @@ $D_0\cos(\omega_0t)$ は位相と復元向きの第一基準であり，
 振幅誤差には粗格子の界面表現，Ridge--Eikonal 再初期化，
 および粘性散逸が含まれるためである．
 
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.32\linewidth]{figures/ch14_osc_droplet_signed_deformation.pdf}
+\includegraphics[width=0.32\linewidth]{figures/ch14_osc_droplet_kinetic_energy.pdf}
+\includegraphics[width=0.32\linewidth]{figures/ch14_osc_droplet_volume_drift.pdf}
+\caption{N=32，1 周期振動液滴の時系列診断．左から，符号付き変形量，
+運動エネルギー，体積ドリフトを示す．}
+\label{fig:ch14_osc_droplet_histories}
+\end{figure}
+
 体積ドリフトは最大 $6.37\times10^{-5}$，
 終端 $4.33\times10^{-5}$ に留まり，
 \texttt{kinetic\_energy} は
@@ -213,6 +223,38 @@ snapshot の速度最大値は $8.81\times10^{-3}$ であり，
 圧力 Hodge 代表も有限範囲に収まった．
 このとき体積保存が同時に保たれることが重要である：
 体積がずれたまま変形量だけが振動しても，それは閉じた液滴の物理応答ではない．
+2 次元場としては，\autoref{fig:ch14_osc_droplet_psi_snapshots} に界面形状の
+1 周期推移を示し，
+\autoref{fig:ch14_osc_droplet_velocity_pressure_snapshots} に速度場と
+圧力 Hodge 代表を示す．
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.19\linewidth]{figures/ch14_osc_droplet_psi_t0.pdf}
+\includegraphics[width=0.19\linewidth]{figures/ch14_osc_droplet_psi_tq1.pdf}
+\includegraphics[width=0.19\linewidth]{figures/ch14_osc_droplet_psi_tq2.pdf}
+\includegraphics[width=0.19\linewidth]{figures/ch14_osc_droplet_psi_tq3.pdf}
+\includegraphics[width=0.19\linewidth]{figures/ch14_osc_droplet_psi_t1.pdf}
+\caption{N=32，1 周期振動液滴の $\psi$ snapshot．左から
+$t\approx0,\frac14T_\mathrm{RL},\frac12T_\mathrm{RL},
+\frac34T_\mathrm{RL},T_\mathrm{RL}$ を示す．}
+\label{fig:ch14_osc_droplet_psi_snapshots}
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.32\linewidth]{figures/ch14_osc_droplet_velocity_tq1.pdf}
+\includegraphics[width=0.32\linewidth]{figures/ch14_osc_droplet_velocity_tq2.pdf}
+\includegraphics[width=0.32\linewidth]{figures/ch14_osc_droplet_velocity_t1.pdf}
+\par\smallskip
+\includegraphics[width=0.32\linewidth]{figures/ch14_osc_droplet_pressure_tq1.pdf}
+\includegraphics[width=0.32\linewidth]{figures/ch14_osc_droplet_pressure_tq2.pdf}
+\includegraphics[width=0.32\linewidth]{figures/ch14_osc_droplet_pressure_t1.pdf}
+\caption{N=32，1 周期振動液滴の 2 次元速度場と圧力 Hodge 代表．
+上段は速度場，下段は圧力代表であり，左から
+$\frac14T_\mathrm{RL},\frac12T_\mathrm{RL},T_\mathrm{RL}$ 近傍を示す．}
+\label{fig:ch14_osc_droplet_velocity_pressure_snapshots}
+\end{figure}
 
 本ケースの判定は，
 「閉じた界面の有限速度運動において，FCCD 界面移流，
