@@ -25,8 +25,10 @@
 CCD/FCCD，Ridge--Eikonal，PPE/速度補正が同じ格子幾何を参照するための離散契約}
 である．
 本稿で検証する非一様経路は，固定非一様格子上の静止 BF 縮約試験と，
-range-projected pressure-jump/HFE/projection-native stack 上の有限時間
+surface-energy virtual-work pressure-jump/HFE/projection-native stack 上の有限時間
 固定幅・局所幅診断である（§~\ref{sec:nonuniform_grid_ns}）．
+体積，sharp phase volume，表面測度は一様計算座標ではなく
+現在時刻の物理セル体積・物理 face 距離・物理界面交差位置で評価する．
 毎ステップ界面追随格子は，保存的再写像，速度再投影，履歴リセット，
 HFE 延長データと界面面幾何の再構築，および壁面境界条件での
 PPE--速度補正面演算子統一が同時に成立する場合にだけ標準化できる

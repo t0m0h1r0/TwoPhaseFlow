@@ -62,7 +62,8 @@ Balanced--Force 条件（§~\ref{sec:balanced_force}）における
 （困難 2 由来の曲率精度低下は CCD $\Ord{h^6}$（§~\ref{sec:CCD}）が補完し，
 CSF/BF 縮約経路では V3/V5/V8 の静止液滴・寄生流れ診断で読む．
 高密度比の主経路では同じ Young--Laplace 応力を
-range-projected pressure-jump stack（V6/V7/V9）として別途検証する）．
+surface-energy virtual-work pressure-jump/Hodge stack
+（V6/V7/V9）として別途検証する）．
 各モードは高次化では解決せず，演算子幾何の整合性確保を要する（詳細 §~\ref{sec:balanced_force}）．
 以下で PPE は Pressure Poisson Equation（圧力 Poisson 方程式）を指す．
 
@@ -99,6 +100,44 @@ $p_l^*-p_g^*=\sigma\kappa_{lg}^*$，すなわち
 $j_{gl}^*=-\sigma\kappa_{lg}^*$ を
 参照圧力 $\rho_l U^2$ で除し，$We = \rho_l U^2 L/\sigma$ と $\kappa_{lg} = L\kappa_{lg}^*$ を
 代入して得られる（*-付き変数は有次元，*-無しは無次元；§~\ref{sec:nondim}）．
+
+\noindent\textbf{表面エネルギーからの仮想仕事．}
+Young--Laplace 則は，閉じた界面の表面エネルギー
+\begin{equation}
+  E_\Gamma[\Gamma]=\sigma |\Gamma|
+  \label{eq:surface_energy_functional}
+\end{equation}
+の体積制約付き第一変分として読む．界面速度を $\bm w$，
+外向き法線変位を $w_n=\bm w\cdot\hat{\bm n}$ とすると，
+連続論では
+\begin{equation}
+  \delta E_\Gamma[\bm w]
+  =
+  \sigma\int_\Gamma \kappa\,w_n\,\mathrm{d}S,
+  \qquad
+  \delta V[\bm w]
+  =
+  \int_\Gamma w_n\,\mathrm{d}S .
+  \label{eq:surface_energy_virtual_work}
+\end{equation}
+したがって静的平衡は，あるラグランジュ乗数 $\lambda$ に対して
+\begin{equation}
+  \delta(E_\Gamma-\lambda V)[\bm w]=0
+  \quad\forall \bm w
+  \qquad\Longleftrightarrow\qquad
+  \sigma\kappa=\lambda
+  \quad\text{on each closed component}
+  \label{eq:surface_energy_constrained_equilibrium}
+\end{equation}
+である．ここで重要なのは，平衡判定が「真円か楕円か」という
+形状名ではなく，\emph{体積を保つ全ての仮想変位に対して}
+表面エネルギーの第一変分が消えるかで決まる点である．
+非定曲率成分は，その形が楕円であるかどうかに依らず，
+圧力反力で吸収できない毛管加速度として残る．
+第~\ref{sec:split_ppe_capillary_range_projection}節では，
+この連続仮想仕事を同じ face-space Riesz/Hodge 問題へ写し，
+本番力の構成と静的平衡 gate を区別して定式化する．
+
 離散 affine jump では，このジャンプを節点平均ではなく界面が通過する
 face cut $f\cap\Gamma_h$ で評価する．
 face の両端値を $\psi^-,\psi^+$，$\kappa^-_{lg},\kappa^+_{lg}$ とすると

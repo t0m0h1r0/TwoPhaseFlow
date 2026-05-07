@@ -91,6 +91,20 @@ $\Delta M_{\mathrm{closure}}$ は Stage B/F の明示的な質量閉鎖である
 非一様格子ではすべての和をセル体積重み付き
 $M_h=\sum_{i,j}\psi_{i,j}\Delta V_{i,j}$ で評価し，
 動的格子再構成後も現在時刻の $\Delta V_{i,j}$ を用いる．
+ただし $M_h$ は拡散 CLS 質量であり，界面形状が占める sharp phase volume
+そのものではない．本稿では
+\begin{equation}
+  M_{\psi,h}(\psi)=\sum_i \psi_i\,\Delta V_i,\qquad
+  V_{\Gamma,h}(\phi)=|\{\phi<0\}|_h
+  \quad(\text{または }|\{\psi>1/2\}|_h)
+  \label{eq:diffuse_mass_sharp_volume_split}
+\end{equation}
+を分けて記録する．再初期化が $M_{\psi,h}$ を保存しても
+$V_{\Gamma,h}$ を変えれば，それは物理輸送ではなくプロファイル射影の
+零等値面移動である．したがって毛管仕事と対応させる幾何変化は
+Stage A の輸送端点で評価し，Stage D/F の
+$\Delta M_{\psi,\Pi}$，$\Delta V_{\Gamma,\Pi}$，
+$\Delta S_{\Pi}$ は別の ledger に載せる．
 
 
 % ─────────────────────────────────────────────────────────────────────────────
@@ -145,14 +159,38 @@ CLS プロファイルへ戻す幾何射影である：
 \end{equation}
 ここで $\mathcal{M}_h(\psi^\ast)$ は，少なくとも
 \begin{equation}
-  V_h(\eta_h)=V_h(\psi^\ast),\qquad
+  V_{\Gamma,h}(\eta_h)=V_{\Gamma,h}(\psi^\ast),\qquad
+  M_{\psi,h}(\eta_h)=M_{\psi,h}(\psi^\ast),\qquad
   d_\Gamma\!\left(\eta_h,\psi^\ast\right)\le\varepsilon_\Gamma,\qquad
   |S_h(\eta_h)-S_h(\psi^\ast)|\le\varepsilon_S
   \label{eq:ridge_eikonal_projection_constraints}
 \end{equation}
-を満たす離散プロファイル集合であり，$V_h$ は液相体積，
+を満たす離散プロファイル集合であり，$V_{\Gamma,h}$ は sharp phase volume，
+$M_{\psi,h}$ は拡散 CLS 質量，
 $d_\Gamma$ は $\psi=1/2$ 線の離散変位，$S_h$ は界面測度
 （または surface-energy proxy）である．
+実装上は，まず符号付き距離場の一様シフト
+\begin{equation}
+  \phi_{\mathrm{sdf}}\leftarrow\phi_{\mathrm{sdf}}+\lambda_\Gamma
+  \quad\text{so that}\quad
+  V_{\Gamma,h}(\phi_{\mathrm{sdf}}+\lambda_\Gamma)
+  =V_{\Gamma,h}(\psi^\ast)
+  \label{eq:ridge_eikonal_sharp_volume_shift}
+\end{equation}
+で零等値面の sharp volume を閉じる．一様シフトは
+$|\bnabla(\phi+\lambda_\Gamma)|=|\bnabla\phi|$ を保つため，
+pinning band を除けば距離性を壊さない．次に
+$H_{\varepsilon_{\mathrm{eff}}}(-\phi)$ のスカラー幅
+または等価なプロファイルパラメタを調整して
+\begin{equation}
+  M_{\psi,h}\!\left(H_{\varepsilon_{\mathrm{eff}}}(-\phi_{\mathrm{sdf}})\right)
+  =
+  M_{\psi,h}(\psi^\ast)
+  \label{eq:ridge_eikonal_diffuse_mass_width}
+\end{equation}
+を満たす．この二つの scalar constraint は，sharp volume を動かして
+diffuse mass を合わせる補正を禁止し，物理界面の位置と
+CLS プロファイル質量を分離して閉じるための設計である．
 したがって 1 ステップの界面変化は
 \begin{equation}
   \delta\psi_T=\psi^\ast-\psi^n,\qquad
@@ -173,7 +211,7 @@ Navier--Stokes の運動エネルギー収支にも現れないため，
 表面張力または粘性の仕事と区別できなくなる．
 本稿の標準離散経路は，物理移流，Ridge--Eikonal 幾何射影，
 および §~\ref{sec:split_ppe_capillary_range_projection} の
-毛管 face-space 射影を別々の離散 identity として監視する．
+毛管 face-space Hodge gate を別々の離散 identity として監視する．
 
 
 % ─────────────────────────────────────────────────────────────────────────────
@@ -476,8 +514,12 @@ Ridge--Eikonal 再構成を受理する条件は，
 \begin{enumerate}[noitemsep]
   \item 入力の零点集合または壁面接触 seed と整合すること，
   \item 再構成後の $\phi$ が距離性 $|\bnabla\phi|\approx1$ を満たすこと，
-  \item 再構成後の液相体積が Stage F の
-        $\phi$ 空間補正で許容残差内へ閉じること，
+  \item 再構成後の sharp phase volume $V_{\Gamma,h}$ が
+        式~\eqref{eq:ridge_eikonal_sharp_volume_shift} の
+        一様 SDF シフトで許容残差内へ閉じること，
+  \item 再構成後の拡散 CLS 質量 $M_{\psi,h}$ が
+        式~\eqref{eq:ridge_eikonal_diffuse_mass_width} の
+        プロファイル幅補正で許容残差内へ閉じること，
   \item $Q_\Gamma/Q_{\Gamma,\mathrm{ref}}$ が採用した実行条件に対して
         許容範囲にあること，
   \item 曲率評価に使う界面帯が単調な $H_\varepsilon(-\phi)$ 型プロファイルとして
