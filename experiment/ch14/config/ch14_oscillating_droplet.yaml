@@ -167,10 +167,15 @@ output:
 
     - type: snapshot_series
       field: velocity
+      shared_scale: true
+      normalize_arrows: false
+      quiver_length_fraction: 0.04
       file_prefix: velocity_t
 
     - type: snapshot_series
       field: pressure_hodge
+      shared_scale: true
+      symmetric_scale: true
       file_prefix: pressure_t
 
 diagnostics: [volume_conservation, kinetic_energy, deformation, signed_deformation]

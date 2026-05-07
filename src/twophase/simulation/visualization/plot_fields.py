@@ -198,7 +198,7 @@ def draw_clean_velocity_arrows(
     else:
         uq = us
         vq = vs
-        scale_arg = None
+        scale_arg = scale
     return ax.quiver(
         Xs,
         Ys,

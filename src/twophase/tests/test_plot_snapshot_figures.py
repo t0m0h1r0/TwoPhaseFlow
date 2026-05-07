@@ -4,6 +4,7 @@ import pytest
 from types import SimpleNamespace
 
 from twophase.tools.plot_snapshot_figures import (
+    build_snapshot_series_shared_spec,
     build_snapshot_series_renderers,
     masked_bulk_pressure,
     pressure_bulk_snapshot,
@@ -184,6 +185,53 @@ def test_velocity_snapshot_uses_normalized_speed_colored_quiver():
     assert np.nanmax(np.sqrt(quiver.U ** 2 + quiver.V ** 2)) <= 1.0 + 1.0e-12
     np.testing.assert_allclose(quiver.get_array(), np.sqrt(u.ravel() ** 2 + v.ravel() ** 2))
     plt.close(fig)
+
+
+def test_snapshot_series_velocity_uses_shared_speed_and_raw_quiver_scale():
+    cfg = SimpleNamespace(
+        grid=SimpleNamespace(LX=1.0, LY=1.0, NX=1, NY=1),
+    )
+    psi = np.ones((2, 2))
+    snaps = [
+        {
+            "t": 0.0,
+            "psi": psi,
+            "u": np.ones((2, 2)),
+            "v": np.zeros((2, 2)),
+        },
+        {
+            "t": 1.0,
+            "psi": psi,
+            "u": 3.0 * np.ones((2, 2)),
+            "v": 4.0 * np.ones((2, 2)),
+        },
+    ]
+
+    shared = build_snapshot_series_shared_spec(
+        "velocity",
+        {"normalize_arrows": False, "quiver_length_fraction": 0.05},
+        snaps,
+        cfg,
+    )
+
+    assert shared["speed_vmax"] == pytest.approx(5.0)
+    assert shared["quiver_scale"] == pytest.approx(100.0)
+
+
+def test_snapshot_series_pressure_uses_shared_symmetric_color_axis():
+    cfg = SimpleNamespace(
+        grid=SimpleNamespace(LX=1.0, LY=1.0, NX=1, NY=1),
+    )
+    psi = np.ones((2, 2))
+    snaps = [
+        {"t": 0.0, "psi": psi, "p": np.array([[0.0, 1.0], [2.0, 0.5]])},
+        {"t": 1.0, "psi": psi, "p": np.array([[-3.0, 0.0], [1.0, 2.0]])},
+    ]
+
+    shared = build_snapshot_series_shared_spec("pressure", {}, snaps, cfg)
+
+    assert shared["vmin"] == pytest.approx(-3.0)
+    assert shared["vmax"] == pytest.approx(3.0)
 
 
 def test_plot_velocity_uses_clean_default_quiver_style():

@@ -103,6 +103,133 @@ def remap_snapshot_field(context: SnapshotPlotContext, field) -> np.ndarray:
     return np.asarray(context.remapper.remap(field))
 
 
+def finite_min_max(arrays: list[np.ndarray]) -> tuple[float, float]:
+    """Return finite min/max over a snapshot series."""
+    finite_parts = []
+    for array in arrays:
+        values = np.asarray(array, dtype=float)
+        finite = values[np.isfinite(values)]
+        if finite.size:
+            finite_parts.append(finite)
+    if not finite_parts:
+        return 0.0, 1.0
+    merged = np.concatenate(finite_parts)
+    return float(np.min(merged)), float(np.max(merged))
+
+
+def pressure_hodge_field(
+    context: SnapshotPlotContext,
+    spec: dict,
+) -> np.ndarray:
+    """Return the phase-wise Hodge pressure representative for one snapshot."""
+    grid = context.cfg.grid
+    if "pressure_accel_faces" not in context.snap:
+        raise ValueError(
+            "pressure_hodge requires pressure_accel_faces in saved snapshots; "
+            "regenerate data with the current affine pressure-jump runner."
+        )
+    original_psi = np.asarray(context.snap["psi"])
+    original_pressure = np.asarray(context.snap["p"])
+    original_rho = np.asarray(context.snap.get("rho"))
+    if original_rho.shape != original_pressure.shape:
+        original_rho = (
+            context.cfg.physics.rho_l * original_psi
+            + context.cfg.physics.rho_g * (1.0 - original_psi)
+        )
+    coords = context.snap.get("grid_coords")
+    if coords is None:
+        coords = [
+            np.linspace(0.0, grid.LX, grid.NX + 1),
+            np.linspace(0.0, grid.LY, grid.NY + 1),
+        ]
+    hodge_native = phase_hodge_pressure_representative(
+        psi=original_psi,
+        rho=original_rho,
+        pressure=original_pressure,
+        pressure_accel_faces=[
+            np.asarray(component)
+            for component in context.snap["pressure_accel_faces"]
+        ],
+        coords=[np.asarray(coord) for coord in coords],
+        phase_threshold=float(spec.get("phase_threshold", 0.5)),
+    )
+    return remap_snapshot_field(context, hodge_native)
+
+
+def snapshot_series_field_array(
+    field: str,
+    snap: dict,
+    cfg: "ExperimentConfig",
+    spec: dict,
+) -> np.ndarray:
+    """Return the scalar array whose color axis is shared for a snapshot."""
+    context = build_snapshot_plot_context({"t_idx": 0}, {"snapshots": [snap]}, cfg)
+    if field == "velocity":
+        u = remap_snapshot_field(context, context.snap["u"])
+        v = remap_snapshot_field(context, context.snap["v"])
+        return np.sqrt(u ** 2 + v ** 2)
+    if field == "psi":
+        return context.psi
+    if field == "pressure":
+        return remap_snapshot_field(context, context.snap["p"])
+    if field == "pressure_hodge":
+        return pressure_hodge_field(context, spec)
+    if field == "density":
+        rho = context.snap.get("rho")
+        if rho is not None:
+            return remap_snapshot_field(context, rho)
+        return cfg.physics.rho_l * context.psi + cfg.physics.rho_g * (1.0 - context.psi)
+    raise ValueError(f"snapshot_series: unknown field '{field}'")
+
+
+def build_snapshot_series_shared_spec(
+    field: str,
+    spec: dict,
+    snaps: list[dict],
+    cfg: "ExperimentConfig",
+) -> dict:
+    """Build fixed color/quiver limits shared by all snapshots in a series."""
+    if not bool(spec.get("shared_scale", True)):
+        return {}
+
+    arrays = [snapshot_series_field_array(field, snap, cfg, spec) for snap in snaps]
+    shared: dict = {}
+
+    if field == "velocity":
+        if "speed_vmax" not in spec:
+            _, speed_max = finite_min_max(arrays)
+            shared["speed_vmax"] = max(speed_max, 1.0e-14)
+        normalize = bool(spec.get("normalize_arrows", True))
+        if not normalize and "quiver_scale" not in spec:
+            arrow_fraction = float(spec.get("quiver_length_fraction", 0.04))
+            speed_vmax = float(shared.get("speed_vmax", spec.get("speed_vmax", 1.0)))
+            shared["quiver_scale"] = max(speed_vmax / max(arrow_fraction, 1.0e-6), 1.0e-14)
+        return shared
+
+    if field in {"pressure", "pressure_hodge"}:
+        if "vmin" not in spec or "vmax" not in spec:
+            vmin, vmax = finite_min_max(arrays)
+            if bool(spec.get("symmetric_scale", True)):
+                bound = max(abs(vmin), abs(vmax), 1.0e-14)
+                shared.setdefault("vmin", -bound)
+                shared.setdefault("vmax", bound)
+            else:
+                shared.setdefault("vmin", vmin)
+                shared.setdefault("vmax", vmax)
+        return shared
+
+    if field == "psi":
+        shared.setdefault("vmin", spec.get("vmin", 0.0))
+        shared.setdefault("vmax", spec.get("vmax", 1.0))
+        return shared
+
+    if "vmin" not in spec or "vmax" not in spec:
+        vmin, vmax = finite_min_max(arrays)
+        shared.setdefault("vmin", vmin)
+        shared.setdefault("vmax", vmax)
+    return shared
+
+
 def snapshot(spec: dict, results: dict, cfg: "ExperimentConfig") -> plt.Figure:
     """Render a scalar ``ψ`` snapshot."""
     context = build_snapshot_plot_context(spec, results, cfg)
@@ -268,37 +395,7 @@ def pressure_hodge_snapshot(
     """Render a phase-wise Hodge pressure representative from face cochains."""
     context = build_snapshot_plot_context(spec, results, cfg)
     grid = cfg.grid
-    if "pressure_accel_faces" not in context.snap:
-        raise ValueError(
-            "pressure_hodge requires pressure_accel_faces in saved snapshots; "
-            "regenerate data with the current affine pressure-jump runner."
-        )
-    original_psi = np.asarray(context.snap["psi"])
-    original_pressure = np.asarray(context.snap["p"])
-    original_rho = np.asarray(context.snap.get("rho"))
-    if original_rho.shape != original_pressure.shape:
-        original_rho = (
-            cfg.physics.rho_l * original_psi
-            + cfg.physics.rho_g * (1.0 - original_psi)
-        )
-    coords = context.snap.get("grid_coords")
-    if coords is None:
-        coords = [
-            np.linspace(0.0, grid.LX, grid.NX + 1),
-            np.linspace(0.0, grid.LY, grid.NY + 1),
-        ]
-    hodge_native = phase_hodge_pressure_representative(
-        psi=original_psi,
-        rho=original_rho,
-        pressure=original_pressure,
-        pressure_accel_faces=[
-            np.asarray(component)
-            for component in context.snap["pressure_accel_faces"]
-        ],
-        coords=[np.asarray(coord) for coord in coords],
-        phase_threshold=float(spec.get("phase_threshold", 0.5)),
-    )
-    hodge_pressure = remap_snapshot_field(context, hodge_native)
+    hodge_pressure = pressure_hodge_field(context, spec)
     title = spec.get("title", f"Hodge pressure at t = {context.t_val:.3f}")
     cmap = spec.get("cmap", "RdBu_r")
 
@@ -366,13 +463,29 @@ def density_snapshot(
 
 def build_snapshot_series_renderers() -> dict[str, Callable]:
     """Return the renderer registry for ``snapshot_series`` figures."""
+    def render_snapshot(
+        renderer: Callable[[dict, dict, "ExperimentConfig"], plt.Figure],
+        snap: dict,
+        cfg: "ExperimentConfig",
+        spec: dict | None = None,
+    ) -> plt.Figure:
+        local_spec = dict(spec or {})
+        local_spec["t_idx"] = 0
+        return renderer(local_spec, {"snapshots": [snap]}, cfg)
+
     return {
-        "density": lambda snap, cfg: density_snapshot({"t_idx": 0}, {"snapshots": [snap]}, cfg),
-        "velocity": lambda snap, cfg: velocity_snapshot({"t_idx": 0}, {"snapshots": [snap]}, cfg),
-        "psi": lambda snap, cfg: snapshot({"t_idx": 0}, {"snapshots": [snap]}, cfg),
-        "pressure": lambda snap, cfg: pressure_snapshot({"t_idx": 0}, {"snapshots": [snap]}, cfg),
-        "pressure_hodge": lambda snap, cfg: pressure_hodge_snapshot(
-            {"t_idx": 0}, {"snapshots": [snap]}, cfg
+        "density": lambda snap, cfg, spec=None: render_snapshot(
+            density_snapshot, snap, cfg, spec
+        ),
+        "velocity": lambda snap, cfg, spec=None: render_snapshot(
+            velocity_snapshot, snap, cfg, spec
+        ),
+        "psi": lambda snap, cfg, spec=None: render_snapshot(snapshot, snap, cfg, spec),
+        "pressure": lambda snap, cfg, spec=None: render_snapshot(
+            pressure_snapshot, snap, cfg, spec
+        ),
+        "pressure_hodge": lambda snap, cfg, spec=None: render_snapshot(
+            pressure_hodge_snapshot, snap, cfg, spec
         ),
     }
 
@@ -396,9 +509,11 @@ def snapshot_series(
         raise ValueError(
             f"snapshot_series: unknown field '{field}'. Choose from {list(renderers)}"
         )
+    shared_spec = build_snapshot_series_shared_spec(field, spec, snaps, cfg)
+    render_spec = {**spec, **shared_spec}
 
     for snap in snaps:
         t_val = snap["t"]
-        fig = renderer(snap, cfg)
+        fig = renderer(snap, cfg, render_spec)
         fig.savefig(outdir / f"{prefix}{t_val:.3f}.pdf", bbox_inches="tight")
         plt.close(fig)
