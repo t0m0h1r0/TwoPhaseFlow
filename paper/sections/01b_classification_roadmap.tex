@@ -88,7 +88,7 @@ GFM と Extension PDE の面ジェット統合（HFE，§~\ref{sec:field_extensi
         高密度比向けの主たる設計戦略として向き付き pressure-jump 分相 PPE を採用し，
         各相内で欠陥補正法（DC $k=3$）を適用して高次の圧力補正を得る．
         速度補正・浮力残差・界面移流は同じ face-space contract
-        $D_fA_fG_f$ と projection-native な正準面速度で閉じ，
+        $D_fG_A$ と projection-native な正準面速度で閉じ，
         affine jump の履歴圧力も面加速度として持ち越す．
         一括 CSF + Balanced--Force 縮約経路（§~\ref{sec:balanced_force}）では
         表面張力と圧力勾配に同一の面中心演算子族を使用し，
@@ -96,7 +96,7 @@ GFM と Extension PDE の面ジェット統合（HFE，§~\ref{sec:field_extensi
         高次の離散化整合性を確保する
         （付録~\ref{sec:ppe_discretization_choice}；
         CSF/BF 縮約経路の静止液滴・寄生流れは V3/V5/V8 で，
-        range-projected pressure-jump stack は V6/V7/V9 で，
+        surface-energy/component-saddle pressure-jump stack は V6/V7/V9 で，
         一様格子・NS 非連成 CLS 強変形移流は V10-a/b で確認し，
         非一様 moving-interface CLS と長時間・完全連成 NS 移動界面の収束性は
         §~\ref{sec:future_work} の今後の検証ゲートに残し，
