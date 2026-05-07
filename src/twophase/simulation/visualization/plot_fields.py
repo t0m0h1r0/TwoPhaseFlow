@@ -12,6 +12,7 @@ from __future__ import annotations
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
+from matplotlib.colors import Normalize
 from matplotlib.image import AxesImage
 from typing import Optional, Sequence
 
@@ -181,6 +182,8 @@ def draw_clean_velocity_arrows(
     cmap: str = DEFAULT_VECTOR_CMAP,
     color: Optional[str] = DEFAULT_VECTOR_COLOR,
     outline_color: Optional[str] = DEFAULT_VECTOR_OUTLINE_COLOR,
+    color_vmin: Optional[float] = None,
+    color_vmax: Optional[float] = None,
     alpha: float = 0.85,
     outline_alpha: float = 0.75,
     scale: float = DEFAULT_QUIVER_SCALE,
@@ -256,6 +259,14 @@ def draw_clean_velocity_arrows(
             zorder=3.1,
             **common_kwargs,
         )
+    norm = None
+    if color_vmin is not None or color_vmax is not None:
+        finite = speed[np.isfinite(speed)]
+        fallback_vmax = float(np.max(finite)) if finite.size else 1.0
+        norm = Normalize(
+            vmin=0.0 if color_vmin is None else float(color_vmin),
+            vmax=fallback_vmax if color_vmax is None else float(color_vmax),
+        )
     return ax.quiver(
         Xs,
         Ys,
@@ -263,6 +274,7 @@ def draw_clean_velocity_arrows(
         vq,
         speed,
         cmap=cmap,
+        norm=norm,
         alpha=alpha,
         scale=scale_arg,
         width=width,

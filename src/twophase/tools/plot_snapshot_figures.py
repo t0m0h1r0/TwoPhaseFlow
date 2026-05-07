@@ -369,7 +369,7 @@ def velocity_snapshot(
     results: dict,
     cfg: "ExperimentConfig",
 ) -> plt.Figure:
-    """Render speed color map with quiver arrows."""
+    """Render a velocity snapshot with optional scalar field and quiver arrows."""
     context = build_snapshot_plot_context(spec, results, cfg)
     grid = cfg.grid
     u = remap_snapshot_field(context, context.snap["u"])
@@ -377,9 +377,12 @@ def velocity_snapshot(
     speed = np.sqrt(u ** 2 + v ** 2)
     color_field, color_label = velocity_color_field(context, u, v, spec)
     title = spec.get("title", f"Velocity at t = {context.t_val:.3f}")
+    show_field = bool(spec.get("show_field", True))
     cmap = spec.get("cmap", DEFAULT_SPEED_CMAP)
     vector_cmap = spec.get("vector_cmap", DEFAULT_VECTOR_CMAP)
-    arrow_color = spec.get("arrow_color", DEFAULT_VECTOR_COLOR)
+    arrow_color = spec.get(
+        "arrow_color", DEFAULT_VECTOR_COLOR if show_field else None
+    )
     arrow_outline_color = spec.get("arrow_outline_color", DEFAULT_VECTOR_OUTLINE_COLOR)
     stride = int(spec.get("quiver_stride", 4))
     color_quantity = str(spec.get("color_quantity", "speed"))
@@ -408,32 +411,33 @@ def velocity_snapshot(
         min_display_speed = float(spec["quiver_min_speed_fraction"]) * float(speed_vmax)
 
     fig, ax = plt.subplots(figsize=(4, 4 * grid.LY / grid.LX))
-    ax.set_facecolor(spec.get("background_color", "#d9d9d9"))
-    im = ax.pcolormesh(
-        context.X,
-        context.Y,
-        color_field.T,
-        cmap=cmap,
-        vmin=float(vmin),
-        vmax=float(vmax),
-        shading=spec.get("shading", "nearest"),
-        alpha=float(spec.get("field_alpha", 1.0)),
-    )
-    if spec.get("colorbar", True):
-        cb = fig.colorbar(
-            im,
-            ax=ax,
-            label=spec.get("colorbar_label", color_label),
-            fraction=0.046,
-            pad=0.04,
+    ax.set_facecolor(spec.get("background_color", "#eeeeee"))
+    if show_field:
+        im = ax.pcolormesh(
+            context.X,
+            context.Y,
+            color_field.T,
+            cmap=cmap,
+            vmin=float(vmin),
+            vmax=float(vmax),
+            shading=spec.get("shading", "nearest"),
+            alpha=float(spec.get("field_alpha", 1.0)),
         )
-        cb.ax.tick_params(labelsize=8)
+        if spec.get("colorbar", True):
+            cb = fig.colorbar(
+                im,
+                ax=ax,
+                label=spec.get("colorbar_label", color_label),
+                fraction=0.046,
+                pad=0.04,
+            )
+            cb.ax.tick_params(labelsize=8)
     if spec.get("contour", True):
         ax.contour(
             context.X, context.Y, context.psi.T, levels=[0.5], colors="k", linewidths=0.8
         )
     Xq, Yq = np.meshgrid(context.X, context.Y, indexing="ij")
-    draw_clean_velocity_arrows(
+    quiver = draw_clean_velocity_arrows(
         ax,
         Xq,
         Yq,
@@ -444,6 +448,8 @@ def velocity_snapshot(
         cmap=vector_cmap,
         color=arrow_color,
         outline_color=arrow_outline_color,
+        color_vmin=0.0,
+        color_vmax=float(speed_vmax),
         alpha=float(spec.get("arrow_alpha", 0.9)),
         outline_alpha=float(spec.get("arrow_outline_alpha", 0.75)),
         scale=float(spec.get("quiver_scale", 30.0)),
@@ -455,6 +461,15 @@ def velocity_snapshot(
             None if min_display_speed is None else float(min_display_speed)
         ),
     )
+    if not show_field and spec.get("colorbar", True):
+        cb = fig.colorbar(
+            quiver,
+            ax=ax,
+            label=spec.get("colorbar_label", "|u|"),
+            fraction=0.046,
+            pad=0.04,
+        )
+        cb.ax.tick_params(labelsize=8)
     ax.set_aspect("equal")
     ax.set_xlabel(spec.get("xlabel", "x"))
     ax.set_ylabel(spec.get("ylabel", "y"))
