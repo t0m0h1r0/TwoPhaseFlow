@@ -90,6 +90,7 @@ class RunCfg:
     reinit_method: str | None = None
     dgr_phi_smooth_C: float = 0.0
     ridge_sigma_0: float = 3.0
+    reinit_volume_constraint: str = "diffuse_mass"
     advection_scheme: str = "fccd_flux"
     convection_scheme: str = "uccd6"
     ppe_solver: str = "fccd_iterative"
@@ -98,6 +99,8 @@ class RunCfg:
     ppe_coefficient_scheme: str = "phase_separated"
     ppe_interface_coupling_scheme: str = "affine_jump"
     capillary_range_projection: str = "auto"
+    capillary_reaction_projection: str = "none"
+    capillary_force_source: str = "curvature_jump"
     surface_tension_scheme: str = "pressure_jump"
     curvature_method: str = "psi_direct_filtered"
     convection_time_scheme: str = "imex_bdf2"

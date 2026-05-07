@@ -67,7 +67,8 @@ class Reinitializer(IReinitializer):
                  method: str = 'split',
                  phi_smooth_C: float = 0.0,
                  eps_scale: float = 1.0,
-                 sigma_0: float = 3.0):
+                 sigma_0: float = 3.0,
+                 volume_constraint: str = "diffuse_mass"):
         self.xp = backend.xp
         self.grid = grid
         self.eps = eps
@@ -76,6 +77,14 @@ class Reinitializer(IReinitializer):
         if unified_dccd and method == 'split':
             method = 'unified'
         self._method = method
+        normalized_volume_constraint = str(volume_constraint).strip().lower().replace("-", "_")
+        if method != "ridge_eikonal" and normalized_volume_constraint not in {
+            "diffuse", "diffuse_mass", "psi_mass",
+        }:
+            raise ValueError(
+                "interface.reinitialization.profile.volume_constraint is "
+                "only implemented for method='ridge_eikonal'"
+            )
 
         # Build the appropriate strategy
         common = dict(
@@ -134,6 +143,7 @@ class Reinitializer(IReinitializer):
                 sigma_0=sigma_0,
                 eps_scale=eps_scale,
                 mass_correction=mass_correction,
+                volume_constraint=volume_constraint,
             )
         else:
             raise ValueError(f"Unknown reinit method: {method!r}")
@@ -141,6 +151,11 @@ class Reinitializer(IReinitializer):
     def reinitialize(self, psi):
         """Delegate to the selected strategy."""
         return self._strategy.reinitialize(psi)
+
+    @property
+    def preserves_sharp_volume(self) -> bool:
+        """Whether the active strategy enforces sharp phase volume."""
+        return bool(getattr(self._strategy, "preserves_sharp_volume", False))
 
     def volume_monitor(self, psi) -> float:
         """M(τ) = ∫ ψ(1−ψ) dV — decreases during reinitialization."""

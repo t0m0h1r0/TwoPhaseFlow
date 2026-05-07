@@ -5,6 +5,8 @@ from __future__ import annotations
 from .config_constants import (
     _ADVECTION_SCHEME_ALIASES,
     _ADVECTION_SCHEMES,
+    _CAPILLARY_FORCE_SOURCE_ALIASES,
+    _CAPILLARY_FORCE_SOURCES,
     _CONVECTION_SCHEME_ALIASES,
     _CONVECTION_SCHEMES,
     _CONVECTION_TIME_SCHEMES,
@@ -133,6 +135,14 @@ def parse_run_operator_settings(
         _SURFACE_TENSION_SCHEMES,
         layout["paths"]["surface_tension_model"],
     )
+    capillary_force_source = validate_choice(
+        _CAPILLARY_FORCE_SOURCE_ALIASES.get(
+            str(surface_tension.get("source", "curvature_jump")).strip().lower(),
+            surface_tension.get("source", "curvature_jump"),
+        ),
+        _CAPILLARY_FORCE_SOURCES,
+        layout["paths"]["surface_tension_source"],
+    )
     momentum_gradient_scheme = pressure_gradient_scheme
     if surface_tension_scheme == "pressure_jump":
         validate_pressure_jump_ppe_compatibility(
@@ -198,6 +208,30 @@ def parse_run_operator_settings(
             "'face_implicit' until the P2 ALE pressure-jump range projection "
             "is implemented and verified."
         )
+    if capillary_force_source == "closed_interface_riesz":
+        if surface_tension_scheme != "pressure_jump":
+            raise ValueError(
+                f"{layout['paths']['surface_tension_source']}='closed_interface_riesz' "
+                "requires capillary_force.formulation='pressure_jump'."
+            )
+        if "curvature" in surface_tension:
+            raise ValueError(
+                f"{layout['paths']['surface_tension_source']}='closed_interface_riesz' "
+                "must not be combined with capillary_force.curvature."
+            )
+        if "capillary_range_projection" in projection["poisson"].get("operator", {}):
+            raise ValueError(
+                f"{layout['paths']['surface_tension_source']}='closed_interface_riesz' "
+                "uses poisson.operator.capillary_reaction_projection, not "
+                "capillary_range_projection."
+            )
+        if poisson_settings["capillary_reaction_projection"] != "pressure_component_hodge":
+            raise ValueError(
+                f"{layout['paths']['surface_tension_source']}='closed_interface_riesz' "
+                "requires poisson.operator.capillary_reaction_projection="
+                "'pressure_component_hodge'."
+            )
+        poisson_settings["capillary_range_projection"] = "none"
     uccd6_sigma = float(convection.get("uccd6_sigma", 1.0e-3))
     if uccd6_sigma <= 0.0:
         raise ValueError(
@@ -329,7 +363,9 @@ def parse_run_operator_settings(
         "ppe_dc_relaxation": poisson_settings["ppe_dc_relaxation"],
         "pressure_gradient_scheme": pressure_gradient_scheme,
         "surface_tension_scheme": surface_tension_scheme,
+        "capillary_force_source": capillary_force_source,
         "curvature_method": curvature_method,
+        "capillary_reaction_projection": poisson_settings["capillary_reaction_projection"],
         "surface_tension_gradient_scheme": surface_tension_gradient_scheme,
         "momentum_gradient_scheme": momentum_gradient_scheme,
         "uccd6_sigma": uccd6_sigma,

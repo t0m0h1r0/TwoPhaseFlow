@@ -53,7 +53,27 @@ _POISSON_INTERFACE_COUPLING_ALIASES = {
     "legacy_jump": "jump_decomposition",
     "legacy_jump_decomposition": "jump_decomposition",
 }
-_CAPILLARY_RANGE_PROJECTION_MODES = ("auto", "none", "range_projected")
+_CAPILLARY_RANGE_PROJECTION_MODES = (
+    "auto",
+    "none",
+    "range_projected",
+    "component_hodge_augmented",
+)
+_CAPILLARY_FORCE_SOURCES = ("curvature_jump", "closed_interface_riesz")
+_CAPILLARY_FORCE_SOURCE_ALIASES = {
+    "curvature": "curvature_jump",
+    "scalar_jump": "curvature_jump",
+    "closed_interface": "closed_interface_riesz",
+    "trace_riesz": "closed_interface_riesz",
+}
+_CAPILLARY_REACTION_PROJECTION_MODES = (
+    "none",
+    "pressure_component_hodge",
+)
+_CAPILLARY_REACTION_PROJECTION_ALIASES = {
+    "component_hodge": "pressure_component_hodge",
+    "component": "pressure_component_hodge",
+}
 _CAPILLARY_RANGE_PROJECTION_ALIASES = {
     "default": "auto",
     "off": "none",
@@ -62,6 +82,9 @@ _CAPILLARY_RANGE_PROJECTION_ALIASES = {
     "on": "range_projected",
     "true": "range_projected",
     "range": "range_projected",
+    "component": "component_hodge_augmented",
+    "component_augmented": "component_hodge_augmented",
+    "augmented": "component_hodge_augmented",
 }
 _SURFACE_TENSION_SCHEMES = ("csf", "pressure_jump", "none")
 _SURFACE_TENSION_ALIASES = {

@@ -80,6 +80,7 @@ def parse_numerics_layout(numerics: dict) -> dict:
                 "viscosity_time": "numerics.momentum.terms.viscosity.time_integrator",
                 "pressure_spatial": "numerics.momentum.terms.pressure.gradient",
                 "surface_tension_model": "numerics.momentum.terms.surface_tension.formulation",
+                "surface_tension_source": "numerics.momentum.terms.surface_tension.source",
                 "surface_tension_curvature": "interface.geometry.curvature.method",
                 "surface_tension_spatial": "numerics.momentum.terms.surface_tension.gradient",
                 "projection_mode": "numerics.projection.mode",
@@ -87,6 +88,7 @@ def parse_numerics_layout(numerics: dict) -> dict:
                 "poisson_coefficient": "numerics.projection.poisson.operator.coefficient",
                 "poisson_interface_coupling": "numerics.projection.poisson.operator.interface_coupling",
                 "poisson_capillary_range_projection": "numerics.projection.poisson.operator.capillary_range_projection",
+                "poisson_capillary_reaction_projection": "numerics.projection.poisson.operator.capillary_reaction_projection",
                 "poisson_solver": "numerics.projection.poisson.solver",
             },
         }
@@ -121,6 +123,7 @@ def parse_numerics_layout(numerics: dict) -> dict:
             "viscosity_time": "numerics.physical_time.momentum.viscosity.time",
             "pressure_spatial": "numerics.elliptic.pressure_projection.pressure.gradient",
             "surface_tension_model": "numerics.physical_time.momentum.capillary_force.formulation",
+            "surface_tension_source": "numerics.physical_time.momentum.capillary_force.source",
             "surface_tension_curvature": "numerics.physical_time.momentum.capillary_force.curvature",
             "surface_tension_spatial": "numerics.physical_time.momentum.capillary_force.force_gradient",
             "projection_mode": "numerics.elliptic.pressure_projection.mode",
@@ -128,6 +131,7 @@ def parse_numerics_layout(numerics: dict) -> dict:
             "poisson_coefficient": "numerics.elliptic.pressure_projection.poisson.coefficient",
             "poisson_interface_coupling": "numerics.elliptic.pressure_projection.poisson.interface_coupling",
             "poisson_capillary_range_projection": "numerics.elliptic.pressure_projection.poisson.capillary_range_projection",
+            "poisson_capillary_reaction_projection": "numerics.elliptic.pressure_projection.poisson.capillary_reaction_projection",
             "poisson_solver": "numerics.elliptic.pressure_projection.poisson.solver",
         },
     }

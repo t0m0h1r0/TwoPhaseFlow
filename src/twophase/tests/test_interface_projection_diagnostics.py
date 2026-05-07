@@ -11,6 +11,7 @@ from twophase.core.grid import Grid
 from twophase.coupling.interface_stress_closure import InterfaceStressContext
 from twophase.levelset.transport_strategy import PsiDirectTransport
 from twophase.simulation.interface_projection_diagnostics import (
+    capillary_component_hodge_augmented_projection,
     capillary_jump_range_projection,
     capillary_face_cochain_diagnostics,
     reinit_projection_diagnostics,
@@ -192,6 +193,56 @@ def test_capillary_jump_range_projection_restores_solver_and_removes_range_part(
     assert diag["capillary_range_projection_solved"] == pytest.approx(1.0)
 
 
+def test_component_hodge_augmented_projection_removes_unit_reaction_component():
+    xp = np
+    rho = xp.ones(2)
+    jump = xp.asarray([2.0, 4.0])
+    context = InterfaceStressContext(
+        psi=xp.asarray([1.0, 0.0]),
+        pressure_jump_gas_minus_liquid=jump,
+        kappa_lg=xp.zeros(2),
+        sigma=1.0,
+    )
+
+    class ZeroRangeFaces:
+        def pressure_fluxes(self, pressure, rho, **kwargs):
+            flux_context = kwargs["interface_stress_context"]
+            if flux_context.pressure_jump_gas_minus_liquid is None:
+                return [xp.zeros_like(rho)]
+            return [-xp.asarray(flux_context.pressure_jump_gas_minus_liquid)]
+
+        def divergence_from_faces(self, face_components):
+            return xp.zeros_like(face_components[0])
+
+    class ZeroRangeSolver:
+        def set_interface_jump_context(self, **kwargs):
+            self.sigma = kwargs["sigma"]
+
+        def solve(self, rhs, rho, dt=0.0, p_init=None):
+            return xp.zeros_like(rho)
+
+    projection = capillary_component_hodge_augmented_projection(
+        xp=xp,
+        div_op=ZeroRangeFaces(),
+        ppe_solver=ZeroRangeSolver(),
+        rho=rho,
+        pressure_flux_kwargs={"interface_stress_context": context},
+    )
+
+    np.testing.assert_allclose(
+        projection["component_hodge_coefficients"],
+        3.0,
+    )
+    np.testing.assert_allclose(
+        projection["corrected_jump_components"][0],
+        xp.asarray([-1.0, 1.0]),
+    )
+    np.testing.assert_allclose(
+        projection["hodge_residual_components"][0],
+        xp.asarray([-1.0, 1.0]),
+    )
+
+
 def test_psi_direct_transport_records_reinit_projection_pair():
     backend = Backend(use_gpu=False)
     xp = backend.xp
@@ -230,3 +281,9 @@ def test_psi_direct_transport_records_reinit_projection_pair():
     assert projection["triggered"] is True
     np.testing.assert_allclose(projection["psi_before"], psi)
     np.testing.assert_allclose(projection["psi_after"], result)
+    np.testing.assert_allclose(projection["psi_before_transport"], psi)
+    np.testing.assert_allclose(
+        projection["psi_after_transport_before_reinit"],
+        psi,
+    )
+    np.testing.assert_allclose(projection["psi_after_reinit"], result)

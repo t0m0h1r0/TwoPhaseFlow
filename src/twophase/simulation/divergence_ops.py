@@ -439,6 +439,7 @@ class FCCDDivergenceOperator(IDivergenceOperator):
             self._fccd._precompute_weights(axis)
             for axis in range(self._fccd.ndim)
         ]
+        self._twophase_dense_divergence_matrix_cache = None
         self._node_width = None
         self._face_spacing = None
 

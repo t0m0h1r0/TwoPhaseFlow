@@ -92,6 +92,9 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             dgr_phi_smooth_C=float(getattr(run, "dgr_phi_smooth_C", 0.0)),
             reinit_eps_scale=float(getattr(run, "reinit_eps_scale", 1.0)),
             ridge_sigma_0=float(getattr(run, "ridge_sigma_0", 3.0)),
+            reinit_volume_constraint=str(
+                getattr(run, "reinit_volume_constraint", "diffuse_mass")
+            ),
         ),
         ppe=SolverPPEOptions(
             ppe_solver=str(getattr(run, "ppe_solver", "fccd_iterative")),
@@ -105,6 +108,9 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             ),
             capillary_range_projection=str(
                 getattr(run, "capillary_range_projection", "auto")
+            ),
+            capillary_reaction_projection=str(
+                getattr(run, "capillary_reaction_projection", "none")
             ),
             ppe_iteration_method=str(getattr(run, "ppe_iteration_method", "gmres")),
             ppe_tolerance=float(getattr(run, "ppe_tolerance", 1.0e-8)),
@@ -126,6 +132,9 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             advection_scheme=str(getattr(run, "advection_scheme", "fccd_flux")),
             convection_scheme=str(getattr(run, "convection_scheme", "uccd6")),
             surface_tension_scheme=str(getattr(run, "surface_tension_scheme", "pressure_jump")),
+            capillary_force_source=str(
+                getattr(run, "capillary_force_source", "curvature_jump")
+            ),
             curvature_method=str(getattr(run, "curvature_method", "psi_direct_filtered")),
             convection_time_scheme=str(getattr(run, "convection_time_scheme", "imex_bdf2")),
             viscous_spatial_scheme=str(getattr(run, "viscous_spatial_scheme", "ccd_bulk")),

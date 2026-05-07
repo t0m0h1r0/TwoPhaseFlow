@@ -59,6 +59,7 @@ class SolverInterfaceOptions:
     dgr_phi_smooth_C: float = 0.0
     reinit_eps_scale: float = 1.0
     ridge_sigma_0: float = 3.0
+    reinit_volume_constraint: str = "diffuse_mass"
 
 
 @dataclass(frozen=True)
@@ -71,6 +72,7 @@ class SolverPPEOptions:
     ppe_coefficient_scheme: str = "phase_separated"
     ppe_interface_coupling_scheme: str = "affine_jump"
     capillary_range_projection: str = "auto"
+    capillary_reaction_projection: str = "none"
     ppe_iteration_method: str = "gmres"
     ppe_tolerance: float = 1.0e-8
     ppe_max_iterations: int = 500
@@ -93,6 +95,7 @@ class SolverSchemeOptions:
     cn_viscous: bool = False
     Re: float = 1.0
     surface_tension_scheme: str = "pressure_jump"
+    capillary_force_source: str = "curvature_jump"
     curvature_method: str = "psi_direct_filtered"
     convection_time_scheme: str = "imex_bdf2"
     advection_scheme: str = "fccd_flux"

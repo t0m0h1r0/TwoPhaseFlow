@@ -148,6 +148,7 @@ class TwoPhaseNSSolver:
         dgr_phi_smooth_C: float = 0.0,
         reinit_eps_scale: float = 1.0,
         ridge_sigma_0: float = 3.0,
+        reinit_volume_constraint: str = "diffuse_mass",
         advection_scheme: str = "fccd_flux",
         convection_scheme: str = "uccd6",
         ppe_solver: str = "fccd_iterative",
@@ -156,6 +157,7 @@ class TwoPhaseNSSolver:
         ppe_coefficient_scheme: str = "phase_separated",
         ppe_interface_coupling_scheme: str = "affine_jump",
         capillary_range_projection: str = "auto",
+        capillary_reaction_projection: str = "none",
         ppe_iteration_method: str = "gmres",
         ppe_tolerance: float = 1.0e-8,
         ppe_max_iterations: int = 500,
@@ -168,6 +170,7 @@ class TwoPhaseNSSolver:
         ppe_dc_tolerance: float = 1.0e-8,
         ppe_dc_relaxation: float = 0.8,
         surface_tension_scheme: str = "pressure_jump",
+        capillary_force_source: str = "curvature_jump",
         curvature_method: str = "psi_direct_filtered",
         convection_time_scheme: str = "imex_bdf2",
         pressure_gradient_scheme: str | None = "fccd_flux",
@@ -248,6 +251,7 @@ class TwoPhaseNSSolver:
                 dgr_phi_smooth_C=dgr_phi_smooth_C,
                 reinit_eps_scale=reinit_eps_scale,
                 ridge_sigma_0=ridge_sigma_0,
+                reinit_volume_constraint=reinit_volume_constraint,
             ),
             ppe=SolverPPEOptions(
                 ppe_solver=ppe_solver,
@@ -256,6 +260,7 @@ class TwoPhaseNSSolver:
                 ppe_coefficient_scheme=ppe_coefficient_scheme,
                 ppe_interface_coupling_scheme=ppe_interface_coupling_scheme,
                 capillary_range_projection=capillary_range_projection,
+                capillary_reaction_projection=capillary_reaction_projection,
                 ppe_iteration_method=ppe_iteration_method,
                 ppe_tolerance=ppe_tolerance,
                 ppe_max_iterations=ppe_max_iterations,
@@ -274,6 +279,7 @@ class TwoPhaseNSSolver:
                 cn_viscous=cn_viscous,
                 Re=Re,
                 surface_tension_scheme=surface_tension_scheme,
+                capillary_force_source=capillary_force_source,
                 curvature_method=curvature_method,
                 convection_time_scheme=convection_time_scheme,
                 advection_scheme=advection_scheme,
@@ -404,6 +410,7 @@ class TwoPhaseNSSolver:
                 dgr_phi_smooth_C=interface_options.dgr_phi_smooth_C,
                 reinit_eps_scale=self._interface_runtime.reinit_eps_scale,
                 ridge_sigma_0=float(interface_options.ridge_sigma_0),
+                reinit_volume_constraint=interface_options.reinit_volume_constraint,
             ),
         )
 
@@ -773,8 +780,19 @@ class TwoPhaseNSSolver:
                 )
         advance_face = getattr(self._transport, "advance_with_face_velocity", None)
         step_diag_enabled = bool(getattr(getattr(self, "_step_diag", None), "enabled", False))
+        record_projection_fields = bool(
+            getattr(self, "_record_interface_projection_fields", False)
+        )
+        capillary_needs_transport_endpoint = (
+            getattr(self, "_capillary_force_source", "curvature_jump")
+            == "closed_interface_riesz"
+        )
         if hasattr(self._transport, "record_reinit_projection"):
-            self._transport.record_reinit_projection = step_diag_enabled
+            self._transport.record_reinit_projection = (
+                step_diag_enabled
+                or record_projection_fields
+                or capillary_needs_transport_endpoint
+            )
         if state.face_velocity_components is not None and callable(advance_face):
             state.psi = advance_face(
                 state.psi,
@@ -788,6 +806,13 @@ class TwoPhaseNSSolver:
             )
         state.interface_projection_diagnostics = zero_reinit_projection_diagnostics()
         reinit_projection = getattr(self._transport, "last_reinit_projection", None)
+        state.psi_transport_endpoint = state.psi
+        if reinit_projection and "psi_after_transport_before_reinit" in reinit_projection:
+            state.psi_transport_endpoint = reinit_projection[
+                "psi_after_transport_before_reinit"
+            ]
+        if record_projection_fields and reinit_projection:
+            state.interface_projection_fields = dict(reinit_projection)
         if (
             step_diag_enabled
             and reinit_projection
@@ -828,7 +853,16 @@ class TwoPhaseNSSolver:
                     xp.asarray(0.0, dtype=state.psi.dtype),
                     xp.asarray(1.0, dtype=state.psi.dtype),
                 )
+                if state.psi_transport_endpoint is not None:
+                    state.psi_transport_endpoint = xp.clip(
+                        xp.asarray(remapper.remap(state.psi_transport_endpoint)),
+                        xp.asarray(0.0, dtype=state.psi.dtype),
+                        xp.asarray(1.0, dtype=state.psi.dtype),
+                    )
+            else:
+                state.psi_transport_endpoint = state.psi
             self._projected_face_components = None
+            state.interface_projection_fields = None
         return state
 
     def _materialise_step_fields(
@@ -959,6 +993,7 @@ class TwoPhaseNSSolver:
             face_no_slip_boundary_state=self._face_no_slip_boundary_state,
             ppe_runtime=self._ppe_runtime,
             curvature_method=self._curvature_method,
+            capillary_force_source=self._capillary_force_source,
         )
         self._p_base_prev_dev = state.pressure_base
         self._p_prev_accel_face_components = state.pressure_accel_face_components
@@ -984,6 +1019,7 @@ class TwoPhaseNSSolver:
             bc_type=self.bc_type,
             apply_velocity_bc=_apply_bc,
             curvature_method=self._curvature_method,
+            capillary_force_source=self._capillary_force_source,
         )
 
     def _record_step_diagnostics(
@@ -1010,6 +1046,7 @@ class TwoPhaseNSSolver:
         """Advance one timestep from a grouped request object."""
         state = self._prepare_step_inputs(request)
         state = self._advance_interface_stage(state)
+        self._last_interface_projection_fields = state.interface_projection_fields
         state = self._materialise_step_fields(state)
         state = self._surface_tension_stage(state)
         state = self._predict_velocity_stage(state)

@@ -17,6 +17,7 @@ from twophase.backend import Backend
 from twophase.config import SimulationConfig, GridConfig
 from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
+from twophase.coupling.closed_interface_geometry import liquid_area_2d
 from twophase.levelset.heaviside import heaviside
 from twophase.levelset.wall_contact import (
     WallContactSet,
@@ -601,6 +602,36 @@ def test_volume_conservation_single_step(backend, alpha):
     V_out = float(np.sum(psi_out * dV))
     rel = abs(V_out - V_in) / max(abs(V_in), 1e-30)
     assert rel < 0.05, f"alpha={alpha}: volume drift {rel*100:.2f}% > 5%"
+
+
+def test_sharp_volume_constraint_preserves_p1_phase_area(backend):
+    """Sharp-volume mode enforces the P1 phase volume, not diffuse mass."""
+    grid, ccd = _mk_grid(n=32, L=1.0, alpha=2.0, backend=backend)
+    phi_exact = _phi_circle(grid, 0.5, 0.5, 0.25)
+    eps = 1.5 * float(np.min(grid.h[0]))
+    psi = 1.0 / (1.0 + np.exp(-phi_exact / eps))
+    reinit = RidgeEikonalReinitializer(
+        backend,
+        grid,
+        ccd,
+        eps=eps,
+        sigma_0=3.0,
+        eps_scale=1.4,
+        mass_correction=True,
+        volume_constraint="sharp_phase_volume",
+    )
+
+    area_in = float(liquid_area_2d(xp=backend.xp, grid=grid, psi=psi))
+    dV = grid.cell_volumes()
+    mass_in = float(backend.xp.sum(backend.xp.asarray(psi) * dV))
+    psi_out = reinit.reinitialize(psi)
+    area_out = float(liquid_area_2d(xp=backend.xp, grid=grid, psi=psi_out))
+    mass_out = float(backend.xp.sum(psi_out * dV))
+    rel = abs(area_out - area_in) / max(abs(area_in), 1e-30)
+    mass_rel = abs(mass_out - mass_in) / max(abs(mass_in), 1e-30)
+
+    assert rel < 5.0e-5
+    assert mass_rel < 1.0e-8
 
 
 # ── V6 — backward compatibility via builder (default='split') ──────────

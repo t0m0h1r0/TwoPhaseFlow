@@ -37,6 +37,7 @@ class NSReinitializerFactoryOptions:
     dgr_phi_smooth_C: float
     reinit_eps_scale: float
     ridge_sigma_0: float
+    reinit_volume_constraint: str
 
 
 def build_ns_reinitializer(
@@ -57,6 +58,7 @@ def build_ns_reinitializer(
         phi_smooth_C=options.dgr_phi_smooth_C,
         eps_scale=options.reinit_eps_scale,
         sigma_0=options.ridge_sigma_0,
+        volume_constraint=options.reinit_volume_constraint,
     )
 
 

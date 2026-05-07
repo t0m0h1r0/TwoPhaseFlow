@@ -98,6 +98,16 @@ class ActiveStepDiagnostics(IStepDiagnostics):
             "capillary_hodge_residual": 0.0,
             "capillary_hodge_divergence_linf": 0.0,
             "capillary_range_projection_solved": 0.0,
+            "capillary_face_weighted_l2": 0.0,
+            "capillary_jump_weighted_l2": 0.0,
+            "capillary_range_projection_weighted_l2": 0.0,
+            "capillary_hodge_weighted_l2": 0.0,
+            "capillary_corrected_jump_linf": 0.0,
+            "capillary_corrected_jump_weighted_l2": 0.0,
+            "capillary_component_hodge_linf": 0.0,
+            "capillary_component_hodge_weighted_l2": 0.0,
+            "capillary_component_hodge_coefficient_linf": 0.0,
+            "capillary_component_hodge_denominator": 0.0,
         }
 
     def record_kappa(self, kappa_max: float) -> None:

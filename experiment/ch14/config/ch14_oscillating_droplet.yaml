@@ -40,6 +40,7 @@ interface:
     profile:
       eps_scale: 1.4
       ridge_sigma_0: 3.0
+      volume_constraint: sharp_phase_volume
 
 physics:
   phases:
@@ -89,6 +90,7 @@ numerics:
             relaxation: 0.8
       surface_tension:
         formulation: pressure_jump
+        source: closed_interface_riesz
   projection:
     face_flux_projection: true
     canonical_face_state: true
@@ -98,7 +100,7 @@ numerics:
         discretization: fccd
         coefficient: phase_separated
         interface_coupling: affine_jump
-        capillary_range_projection: range_projected
+        capillary_reaction_projection: pressure_component_hodge
       solver:
         kind: defect_correction
         corrections:

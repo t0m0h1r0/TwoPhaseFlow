@@ -42,6 +42,7 @@ class NSPPERuntimeState:
     ppe_coefficient_scheme: str
     ppe_interface_coupling_scheme: str
     capillary_range_projection: str
+    capillary_reaction_projection: str
     ppe_tolerance: float
     ppe_max_iterations: int
     ppe_restart: int | None
@@ -69,6 +70,7 @@ class NSSchemeRuntimeState:
     momentum_gradient_scheme: str
     pressure_gradient_scheme: str
     surface_tension_gradient_scheme: str
+    capillary_force_source: str
     curvature_method: str
     advection_scheme: str
     convection_scheme: str
@@ -194,15 +196,23 @@ def normalise_ns_ppe_runtime(
     capillary_range_projection = str(
         getattr(options, "capillary_range_projection", "auto")
     ).strip().lower()
-    if capillary_range_projection not in {"auto", "none", "range_projected"}:
+    capillary_reaction_projection = str(
+        getattr(options, "capillary_reaction_projection", "none")
+    ).strip().lower()
+    if capillary_range_projection not in {
+        "auto",
+        "none",
+        "range_projected",
+        "component_hodge_augmented",
+    }:
         raise ValueError(
             "Unsupported capillary_range_projection="
             f"'{getattr(options, 'capillary_range_projection', None)}'. "
-            "Use auto|none|range_projected."
+            "Use auto|none|range_projected|component_hodge_augmented."
         )
     if capillary_range_projection == "auto":
         capillary_range_projection = (
-            "range_projected"
+            "component_hodge_augmented"
             if (
                 surface_tension_scheme == "pressure_jump"
                 and ppe_interface_coupling_scheme == "affine_jump"
@@ -217,6 +227,20 @@ def normalise_ns_ppe_runtime(
     ):
         raise ValueError(
             "capillary_range_projection requires "
+            "ppe_interface_coupling_scheme='affine_jump'."
+        )
+    if capillary_reaction_projection not in {"none", "pressure_component_hodge"}:
+        raise ValueError(
+            "Unsupported capillary_reaction_projection="
+            f"'{getattr(options, 'capillary_reaction_projection', None)}'. "
+            "Use none|pressure_component_hodge."
+        )
+    if (
+        capillary_reaction_projection != "none"
+        and ppe_interface_coupling_scheme != "affine_jump"
+    ):
+        raise ValueError(
+            "capillary_reaction_projection requires "
             "ppe_interface_coupling_scheme='affine_jump'."
         )
     validate_pressure_jump_ppe_compatibility(
@@ -241,6 +265,7 @@ def normalise_ns_ppe_runtime(
         ppe_coefficient_scheme=ppe_coefficient_scheme,
         ppe_interface_coupling_scheme=ppe_interface_coupling_scheme,
         capillary_range_projection=capillary_range_projection,
+        capillary_reaction_projection=capillary_reaction_projection,
         ppe_tolerance=float(options.ppe_tolerance),
         ppe_max_iterations=int(options.ppe_max_iterations),
         ppe_restart=options.ppe_restart,
@@ -286,6 +311,23 @@ def normalise_ns_scheme_runtime(options) -> NSSchemeRuntimeState:
         surface_tension_gradient_scheme=options.surface_tension_gradient_scheme,
         momentum_gradient_scheme=momentum_gradient_scheme,
     )
+    capillary_force_source = str(
+        getattr(options, "capillary_force_source", "curvature_jump")
+    ).strip().lower()
+    if capillary_force_source not in {"curvature_jump", "closed_interface_riesz"}:
+        raise ValueError(
+            "Unsupported capillary_force_source="
+            f"'{getattr(options, 'capillary_force_source', None)}'. "
+            "Use curvature_jump|closed_interface_riesz."
+        )
+    if (
+        capillary_force_source == "closed_interface_riesz"
+        and str(options.surface_tension_scheme).strip().lower() != "pressure_jump"
+    ):
+        raise ValueError(
+            "capillary_force_source='closed_interface_riesz' requires "
+            "surface_tension_scheme='pressure_jump'."
+        )
 
     return NSSchemeRuntimeState(
         convection_time_scheme=convection_time_scheme,
@@ -300,6 +342,7 @@ def normalise_ns_scheme_runtime(options) -> NSSchemeRuntimeState:
         momentum_gradient_scheme=momentum_gradient_scheme,
         pressure_gradient_scheme=pressure_gradient_scheme,
         surface_tension_gradient_scheme=surface_tension_gradient_scheme,
+        capillary_force_source=capillary_force_source,
         curvature_method=str(
             getattr(options, "curvature_method", "psi_direct_filtered")
         ).strip().lower(),

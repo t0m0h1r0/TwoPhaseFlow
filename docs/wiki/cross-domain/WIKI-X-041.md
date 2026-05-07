@@ -23,6 +23,8 @@ sources:
   - path: docs/wiki/theory/WIKI-T-161.md
     description: "Retired fixed-stratum variational reinit candidate; negative knowledge only"
   - path: docs/wiki/theory/WIKI-T-162.md
+    description: "Closed-interface capillary discretization policy after variational/Riesz rigor pass"
+  - path: docs/wiki/theory/WIKI-T-163.md
     description: "Survey of reinitialization-free/reinitialization-minimized LS/CLS candidate routes"
 depends_on:
   - "[[WIKI-X-037]]"
@@ -39,6 +41,7 @@ depends_on:
   - "[[WIKI-T-160]]"
   - "[[WIKI-T-161]]"
   - "[[WIKI-T-162]]"
+  - "[[WIKI-T-163]]"
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-157]]"
   - "[[WIKI-E-062]]"
@@ -74,8 +77,8 @@ algorithm policy.
 | Capillary jump | [[WIKI-X-039]], [[WIKI-X-040]] | Use oriented affine interface stress and face acceleration, not a regular pressure field. |
 | PPE residual | [[WIKI-T-152]], [[WIKI-E-059]] | Production projection accuracy is the high-order residual contract, not fixed DC iteration count. |
 | Pressure representative | [[WIKI-T-154]], [[WIKI-T-158]], [[WIKI-E-060]], [[WIKI-E-062]] | Raw interface-band pressure is diagnostic; read Hodge representatives and face cochains, never masked-band substitutes. |
-| Reinit-aware capillary Hodge | [[WIKI-T-159]], [[WIKI-T-160]], [[WIKI-T-155]], [[WIKI-T-157]], [[WIKI-T-161]], [[WIKI-T-162]] | Build capillary work from the labelled physical transport endpoint; use the production weighted Hodge residual for static/dynamic separation; read [[WIKI-T-160]] for discrete defect-ledger requirements, [[WIKI-T-162]] for reinit-free candidate routes, and [[WIKI-T-161]] only as the retired fixed-stratum candidate, not as a current implementation route. |
-| ALE/remap energy | [[WIKI-T-160]], [[WIKI-T-155]], [[WIKI-T-157]], [[WIKI-T-159]], [[WIKI-T-161]] | Variational curvature work needs shared pressure-work pairing, labelled transport/reinit endpoints, named reinit residuals/defects, and step-local energy accounting; [[WIKI-T-161]] is negative knowledge about an abandoned retraction surface. |
+| Reinit-aware capillary Hodge | [[WIKI-T-162]], [[WIKI-T-159]], [[WIKI-T-160]], [[WIKI-T-155]], [[WIKI-T-157]], [[WIKI-T-161]], [[WIKI-T-163]] | Build capillary work from the labelled physical transport endpoint; for implementation use [[WIKI-T-162]] first because it gives the trace geometry, Riesz pullback, component-reaction matrix, augmented weighted projection, and the current `component_hodge_augmented` one-component implementation slice; read [[WIKI-T-163]] for reinit-free/profile-control candidate routes and [[WIKI-T-161]] only as the retired fixed-stratum candidate, not as a current route. |
+| ALE/remap energy | [[WIKI-T-162]], [[WIKI-T-160]], [[WIKI-T-155]], [[WIKI-T-157]], [[WIKI-T-159]], [[WIKI-T-161]], [[WIKI-T-163]] | Variational curvature work needs shared pressure-work pairing, labelled transport/reinit endpoints, named reinit residuals/defects, and step-local energy accounting; [[WIKI-T-162]] is the current closed-interface discretization policy, [[WIKI-T-163]] is the current reinit-free survey, and [[WIKI-T-161]] is negative knowledge about an abandoned retraction surface. |
 | Paper/wiki split | [[WIKI-X-046]], [[WIKI-E-061]] | Put successful contracts in the paper; preserve failed controls and trial variants in the wiki. |
 | Negative shortcuts | [[WIKI-X-045]] | Damping/CFL/smoothing/caps/hyperviscosity are retained as rejected detours, not paper success claims. |
 | Verification reading | [[WIKI-E-040]], [[WIKI-X-040]] | V-series labels encode what was certified; stale FFT/CCD-LU/CN readings are historical only. |
@@ -129,6 +132,10 @@ They are retained with a bounded reading:
 - the fixed-stratum trace-preserving entropy-dual retraction in [[WIKI-T-161]]
   is retained as a failed candidate after ch14 N=32, T=10 abnormal-shape
   validation; do not implement its YAML surface from this card;
+- the current implementation route for closed-interface capillarity is
+  [[WIKI-T-162]]: first use `component_hodge_augmented`, then finish the
+  trace stratum, `s=-M_f^{-1}T^TdS`, component reaction columns
+  `B=M_f^{-1}T^TdV`, and weighted projection through `X=[A G B]`;
 - N64 static-grid, `fccdface`, `transportvar`, phase/density variants, and
   other non-DC probes remain useful controls only with their acceptance gates;
 - rejected shortcuts such as damping, smoothing, curvature caps, hyperviscosity,
