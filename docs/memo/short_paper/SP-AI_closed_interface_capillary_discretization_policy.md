@@ -1475,3 +1475,77 @@ The implementation acceptance sequence is:
 virtual work in the active face complex; no FD/WENO/PPE fallback, damping, CFL
 workaround, smoothing, curvature cap, benchmark branch, blanket projection, or
 QP-as-physics path is introduced.
+
+## 23. Risk Audit Before Implementation
+
+The conservative endpoint route is implementable, but it is not low risk.  The
+theorem itself is relatively clear; the danger is losing runtime identity
+between the theorem objects and the active scheme objects:
+
+```text
+psi_transport_endpoint,
+FCCD face interpolation P_f,
+FCCD divergence D_f,
+affine pressure_fluxes range G_A,
+face reaction metric M_f,
+density/coefficient time level,
+stored corrector face components.
+```
+
+`CHK-RA-CH14-CONS-ENDPOINT-RISK-001` makes the main risks explicit.
+
+The critical implementation blockers are:
+
+1. `closed_interface_riesz` still calls the trace cochain in the current
+   runtime branch;
+2. a dense diagnostic Hodge projector may not equal the active
+   `pressure_fluxes` range;
+3. the reaction metric may not match the coefficient-weighted pressure work
+   pairing;
+4. pre-reinit endpoint geometry may be combined with post-reinit material
+   coefficients;
+5. the corrector may recompute pressure faces and drop the capillary cochain;
+6. `pressure_fluxes` sign convention can flip capillary work;
+7. the GPU path can silently fall into host-loop `liquid_area_gradient_2d`;
+8. sampled analytic circles can be misread as exact static equilibria.
+
+The first code slice must therefore be gate-first:
+
+```text
+source seam:       no trace cochain in production closed_interface_riesz;
+range seam:        external cochains projected through G_A=pressure_fluxes;
+corrector seam:    the same corrected cochain reaches RHS and corrector;
+sign seam:         release from rest gives positive kinetic work;
+GPU seam:          vectorized area gradient, no hot-path array_to_numpy;
+endpoint seam:     material coefficients share the endpoint or fail closed.
+```
+
+The endpoint/material time-level risk deserves special handling.  Since the
+work theorem is for
+
+```text
+q^n -> q_T
+```
+
+using `q_T` for geometry while using material fields built from
+`q^{n+1}` after reinit/profile projection is not automatically valid.  The
+implementation must choose one of:
+
+```text
+materialize capillary coefficients from q_T,
+or fail closed unless q_T and q^{n+1} are equivalent within a strict endpoint
+ledger tolerance.
+```
+
+This cannot be hidden as a small numerical detail; it changes the discrete
+work pairing.
+
+The old trace-Riesz N32/T10 runs should also be treated carefully.  They prove
+that a non-range capillary drive can remove the zero-drive failure, but they do
+not validate the selected conservative endpoint.  After implementation, static
+and oscillating droplets must be rerun with endpoint-exact diagnostics.
+
+[SOLID-X] Risk refinement only.  The mitigation path is operator identity,
+endpoint ledgers, GPU-native kernels, and fail-close gates; no FD/WENO/PPE
+fallback, damping, CFL workaround, smoothing, curvature cap, benchmark branch,
+blanket projection, or QP-as-physics route is introduced.

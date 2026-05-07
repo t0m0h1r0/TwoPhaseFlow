@@ -15,6 +15,7 @@ sources:
   - path: artifacts/A/ch14_trace_vertex_impl_ux_CHK-RA-CH14-TRACE-IMPL-UX-001.md
   - path: artifacts/A/ch14_conservative_endpoint_theory_CHK-RA-CH14-CONS-ENDPOINT-THEORY-001.md
   - path: artifacts/A/ch14_conservative_endpoint_impl_ux_CHK-RA-CH14-CONS-ENDPOINT-IMPL-UX-001.md
+  - path: artifacts/A/ch14_conservative_endpoint_risk_audit_CHK-RA-CH14-CONS-ENDPOINT-RISK-001.md
   - path: docs/02_ACTIVE_LEDGER.md
 depends_on:
   - "[[WIKI-T-155]]"
@@ -1095,3 +1096,56 @@ Rayleigh scaling, benchmark branches, `capillary_range_projection`, boolean
 projection aliases, and trace endpoint fields under this production source.
 The alias `trace_riesz` should be retired or made explicitly experimental
 because it no longer names the production endpoint.
+
+## Conservative Endpoint Risk Audit
+
+`CHK-RA-CH14-CONS-ENDPOINT-RISK-001` identifies the remaining implementation
+risks before code changes.  The theorem is not the largest risk; object
+identity in the runtime is.  The following objects must refer to the same
+time-level and face complex:
+
+```text
+psi_transport_endpoint,
+FCCD P_f and D_f,
+affine pressure_fluxes range G_A,
+face reaction metric M_f,
+density/coefficient field,
+stored pressure/corrector face components.
+```
+
+The critical risks are:
+
+```text
+R1  runtime source still calls closed_interface_trace_riesz_cochain;
+R2  production Hodge projection uses dense diagnostic range instead of G_A;
+R3  M_f reaction metric disagrees with active pressure_fluxes coefficient;
+R4  psi_transport_endpoint is pre-reinit but rho/mu are post-reinit;
+R5  corrector recomputes pressure faces and drops capillary_jump_components;
+R6  pressure_fluxes sign convention flips capillary work;
+R9  GPU hot path uses host-loop liquid_area_gradient_2d;
+R17 sampled analytic circle is mistaken for a static oracle.
+```
+
+These are implementation blockers, not clean-up notes.  The first code slice
+must pass:
+
+```text
+source no longer calls trace cochain;
+external cochain projection uses pressure_fluxes zero-jump range;
+same corrected cochain reaches PPE RHS and pressure_fluxes;
+release-from-rest sign-power is positive;
+GPU path has vectorized area gradient, no host-loop geometry;
+endpoint/material/reinit mismatch is measured and fails closed.
+```
+
+The endpoint/material time-level is the sharpest unresolved design choice.
+Either materialize capillary projection coefficients from
+`psi_transport_endpoint`, or require the reinit/profile displacement to be
+below a strict tolerance so post-reinit material fields are equivalent for the
+capillary step.  Mixing pre-reinit geometry with post-reinit coefficients
+without a gate is not a theorem.
+
+The prior trace-Riesz N32/T10 results remain useful as zero-drive negative
+evidence, but they are not validation of the selected conservative endpoint.
+After implementation, static/oscillating droplets must be rerun and judged by
+endpoint-exact gates and reinit split fields.
