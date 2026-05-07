@@ -14,6 +14,28 @@ def _load_ns_simulation_runner():
     return importlib.import_module("experiment.runner.handlers.ns_simulation")
 
 
+def test_runtime_snapshots_skip_projection_fields_unless_requested():
+    runner = importlib.import_module("twophase.simulation.runner")
+    cfg = SimpleNamespace(
+        output=SimpleNamespace(
+            figures=[
+                {"type": "snapshot_series", "field": "psi"},
+                {"type": "snapshot_series", "field": "velocity"},
+                {"type": "timeseries", "field": "psi_after_reinit"},
+                "ignored",
+            ]
+        )
+    )
+
+    assert not runner._snapshot_needs_projection_fields(cfg)
+
+    cfg.output.figures.append(
+        {"type": "snapshot_series", "field": "psi_after_reinit"}
+    )
+
+    assert runner._snapshot_needs_projection_fields(cfg)
+
+
 def test_snapshot_fields_are_saved_as_npz_series():
     runner = _load_ns_simulation_runner()
     flat = {}

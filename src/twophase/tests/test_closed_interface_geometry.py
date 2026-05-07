@@ -14,6 +14,9 @@ from twophase.coupling.closed_interface_geometry import (
     trace_surface_length_2d,
     trace_surface_length_gradient_2d,
 )
+from twophase.coupling.transport_variational_capillary import (
+    marching_squares_liquid_area_2d,
+)
 from twophase.coupling.closed_interface_stratum import (
     build_closed_interface_stratum,
 )
@@ -92,6 +95,66 @@ def test_trace_length_and_area_match_axis_aligned_half_plane():
 
     np.testing.assert_allclose(float(length), 1.0)
     np.testing.assert_allclose(float(area), 0.6)
+
+
+def test_vectorized_liquid_area_matches_legacy_polygon_cases():
+    grid, backend = _grid(4)
+    xp = backend.xp
+    rng = np.random.default_rng(20260508)
+    x = np.asarray(grid.coords[0])
+    y = np.asarray(grid.coords[1])
+    X, Y = np.meshgrid(x, y, indexing="ij")
+    psi = X - 0.43 + 0.17 * np.sin(2.0 * np.pi * Y) + 0.03 * rng.standard_normal(X.shape)
+
+    legacy = liquid_area_2d(
+        xp=xp,
+        grid=grid,
+        psi=psi,
+        phase_threshold=0.0,
+    )
+    vectorized = marching_squares_liquid_area_2d(
+        xp=xp,
+        grid=grid,
+        psi=psi,
+        phase_threshold=0.0,
+    )
+
+    np.testing.assert_allclose(float(vectorized), float(legacy), rtol=0.0, atol=1.0e-14)
+
+
+def test_vectorized_liquid_area_matches_legacy_for_all_cell_cases():
+    grid, backend = _grid(1)
+    xp = backend.xp
+
+    for case_id in range(16):
+        psi = np.empty((2, 2), dtype=float)
+        corner_indices = ((0, 0), (1, 0), (1, 1), (0, 1))
+        for corner, index in enumerate(corner_indices):
+            if case_id & (1 << corner):
+                psi[index] = 0.7 + 0.03 * corner
+            else:
+                psi[index] = -0.4 - 0.05 * corner
+
+        legacy = liquid_area_2d(
+            xp=xp,
+            grid=grid,
+            psi=psi,
+            phase_threshold=0.0,
+        )
+        vectorized = marching_squares_liquid_area_2d(
+            xp=xp,
+            grid=grid,
+            psi=psi,
+            phase_threshold=0.0,
+        )
+
+        np.testing.assert_allclose(
+            float(vectorized),
+            float(legacy),
+            rtol=0.0,
+            atol=1.0e-14,
+            err_msg=f"case_id={case_id}",
+        )
 
 
 def test_trace_length_gradient_matches_fixed_stratum_difference():

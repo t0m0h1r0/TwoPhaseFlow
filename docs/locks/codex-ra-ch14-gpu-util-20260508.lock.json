@@ -1,0 +1,12 @@
+{
+  "branch": "codex/ra-ch14-gpu-util-20260508",
+  "branch_slug": "codex-ra-ch14-gpu-util-20260508",
+  "session_id": "78E1F60E-67BD-4DE2-9003-B5FDA57F74A0",
+  "worktree_path": ".claude/worktrees/codex-ra-ch14-gpu-util-20260508",
+  "holder_agent": "ResearchArchitect",
+  "id_prefix": "RA-CH14-GPU-UTIL",
+  "acquired_at": "2026-05-07T16:50:03Z",
+  "expires_at": "2026-05-08T16:50:03Z",
+  "meta_version": "8.0.0-candidate",
+  "scope": "ch14 oscillating droplet GPU utilization RCA and optimization"
+}

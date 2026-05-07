@@ -23,6 +23,7 @@ import numpy as np
 from .closed_interface_stratum import build_closed_interface_stratum
 from .closed_interface_stratum import array_to_numpy
 from .transport_variational_capillary import (
+    marching_squares_liquid_area_2d,
     marching_squares_liquid_area_gradient_2d,
     marching_squares_surface_energy_gradient_2d,
 )
@@ -95,6 +96,13 @@ def liquid_area_2d(
     """Return the sharp P1 area of the phase with ``psi >= threshold``."""
     if grid.ndim != 2:
         raise ValueError("liquid_area_2d currently supports 2D grids")
+    if hasattr(xp, "asnumpy"):
+        return marching_squares_liquid_area_2d(
+            xp=xp,
+            grid=grid,
+            psi=psi,
+            phase_threshold=float(phase_threshold),
+        )
     psi_host = array_to_numpy(xp, xp.asarray(psi))
     total = 0.0
     for i, j, values, points in _iter_cells(grid, psi_host):
