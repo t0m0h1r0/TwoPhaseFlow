@@ -1026,6 +1026,80 @@ convergence rather than finite-N shape oracle, nonconstant-mode drive, rigid
 translation neutrality, tangential/gauge neutrality, and pre-reinit/reinit
 work separation.
 
+## 17. Implementation And UX Contract
+
+The trace-vertex law should be implemented through new theorem-sized modules,
+not by overloading `curvature_method`:
+
+```text
+closed_interface_trace.py
+  exposes the fixed-stratum trace graph with globally keyed crossing vertices.
+
+closed_interface_trace_velocity.py
+  exposes C_K and its transpose; the first map is reconstructed_nodal_p1.
+
+closed_interface_trace_riesz.py
+  builds s_K=-M_f^{-1}C_K^Td_z(sigma S_h)^T and
+  B_K=M_f^{-1}C_K^Td_zV_h^T.
+
+weighted_augmented_hodge_projection
+  projects with X=[A_fG_f B_K] in the same M_f metric.
+```
+
+The runtime should use face cochains directly.  For
+`source: closed_interface_riesz`, it should build the trace cochain from the
+pre-reinit transport endpoint, project only the pressure/component reaction,
+add `D_f(corrected_capillary_components)` to the PPE RHS, and pass the same
+face cochain through:
+
+```text
+div_op.pressure_fluxes(..., capillary_jump_components=corrected_capillary_components)
+```
+
+This avoids inventing a scalar curvature jump and keeps the pressure history
+in the existing affine-jump face state.
+
+The public YAML should distinguish the legacy scalar route from the new
+virtual-work route:
+
+```yaml
+capillary_force:
+  formulation: pressure_jump
+  source: closed_interface_riesz
+  closed_interface:
+    trace_space: p1_marching_squares
+    topology: fail_closed
+    ambiguous_cells: fail
+    surface_energy: sharp_length
+    component_volume: oriented_area
+    trace_velocity:
+      map: reconstructed_nodal_p1
+      endpoint: before_reinit
+    diagnostics:
+      gates: strict
+poisson:
+  operator:
+    capillary_reaction_projection: pressure_component_hodge
+```
+
+Legacy configs keep:
+
+```yaml
+capillary_force:
+  formulation: pressure_jump
+  source: curvature_jump
+  curvature: face_implicit
+poisson:
+  operator:
+    capillary_range_projection: component_hodge_augmented
+```
+
+For `closed_interface_riesz`, the parser must reject `curvature`,
+`curvature_cap`, smoothing, damping, Rayleigh scaling, benchmark names,
+`capillary_range_projection`, and boolean projection aliases.  It must require
+`pressure_jump`, `phase_separated`, `affine_jump`, face-native state, strict
+diagnostic gates, and `capillary_reaction_projection: pressure_component_hodge`.
+
 [SOLID-X] Theory/design updated for the trace-vertex VJP implementation
 contract; no tested implementation deleted; no FD/WENO/PPE fallback, damping,
 CFL workaround, curvature cap, smoothing, blanket `c -> Pi_R c`, or QP-as-

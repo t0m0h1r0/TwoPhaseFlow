@@ -12,6 +12,7 @@ sources:
   - path: artifacts/A/capillary_closed_interface_cochain_rca_CHK-RA-CH14-CAP-VOL-001.md
   - path: artifacts/A/capillary_virtual_work_gate_rca_CHK-RA-CH14-CAP-VW-001.md
   - path: artifacts/A/ch14_trace_vertex_transport_theory_CHK-RA-CH14-TRACE-VJP-THEORY-001.md
+  - path: artifacts/A/ch14_trace_vertex_impl_ux_CHK-RA-CH14-TRACE-IMPL-UX-001.md
   - path: docs/02_ACTIVE_LEDGER.md
 depends_on:
   - "[[WIKI-T-155]]"
@@ -742,3 +743,84 @@ reinit stratum ledger
 ```
 
 Production may use the cochain only after those gates pass.
+
+## Trace VJP Implementation And UX
+
+`CHK-RA-CH14-TRACE-IMPL-UX-001` maps the trace-vertex theorem onto the
+current solver seams.
+
+Code objects:
+
+```text
+closed_interface_trace.py
+  TraceGraph2D, TraceVertex2D, TraceSegment2D, TraceComponent2D.
+
+closed_interface_trace_velocity.py
+  TraceVelocityMap and ReconstructedNodalP1TraceVelocityMap.
+
+closed_interface_trace_riesz.py
+  ClosedInterfaceTraceRieszCochain from C_K^T d_zS_h and C_K^T d_zV_h.
+
+weighted_augmented_hodge_projection
+  multi-component M_f projection for X=[A_fG_f B].
+```
+
+The old `closed_interface_riesz.py` remains a conservative-transport
+diagnostic until the new path passes the theorem gates.
+
+Runtime wiring must use the existing face-cochain seam:
+
+```text
+div_op.pressure_fluxes(..., capillary_jump_components=corrected_capillary_components)
+```
+
+For `source: closed_interface_riesz`, the solver should:
+
+```text
+choose psi_transport_endpoint before reinit;
+build s_K and B_K from the trace graph and C_K;
+compute corrected_capillary_components = s_K - B_K mu;
+add D_f(corrected_capillary_components) to the PPE RHS;
+pass the same corrected_capillary_components to pressure_fluxes;
+store pressure-face history in the existing affine-jump face state.
+```
+
+The YAML contract is explicit:
+
+```yaml
+capillary_force:
+  formulation: pressure_jump
+  source: closed_interface_riesz
+  closed_interface:
+    trace_space: p1_marching_squares
+    topology: fail_closed
+    ambiguous_cells: fail
+    surface_energy: sharp_length
+    component_volume: oriented_area
+    trace_velocity:
+      map: reconstructed_nodal_p1
+      endpoint: before_reinit
+    diagnostics:
+      gates: strict
+poisson:
+  operator:
+    capillary_reaction_projection: pressure_component_hodge
+```
+
+Legacy scalar-jump configs keep:
+
+```yaml
+capillary_force:
+  formulation: pressure_jump
+  source: curvature_jump
+  curvature: face_implicit
+poisson:
+  operator:
+    capillary_range_projection: component_hodge_augmented
+```
+
+For `closed_interface_riesz`, the parser should fail closed on `curvature`,
+`curvature_cap`, smoothing, damping, Rayleigh scaling, benchmark names,
+`capillary_range_projection`, and boolean projection aliases.  It should
+require `pressure_jump`, `phase_separated`, `affine_jump`, face-native state,
+and `capillary_reaction_projection: pressure_component_hodge`.
