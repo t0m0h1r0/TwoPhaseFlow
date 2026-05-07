@@ -1343,3 +1343,135 @@ The implementation gate is theorem-level:
 paper-exact/endpoint-exact virtual work, not FD/WENO/PPE fallback, damping, CFL
 tuning, smoothing, curvature caps, benchmark-name branches, blanket
 projection, or QP-as-physics.
+
+## 22. Implementation And UX For The Current Scheme
+
+The production implementation should keep the public source name
+`closed_interface_riesz`, but bind it to the conservative face-psi endpoint.
+The trace-vertex implementation remains research code for a trace-primary
+solver.  In the current runtime this means replacing the
+`closed_interface_trace_riesz_cochain` call in `solve_ns_pressure_stage` with
+the conservative `closed_interface_riesz_cochain` path.
+
+The implementation split should be:
+
+```text
+coupling/closed_interface_riesz.py
+  builds endpoint-exact face cochains from state.psi_transport_endpoint.
+
+simulation/interface_projection_diagnostics.py or capillary_hodge_projection.py
+  projects arbitrary external face cochains through the active pressure range.
+
+simulation/ns_step_services.py
+  wires corrected capillary components into the PPE RHS and pressure_fluxes.
+```
+
+The projection must use the same operator as the corrector:
+
+```text
+G_A p = div_op.pressure_fluxes(p, rho, zero_jump_kwargs),
+D_fG_Ap = D_fc,
+Pi_Rc = G_Ap.
+```
+
+This is what makes the design compatible with FCCD, nonuniform grids,
+phase-separated coefficients, and affine jump.  A dense
+`M_f^{-1}D_f^T` projection can remain a diagnostic, but it is not the
+GPU-first production projector unless it is proven identical to
+`pressure_fluxes` for the active coefficient.
+
+The component reaction projection takes the raw conservative cochain `s` and
+component reactions `B_m`:
+
+```text
+raw_hodge = s - Pi_Rs,
+B_hodge[m] = B_m - Pi_RB_m,
+beta = solve((B_i^H,B_j^H)_M beta_j = (raw_hodge,B_i^H)_M),
+corrected = s - sum_m beta_m B_hodge[m],
+h = raw_hodge - sum_m beta_m B_hodge[m].
+```
+
+The PPE and corrector receive `corrected`, not `h` alone:
+
+```text
+rhs += D_f(corrected),
+pressure_fluxes(..., capillary_jump_components=corrected).
+```
+
+This preserves the capillary pressure representative while leaving the final
+projected acceleration equal to `h`.
+
+The CCD/FCCD/UCCD6 connection is explicit:
+
+```text
+P_f  = FCCD face interpolation in T_f(q)u_f,
+D_f  = FCCD divergence in transport, PPE RHS, and Hodge residual,
+G_A  = FCCD/affine pressure_fluxes,
+M_f  = face kinetic/reaction metric,
+u_f  = projected face state passed to UCCD6,
+CCD  = viscosity after projection, not a separate capillary source.
+```
+
+Thus capillarity remains a pressure/corrector face acceleration.  It is not
+inserted into UCCD6 convection or CCD viscosity.
+
+GPU-first constraints are part of the design.  The hot path must avoid dense
+matrices, host graph traversal, per-cell Python loops, and `array_to_numpy` on
+step-sized fields.  It should use `xp` vectorized marching-squares masks,
+FCCD face kernels, existing PPE solves, device weighted dots, and device-side
+tiny component solves.  The current surface gradient is already vectorized;
+the P1 liquid-area gradient must be promoted from host-loop diagnostic code to
+an `xp` vectorized production kernel.
+
+The YAML UX should be explicit but not noisy:
+
+```yaml
+surface_tension:
+  formulation: pressure_jump
+  source: closed_interface_riesz
+  closed_interface:
+    endpoint: conservative_psi
+    transport_vjp: fccd_face_psi
+    surface_energy: p1_marching_squares_length
+    component_volume: p1_liquid_area
+    topology: fail_closed
+    diagnostics:
+      mode: strict
+      virtual_work: sampled
+      profile_sensitivity: report
+projection:
+  face_flux_projection: true
+  canonical_face_state: true
+  face_native_predictor_state: true
+  poisson:
+    operator:
+      discretization: fccd
+      coefficient: phase_separated
+      interface_coupling: affine_jump
+      capillary_reaction_projection: pressure_component_hodge
+```
+
+Defaults may fill the nested `closed_interface` block, but user-supplied values
+must be checked.  The parser should reject `curvature`, smoothing, damping,
+curvature caps, Rayleigh scaling, benchmark-name branches,
+`capillary_range_projection`, boolean projection aliases, and trace endpoint
+fields under this source.  The alias `trace_riesz` should be retired from
+production aliases because it names the rejected endpoint for the current
+solver.
+
+The implementation acceptance sequence is:
+
+1. config fail-close tests;
+2. conservative endpoint surface/volume VJP work tests;
+3. external cochain pressure-range projection tests on CPU and GPU;
+4. component reaction orthogonality and divergence tests;
+5. corrector sign-power tests;
+6. runtime seam tests proving the same `corrected` cochain reaches RHS and
+   `pressure_fluxes`;
+7. GPU smoke with no hot-path host loops;
+8. ch14 N32 static/oscillating validation with pre-reinit/reinit split fields.
+
+[SOLID-X] Implementation/UX design only.  The route remains endpoint-exact
+virtual work in the active face complex; no FD/WENO/PPE fallback, damping, CFL
+workaround, smoothing, curvature cap, benchmark branch, blanket projection, or
+QP-as-physics path is introduced.

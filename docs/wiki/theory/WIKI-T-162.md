@@ -14,6 +14,7 @@ sources:
   - path: artifacts/A/ch14_trace_vertex_transport_theory_CHK-RA-CH14-TRACE-VJP-THEORY-001.md
   - path: artifacts/A/ch14_trace_vertex_impl_ux_CHK-RA-CH14-TRACE-IMPL-UX-001.md
   - path: artifacts/A/ch14_conservative_endpoint_theory_CHK-RA-CH14-CONS-ENDPOINT-THEORY-001.md
+  - path: artifacts/A/ch14_conservative_endpoint_impl_ux_CHK-RA-CH14-CONS-ENDPOINT-IMPL-UX-001.md
   - path: docs/02_ACTIVE_LEDGER.md
 depends_on:
   - "[[WIKI-T-155]]"
@@ -990,3 +991,107 @@ volume Riesz checks, manufactured pure-pressure range checks, component
 orthogonality, static constrained-critical references, noncritical dynamic
 modes, corrector sign-power checks, pre-reinit/reinit endpoint ledgers, and
 profile-sensitivity reports.
+
+## Conservative Endpoint Implementation And UX
+
+`CHK-RA-CH14-CONS-ENDPOINT-IMPL-UX-001` maps the theorem onto the current
+CCD/FCCD/UCCD6 runtime.  The source name can remain
+`surface_tension.source: closed_interface_riesz`, but its production meaning
+is now conservative endpoint Riesz, not trace-vertex Riesz.  The current
+runtime branch still calls `closed_interface_trace_riesz_cochain`; the
+implementation change is to call the conservative cochain builder instead.
+
+The coupling layer should build only endpoint-exact face cochains:
+
+```text
+closed_interface_riesz_cochain
+  psi = state.psi_transport_endpoint
+  fccd = div_op._fccd
+  surface_acceleration = -M_f^{-1}T_f(q)^T d_q(sigma S_h)^T
+  volume_reaction_accelerations = [M_f^{-1}T_f(q)^T d_qV_m,h^T]
+```
+
+The simulation layer must do the Hodge/reaction projection through the actual
+pressure range used by the corrector:
+
+```text
+G_A p = div_op.pressure_fluxes(p, rho, zero_jump_kwargs)
+D_f G_A p = D_f c
+Pi_R c = G_A p
+```
+
+This is the FCCD/affine-jump range.  It is preferable to the dense diagnostic
+`M_f^{-1}D_f^T` projector in production because it exactly shares the active
+coefficient, nonuniform grid, and interface-coupling implementation.
+
+The component-reaction helper should accept external cochains:
+
+```text
+raw_hodge = raw - Pi_R raw
+B_hodge[m] = B_m - Pi_R B_m
+beta = argmin ||raw_hodge - sum_m beta_m B_hodge[m]||_M
+corrected = raw - sum_m beta_m B_hodge[m]
+h = raw_hodge - sum_m beta_m B_hodge[m]
+```
+
+The corrector receives `corrected`, not `h` alone:
+
+```text
+rhs += D_f(corrected)
+div_op.pressure_fluxes(..., capillary_jump_components=corrected)
+```
+
+so the pressure representative is preserved while the final projected face
+acceleration is the component-constrained Hodge drive.  The corrector should
+fail closed if `closed_interface_riesz` recomputes pressure faces without the
+stored `state.pressure_correction_face_components`, because that path would
+drop the capillary cochain by using `sigma=0`.
+
+GPU-first requirements:
+
+```text
+use xp-vectorized marching-squares surface and volume gradients;
+use FCCD face_value/face_divergence and existing PPE solves;
+compute weighted dots and tiny beta solves on device;
+transfer only scalar diagnostics to host;
+avoid dense D matrices, per-cell host loops, and array_to_numpy in production.
+```
+
+The current surface gradient already follows this pattern.  The sharp P1 area
+gradient must be promoted from the host-loop diagnostic implementation to an
+`xp` vectorized kernel before the source is a GPU-first production route.
+
+The UX contract is:
+
+```yaml
+surface_tension:
+  formulation: pressure_jump
+  source: closed_interface_riesz
+  closed_interface:
+    endpoint: conservative_psi
+    transport_vjp: fccd_face_psi
+    surface_energy: p1_marching_squares_length
+    component_volume: p1_liquid_area
+    topology: fail_closed
+    diagnostics:
+      mode: strict
+      virtual_work: sampled
+      profile_sensitivity: report
+projection:
+  face_flux_projection: true
+  canonical_face_state: true
+  face_native_predictor_state: true
+  poisson:
+    operator:
+      discretization: fccd
+      coefficient: phase_separated
+      interface_coupling: affine_jump
+      capillary_reaction_projection: pressure_component_hodge
+```
+
+The nested block can default, but if present it must agree with the theorem.
+The parser should reject `curvature`, smoothing, damping, curvature caps,
+Rayleigh scaling, benchmark branches, `capillary_range_projection`, boolean
+projection aliases, and trace endpoint fields under this production source.
+The alias `trace_riesz` should be retired or made explicitly experimental
+because it no longer names the production endpoint.
