@@ -69,3 +69,26 @@ restoring-direction reference.  The important checks for this gate are:
 The amplitude damping/phase error should not be overinterpreted as a theorem of
 the continuous Rayleigh--Lamb problem; it contains coarse-grid interface
 representation, reinitialization work, and physical viscosity.
+
+## Paper Figures
+
+The paper version imports the run PDFs into `paper/figures/` under stable names:
+
+- `ch14_osc_droplet_signed_deformation.pdf`
+- `ch14_osc_droplet_kinetic_energy.pdf`
+- `ch14_osc_droplet_volume_drift.pdf`
+- `ch14_osc_droplet_psi_t0.pdf`
+- `ch14_osc_droplet_psi_tq1.pdf`
+- `ch14_osc_droplet_psi_tq2.pdf`
+- `ch14_osc_droplet_psi_tq3.pdf`
+- `ch14_osc_droplet_psi_t1.pdf`
+- `ch14_osc_droplet_velocity_tq1.pdf`
+- `ch14_osc_droplet_velocity_tq2.pdf`
+- `ch14_osc_droplet_velocity_t1.pdf`
+- `ch14_osc_droplet_pressure_tq1.pdf`
+- `ch14_osc_droplet_pressure_tq2.pdf`
+- `ch14_osc_droplet_pressure_t1.pdf`
+
+`paper/sections/14_benchmarks.tex` now includes these as a time-history figure,
+a five-time $\psi$ snapshot figure, and a velocity/pressure two-dimensional
+field figure.
