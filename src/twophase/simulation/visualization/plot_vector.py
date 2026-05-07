@@ -7,7 +7,17 @@
 from __future__ import annotations
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import List, Optional, Tuple, TYPE_CHECKING
+from typing import Optional, Tuple, TYPE_CHECKING
+
+from .plot_fields import (
+    DEFAULT_INTERFACE_COLOR,
+    DEFAULT_QUIVER_SCALE,
+    DEFAULT_QUIVER_WIDTH,
+    DEFAULT_SPEED_CMAP,
+    DEFAULT_VECTOR_CMAP,
+    draw_clean_velocity_arrows,
+    positive_range,
+)
 
 if TYPE_CHECKING:
     from ..core.grid import Grid
@@ -20,8 +30,13 @@ def plot_velocity(
     grid: "Grid",
     *,
     title: str = "速度場",
-    speed_cmap: str = "viridis",
+    speed_cmap: str = DEFAULT_SPEED_CMAP,
+    vector_cmap: str = DEFAULT_VECTOR_CMAP,
     quiver_stride: int = 4,
+    normalize_arrows: bool = True,
+    quiver_scale: float = DEFAULT_QUIVER_SCALE,
+    quiver_width: float = DEFAULT_QUIVER_WIDTH,
+    speed_vmax: Optional[float] = None,
     interface_psi: Optional[np.ndarray] = None,
     save_path: Optional[str] = None,
     ax: Optional[plt.Axes] = None,
@@ -36,7 +51,10 @@ def plot_velocity(
     grid : Grid
     title : タイトル
     speed_cmap : 速度の大きさに使うカラーマップ
+    vector_cmap : 矢印を速度で着色するカラーマップ
     quiver_stride : 矢印を描くサンプリング間隔（間引き）
+    normalize_arrows : True の場合、矢印長は方向表示用に正規化
+    speed_vmax : 速度背景の上限（None の場合は robust percentile）
     interface_psi : 界面表示用 ψ フィールド
     save_path : 保存先パス
     ax : 既存の Axes
@@ -60,18 +78,28 @@ def plot_velocity(
     else:
         fig = ax.get_figure()
 
-    im = ax.pcolormesh(X, Y, speed, cmap=speed_cmap, shading="auto")
-    fig.colorbar(im, ax=ax, label="|u|")
+    vmax = speed_vmax if speed_vmax is not None else positive_range(speed)
+    im = ax.pcolormesh(X, Y, speed, cmap=speed_cmap, vmin=0.0, vmax=vmax,
+                       shading="auto")
+    cb = fig.colorbar(im, ax=ax, label="|u|", fraction=0.046, pad=0.04)
+    cb.ax.tick_params(labelsize=8)
 
-    # 矢印プロット（間引きしてすっきり表示）
-    s = quiver_stride
-    ax.quiver(X[::s, ::s], Y[::s, ::s],
-              u_np[::s, ::s], v_np[::s, ::s],
-              color="white", alpha=0.7, scale=None)
+    draw_clean_velocity_arrows(
+        ax,
+        np.asarray(X),
+        np.asarray(Y),
+        u_np,
+        v_np,
+        stride=quiver_stride,
+        normalize=normalize_arrows,
+        cmap=vector_cmap,
+        scale=quiver_scale,
+        width=quiver_width,
+    )
 
     if interface_psi is not None:
         ax.contour(X, Y, np.asarray(interface_psi), levels=[0.5],
-                   colors="red", linewidths=1.5, linestyles="--")
+                   colors=DEFAULT_INTERFACE_COLOR, linewidths=0.9)
 
     ax.set_xlabel("x")
     ax.set_ylabel("y")

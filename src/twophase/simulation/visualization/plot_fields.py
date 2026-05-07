@@ -15,6 +15,12 @@ from matplotlib.axes import Axes
 from matplotlib.image import AxesImage
 from typing import Optional, Sequence
 
+DEFAULT_SPEED_CMAP = "viridis"
+DEFAULT_VECTOR_CMAP = "hot"
+DEFAULT_INTERFACE_COLOR = "k"
+DEFAULT_QUIVER_SCALE = 30.0
+DEFAULT_QUIVER_WIDTH = 0.003
+
 
 def field_with_contour(
     ax: Axes,
@@ -112,25 +118,114 @@ def velocity_arrows(
     y1d: np.ndarray,
     *,
     stride: int = 4,
-    speed_cmap: str = "YlOrRd",
+    speed_cmap: str = DEFAULT_SPEED_CMAP,
+    vector_cmap: str = DEFAULT_VECTOR_CMAP,
     speed_vmax: Optional[float] = None,
     bg_alpha: float = 0.5,
+    normalize_arrows: bool = True,
+    quiver_scale: float = DEFAULT_QUIVER_SCALE,
+    quiver_width: float = DEFAULT_QUIVER_WIDTH,
     contour_field: Optional[np.ndarray] = None,
     contour_level: float = 0.0,
-    contour_color: str = "r",
+    contour_color: str = DEFAULT_INTERFACE_COLOR,
 ) -> None:
-    """Quiver plot with speed-colored background."""
+    """Quiver plot with speed-colored background.
+
+    The default matches the clean diagnostic figures used for ch14: a calm
+    scalar speed background plus arrows colored by local speed.  Arrow lengths
+    are normalized by default so direction remains readable when the velocity
+    magnitude spans orders of magnitude.
+    """
     speed = np.sqrt(u ** 2 + v ** 2)
-    vmax = speed_vmax or max(float(speed.max()), 1e-10)
+    vmax = speed_vmax or positive_range(speed)
     ax.pcolormesh(x1d, y1d, speed.T, cmap=speed_cmap, vmin=0,
                   vmax=vmax, shading="auto", alpha=bg_alpha)
-    s = stride
-    ax.quiver(X[::s, ::s], Y[::s, ::s], u[::s, ::s], v[::s, ::s],
-              color="k", alpha=0.8, scale=None)
+    draw_clean_velocity_arrows(
+        ax,
+        X,
+        Y,
+        u,
+        v,
+        stride=stride,
+        normalize=normalize_arrows,
+        cmap=vector_cmap,
+        scale=quiver_scale,
+        width=quiver_width,
+    )
     if contour_field is not None:
         ax.contour(x1d, y1d, contour_field.T, levels=[contour_level],
                    colors=contour_color, linewidths=1.5)
     ax.set_aspect("equal")
+
+
+def draw_clean_velocity_arrows(
+    ax: Axes,
+    X: np.ndarray,
+    Y: np.ndarray,
+    u: np.ndarray,
+    v: np.ndarray,
+    *,
+    stride: int = 4,
+    normalize: bool = True,
+    cmap: str = DEFAULT_VECTOR_CMAP,
+    alpha: float = 0.85,
+    scale: float = DEFAULT_QUIVER_SCALE,
+    width: float = DEFAULT_QUIVER_WIDTH,
+    min_speed: float = 1.0e-14,
+):
+    """Draw sparse velocity arrows with ch14 diagnostic styling.
+
+    Symbol mapping
+    --------------
+    ``u, v`` : nodal velocity components on the same 2-D grid as ``X, Y``.
+
+    Returns
+    -------
+    matplotlib.quiver.Quiver
+        The quiver artist, useful for tests or caller-managed legends.
+    """
+    stride = max(int(stride), 1)
+    Xs = np.asarray(X)[::stride, ::stride]
+    Ys = np.asarray(Y)[::stride, ::stride]
+    us = np.asarray(u)[::stride, ::stride]
+    vs = np.asarray(v)[::stride, ::stride]
+    speed = np.sqrt(us ** 2 + vs ** 2)
+    if normalize:
+        denom = np.maximum(speed, min_speed)
+        uq = us / denom
+        vq = vs / denom
+        scale_arg = scale
+    else:
+        uq = us
+        vq = vs
+        scale_arg = None
+    return ax.quiver(
+        Xs,
+        Ys,
+        uq,
+        vq,
+        speed,
+        cmap=cmap,
+        alpha=alpha,
+        scale=scale_arg,
+        width=width,
+    )
+
+
+def positive_range(
+    array: np.ndarray,
+    *,
+    percentile: float = 99.0,
+    margin: float = 1.05,
+    floor: float = 1.0e-14,
+) -> float:
+    """Compute a robust positive color limit for magnitude fields."""
+    values = np.asarray(array, dtype=float)
+    finite = values[np.isfinite(values)]
+    if finite.size == 0:
+        return floor
+    vmax = float(np.percentile(np.abs(finite), percentile)) * margin
+    return max(vmax, floor)
 
 
 def symmetric_range(
