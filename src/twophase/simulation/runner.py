@@ -123,7 +123,9 @@ def run_simulation(
         if dt < 1e-12:
             break
         will_snapshot = snap_idx < len(snap_times) and t + dt >= snap_times[snap_idx]
-        solver._record_interface_projection_fields = bool(will_snapshot)
+        solver._record_interface_projection_fields = bool(
+            will_snapshot and _snapshot_needs_projection_fields(cfg)
+        )
 
         step_index = step
         grid_will_rebuild = (
@@ -274,6 +276,21 @@ def run_simulation(
             debug_history=dbg_history,
         )
     return results
+
+
+def _snapshot_needs_projection_fields(cfg: "ExperimentConfig") -> bool:
+    """Return whether configured snapshot figures consume reinit intermediates."""
+    projection_fields = {
+        "psi_before_transport",
+        "psi_after_transport_before_reinit",
+        "psi_after_reinit",
+    }
+    for figure in getattr(cfg.output, "figures", []) or []:
+        if not isinstance(figure, dict):
+            continue
+        if figure.get("type") == "snapshot_series" and figure.get("field") in projection_fields:
+            return True
+    return False
 
 
 def _merge_time_series(

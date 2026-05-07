@@ -215,6 +215,32 @@ class RidgeEikonalReinitializer(IReinitializer):
             value = value.get()
         return float(value)
 
+    def _can_measure_shifted_phi_volume(self) -> bool:
+        """Return whether ``V_h`` can be measured directly from shifted phi."""
+        return bool(
+            self._backend.is_gpu()
+            and not self._wall_closure
+            and not self._wall_contacts
+        )
+
+    def _sharp_phase_volume_from_shifted_phi(
+        self,
+        phi_sdf,
+        delta_phi: float,
+        free_mask,
+    ) -> float:
+        """Measure ``V_h`` using ``phi=0`` instead of materialising ``psi``."""
+        phi_shifted = self._xp.asarray(phi_sdf) + float(delta_phi) * self._xp.asarray(
+            free_mask
+        )
+        value = liquid_area_2d(
+            xp=self._xp,
+            grid=self._grid,
+            psi=phi_shifted,
+            phase_threshold=0.0,
+        )
+        return self._scalar_float(value)
+
     def _apply_sharp_phase_volume_constraint(
         self,
         phi_sdf,
@@ -239,8 +265,17 @@ class RidgeEikonalReinitializer(IReinitializer):
         target = float(target_volume)
         domain_volume = float(np.prod(self._grid.L))
         tol = max(1.0e-12, 1.0e-10 * max(domain_volume, 1.0))
-        psi_zero = self._psi_from_shifted_phi(phi_sdf, 0.0, free_mask)
-        volume_zero = self._sharp_phase_volume(psi_zero)
+        phi_volume_fast_path = self._can_measure_shifted_phi_volume()
+        if phi_volume_fast_path:
+            psi_zero = None
+            volume_zero = self._sharp_phase_volume_from_shifted_phi(
+                phi_sdf,
+                0.0,
+                free_mask,
+            )
+        else:
+            psi_zero = self._psi_from_shifted_phi(phi_sdf, 0.0, free_mask)
+            volume_zero = self._sharp_phase_volume(psi_zero)
         if abs(volume_zero - target) <= tol:
             psi_zero = self._apply_diffuse_mass_profile_constraint(
                 phi_sdf,
@@ -258,9 +293,16 @@ class RidgeEikonalReinitializer(IReinitializer):
         hi = max(self._h_min, 1.0e-12) * direction
         max_shift = max(float(max(self._grid.L)), self._h_min)
         for _ in range(40):
-            volume_hi = self._sharp_phase_volume(
-                self._psi_from_shifted_phi(phi_sdf, hi, free_mask)
-            )
+            if phi_volume_fast_path:
+                volume_hi = self._sharp_phase_volume_from_shifted_phi(
+                    phi_sdf,
+                    hi,
+                    free_mask,
+                )
+            else:
+                volume_hi = self._sharp_phase_volume(
+                    self._psi_from_shifted_phi(phi_sdf, hi, free_mask)
+                )
             if (direction > 0.0 and volume_hi >= target - tol) or (
                 direction < 0.0 and volume_hi <= target + tol
             ):
@@ -281,8 +323,15 @@ class RidgeEikonalReinitializer(IReinitializer):
         mid = 0.0
         for _ in range(48):
             mid = 0.5 * (left + right)
-            psi_mid = self._psi_from_shifted_phi(phi_sdf, mid, free_mask)
-            volume_mid = self._sharp_phase_volume(psi_mid)
+            if phi_volume_fast_path:
+                volume_mid = self._sharp_phase_volume_from_shifted_phi(
+                    phi_sdf,
+                    mid,
+                    free_mask,
+                )
+            else:
+                psi_mid = self._psi_from_shifted_phi(phi_sdf, mid, free_mask)
+                volume_mid = self._sharp_phase_volume(psi_mid)
             if abs(volume_mid - target) <= tol:
                 break
             if volume_mid < target:

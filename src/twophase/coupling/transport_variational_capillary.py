@@ -442,16 +442,16 @@ def marching_squares_liquid_area_gradient_2d(
         for edge in range(4)
     ]
     inside = tuple(value >= threshold for value in values)
-    case_field = xp.zeros_like(values[0])
+    case_field = xp.zeros_like(values[0], dtype=xp.uint8)
     for corner, mask in enumerate(inside):
-        case_field = case_field + mask.astype(psi.dtype) * float(1 << corner)
+        case_field = case_field + mask.astype(xp.uint8) * (1 << corner)
     local = [xp.zeros_like(values[0]) for _ in range(4)]
 
     for case_id in range(16):
         tokens = _liquid_polygon_tokens(case_id)
         if len(tokens) < 3:
             continue
-        active = case_field == float(case_id)
+        active = case_field == case_id
         for kind, index in tokens:
             if kind == "edge":
                 active = active & crossings[index]["mask"]
@@ -475,6 +475,50 @@ def marching_squares_liquid_area_gradient_2d(
     gradient[1:, 1:] = gradient[1:, 1:] + local[2]
     gradient[:-1, 1:] = gradient[:-1, 1:] + local[3]
     return gradient
+
+
+def marching_squares_liquid_area_2d(
+    *,
+    xp,
+    grid,
+    psi,
+    phase_threshold: float = 0.5,
+):
+    """Return the sharp P1 liquid area on the active backend."""
+    if grid.ndim != 2:
+        raise ValueError("marching_squares_liquid_area_2d supports 2D")
+    psi = xp.asarray(psi)
+    values, points = _cell_corner_fields(xp, grid, psi)
+    threshold = xp.asarray(phase_threshold, dtype=psi.dtype)
+    crossings = [
+        _edge_crossing(xp, values, points, edge, threshold)
+        for edge in range(4)
+    ]
+    inside = tuple(value >= threshold for value in values)
+    case_field = xp.zeros_like(values[0], dtype=xp.uint8)
+    for corner, mask in enumerate(inside):
+        case_field = case_field + mask.astype(xp.uint8) * (1 << corner)
+    local_area = xp.zeros_like(values[0])
+
+    for case_id in range(16):
+        tokens = _liquid_polygon_tokens(case_id)
+        if len(tokens) < 3:
+            continue
+        active = case_field == case_id
+        for kind, index in tokens:
+            if kind == "edge":
+                active = active & crossings[index]["mask"]
+        shoelace = xp.zeros_like(values[0])
+        for token, next_token in zip(tokens, tokens[1:] + tokens[:1], strict=True):
+            x, y = _token_point(token, points=points, crossings=crossings)
+            next_x, next_y = _token_point(next_token, points=points, crossings=crossings)
+            shoelace = shoelace + x * next_y - y * next_x
+        local_area = local_area + xp.where(
+            active,
+            0.5 * shoelace,
+            xp.zeros_like(shoelace),
+        )
+    return xp.sum(local_area)
 
 
 def _liquid_polygon_tokens(case_id: int):

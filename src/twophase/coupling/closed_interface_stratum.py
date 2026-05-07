@@ -68,24 +68,33 @@ def build_closed_interface_stratum(
     """
     if grid.ndim != 2:
         raise ValueError("ClosedInterfaceStratum currently supports 2D grids")
-    psi_host = array_to_numpy(xp, xp.asarray(psi))
+    psi_arr = xp.asarray(psi)
     threshold = float(phase_threshold)
-    values = _cell_corner_values(psi_host)
-    inside = tuple(value >= threshold for value in values)
-    cell_cases = np.zeros_like(values[0], dtype=np.uint8)
+    threshold_arr = xp.asarray(threshold, dtype=psi_arr.dtype)
+    values = _cell_corner_values(psi_arr)
+    inside = tuple(value >= threshold_arr for value in values)
+    cell_cases_dev = xp.zeros_like(values[0], dtype=xp.uint8)
     for bit, mask in enumerate(inside):
-        cell_cases = cell_cases | (mask.astype(np.uint8) << bit)
+        cell_cases_dev = cell_cases_dev + mask.astype(xp.uint8) * (1 << bit)
 
-    edge_crossing_count = np.zeros_like(cell_cases, dtype=np.uint8)
+    edge_crossing_count_dev = xp.zeros_like(cell_cases_dev, dtype=xp.uint8)
     for lo, hi in _EDGE_CORNERS:
-        shifted_lo = values[lo] - threshold
-        shifted_hi = values[hi] - threshold
-        edge_crossing_count = edge_crossing_count + (
+        shifted_lo = values[lo] - threshold_arr
+        shifted_hi = values[hi] - threshold_arr
+        edge_crossing_count_dev = edge_crossing_count_dev + (
             shifted_lo * shifted_hi < 0.0
-        ).astype(np.uint8)
+        ).astype(xp.uint8)
 
+    cell_cases = array_to_numpy(xp, cell_cases_dev).astype(np.uint8, copy=False)
+    edge_crossing_count = array_to_numpy(
+        xp,
+        edge_crossing_count_dev,
+    ).astype(np.uint8, copy=False)
     threshold_touch_count = int(
-        np.count_nonzero(np.abs(psi_host - threshold) <= threshold_tol)
+        array_to_numpy(
+            xp,
+            xp.count_nonzero(xp.abs(psi_arr - threshold_arr) <= threshold_tol),
+        )
     )
     cut_cell_count = int(np.count_nonzero((cell_cases != 0) & (cell_cases != 15)))
     ambiguous_cell_count = int(np.count_nonzero((cell_cases == 5) | (cell_cases == 10)))
