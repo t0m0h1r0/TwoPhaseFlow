@@ -10,8 +10,12 @@ from twophase.ccd.fccd import FCCDSolver
 from twophase.config import GridConfig
 from twophase.core.grid import Grid
 from twophase.coupling.closed_interface_riesz import (
+    _dense_divergence_matrix,
+    _flatten_face_components,
+    _unflatten_face_components,
     closed_interface_riesz_cochain,
     component_reaction_hodge_gate,
+    face_measure_components,
     fixed_stratum_virtual_work_check,
     weighted_hodge_decomposition,
 )
@@ -106,6 +110,43 @@ def test_weighted_hodge_projection_leaves_divergence_free_residual():
     assert decomposition.component_weighted_l2 > 0.0
     assert decomposition.hodge_weighted_l2 > 0.0
     assert decomposition.hodge_divergence_linf < 1.0e-9
+
+
+def test_weighted_hodge_projection_recovers_manufactured_pressure_range():
+    """Analytic finite-dimensional check: ``c=M_f^{-1}D_f^T p`` has no Hodge part."""
+    grid, backend, _, div_op = _setup(16)
+    xp = backend.xp
+    weights = face_measure_components(xp=xp, grid=grid)
+    D, shapes, sizes = _dense_divergence_matrix(
+        xp=xp,
+        div_op=div_op,
+        face_templates=weights,
+    )
+    weight_flat = _flatten_face_components(xp, weights)
+    x = np.asarray(grid.coords[0])
+    y = np.asarray(grid.coords[1])
+    X, Y = np.meshgrid(x, y, indexing="ij")
+    potential = (
+        np.sin(2.0 * np.pi * X) * np.cos(3.0 * np.pi * Y)
+        + 0.31 * np.cos(np.pi * X + 0.2) * np.sin(2.0 * np.pi * Y + 0.1)
+    )
+    range_flat = (D.T @ potential.ravel()) / weight_flat
+    range_components = _unflatten_face_components(xp, range_flat, shapes, sizes)
+
+    decomposition = weighted_hodge_decomposition(
+        xp=xp,
+        div_op=div_op,
+        face_components=range_components,
+        face_weight_components=weights,
+    )
+    hodge_flat = _flatten_face_components(xp, decomposition.hodge_components)
+    recovered_flat = _flatten_face_components(xp, decomposition.range_components)
+    source_linf = max(float(np.max(np.abs(D @ range_flat))), 1.0)
+
+    assert np.sqrt(float(np.sum(hodge_flat * hodge_flat * weight_flat))) < 1.0e-10
+    np.testing.assert_allclose(recovered_flat, range_flat, rtol=1.0e-10, atol=1.0e-10)
+    assert decomposition.hodge_divergence_linf < 1.0e-9
+    assert decomposition.hodge_divergence_linf / source_linf < 1.0e-12
 
 
 def test_component_reaction_gate_reveals_circle_is_not_static_for_this_transport():

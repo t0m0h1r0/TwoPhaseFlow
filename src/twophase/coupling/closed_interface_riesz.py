@@ -296,7 +296,7 @@ def weighted_hodge_decomposition(
     face_weight_components,
     rcond: float = 1.0e-12,
 ) -> WeightedHodgeDecomposition:
-    """Project a face cochain with the exact dense ``D_f`` diagnostic matrix."""
+    """Project a face cochain with the exact ``D_f`` diagnostic matrix."""
     D, shapes, sizes = _dense_divergence_matrix(
         xp=xp,
         div_op=div_op,
@@ -310,15 +310,18 @@ def weighted_hodge_decomposition(
     source = D @ component_flat
     if sp.issparse(D):
         normal_matrix = D @ sp.diags(inv_weight, format="csr") @ D.T
-        potential = spla.lsmr(
+        potential = _solve_gauge_fixed_normal_matrix(
             normal_matrix,
             source,
-            atol=float(rcond),
-            btol=float(rcond),
-        )[0]
+            rcond=float(rcond),
+        )
     else:
         normal_matrix = D @ (inv_weight[:, None] * D.T)
-        potential = np.linalg.lstsq(normal_matrix, source, rcond=float(rcond))[0]
+        potential = _solve_gauge_fixed_normal_matrix(
+            normal_matrix,
+            source,
+            rcond=float(rcond),
+        )
     range_flat = inv_weight * (D.T @ potential)
     hodge_flat = component_flat - range_flat
     range_components = _unflatten_face_components(xp, range_flat, shapes, sizes)
@@ -331,6 +334,41 @@ def weighted_hodge_decomposition(
         hodge_weighted_l2=_weighted_norm_from_flat(hodge_flat, weight_flat),
         hodge_divergence_linf=float(np.max(np.abs(D @ hodge_flat))),
     )
+
+
+def _solve_gauge_fixed_normal_matrix(normal_matrix, source, *, rcond: float):
+    """Solve the singular Hodge normal equation with one pressure gauge pin."""
+    source = np.asarray(source, dtype=float)
+    if source.size == 0:
+        return np.zeros_like(source)
+    diagonal = (
+        np.asarray(normal_matrix.diagonal(), dtype=float)
+        if sp.issparse(normal_matrix)
+        else np.diag(np.asarray(normal_matrix, dtype=float))
+    )
+    pin = int(np.argmax(np.abs(diagonal)))
+    if abs(float(diagonal[pin])) <= float(rcond):
+        return np.zeros_like(source)
+    if sp.issparse(normal_matrix):
+        pinned = normal_matrix.tolil(copy=True)
+        rhs = np.array(source, copy=True, dtype=float)
+        pinned[pin, :] = 0.0
+        pinned[:, pin] = 0.0
+        pinned[pin, pin] = 1.0
+        rhs[pin] = 0.0
+        potential = spla.spsolve(pinned.tocsr(), rhs)
+    else:
+        pinned = np.array(normal_matrix, copy=True, dtype=float)
+        rhs = np.array(source, copy=True, dtype=float)
+        pinned[pin, :] = 0.0
+        pinned[:, pin] = 0.0
+        pinned[pin, pin] = 1.0
+        rhs[pin] = 0.0
+        potential = np.linalg.solve(pinned, rhs)
+    potential = np.asarray(potential, dtype=float)
+    if not np.all(np.isfinite(potential)):
+        raise np.linalg.LinAlgError("gauge-fixed Hodge normal solve failed")
+    return potential
 
 
 def component_reaction_hodge_gate(

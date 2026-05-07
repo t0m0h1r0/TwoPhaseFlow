@@ -1131,7 +1131,7 @@ the computational linear algebra is sparse:
 ```text
 D_f is assembled analytically from the FCCD divergence stencil;
 normal equations use D_f M_f^{-1} D_f^T;
-the singular system is solved by sparse LSMR.
+the pressure gauge is pinned before solving the singular system.
 ```
 
 This is a cost change, not a theorem change.
@@ -1152,6 +1152,47 @@ exact discrete critical polygon at N=32, and its residual current must be judged
 by convergence and by a separately constructed discrete-critical static trace.
 Rayleigh-Lamb phase/amplitude also remain future gates, especially with
 reinit-energy accounting separated.
+
+## 19. Hodge Solve Hygiene
+
+`CHK-RA-CH14-HODGE-SOLVE-FIX-001` found an implementation contaminant in the
+diagnostic Hodge projector.  The old sparse LSMR path was applied directly to
+the singular normal matrix `D_f M_f^{-1}D_f^T`; at N32 wall resolution this left
+`D_f h = O(1e-2..1e-1)`, so the residual was not a legitimate Hodge component.
+
+The corrected implementation pins one pressure gauge before solving the normal
+equation.  It does not change the mathematical projection space, but it enforces
+the algebra needed to interpret the result:
+
+```text
+c       = M_f^{-1}D_f^T p       manufactured pure range
+Pi c    = c + roundoff
+h       = c - Pi c
+D_f h   = roundoff
+```
+
+Analytic manufactured check:
+
+| quantity | value |
+|---|---:|
+| Hodge weighted L2 | `7.061307507637e-13` |
+| recovered range Linf error | `2.273736754432e-12` |
+| `||D_f h||_inf` | `7.275957614183e-11` |
+| relative divergence residual | `7.673381434614e-16` |
+
+N32 wall trace check:
+
+| quantity | value |
+|---|---:|
+| corrected Hodge weighted L2 | `1.518271679206e-01` |
+| `||D_f h||_inf` | `2.040131952263e-11` |
+| component-reaction orthogonality | `2.602085213965e-18` |
+
+Interpretation: the trace projector now computes a genuine divergence-free
+component in the same `M_f,D_f` complex.  The remaining nonzero Hodge weighted
+norm is therefore not a projection-solver artifact.  It must be attacked at the
+force-cochain/static-critical level: actual transport endpoint VJP, discrete
+critical trace construction, and reinit ledger separation.
 
 [SOLID-X] Runtime slice preserves the pressure-jump/FCCD/UCCD6 contract and
 adds no FD/WENO/PPE fallback, damping, CFL workaround, curvature cap,

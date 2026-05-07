@@ -26,14 +26,15 @@ from twophase.coupling.closed_interface_trace_velocity import (
     ReconstructedNodalP1TraceVelocityMap,
     face_vertex_vjp_residual,
 )
+from twophase.coupling.closed_interface_riesz import face_weighted_dot
 from twophase.simulation.divergence_ops import FCCDDivergenceOperator
 
 
-def _setup(n=12):
+def _setup(n=12, *, bc_type="periodic"):
     backend = Backend(use_gpu=False)
     grid = Grid(GridConfig(ndim=2, N=(n, n), L=(1.0, 1.0)), backend)
-    ccd = CCDSolver(grid, backend, bc_type="periodic")
-    fccd = FCCDSolver(grid, backend, bc_type="periodic", ccd_solver=ccd)
+    ccd = CCDSolver(grid, backend, bc_type=bc_type)
+    fccd = FCCDSolver(grid, backend, bc_type=bc_type, ccd_solver=ccd)
     return grid, backend, fccd, FCCDDivergenceOperator(fccd)
 
 
@@ -154,3 +155,31 @@ def test_trace_component_hodge_projection_is_divergence_free():
     assert residual_norm > 0.0
     div = div_op.divergence_from_faces(projection.hodge_residual_components)
     assert float(np.max(np.abs(div))) < 1.0e-8
+
+
+def test_trace_component_hodge_projection_n32_wall_is_solved_to_roundoff():
+    grid, backend, _, div_op = _setup(32, bc_type="wall")
+    xp = backend.xp
+    cochain = closed_interface_trace_riesz_cochain(
+        xp=xp,
+        grid=grid,
+        psi=_ellipse_psi(grid),
+        sigma=0.072,
+        bc_type="wall",
+    )
+
+    projection = trace_component_hodge_projection(
+        xp=xp,
+        div_op=div_op,
+        cochain=cochain,
+    )
+    div = div_op.divergence_from_faces(projection.hodge_residual_components)
+    component_orthogonality = face_weighted_dot(
+        xp=xp,
+        left_components=projection.hodge_residual_components,
+        right_components=projection.component_hodge_residual_components[0],
+        face_weight_components=projection.face_weight_components,
+    )
+
+    assert float(np.max(np.abs(div))) < 1.0e-10
+    assert abs(component_orthogonality) < 1.0e-10

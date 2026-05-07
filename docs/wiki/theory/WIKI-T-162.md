@@ -845,8 +845,12 @@ remains illegal under the new source; the allowed reaction operation is
 `capillary_reaction_projection: pressure_component_hodge`.
 
 The Hodge linear algebra now uses the same `M_f,D_f` theorem object with an
-analytic sparse FCCD divergence matrix and sparse LSMR solve.  This changes the
-linear solver cost, not the projection definition.
+analytic sparse FCCD divergence matrix.  The normal equation
+`D_f M_f^{-1}D_f^T p = D_f c` is singular by pressure gauge, so the
+implementation solves it with an explicit gauge pin instead of an unconstrained
+least-squares iteration.  This is part of the theorem object: the residual
+cochain must satisfy `D_f h` to roundoff before any physical interpretation is
+made.
 
 N=32/T=1 remote validation:
 
@@ -860,3 +864,13 @@ The key regression is decisive: the old N=32/T=1 `range_projected` path had
 finite capillary motion.  The static circle still carries finite-grid spurious
 current; it should be treated as a convergence gate, not an exact equilibrium
 oracle for a sampled continuum circle.
+
+`CHK-RA-CH14-HODGE-SOLVE-FIX-001` tightened the implementation check.  A
+manufactured analytic pure-range cochain
+`c=M_f^{-1}D_f^T p(x,y)` is recovered with Hodge weighted norm
+`7.06e-13`, range Linf error `2.27e-12`, and relative divergence residual
+`7.67e-16`.  The N32 wall trace projection now gives `||D_f h||_inf =
+2.04e-11` and component-reaction orthogonality `2.60e-18`.  Therefore the
+previous `O(1e-2..1e-1)` trace Hodge divergence was a linear-solve contaminant,
+while the remaining nonzero Hodge norm is the force-cochain/static-critical
+problem, not a projection algebra failure.
