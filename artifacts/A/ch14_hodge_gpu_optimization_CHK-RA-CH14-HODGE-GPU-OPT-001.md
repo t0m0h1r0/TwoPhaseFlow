@@ -31,9 +31,11 @@ equation, and residual tests; it must not introduce any alternate force model.
   SciPy CSR matrix; GPU receives a `cupyx.scipy.sparse.csr_matrix`.
 - Sparse normal assembly uses the backend sparse module, so
   `D_f M_f^{-1} D_f^T` remains sparse on GPU.
-- The GPU sparse gauge solve uses `cupyx.scipy.sparse.linalg.spsolve` and
-  fails closed if CuPy cannot solve it; it does not silently fall back to a host
-  solve.
+- The GPU sparse gauge solve first uses `cupyx.scipy.sparse.linalg.spsolve`;
+  follow-up T=10 validation in CHK-RA-CH14-N32-T10-GPU-001 added residual
+  validation and a CuPy sparse LSMR solve for the same singular normal equation
+  when direct sparse solve returns a non-finite or invalid gauge solution.  It
+  still does not silently fall back to a host solve.
 - `component_reaction_hodge_gate` now computes its final residual divergence on
   the same backend instead of mixing a backend sparse `D_f` with NumPy flattening.
 - Added a GPU regression test that manufactures a pure pressure-range cochain

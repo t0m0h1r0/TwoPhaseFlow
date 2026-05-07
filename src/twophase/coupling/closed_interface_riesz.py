@@ -402,18 +402,61 @@ def _solve_gpu_sparse_gauge_fixed_normal_matrix(
     source,
     pin: int,
 ):
-    """GPU sparse solve with a compatible pressure-gauge diagonal pin."""
+    """GPU sparse solve for a singular pressure-gauge normal equation."""
     sparse_mod = _sparse_module_for_xp(xp)
     sparse_linalg = _sparse_linalg_module_for_xp(xp)
     gauge = xp.zeros(source.size, dtype=source.dtype)
     gauge[pin] = 1.0
     pinned = normal_matrix + sparse_mod.diags(gauge, format="csr")
     try:
-        return sparse_linalg.spsolve(pinned, source)
+        potential = sparse_linalg.spsolve(pinned, source)
+        if _sparse_normal_solution_is_valid(
+            xp=xp,
+            normal_matrix=normal_matrix,
+            potential=potential,
+            source=source,
+        ):
+            return potential
+    except Exception:
+        pass
+    try:
+        lsmr_result = sparse_linalg.lsmr(
+            normal_matrix,
+            source,
+            atol=1.0e-12,
+            btol=1.0e-12,
+            maxiter=max(100, 4 * int(source.size)),
+        )
+        potential = lsmr_result[0]
+        if _sparse_normal_solution_is_valid(
+            xp=xp,
+            normal_matrix=normal_matrix,
+            potential=potential,
+            source=source,
+        ):
+            return potential
     except Exception as exc:
         raise np.linalg.LinAlgError(
-            "CuPy sparse gauge-fixed Hodge normal solve failed"
+            "CuPy sparse Hodge normal least-squares solve failed"
         ) from exc
+    raise np.linalg.LinAlgError("CuPy sparse Hodge normal solve failed")
+
+
+def _sparse_normal_solution_is_valid(
+    *,
+    xp,
+    normal_matrix,
+    potential,
+    source,
+    tolerance: float = 1.0e-8,
+) -> bool:
+    potential = xp.asarray(potential, dtype=float)
+    if not _to_bool(xp, xp.all(xp.isfinite(potential))):
+        return False
+    residual = normal_matrix @ potential - source
+    residual_norm = _to_float(xp, xp.linalg.norm(residual))
+    source_norm = max(_to_float(xp, xp.linalg.norm(source)), 1.0)
+    return residual_norm / source_norm <= float(tolerance)
 
 
 def component_reaction_hodge_gate(
