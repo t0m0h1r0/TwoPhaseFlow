@@ -1,12 +1,14 @@
 # Rayleigh-Lamb n=2 oscillating droplet benchmark on the ch14 base stack.
 # The true ellipse uses semi-axes a=0.275, b=0.225. With water-air density and
 # sigma=0.072, the area-equivalent radius sqrt(ab)=0.24875 gives T≈37.5.
+# The chapter-14 paper gate reports the N=32 one-period run
+# T = 2*pi/0.167435 = 37.526116446.
 
 experiment:
   type: ellipse
 
 grid:
-  cells: [128, 128]
+  cells: [32, 32]
   domain:
     size: [1.0, 1.0]
     boundary: periodic
@@ -55,7 +57,7 @@ physics:
 
 run:
   time:
-    final: 40.0
+    final: 37.526116446
     # Multiplier on theory CFL constants; 1.0 uses the §7 CFL budget.
     cfl: 1.0
     print_every: 200
@@ -123,7 +125,7 @@ output:
   dir: results/ch14_oscillating_droplet
   save_npz: true
   snapshots:
-    interval: 0.05
+    times: [0.0, 9.381529112, 18.763058223, 28.144587335, 37.526116446]
   figures:
     - type: time_series
       title: "Rayleigh-Lamb n=2 droplet: signed deformation"

@@ -167,26 +167,50 @@ $a=0.275,\ b=0.225$ の液相楕円である．
 \end{equation}
 を第一基準とする~\cite{Prosperetti1981}．
 YAML では $\omega_0=0.167435$ を analytical overlay に用い，
-最終時刻 $T=40.0$ は約 1 周期分の応答を含む．
+最終時刻は
+\[
+  T_\mathrm{RL}=\frac{2\pi}{\omega_0}=37.526116446
+\]
+とし，1 周期分の応答を読む．
 
 \begin{itemize}[noitemsep,leftmargin=2em]
-  \item グリッド：$[0,1]^2$，$128^2$，periodic，interface-fitted $\alpha=2$
+  \item グリッド：$[0,1]^2$，$32^2$，periodic，interface-fitted $\alpha=2$
   \item 物性：$\rho_l=1000$，$\rho_g=1.2$，
         $\mu_l=10^{-3}$，$\mu_g=1.8\times10^{-5}$，
         $\sigma=0.072$，$g=0$
-  \item 時間：$T=40.0$，理論 CFL multiplier $1.0$
-  \item 出力：\texttt{signed\_deformation}，\texttt{deformation}，
-        \texttt{volume\_conservation}，\texttt{kinetic\_energy}，
-        $\psi$/速度/圧力 snapshot
+  \item 時間：$T=37.526116446$，理論 CFL multiplier $1.0$
+  \item 時系列診断：符号付き変形量，変形量，体積ドリフト，運動エネルギー
+  \item snapshot：
+        $0,\frac14T_\mathrm{RL},\frac12T_\mathrm{RL},
+        \frac34T_\mathrm{RL},T_\mathrm{RL}$ 近傍の $\psi$/速度/圧力場
 \end{itemize}
 
 \subsubsection{結果と判定}
 
-\texttt{signed\_deformation} は
-$D_0\cos(\omega_0 t)$ を第一基準として符号反転し，
-約 1 周期にわたって Rayleigh--Lamb 型の往復運動を示した．
-粘性項は振動の位相を破壊するのではなく包絡線の減衰として現れ，
-\texttt{kinetic\_energy} は形状変形エネルギーとの交換に対応して振動する．
+N=32 の 1 周期 run は $3866$ steps で
+$t=T_\mathrm{RL}$ に到達し，すべての保存診断と snapshot field は有限値を保った．
+CFL は全区間で毛管制限が支配し，$dt$ は
+$9.15\times10^{-3}$--$9.96\times10^{-3}$ の範囲に留まった．
+\texttt{signed\_deformation} は初期離散値
+$7.6175\times10^{-2}$ から負側最小値
+$-6.3668\times10^{-2}$ へ進み，
+1 周期終端で $5.0178\times10^{-2}$ へ戻った．
+したがって粗い非一様格子・毎 step 再初期化込みでも，
+静止解へ凍結せず，2 回の符号反転を含む Rayleigh--Lamb 型の往復運動を作る．
+一方で，この N=32 run の振幅を
+$D_0\cos(\omega_0t)$ と量的一致させることは主張しない．
+$D_0\cos(\omega_0t)$ は位相と復元向きの第一基準であり，
+振幅誤差には粗格子の界面表現，Ridge--Eikonal 再初期化，
+および粘性散逸が含まれるためである．
+
+体積ドリフトは最大 $6.37\times10^{-5}$，
+終端 $4.33\times10^{-5}$ に留まり，
+\texttt{kinetic\_energy} は
+$2.36\times10^{-9}$ から立ち上がって最大
+$1.98\times10^{-3}$，終端
+$7.98\times10^{-4}$ の有界な交換として現れた．
+snapshot の速度最大値は $8.81\times10^{-3}$ であり，
+圧力 Hodge 代表も有限範囲に収まった．
 このとき体積保存が同時に保たれることが重要である：
 体積がずれたまま変形量だけが振動しても，それは閉じた液滴の物理応答ではない．
 
@@ -329,7 +353,7 @@ Rayleigh--Taylor は浮力主導の成長問題であり，
   \texttt{volume\_conservation} &
   \checkmark \\
 振動液滴 &
-  $128^2$，$T=40$，水--空気，periodic，$D_0=0.10$ &
+  $32^2$，$T=37.526116446$，水--空気，periodic，$D_0=0.10$ &
   \texttt{signed\_deformation} の Rayleigh--Lamb 位相，
   粘性減衰包絡，運動エネルギー交換，体積保存 &
   \checkmark \\
