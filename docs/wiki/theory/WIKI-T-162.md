@@ -824,3 +824,39 @@ For `closed_interface_riesz`, the parser should fail closed on `curvature`,
 `capillary_range_projection`, and boolean projection aliases.  It should
 require `pressure_jump`, `phase_separated`, `affine_jump`, face-native state,
 and `capillary_reaction_projection: pressure_component_hodge`.
+
+## Trace-Riesz Runtime Gate
+
+`CHK-RA-CH14-TRACE-RIESZ-N32T1-001` implemented the runtime slice of the
+trace-vertex theorem.  The new `surface_tension.source:
+closed_interface_riesz` route:
+
+1. records the transport endpoint before reinit/profile projection,
+2. builds `s_K=-M_f^{-1}C_K^Td_z(sigma S_h)` and
+   `B_K=M_f^{-1}C_K^Td_zV_m`,
+3. computes the component-reaction-corrected cochain `c_K`,
+4. adds `D_f c_K` to the PPE RHS, and
+5. passes the same `c_K` through
+   `div_op.pressure_fluxes(..., capillary_jump_components=c_K)`.
+
+The scalar affine Young-Laplace jump is disabled for this source, so curvature
+does not double count the trace-Riesz force.  `capillary_range_projection`
+remains illegal under the new source; the allowed reaction operation is
+`capillary_reaction_projection: pressure_component_hodge`.
+
+The Hodge linear algebra now uses the same `M_f,D_f` theorem object with an
+analytic sparse FCCD divergence matrix and sparse LSMR solve.  This changes the
+linear solver cost, not the projection definition.
+
+N=32/T=1 remote validation:
+
+| case | KE first -> last | speed Linf final | shape metric | max volume drift | verdict |
+|---|---:|---:|---:|---:|---|
+| static circle | `1.270e-10 -> 8.882e-07` | `1.347e-03` | deformation `0 -> 0` | `2.030e-15` | stable, not roundoff-static |
+| oscillating droplet | `2.302e-09 -> 9.657e-05` | `5.405e-03` | signed deformation `7.618e-02 -> 4.349e-02` | `1.917e-15` | zero-drive removed |
+
+The key regression is decisive: the old N=32/T=1 `range_projected` path had
+`KE ~1e-37` and velocity Linf `3.57e-19`, while the trace-Riesz route produces
+finite capillary motion.  The static circle still carries finite-grid spurious
+current; it should be treated as a convergence gate, not an exact equilibrium
+oracle for a sampled continuum circle.

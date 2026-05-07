@@ -23,6 +23,8 @@ from dataclasses import dataclass
 from typing import Any
 
 import numpy as np
+from scipy import sparse as sp
+from scipy.sparse import linalg as spla
 
 from .closed_interface_geometry import liquid_area_gradient_2d
 from .closed_interface_geometry import trace_surface_length_2d
@@ -300,14 +302,23 @@ def weighted_hodge_decomposition(
         div_op=div_op,
         face_templates=face_components,
     )
-    component_flat = _flatten_face_components(face_components)
-    weight_flat = _flatten_face_components(face_weight_components)
+    component_flat = _flatten_face_components(xp, face_components)
+    weight_flat = _flatten_face_components(xp, face_weight_components)
     if np.any(weight_flat <= 0.0):
         raise ValueError("weighted Hodge decomposition requires positive face weights")
     inv_weight = 1.0 / weight_flat
-    normal_matrix = D @ (inv_weight[:, None] * D.T)
     source = D @ component_flat
-    potential = np.linalg.lstsq(normal_matrix, source, rcond=float(rcond))[0]
+    if sp.issparse(D):
+        normal_matrix = D @ sp.diags(inv_weight, format="csr") @ D.T
+        potential = spla.lsmr(
+            normal_matrix,
+            source,
+            atol=float(rcond),
+            btol=float(rcond),
+        )[0]
+    else:
+        normal_matrix = D @ (inv_weight[:, None] * D.T)
+        potential = np.linalg.lstsq(normal_matrix, source, rcond=float(rcond))[0]
     range_flat = inv_weight * (D.T @ potential)
     hodge_flat = component_flat - range_flat
     range_components = _unflatten_face_components(xp, range_flat, shapes, sizes)
@@ -376,7 +387,7 @@ def component_reaction_hodge_gate(
         div_op=div_op,
         face_templates=residual,
     )
-    residual_div = float(np.max(np.abs(D @ _flatten_face_components(residual))))
+    residual_div = float(np.max(np.abs(D @ _flatten_face_components(xp, residual))))
     return ComponentReactionHodgeGate(
         surface_hodge_weighted_l2=surface.hodge_weighted_l2,
         volume_hodge_weighted_l2=volume.hodge_weighted_l2,
@@ -447,7 +458,28 @@ def _divide_face_components(xp, numerator_components, denominator_components):
 def _dense_divergence_matrix(*, xp, div_op, face_templates):
     templates = [xp.asarray(component) for component in face_templates]
     shapes = [tuple(component.shape) for component in templates]
+    cache_key = tuple(shapes)
+    cache = getattr(div_op, "_twophase_dense_divergence_matrix_cache", None)
+    if cache is not None and cache.get("key") == cache_key:
+        cached_matrix, cached_shapes, cached_sizes = cache["value"]
+        return cached_matrix, cached_shapes, cached_sizes
     sizes = [int(np.prod(shape)) for shape in shapes]
+    matrix = _dense_divergence_matrix_from_fccd(
+        xp=xp,
+        div_op=div_op,
+        shapes=shapes,
+        sizes=sizes,
+    )
+    if matrix is not None:
+        result = (matrix, shapes, sizes)
+        try:
+            div_op._twophase_dense_divergence_matrix_cache = {
+                "key": cache_key,
+                "value": result,
+            }
+        except Exception:
+            pass
+        return result
     total_size = sum(sizes)
     zero_faces = [xp.zeros_like(component) for component in templates]
     sample = div_op.divergence_from_faces(zero_faces)
@@ -465,12 +497,230 @@ def _dense_divergence_matrix(*, xp, div_op, face_templates):
                 div_op.divergence_from_faces(faces),
             ).ravel()
         offset += size
-    return matrix, shapes, sizes
+    result = (matrix, shapes, sizes)
+    try:
+        div_op._twophase_dense_divergence_matrix_cache = {
+            "key": cache_key,
+            "value": result,
+        }
+    except Exception:
+        pass
+    return result
 
 
-def _flatten_face_components(face_components) -> np.ndarray:
+def _dense_divergence_matrix_from_fccd(*, xp, div_op, shapes, sizes):
+    fccd = getattr(div_op, "_fccd", None)
+    if fccd is None:
+        return None
+    grid = getattr(fccd, "grid", None)
+    if grid is None:
+        return None
+    ndim = int(getattr(grid, "ndim", len(shapes)))
+    if ndim != len(shapes):
+        return None
+    row_shape = tuple(int(n) + 1 for n in grid.N)
+    total_size = sum(sizes)
+    matrix = {
+        "rows": [],
+        "columns": [],
+        "data": [],
+        "shape": (int(np.prod(row_shape)), total_size),
+    }
+    offset = 0
+    for axis, (shape, size) in enumerate(zip(shapes, sizes, strict=True)):
+        if axis >= ndim or shape[axis] != int(grid.N[axis]):
+            return None
+        periodic = _axis_is_periodic(fccd, axis)
+        inv_width = _divergence_inverse_widths(
+            xp=xp,
+            div_op=div_op,
+            fccd=fccd,
+            axis=axis,
+            periodic=periodic,
+        )
+        for local_index, face_index in enumerate(np.ndindex(shape)):
+            column = offset + local_index
+            face_axis_index = face_index[axis]
+            if periodic:
+                _add_periodic_face_divergence_column(
+                    matrix=matrix,
+                    column=column,
+                    row_shape=row_shape,
+                    face_index=face_index,
+                    axis=axis,
+                    n_cells=int(grid.N[axis]),
+                    inv_width=inv_width,
+                )
+            else:
+                _add_wall_face_divergence_column(
+                    matrix=matrix,
+                    column=column,
+                    row_shape=row_shape,
+                    face_index=face_index,
+                    axis=axis,
+                    n_cells=int(grid.N[axis]),
+                    inv_width=inv_width,
+                    face_axis_index=face_axis_index,
+                )
+        offset += size
+    return sp.csr_matrix(
+        (matrix["data"], (matrix["rows"], matrix["columns"])),
+        shape=matrix["shape"],
+        dtype=float,
+    )
+
+
+def _axis_is_periodic(fccd, axis: int) -> bool:
+    checker = getattr(fccd, "_axis_periodic", None)
+    if callable(checker):
+        return bool(checker(axis))
+    bc_type = str(getattr(fccd, "bc_type", "")).strip().lower()
+    return bc_type == "periodic"
+
+
+def _divergence_inverse_widths(*, xp, div_op, fccd, axis: int, periodic: bool):
+    if periodic:
+        weights = fccd._weights[axis]
+        n_cells = int(fccd.grid.N[axis])
+        if bool(weights.get("uniform", False)):
+            value = float(np.asarray(array_to_numpy(xp, weights["inv_H"])))
+            return np.full(n_cells, value, dtype=float)
+        return np.asarray(
+            array_to_numpy(xp, weights["inv_H_periodic_node"]),
+            dtype=float,
+        )
+    if getattr(div_op, "_node_width", None) is None:
+        div_op._init_node_width()
+    widths = np.asarray(array_to_numpy(xp, div_op._node_width[axis]), dtype=float)
+    return 1.0 / widths
+
+
+def _add_periodic_face_divergence_column(
+    *,
+    matrix,
+    column: int,
+    row_shape: tuple[int, ...],
+    face_index: tuple[int, ...],
+    axis: int,
+    n_cells: int,
+    inv_width,
+) -> None:
+    face_axis_index = face_index[axis]
+    _add_periodic_divergence_node(
+        matrix=matrix,
+        column=column,
+        row_shape=row_shape,
+        face_index=face_index,
+        axis=axis,
+        n_cells=n_cells,
+        node_axis_index=face_axis_index,
+        value=float(inv_width[face_axis_index]),
+    )
+    next_node = (face_axis_index + 1) % n_cells
+    _add_periodic_divergence_node(
+        matrix=matrix,
+        column=column,
+        row_shape=row_shape,
+        face_index=face_index,
+        axis=axis,
+        n_cells=n_cells,
+        node_axis_index=next_node,
+        value=-float(inv_width[next_node]),
+    )
+
+
+def _add_wall_face_divergence_column(
+    *,
+    matrix,
+    column: int,
+    row_shape: tuple[int, ...],
+    face_index: tuple[int, ...],
+    axis: int,
+    n_cells: int,
+    inv_width,
+    face_axis_index: int,
+) -> None:
+    lower_node = face_axis_index if face_axis_index > 0 else 0
+    upper_node = face_axis_index + 1 if face_axis_index < n_cells - 1 else n_cells
+    _add_divergence_node(
+        matrix=matrix,
+        column=column,
+        row_shape=row_shape,
+        face_index=face_index,
+        axis=axis,
+        node_axis_index=lower_node,
+        value=float(inv_width[lower_node]),
+    )
+    _add_divergence_node(
+        matrix=matrix,
+        column=column,
+        row_shape=row_shape,
+        face_index=face_index,
+        axis=axis,
+        node_axis_index=upper_node,
+        value=-float(inv_width[upper_node]),
+    )
+
+
+def _add_periodic_divergence_node(
+    *,
+    matrix,
+    column: int,
+    row_shape: tuple[int, ...],
+    face_index: tuple[int, ...],
+    axis: int,
+    n_cells: int,
+    node_axis_index: int,
+    value: float,
+) -> None:
+    _add_divergence_node(
+        matrix=matrix,
+        column=column,
+        row_shape=row_shape,
+        face_index=face_index,
+        axis=axis,
+        node_axis_index=node_axis_index,
+        value=value,
+    )
+    if node_axis_index == 0:
+        _add_divergence_node(
+            matrix=matrix,
+            column=column,
+            row_shape=row_shape,
+            face_index=face_index,
+            axis=axis,
+            node_axis_index=n_cells,
+            value=value,
+        )
+
+
+def _add_divergence_node(
+    *,
+    matrix,
+    column: int,
+    row_shape: tuple[int, ...],
+    face_index: tuple[int, ...],
+    axis: int,
+    node_axis_index: int,
+    value: float,
+) -> None:
+    node = list(face_index)
+    node[axis] = node_axis_index
+    row = np.ravel_multi_index(tuple(node), row_shape)
+    if isinstance(matrix, dict):
+        matrix["rows"].append(int(row))
+        matrix["columns"].append(int(column))
+        matrix["data"].append(float(value))
+    else:
+        matrix[row, column] += value
+
+
+def _flatten_face_components(xp, face_components) -> np.ndarray:
     return np.concatenate(
-        [np.asarray(component, dtype=float).ravel() for component in face_components]
+        [
+            np.asarray(array_to_numpy(xp, component), dtype=float).ravel()
+            for component in face_components
+        ]
     )
 
 

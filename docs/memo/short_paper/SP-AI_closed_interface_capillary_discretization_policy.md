@@ -1104,3 +1104,55 @@ diagnostic gates, and `capillary_reaction_projection: pressure_component_hodge`.
 contract; no tested implementation deleted; no FD/WENO/PPE fallback, damping,
 CFL workaround, curvature cap, smoothing, blanket `c -> Pi_R c`, or QP-as-
 physics path introduced.
+
+## 18. Runtime Slice And N=32 Gate
+
+The first production runtime slice now exists behind
+`surface_tension.source: closed_interface_riesz`.  It implements the theorem
+contract literally:
+
+```text
+q_T   = interface state after physical transport and before reinit
+s_K   = -M_f^{-1} C_K^T d_z(sigma S_h)
+B_K   =  M_f^{-1} C_K^T d_zV_m
+c_K   = s_K - B_K mu
+PPE   : rhs <- rhs + D_f c_K
+faces : pressure_fluxes(..., capillary_jump_components=c_K)
+```
+
+The scalar Young-Laplace jump is set to zero only for this source, preventing a
+curvature jump from being added on top of the trace-Riesz cochain.  The runtime
+therefore uses face cochains as face cochains; it does not encode them as fake
+curvature.
+
+The Hodge projector still uses the same face mass metric and divergence, but
+the computational linear algebra is sparse:
+
+```text
+D_f is assembled analytically from the FCCD divergence stencil;
+normal equations use D_f M_f^{-1} D_f^T;
+the singular system is solved by sparse LSMR.
+```
+
+This is a cost change, not a theorem change.
+
+Remote N=32/T=1 validation (`CHK-RA-CH14-TRACE-RIESZ-N32T1-001`) showed:
+
+| case | KE first -> last | final speed Linf | shape metric | max volume drift |
+|---|---:|---:|---:|---:|
+| static circle | `1.270e-10 -> 8.882e-07` | `1.347e-03` | deformation `0 -> 0` | `2.030e-15` |
+| oscillating droplet | `2.302e-09 -> 9.657e-05` | `5.405e-03` | signed deformation `7.618e-02 -> 4.349e-02` | `1.917e-15` |
+
+The old zero-drive failure is gone: prior `range_projected` N=32/T=1 had
+machine-zero velocity and `KE ~1e-37`; the trace-Riesz source now produces
+finite capillary acceleration and visible velocity/pressure snapshots.
+
+This gate is not the final physics proof.  The static sampled circle is not an
+exact discrete critical polygon at N=32, and its residual current must be judged
+by convergence and by a separately constructed discrete-critical static trace.
+Rayleigh-Lamb phase/amplitude also remain future gates, especially with
+reinit-energy accounting separated.
+
+[SOLID-X] Runtime slice preserves the pressure-jump/FCCD/UCCD6 contract and
+adds no FD/WENO/PPE fallback, damping, CFL workaround, curvature cap,
+smoothing, benchmark branch, blanket range projection, or QP-as-physics route.
