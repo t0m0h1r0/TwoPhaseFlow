@@ -1,0 +1,11 @@
+{
+  "branch": "codex/ra-paper-1-11-strict-review-20260507",
+  "branch_slug": "ra-paper-1-11-strict-review-20260507",
+  "session_id": "CHK-RA-PAPER-1-11-STRICT-001",
+  "worktree_path": ".claude/worktrees/codex-ra-paper-1-11-strict-review-20260507",
+  "holder_agent": "ResearchArchitect",
+  "acquired_at": "2026-05-07T11:04:25Z",
+  "expires_at": "2026-05-08T11:04:25Z",
+  "meta_version": "5.1.0",
+  "id_prefix": "RA-PAPER-1-11-STRICT"
+}
