@@ -30,8 +30,8 @@ FCCD 面フラックス構成を与える．
   \item \textbf{§~\ref{sec:checkerboard_solution}（解決策の概観）：}
         Balanced--Force 演算子整合と FCCD 面フラックス部分系による
         デカップリング解消の役割分担を整理する．
-  \item \textbf{§~\ref{sec:balanced_force}（Balanced--Force 条件：同一ロカス・随伴整合原理）：}
-        圧力 face cochain と毛管ジャンプ face cochain を同じ評価ロカス・同じ随伴ペアで
+  \item \textbf{§~\ref{sec:balanced_force}（Balanced--Force 条件：同一評価位置・随伴整合原理）：}
+        圧力面共鎖と毛管ジャンプ面共鎖を同じ評価位置・同じ随伴ペアで
         構成する設計思想を示す．CSF 体積力はこの原理の一括 PPE 縮約形であり，
         標準経路では pressure-jump cochain として扱う．
         演算子不一致がもたらす寄生流れの定量的解析を与える．
@@ -43,7 +43,7 @@ FCCD 面フラックス構成を与える．
         主解消原則と次数改善・予防原則の役割を分離する．
   \item \textbf{§~\ref{sec:fccd_bf_sub_system}（FCCD 面フラックス部分系）：}
         FCCD の面フラックス表現を用いて PPE，速度補正，HFE/GFM ジャンプ行，
-        変分毛管 cochain と component saddle を同じ面フットプリントへ閉じる．
+        変分毛管 cochain と成分体積制約付き鞍点系を同じ面フットプリントへ閉じる．
 \end{enumerate}
 
 \subsection{コロケート格子の利点と課題}
@@ -134,13 +134,13 @@ $\bnabla\cdot(1/\rho\,\bnabla\delta p)
 本稿では採用しない．代わりに以下の二機構の組み合わせによりデカップリングを解消する：
 \begin{enumerate}[noitemsep]
   \item \textbf{Balanced--Force 演算子整合}（§~\ref{sec:balanced_force}）：
-        圧力勾配と表面張力を同じ面ロカス・同じ随伴ペアへ通すことで，
+        圧力勾配と表面張力を同じ面評価位置・同じ随伴ペアへ通すことで，
         演算子不整合に起因する寄生流れを構造的に除去
   \item \textbf{FCCD 面フラックス部分系}（§~\ref{sec:fccd_bf_sub_system}）：
         PPE 左辺，RHS 発散，速度補正，毛管ジャンプ補正を
-        同じ active face complex 上の $D_fG_A$ として組み立てる．
+        同じ本番面複体上の $D_fG_A$ として組み立てる．
         標準 pressure-jump 閉包では surface-energy cochain と成分体積反力を
-        同じ pressure-adjoint metric で構成し，
+        同じ圧力仕事と随伴な面計量で構成し，
         純 FCCD DNS（§~\ref{sec:pure_fccd_dns}）では同じ面整合を全演算子へ拡張する
 \end{enumerate}
 
@@ -150,15 +150,15 @@ $\bnabla\cdot(1/\rho\,\bnabla\delta p)
 % ═══════════════════════════════════════════════════════════════════════════════
 
 \textbf{Balanced--Force 離散化条件}とは，圧力による面加速度
-$A_f G_f p$ と毛管ジャンプによる既知面 cochain $c_f(j_{gl})$ を
-\textbf{同一の離散ロカスと随伴整合した演算子対}で評価することで，
+$A_f G_f p$ と毛管ジャンプによる既知面共鎖 $c_f(j_{gl})$ を
+\textbf{同一の離散評価位置と随伴整合した演算子対}で評価することで，
 静止流体における Young--Laplace 平衡
-$A_f G_f p=c_f(j_{gl})$ が離散化後にも同じ face space で表現されることを
+$A_f G_f p=c_f(j_{gl})$ が離散化後にも同じ面空間で表現されることを
 要求する条件である~\cite{Francois2006}．
 CSF モデル（§~\ref{sec:csf}）を一括 PPE 縮約経路として使う場合は，
-この条件が $\bnabla p=(\kappa_{lg}/We)\bnabla\psi$ の同一ロカス評価に還元される．
+この条件が $\bnabla p=(\kappa_{lg}/We)\bnabla\psi$ の同一評価位置での評価に還元される．
 標準 pressure-jump 経路では $j_{gl}=p_g-p_l=-\sigma\kappa_{lg}$ を
-§~\ref{sec:split_ppe_capillary_range_projection} の face cochain として扱う．
+§~\ref{sec:split_ppe_capillary_range_projection} の面共鎖として扱う．
 本節では，寄生流れ（spurious currents，第~\ref{sec:intro}章§~\ref{sec:failure_modes}）を
 抑制するためのこの離散要件を定式化する．
 
@@ -206,7 +206,7 @@ CSF 縮約経路では，Balanced--Force と FCCD 面フラックス部分系
 一方，本稿の標準 pressure-jump 経路では，表面張力を予測段階の CSF 体積力として入れず，
 向き付き圧力ジャンプ $j_{gl}$ を cut-face 代表として使いながら，
 表面エネルギーの仮想仕事から毛管 face cochain を構成し，
-pressure-adjoint component saddle で静的反力と非平衡駆動を分離してから
+圧力仕事と随伴な成分体積制約付き鞍点系で静的反力と非平衡駆動を分離してから
 PPE/corrector へ渡す（§~\ref{sec:split_ppe_capillary_range_projection}）．
 
 本稿の定式化では，式~\eqref{eq:bf_operator_mismatch} の主要な演算子不整合を抑えるため，

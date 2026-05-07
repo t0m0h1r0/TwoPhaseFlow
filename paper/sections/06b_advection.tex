@@ -27,7 +27,7 @@ CLS 移流方程式の再掲：
 （§~\ref{sec:fccd_def}）と投影で得た正準面速度 $\bu_f$ を組み合わせ，
 運動量 $(u,v)$ には演算子内部散逸の
 UCCD6（§~\ref{sec:uccd6_def}，L1/L2/L3 既定）を用いる．
-FCCD による面ロカス拡張は §~\ref{sec:fccd_advection}（§6.2）で展開し，
+FCCD による面評価位置拡張は §~\ref{sec:fccd_advection}（§6.2）で展開し，
 界面張力項は一括 CSF 経路では §~\ref{sec:fccd_bf_sub_system}（§8），
 分相経路では §~\ref{sec:split_ppe_pressure_jump_formulation}（§9）で扱う．
 
@@ -120,7 +120,7 @@ $\mathbf{P}_f$ を CLS 移流に適用する．
 \medskip
 \noindent\textbf{移流への適用．}
 $\psi_i$ とその CCD 微分 $\partial_x\psi_i$ から
-面値 $(P_f\psi)_{i+1/2}$ を構成し，projection-native な正準面速度
+面値 $(P_f\psi)_{i+1/2}$ を構成し，射影後の正準面速度
 $u_{f,i+1/2}$ と掛け合わせて共有面フラックスを作る：
 \begin{align}
   \mathcal{F}^{\psi}_{i+1/2}
@@ -218,11 +218,11 @@ $L_2(\psi)$ と $L_2(\phi)$ の両方を報告する．
 \hline
 対象 & スキーム & 精度 & 根拠 \\
 \hline
-CLS 移流（$\psi$） & FCCD $\psi$ 面値 + projection-native 正準面速度（§~\ref{sec:fccd_def}，§~\ref{sec:advection_motivation}，§~\ref{sec:cls_stages} Stage A） & 面値 $\Ord{H^4}$；clamp 前は保存型 FVM テレスコーピング & 面値評価で節点 CCD overshoot を回避；総量変化時は Stage B，reinit 後は Stage F で閉じる \\
+CLS 移流（$\psi$） & FCCD $\psi$ 面値 + 射影後の正準面速度（§~\ref{sec:fccd_def}，§~\ref{sec:advection_motivation}，§~\ref{sec:cls_stages} Stage A） & 面値 $\Ord{H^4}$；clamp 前は保存型 FVM テレスコーピング & 面値評価で節点 CCD overshoot を回避；総量変化時は Stage B，reinit 後は Stage F で閉じる \\
 運動量移流（$u,v$） & UCCD6（§~\ref{sec:uccd6_def}） & CCD 微分 $\Ord{h^6}$；ハイパー粘性 $\Ord{\sigma h^7}$（次数保存） & 演算子内部散逸；$\omega_2^8$ 選択的 Nyquist（L2/L3 bulk 既定） \\
 CLS 再初期化 & Ridge--Eikonal 補助経路（§~\ref{sec:ridge_eikonal}，§~\ref{sec:cls_compression}） & 零交差線形補間は $\Ord{h^2}$；FMM/ξ距離は距離場整合 & 飽和帯・トポロジー変化時の 1 ショット距離再構成；§3.4 の補助経路を離散手順として具体化 \\
 曲率・速度微分 & CCD（§~\ref{sec:CCD}） & $\Ord{h^6}$ & 高精度・コンパクト \\
-圧力/毛管閉包 & 二相標準は affine-jump PPE + 変分毛管 Hodge 閉包（§~\ref{sec:pressure}，§~\ref{sec:split_ppe_framework}）；一括 PPE は縮約・対照経路 & $\Ord{h^5}$--$\Ord{h^7}$† & Balanced--Force 面ロカスと projection-native face closure \\
+圧力/毛管閉包 & 二相標準は affine-jump PPE + 変分毛管 Hodge 閉包（§~\ref{sec:pressure}，§~\ref{sec:split_ppe_framework}）；一括 PPE は縮約・対照経路 & $\Ord{h^5}$--$\Ord{h^7}$† & Balanced--Force 面評価位置と射影後の面速度まで共有する面閉包 \\
 \hline
 \end{tabular}
 \end{center}

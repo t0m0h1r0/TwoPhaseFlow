@@ -84,11 +84,11 @@ GFM と Extension PDE の面ジェット統合（HFE，§~\ref{sec:field_extensi
         曲率計算と圧力勾配の両方を高精度化する（第~\ref{sec:CCD}章）．
         ただし $\Ord{h^6}$ は内点ステンシルの設計次数であり，
         境界 BC の打ち切り精度の影響により大域 $L^2$ 漸近では $\Ord{h^{5/2}}$ に低下する点は §~\ref{sec:ccd_def} で詳述する．
-  \item \textbf{分相 pressure-jump PPE + DC + face-space 投影}：
+  \item \textbf{分相 pressure-jump PPE + DC + 面共鎖投影}：
         高密度比向けの主たる設計戦略として向き付き pressure-jump 分相 PPE を採用し，
         各相内で欠陥補正法（DC $k=3$）を適用して高次の圧力補正を得る．
-        速度補正・浮力残差・界面移流は同じ face-space contract
-        $D_fG_A$ と projection-native な正準面速度で閉じ，
+        速度補正・浮力残差・界面移流は同じ面発散・面勾配の組
+        $D_fG_A$ と射影後の正準面速度で閉じ，
         affine jump の履歴圧力も面加速度として持ち越す．
         一括 CSF + Balanced--Force 縮約経路（§~\ref{sec:balanced_force}）では
         表面張力と圧力勾配に同一の面中心演算子族を使用し，
@@ -96,7 +96,7 @@ GFM と Extension PDE の面ジェット統合（HFE，§~\ref{sec:field_extensi
         高次の離散化整合性を確保する
         （付録~\ref{sec:ppe_discretization_choice}；
         CSF/BF 縮約経路の静止液滴・寄生流れは V3/V5/V8 で，
-        surface-energy/component-saddle pressure-jump stack は V6/V7/V9 で，
+        表面エネルギー仮想仕事と成分体積制約付き鞍点系を含む pressure-jump 閉包は V6/V7/V9 で，
         一様格子・NS 非連成 CLS 強変形移流は V10-a/b で確認し，
         非一様 moving-interface CLS と長時間・完全連成 NS 移動界面の収束性は
         §~\ref{sec:future_work} の今後の検証ゲートに残し，
@@ -141,7 +141,7 @@ Ridge--Eikonal/Stage F による幾何プロファイルと体積閉鎖，
 FCCD 面ジェット（CLS）と UCCD6（運動量）による移流，
 CCD/FCCD/HFE による界面近傍データ構成，
 および分相 pressure-jump PPE + 欠陥補正法（DC $k=3$）+
-projection-native face closure の組み合わせである．
+射影後の面速度まで共有する面閉包の組み合わせである．
 
 NS 方程式の各項とそれを処理するソルバーの対応関係（演算子マッピング）は，
 本稿全体のアルゴリズム構成として Part 2 の各章で個別に提示する．

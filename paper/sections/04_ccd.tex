@@ -1,18 +1,18 @@
 % paper/sections/04_ccd.tex
-\section{CCD 演算子族の定式化：3 点コンパクト性と面ロカス整合}
+\section{CCD 演算子族の定式化：3 点コンパクト性と面評価位置整合}
 \label{sec:strategy}
 \label{sec:CCD}
 
 \noindent\textbf{本章の位置付け：}
 本章では，後続章で用いる空間演算子の共通基盤として
-\textbf{3 点コンパクト性}と\textbf{同一面ロカス}を満たす CCD 演算子族を定式化する．
+\textbf{3 点コンパクト性}と\textbf{同一面評価位置}を満たす CCD 演算子族を定式化する．
 基底 CCD は滑らかな節点場に対して $f',f''$ を同時連立し，
 DCCD は節点中心 CCD に外殻散逸を加える補助 post-filter，
 UCCD6 は運動量 bulk 対流の節点中心ハイパー粘性演算子，
 FCCD と面ジェットは保存形面フラックス・圧力勾配・毛管面閉包に渡す
-面ロカスの入力契約である．
+面評価位置の入力条件である．
 したがって本章は「単一の万能差分」を選ぶ章ではなく，
-標準経路でどの量をどのロカスで評価するかを固定する演算子章である
+標準経路でどの量をどの評価位置で評価するかを固定する演算子章である
 （界面適合格子は第~\ref{sec:grid}章，時間積分は第~\ref{sec:time_int}章）．
 
 % ─────────────────────────────────────────────────────────────────────────────
@@ -50,7 +50,7 @@ $\Ord{\varepsilon}$ で滑らかに変化する界面に対しては
 \noindent\textbf{標準経路での役割地図．}
 本稿の標準離散経路では，CLS $\psi$ は FCCD 保存形面フラックス，
 運動量 bulk は UCCD6，圧力勾配・CSF・ジャンプ条件は面ジェット/FCCD による
-同一ロカス閉包で評価する．
+同一評価位置閉包で評価する．
 DCCD は節点中心 CCD 出力への補助 post-filter として導出・検証するが，
 標準 CLS 移流，圧力場，Balanced--Force 毛管面閉包には入れない．
 この役割地図を先に固定することで，本章の各派生スキームは
@@ -58,9 +58,9 @@ DCCD は節点中心 CCD 出力への補助 post-filter として導出・検証
 
 \medskip
 \noindent\textbf{本章の構成：4 スキーム + 出力 API のロードマップ．}
-派生スキームは出力ロカスにより\textbf{2 つの family} に分かれる：
-\textbf{節点中心 dissipation family}（CCD / DCCD / UCCD6）と
-\textbf{面中心 family}（FCCD），そしてその両者の出力を面位置で統合する API（面ジェット）．
+派生スキームは出力位置により\textbf{2 つの系統}に分かれる：
+\textbf{節点中心散逸系統}（CCD / DCCD / UCCD6）と
+\textbf{面中心系統}（FCCD），そしてその両者の出力を面位置で統合する API（面ジェット）．
 \begin{enumerate}[leftmargin=*, label=(\arabic*), itemsep=2pt, topsep=2pt]
   \item \textbf{CCD}（§~\ref{sec:ccd_def}）：
         $f, f', f''$ を同時連立する基底スキーム．
