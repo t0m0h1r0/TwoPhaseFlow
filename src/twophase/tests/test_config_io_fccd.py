@@ -297,7 +297,9 @@ def test_ch14_static_droplet_yaml_uses_base_dynamic_route():
     assert cfg.run.viscous_dc_max_iterations == 12
     assert cfg.run.ppe_defect_correction is True
     assert cfg.run.ppe_dc_max_iterations == 12
-    assert cfg.run.capillary_range_projection == "component_hodge_augmented"
+    assert cfg.run.capillary_force_source == "closed_interface_riesz"
+    assert cfg.run.capillary_range_projection == "none"
+    assert cfg.run.capillary_reaction_projection == "pressure_component_hodge"
 
 
 def test_ch14_canonical_yamls_use_theory_cfl_not_fixed_dt():
@@ -338,7 +340,22 @@ def test_ch14_canonical_yamls_share_base_numerical_stack():
         assert cfg.run.pressure_scheme == "fccd_matrixfree", path.name
         assert cfg.run.ppe_coefficient_scheme == "phase_separated", path.name
         assert cfg.run.ppe_interface_coupling_scheme == "affine_jump", path.name
-        assert cfg.run.capillary_range_projection == "component_hodge_augmented", path.name
+        if path.name in {
+            "ch14_static_droplet.yaml",
+            "ch14_oscillating_droplet.yaml",
+        }:
+            assert cfg.run.capillary_force_source == "closed_interface_riesz", path.name
+            assert cfg.run.capillary_range_projection == "none", path.name
+            assert (
+                cfg.run.capillary_reaction_projection
+                == "pressure_component_hodge"
+            ), path.name
+        else:
+            assert cfg.run.capillary_force_source == "curvature_jump", path.name
+            assert (
+                cfg.run.capillary_range_projection
+                == "component_hodge_augmented"
+            ), path.name
         assert cfg.run.ppe_defect_correction is True, path.name
         assert cfg.run.ppe_dc_max_iterations == 12, path.name
 
@@ -467,6 +484,140 @@ def test_capillary_range_projection_parses_and_requires_affine_jump():
                                 "max_iterations": 3,
                                 "tolerance": 1.0e-8,
                             },
+                            "base_solver": {"discretization": "fd", "kind": "direct"},
+                        },
+                    },
+                },
+            },
+        }))
+
+
+def test_closed_interface_riesz_source_requires_reaction_projection():
+    cfg = ExperimentConfig.from_dict(_minimal({
+        "physics": {"surface_tension": 0.1},
+        "numerics": {
+            "momentum": {
+                "terms": {
+                    "surface_tension": {
+                        "formulation": "pressure_jump",
+                        "gradient": "none",
+                        "source": "closed_interface_riesz",
+                    },
+                },
+            },
+            "projection": {
+                "poisson": {
+                    "operator": {
+                        "discretization": "fccd",
+                        "coefficient": "phase_separated",
+                        "interface_coupling": "affine_jump",
+                        "capillary_reaction_projection": "pressure_component_hodge",
+                    },
+                    "solver": {
+                        "kind": "defect_correction",
+                        "corrections": {
+                            "max_iterations": 3,
+                            "tolerance": 1.0e-8,
+                        },
+                        "base_solver": {"discretization": "fd", "kind": "direct"},
+                    },
+                },
+            },
+        },
+    }))
+
+    assert cfg.run.capillary_force_source == "closed_interface_riesz"
+    assert cfg.run.capillary_reaction_projection == "pressure_component_hodge"
+    assert cfg.run.capillary_range_projection == "none"
+
+    with pytest.raises(ValueError, match="capillary_reaction_projection"):
+        ExperimentConfig.from_dict(_minimal({
+            "physics": {"surface_tension": 0.1},
+            "numerics": {
+                "momentum": {
+                    "terms": {
+                        "surface_tension": {
+                            "formulation": "pressure_jump",
+                            "gradient": "none",
+                            "source": "closed_interface_riesz",
+                        },
+                    },
+                },
+                "projection": {
+                    "poisson": {
+                        "operator": {
+                            "discretization": "fccd",
+                            "coefficient": "phase_separated",
+                            "interface_coupling": "affine_jump",
+                        },
+                        "solver": {
+                            "kind": "defect_correction",
+                            "base_solver": {"discretization": "fd", "kind": "direct"},
+                        },
+                    },
+                },
+            },
+        }))
+
+    with pytest.raises(ValueError, match="capillary_range_projection"):
+        ExperimentConfig.from_dict(_minimal({
+            "physics": {"surface_tension": 0.1},
+            "numerics": {
+                "momentum": {
+                    "terms": {
+                        "surface_tension": {
+                            "formulation": "pressure_jump",
+                            "gradient": "none",
+                            "source": "closed_interface_riesz",
+                        },
+                    },
+                },
+                "projection": {
+                    "poisson": {
+                        "operator": {
+                            "discretization": "fccd",
+                            "coefficient": "phase_separated",
+                            "interface_coupling": "affine_jump",
+                            "capillary_range_projection": "range_projected",
+                            "capillary_reaction_projection": (
+                                "pressure_component_hodge"
+                            ),
+                        },
+                        "solver": {
+                            "kind": "defect_correction",
+                            "base_solver": {"discretization": "fd", "kind": "direct"},
+                        },
+                    },
+                },
+            },
+        }))
+
+    with pytest.raises(ValueError, match="curvature"):
+        ExperimentConfig.from_dict(_minimal({
+            "physics": {"surface_tension": 0.1},
+            "numerics": {
+                "momentum": {
+                    "terms": {
+                        "surface_tension": {
+                            "formulation": "pressure_jump",
+                            "gradient": "none",
+                            "source": "closed_interface_riesz",
+                            "curvature": "face_implicit",
+                        },
+                    },
+                },
+                "projection": {
+                    "poisson": {
+                        "operator": {
+                            "discretization": "fccd",
+                            "coefficient": "phase_separated",
+                            "interface_coupling": "affine_jump",
+                            "capillary_reaction_projection": (
+                                "pressure_component_hodge"
+                            ),
+                        },
+                        "solver": {
+                            "kind": "defect_correction",
                             "base_solver": {"discretization": "fd", "kind": "direct"},
                         },
                     },

@@ -89,6 +89,7 @@ numerics:
             relaxation: 0.8
       surface_tension:
         formulation: pressure_jump
+        source: closed_interface_riesz
   projection:
     face_flux_projection: true
     canonical_face_state: true
@@ -98,7 +99,7 @@ numerics:
         discretization: fccd
         coefficient: phase_separated
         interface_coupling: affine_jump
-        capillary_range_projection: component_hodge_augmented
+        capillary_reaction_projection: pressure_component_hodge
       solver:
         kind: defect_correction
         corrections:

@@ -5,6 +5,8 @@ from __future__ import annotations
 from .config_constants import (
     _CAPILLARY_RANGE_PROJECTION_ALIASES,
     _CAPILLARY_RANGE_PROJECTION_MODES,
+    _CAPILLARY_REACTION_PROJECTION_ALIASES,
+    _CAPILLARY_REACTION_PROJECTION_MODES,
     _PPE_DISCRETIZATIONS,
     _PPE_TO_PRESSURE_SCHEME,
     _POISSON_COEFFICIENT_ALIASES,
@@ -81,6 +83,24 @@ def parse_run_poisson_settings(*, layout: dict, projection: dict) -> dict:
             f"{layout['paths']['poisson_capillary_range_projection']} requires "
             "poisson.operator.interface_coupling='affine_jump'."
         )
+    capillary_reaction_projection = validate_choice(
+        _CAPILLARY_REACTION_PROJECTION_ALIASES.get(
+            str(poisson_operator.get("capillary_reaction_projection", "none"))
+            .strip()
+            .lower(),
+            poisson_operator.get("capillary_reaction_projection", "none"),
+        ),
+        _CAPILLARY_REACTION_PROJECTION_MODES,
+        layout["paths"]["poisson_capillary_reaction_projection"],
+    )
+    if (
+        capillary_reaction_projection != "none"
+        and poisson_interface_coupling != "affine_jump"
+    ):
+        raise ValueError(
+            f"{layout['paths']['poisson_capillary_reaction_projection']} requires "
+            "poisson.operator.interface_coupling='affine_jump'."
+        )
 
     (
         ppe_solver,
@@ -107,6 +127,7 @@ def parse_run_poisson_settings(*, layout: dict, projection: dict) -> dict:
         "poisson_coefficient": poisson_coefficient,
         "poisson_interface_coupling": poisson_interface_coupling,
         "capillary_range_projection": capillary_range_projection,
+        "capillary_reaction_projection": capillary_reaction_projection,
         "ppe_solver": ppe_solver,
         "ppe_dc_base_solver": ppe_dc_base_solver,
         "pressure_scheme": _PPE_TO_PRESSURE_SCHEME[ppe_solver],
