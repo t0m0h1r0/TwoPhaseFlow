@@ -37,3 +37,32 @@
 
 残留リスク:
 - `CCD`, `DCCD`, `FCCD`, `UCCD6`, `Fourier`, `Nyquist`, `Thomas` は手法名・解析名として残した。章内で役割が定義されており、MAJOR ではない。
+
+## Round 3: ユーザー指摘後の非語彙レビュー
+
+判定: MAJOR なし。ただし MINOR 複数。
+
+確認:
+- 第4章の主張は「3点コンパクト性を基盤に、節点中心散逸系統（CCD/DCCD/UCCD6）と面中心系統（FCCD/面ジェット）を分け、後続章が使う評価位置を固定する」という線で通っている。
+- DCCD は標準 CLS 移流・圧力面閉包の主演算子ではなく、節点中心 CCD の補助後置フィルタとして説明されている。
+- UCCD6 は運動量の領域内部対流に使う節点中心散逸演算子、FCCD/面ジェットは面評価位置を後続章へ渡す形式として整理されている。
+
+指摘:
+- MINOR: `インターフェイス` が多く残り、再びソフトウェア仕様書的に見えた。面ジェットは数理的な受け渡し形式として説明すべき。
+- MINOR: `アドホック`, `Corrector`, `for 2D`, `既存 CCD ソルバ再利用` など、英語・内部実装寄りの表現が残っていた。
+
+対応:
+- `インターフェイス` を「入出力形式」「受け渡し形式」「面入出力形式」に置換し、面ジェットを公開契約ではなく後続章の入力前提として読めるようにした。
+- `アドホックな数値粘性` を「場当たり的な数値粘性」、`Corrector 発散` を「補正段発散」、`for 2D` を「2次元で」、`既存 CCD ソルバ再利用` を「CCD 求解器の再利用」に修正した。
+- `bidiagonal node-to-face` を「二重対角の節点から面への差分」とし、FCCD の DFT 解析で英語主語彙が浮かないようにした。
+
+## Round 4: 再レビュー
+
+判定: MAJOR なし。
+
+確認:
+- 重点語彙スキャンで `契約`, `input contract`, `public contract`, `primitive`, `ロカス`, `post-filter`, `API`, `family`, `bulk`, `clamp`, `Stage`, `stencil residual`, `face-centered`, `formal 精度`, `Corrector`, `interface`, `インターフェイス`, `アドホック`, `for 2D` は検出されない。
+- `git diff --check` は通過した。
+
+残留リスク:
+- `CCD`, `DCCD`, `FCCD`, `UCCD6`, `Fourier`, `Nyquist`, `Thomas`, `DFT`, `block-circulant`, `Face-centered CCD` は手法名・解析名として残る。日本語の役割説明と併記されているため、MAJOR ではない。

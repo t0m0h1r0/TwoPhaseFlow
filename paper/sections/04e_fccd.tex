@@ -26,7 +26,7 @@ $\Ord{H^4}$ で構成する基底 CCD の派生スキームであり，
 基底 CCD と同じ Hermite 補間に基づく $\Ord{H^4}$ 整合性を保ったまま
 構築できる．バルクの節点 CCD は $\Ord{h^6}$ を維持するため，
 {\FCCD} は領域内部精度の縮退ではなく\textbf{面ジェット供給の設計選択}である．
-出力形式のインターフェイス定義は §~\ref{sec:face_jet_def} に集約する．
+出力の入出力形式は §~\ref{sec:face_jet_def} に集約する．
 
 % -------------------------------------------------------------------------------
 \subsubsection{4 つの設計原理}
@@ -118,7 +118,7 @@ block-circulant LU（周期）で $\Ord{N}$ 計算．
   \label{eq:fccd_composite_matrix}
 \end{equation}
 の適用は 2 段階：
-(i) $\mathbf{q} \leftarrow \mathbf{S}_{\CCD}\mathbf{u}$（既存 CCD ソルバ再利用），
+(i) $\mathbf{q} \leftarrow \mathbf{S}_{\CCD}\mathbf{u}$（CCD 求解器の再利用），
 (ii) $\mathbf{d}^{\FCCD} \leftarrow \mathbf{D}_1\mathbf{u} - \mathbf{D}_2\mathbf{q}$（面上局所ステンシル）．
 全体コスト $\Ord{N}$，追加メモリは $\mathbf{q}$ のみ．
 
@@ -137,7 +137,7 @@ block-circulant LU（周期）で $\Ord{N}$ 計算．
         \left[1 + \frac{\omega_2(\xi)^2}{24}\right]
   \label{eq:fccd_fourier_symbol}
 \end{equation}
-ここで前段因子 $2i\sin(\xi/2)/H$ は bidiagonal node-to-face 差分
+ここで前段因子 $2i\sin(\xi/2)/H$ は二重対角の節点から面への差分
 $(D_1 u)_{f_{i-1/2}} = (u_i-u_{i-1})/H$（式~\eqref{eq:fccd_D1}）の
 面位置における Fourier シンボル（純虚数で散逸ゼロ；
 節点間中央差分 $i\sin(\xi)/H$ とは別演算子）であり，

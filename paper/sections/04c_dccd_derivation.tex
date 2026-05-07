@@ -34,7 +34,7 @@ $\omega_1(\xi),\omega_2(\xi)$ の挙動から，
   \item \textbf{導出形}（§\ref{sec:dccd_embedding}）：
         中心 Chu--Fan CCD の 1 次導関数 $D_1^{\CCD}$ は純虚数 Fourier シンボルで散逸ゼロのため，
         \textbf{実数 Hermite 正定値}な偶数次演算子 $-D_2^{\CCD}$ を散逸チャンネルとして並列付加する筋道．
-        DCCD の散逸チャンネルが「アドホックな数値粘性」ではなく
+        DCCD の散逸チャンネルが「場当たり的な数値粘性」ではなく
         中心系の対称性と CCD が既に解いている量の有効再利用であることを明らかにする．
   \item \textbf{後置フィルタ形}（§\ref{sec:dccd_spectral_filter}--§\ref{sec:dccd_adaptive}）：
         伝達関数 $H(\xi)=1-4\varepsilon_d\sin^2(\xi/2)$ による
@@ -343,7 +343,7 @@ $0\le 1+\mu\le1$ であり，定数係数の場合と同じ
   \item \textbf{後続計算への引き渡し：}
         フィルタ適用済みの $(\tilde{f}', \tilde{f}'')$ は，節点中心 CCD 経路の
         比較・補助安定化または高次導関数の帯制限に用いる．
-        標準 CLS 輸送は FCCD 面フラックスで閉じ，PPE 右辺・Corrector 発散の
+        標準 CLS 輸送は FCCD 面フラックスで閉じ，PPE 右辺・補正段発散の
         $2\Delta x$ 抑制は圧力場をフィルタするのではなく，面フラックス/Rhie--Chow 型の
         同一評価位置閉包として扱う（§~\ref{sec:collocate}, §~\ref{sec:dccd_pressure_nofilt}）．
 \end{enumerate}
@@ -357,7 +357,7 @@ $0\le 1+\mu\le1$ であり，定数係数の場合と同じ
 \]
 $f''_{xx}, f''_{yy}, f''_{xy}$ に対しても同様に適用する．
 
-\textbf{計算コスト：} ステップ 1（CCD，$O(N^2)$ for 2D）+ ステップ 2--4（フィルタ，$O(N^2)$）．
+\textbf{計算コスト：} 手順 1（CCD，2次元で $\Ord{N^2}$）+ 手順 2--4（フィルタ，$\Ord{N^2}$）．
 フィルタは CCD の後処理として追加コストが小さい．
 また，$\tilde{f}'$ と $\tilde{f}''$ はフィルタ段階で\textbf{独立}に補正する——
 すなわち $\tilde{f}''$ は $\tilde{f}'$ から再連立せずに計算する（計算コスト削減のための設計選択）．
