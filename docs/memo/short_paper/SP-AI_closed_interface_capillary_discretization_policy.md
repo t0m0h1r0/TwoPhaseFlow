@@ -1194,6 +1194,38 @@ norm is therefore not a projection-solver artifact.  It must be attacked at the
 force-cochain/static-critical level: actual transport endpoint VJP, discrete
 critical trace construction, and reinit ledger separation.
 
+## 20. Remaining Nonzero Hodge Norm
+
+`CHK-RA-CH14-HODGE-NORM-001` resolves the next layer of ambiguity.  The correct
+static condition is not "the sampled component looks circular"; it is the
+finite-dimensional constrained criticality equation
+
+```text
+d_z(sigma S_h) = sum_m lambda_m d_z V_m .
+```
+
+The implementation now exposes this as `TraceStaticCriticality` and exports
+`capillary_static_critical_*` scalars in step diagnostics.  A manufactured
+component-reaction covector gives residual ratio below `1e-14`, while the N32
+sampled analytic circle gives `1.568664e-01`.  Thus the sampled circle is
+convergence data for the selected P1 trace geometry, not a
+roundoff-equilibrium oracle.
+
+Two further hypotheses were rejected.  The residual is not caused by wall
+boundary handling: periodic and wall values match away from boundaries.  It is
+also not caused by using arithmetic face mass instead of affine cut-face mass:
+the N32 static Hodge ratio changes only from `3.732547e-02` to
+`3.736686e-02` under the affine metric.
+
+The endpoint theorem remains decisive.  The trace-vertex cochain is exactly
+self-adjoint for its declared `C_K` (`1.054671e-16` Riesz residual), but it is
+not adjoint to the solver's current conservative face-`psi` transport endpoint
+(`2.413967e-01` work residual).  The conservative transport Riesz cochain
+matches that endpoint (`5.761773e-09`).  Production must therefore choose one
+endpoint and use the same VJP for force and transport.  Any attempt to zero the
+remaining Hodge norm without this identification is a force-law patch, not a
+discretization theorem.
+
 [SOLID-X] Runtime slice preserves the pressure-jump/FCCD/UCCD6 contract and
 adds no FD/WENO/PPE fallback, damping, CFL workaround, curvature cap,
 smoothing, benchmark branch, blanket range projection, or QP-as-physics route.

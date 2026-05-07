@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from twophase.backend import Backend
 from twophase.ccd.ccd_solver import CCDSolver
@@ -21,6 +22,8 @@ from twophase.coupling.closed_interface_trace_riesz import (
     trace_component_hodge_projection,
     trace_hodge_weighted_l2,
     trace_riesz_work_check,
+    trace_static_criticality,
+    trace_vertex_static_criticality,
 )
 from twophase.coupling.closed_interface_trace_velocity import (
     ReconstructedNodalP1TraceVelocityMap,
@@ -89,6 +92,46 @@ def test_trace_vertex_covectors_are_translation_neutral():
     volume_sum = np.sum(list(volume.values()), axis=0)
     np.testing.assert_allclose(surface_sum, 0.0, atol=1.0e-14)
     np.testing.assert_allclose(volume_sum, 0.0, atol=1.0e-14)
+
+
+def test_trace_static_criticality_detects_manufactured_component_reaction():
+    grid, backend, _, _ = _setup(16)
+    graph = build_trace_graph_2d(
+        xp=backend.xp,
+        grid=grid,
+        psi=_ellipse_psi(grid),
+    )
+    volume = trace_component_area_vertex_covectors(graph)
+    manufactured_surface = {
+        index: 0.37 * covector
+        for index, covector in volume[0].items()
+    }
+
+    criticality = trace_vertex_static_criticality(
+        surface_vertex_covectors=manufactured_surface,
+        volume_vertex_covectors=volume,
+    )
+
+    assert criticality.component_count == 1
+    assert criticality.vertex_count == len(graph.vertices)
+    assert criticality.component_coefficients[0] == pytest.approx(0.37)
+    assert criticality.residual_ratio < 1.0e-14
+
+
+def test_sampled_circle_is_not_a_finite_n_static_oracle():
+    grid, backend, _, _ = _setup(32)
+    x = np.asarray(grid.coords[0])
+    y = np.asarray(grid.coords[1])
+    X, Y = np.meshgrid(x, y, indexing="ij")
+    phi = np.sqrt((X - 0.5) ** 2 + (Y - 0.5) ** 2) - 0.247
+    psi = 1.0 / (1.0 + np.exp(phi / (1.5 / grid.N[0])))
+    graph = build_trace_graph_2d(xp=backend.xp, grid=grid, psi=psi)
+
+    criticality = trace_static_criticality(graph, sigma=0.072)
+
+    assert criticality.component_count == 1
+    assert criticality.residual_ratio > 1.0e-2
+    assert criticality.component_coefficients[0] > 0.0
 
 
 def test_trace_velocity_vjp_matches_dot_product():

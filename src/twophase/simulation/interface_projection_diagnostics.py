@@ -50,6 +50,10 @@ _FACE_ZERO_DIAGNOSTICS = {
     "capillary_component_hodge_weighted_l2": 0.0,
     "capillary_component_hodge_coefficient_linf": 0.0,
     "capillary_component_hodge_denominator": 0.0,
+    "capillary_static_critical_surface_l2": 0.0,
+    "capillary_static_critical_residual_l2": 0.0,
+    "capillary_static_critical_residual_ratio": 0.0,
+    "capillary_static_critical_component_count": 0.0,
 }
 
 
@@ -133,6 +137,7 @@ def capillary_face_cochain_diagnostics(
     component_hodge_residual_components=None,
     component_hodge_coefficients=None,
     component_hodge_denominator=None,
+    static_criticality=None,
 ) -> dict[str, float]:
     """Measure the post-PPE face cochain left in the projection face space.
 
@@ -227,6 +232,9 @@ def capillary_face_cochain_diagnostics(
         component_hodge_denominator,
         dtype=face_linf.dtype,
     )
+    static_surface, static_residual, static_ratio, static_components = (
+        _static_criticality_values(static_criticality)
+    )
     solved = xp.asarray(
         1.0 if hodge_residual_components is not None else 0.0,
         dtype=face_linf.dtype,
@@ -253,6 +261,10 @@ def capillary_face_cochain_diagnostics(
                     component_hodge_weighted_l2,
                     component_hodge_coefficient_linf,
                     component_hodge_denominator_value,
+                    xp.asarray(static_surface, dtype=face_linf.dtype),
+                    xp.asarray(static_residual, dtype=face_linf.dtype),
+                    xp.asarray(static_ratio, dtype=face_linf.dtype),
+                    xp.asarray(static_components, dtype=face_linf.dtype),
                 ]
             )
         )
@@ -275,6 +287,10 @@ def capillary_face_cochain_diagnostics(
         "capillary_component_hodge_weighted_l2": values[14],
         "capillary_component_hodge_coefficient_linf": values[15],
         "capillary_component_hodge_denominator": values[16],
+        "capillary_static_critical_surface_l2": values[17],
+        "capillary_static_critical_residual_l2": values[18],
+        "capillary_static_critical_residual_ratio": values[19],
+        "capillary_static_critical_component_count": values[20],
     }
 
 
@@ -500,6 +516,17 @@ def _optional_scalar_value(xp, scalar, *, dtype) -> Any:
     if scalar is None:
         return xp.asarray(0.0, dtype=dtype)
     return xp.asarray(scalar, dtype=dtype)
+
+
+def _static_criticality_values(static_criticality) -> tuple[float, float, float, float]:
+    if static_criticality is None:
+        return 0.0, 0.0, 0.0, 0.0
+    return (
+        float(static_criticality.surface_vertex_l2),
+        float(static_criticality.residual_l2),
+        float(static_criticality.residual_ratio),
+        float(static_criticality.component_count),
+    )
 
 
 def _face_components_divergence_linf(xp, div_op, face_components, *, dtype) -> Any:

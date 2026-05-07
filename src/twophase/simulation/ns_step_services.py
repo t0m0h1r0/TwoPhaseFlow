@@ -231,6 +231,7 @@ def _closed_interface_trace_projection_diagnostics(projection) -> dict:
         "component_hodge_residual_components": component_hodge_components,
         "component_hodge_coefficients": projection.component_hodge_coefficients,
         "component_hodge_denominator": projection.component_hodge_denominator,
+        "static_criticality": projection.static_criticality,
     }
 
 

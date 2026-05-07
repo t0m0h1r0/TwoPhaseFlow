@@ -72,6 +72,25 @@ class TraceComponentHodgeProjection:
     face_weight_components: list[Any]
     capillary_jump_components: list[Any]
     range_projection_components: list[Any]
+    static_criticality: TraceStaticCriticality | None
+
+
+@dataclass(frozen=True)
+class TraceStaticCriticality:
+    """Vertex-space constrained criticality of one trace geometry.
+
+    A closed trace is statically admissible for the chosen discrete geometry
+    when ``d_z(sigma S_h)`` lies in the span of component area covectors
+    ``d_z V_m``.  This is a shape-free finite-dimensional Euler--Lagrange
+    gate; it does not assume the component is circular or elliptical.
+    """
+
+    surface_vertex_l2: float
+    residual_l2: float
+    residual_ratio: float
+    component_coefficients: tuple[float, ...]
+    component_count: int
+    vertex_count: int
 
 
 def closed_interface_trace_riesz_cochain(
@@ -129,6 +148,61 @@ def closed_interface_trace_riesz_cochain(
         face_weight_components=weights,
         phase_threshold=float(phase_threshold),
         sigma=float(sigma),
+    )
+
+
+def trace_static_criticality(
+    graph: TraceGraph2D,
+    *,
+    sigma: float = 1.0,
+    rcond: float = 1.0e-12,
+) -> TraceStaticCriticality:
+    """Measure ``d_z(sigma S_h) - sum_m lambda_m d_z V_m`` on the trace.
+
+    The norm is only a diagnostic norm on vertex covectors.  The mathematical
+    claim is the zero set: a constrained critical discrete trace has zero
+    residual before any pressure/Hodge projection is applied.
+    """
+    surface = trace_surface_vertex_covectors(graph, sigma=float(sigma))
+    volumes = trace_component_area_vertex_covectors(graph)
+    return trace_vertex_static_criticality(
+        surface_vertex_covectors=surface,
+        volume_vertex_covectors=volumes,
+        rcond=float(rcond),
+    )
+
+
+def trace_vertex_static_criticality(
+    *,
+    surface_vertex_covectors: dict[int, np.ndarray],
+    volume_vertex_covectors: list[dict[int, np.ndarray]],
+    rcond: float = 1.0e-12,
+) -> TraceStaticCriticality:
+    """Project a surface covector onto component-volume covectors."""
+    vertex_ids = tuple(sorted(surface_vertex_covectors))
+    surface = _flatten_vertex_covectors(surface_vertex_covectors, vertex_ids)
+    if volume_vertex_covectors:
+        component_matrix = np.column_stack(
+            [
+                _flatten_vertex_covectors(covectors, vertex_ids)
+                for covectors in volume_vertex_covectors
+            ]
+        )
+        coefficients = np.linalg.lstsq(component_matrix, surface, rcond=float(rcond))[0]
+        represented = component_matrix @ coefficients
+    else:
+        coefficients = np.zeros(0, dtype=float)
+        represented = np.zeros_like(surface)
+    residual = surface - represented
+    surface_l2 = float(np.linalg.norm(surface))
+    residual_l2 = float(np.linalg.norm(residual))
+    return TraceStaticCriticality(
+        surface_vertex_l2=surface_l2,
+        residual_l2=residual_l2,
+        residual_ratio=residual_l2 / max(surface_l2, 1.0e-30),
+        component_coefficients=tuple(float(value) for value in coefficients),
+        component_count=len(volume_vertex_covectors),
+        vertex_count=len(vertex_ids),
     )
 
 
@@ -220,6 +294,11 @@ def trace_component_hodge_projection(
             face_weight_components=cochain.face_weight_components,
             capillary_jump_components=corrected,
             range_projection_components=surface.range_components,
+            static_criticality=trace_static_criticality(
+                cochain.trace_graph,
+                sigma=cochain.sigma,
+                rcond=float(rcond),
+            ),
         )
     matrix = np.zeros((len(component_decompositions), len(component_decompositions)))
     rhs = np.zeros(len(component_decompositions))
@@ -274,6 +353,11 @@ def trace_component_hodge_projection(
         face_weight_components=cochain.face_weight_components,
         capillary_jump_components=cochain.surface_acceleration,
         range_projection_components=corrected_decomposition.range_components,
+        static_criticality=trace_static_criticality(
+            cochain.trace_graph,
+            sigma=cochain.sigma,
+            rcond=float(rcond),
+        ),
     )
 
 
@@ -300,3 +384,12 @@ def _divide_face_components(xp, numerator_components, denominator_components):
 def _relative_residual(left: float, right: float) -> float:
     denominator = abs(left) + abs(right) + 1.0e-30
     return abs(left - right) / denominator
+
+
+def _flatten_vertex_covectors(
+    covectors: dict[int, np.ndarray],
+    vertex_ids: tuple[int, ...],
+) -> np.ndarray:
+    return np.concatenate(
+        [np.asarray(covectors[index], dtype=float).reshape(2) for index in vertex_ids]
+    )

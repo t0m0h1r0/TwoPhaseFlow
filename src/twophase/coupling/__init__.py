@@ -41,10 +41,13 @@ from .closed_interface_trace_riesz import (
     ClosedInterfaceTraceRieszCochain,
     TraceComponentHodgeProjection,
     TraceRieszWorkCheck,
+    TraceStaticCriticality,
     closed_interface_trace_riesz_cochain,
     trace_component_hodge_projection,
     trace_hodge_weighted_l2,
     trace_riesz_work_check,
+    trace_static_criticality,
+    trace_vertex_static_criticality,
 )
 from .closed_interface_trace_velocity import (
     ReconstructedNodalP1TraceVelocityMap,
@@ -77,6 +80,7 @@ __all__ = [
     "TraceGraph2D",
     "TraceRieszWorkCheck",
     "TraceSegment2D",
+    "TraceStaticCriticality",
     "TraceVertex2D",
     "VirtualWorkCheck",
     "WeightedHodgeDecomposition",
@@ -106,9 +110,11 @@ __all__ = [
     "trace_graph_surface_length",
     "trace_hodge_weighted_l2",
     "trace_riesz_work_check",
+    "trace_static_criticality",
     "trace_surface_vertex_covectors",
     "trace_surface_length_2d",
     "trace_surface_length_gradient_2d",
+    "trace_vertex_static_criticality",
     "transport_increment_from_face_velocity",
     "weighted_hodge_decomposition",
 ]

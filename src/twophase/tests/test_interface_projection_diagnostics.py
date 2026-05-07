@@ -123,6 +123,39 @@ def test_capillary_face_cochain_diagnostics_reports_weighted_hodge_norms():
     assert diag["capillary_hodge_weighted_l2"] == pytest.approx(
         np.sqrt(2.0 * 2.0 * 2.0 + 3.0 * 3.0 * 8.0)
     )
+    assert diag["capillary_static_critical_residual_ratio"] == pytest.approx(0.0)
+
+
+def test_capillary_face_cochain_diagnostics_reports_static_criticality():
+    backend = Backend(use_gpu=False)
+
+    static_criticality = type(
+        "StaticCriticality",
+        (),
+        {
+            "surface_vertex_l2": 3.0,
+            "residual_l2": 0.75,
+            "residual_ratio": 0.25,
+            "component_count": 2,
+        },
+    )()
+
+    class ZeroDivergence:
+        def divergence_from_faces(self, face_components):
+            return np.zeros((1, 1))
+
+    diag = capillary_face_cochain_diagnostics(
+        xp=np,
+        backend=backend,
+        div_op=ZeroDivergence(),
+        face_components=[np.zeros((1, 1))],
+        static_criticality=static_criticality,
+    )
+
+    assert diag["capillary_static_critical_surface_l2"] == pytest.approx(3.0)
+    assert diag["capillary_static_critical_residual_l2"] == pytest.approx(0.75)
+    assert diag["capillary_static_critical_residual_ratio"] == pytest.approx(0.25)
+    assert diag["capillary_static_critical_component_count"] == pytest.approx(2.0)
 
 
 def test_capillary_jump_range_projection_restores_solver_and_removes_range_part():

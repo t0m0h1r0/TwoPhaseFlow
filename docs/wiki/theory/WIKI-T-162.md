@@ -874,3 +874,27 @@ manufactured analytic pure-range cochain
 previous `O(1e-2..1e-1)` trace Hodge divergence was a linear-solve contaminant,
 while the remaining nonzero Hodge norm is the force-cochain/static-critical
 problem, not a projection algebra failure.
+
+`CHK-RA-CH14-HODGE-NORM-001` adds the missing static-criticality gate.  The
+gate is the finite-dimensional Euler--Lagrange residual
+
+```text
+d_z(sigma S_h) - projection_span{d_z V_m} d_z(sigma S_h).
+```
+
+It is shape-free: it never asks whether a component is a circle or ellipse.
+The N32 sampled analytic circle has vertex criticality ratio
+`1.568664e-01`, so it is not a roundoff static oracle for the P1 trace
+geometry.  The trace-Hodge residual is also not an affine-weight or boundary
+artifact: periodic and wall probes match, and affine cut-face weights leave the
+N32 static Hodge ratio unchanged (`3.732547e-02` vs `3.736686e-02`).
+
+The same checkpoint separates endpoint theorems.  The trace-vertex cochain has
+self Riesz residual `1.054671e-16` under its own `C_K`, but against the
+solver's conservative `psi` transport endpoint the work residual is
+`2.413967e-01`.  The conservative transport Riesz cochain matches that same
+endpoint with residual `5.761773e-09`.  Therefore production must make the
+transport endpoint and capillary VJP identical: either use the conservative
+endpoint VJP for the current transport, or change transport to the trace-vertex
+endpoint.  The static residual must not be hidden by projection, damping,
+smoothing, or curvature clipping.
