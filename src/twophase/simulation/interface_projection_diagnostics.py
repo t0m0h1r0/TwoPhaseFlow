@@ -817,8 +817,9 @@ def capillary_pressure_adjoint_face_weights(
       ``M_A`` -> returned face weights
 
     The weights use the same nonuniform face measure and affine-jump inverse
-    density as the pressure face action.  They are therefore the theorem
-    metric for closed-interface residual diagnostics and component saddles.
+    density as the pressure face action.  Paired with ``grid.cell_volumes()``
+    on pressure nodes, they are the theorem metric for closed-interface
+    residual diagnostics and component saddles.
     """
     fccd = getattr(div_op, "_fccd", None)
     grid = getattr(fccd, "grid", None)
@@ -928,7 +929,8 @@ def _pressure_adjoint_probe_residual(
 ) -> Any:
     if face_weight_components is None:
         return xp.asarray(0.0, dtype=xp.asarray(rho).dtype)
-    pressure = _deterministic_pressure_probe(xp, xp.asarray(rho).shape, xp.asarray(rho).dtype)
+    rho_arr = xp.asarray(rho)
+    pressure = _deterministic_pressure_probe(xp, rho_arr.shape, rho_arr.dtype)
     face_probe = [
         _deterministic_face_probe(xp, component.shape, component.dtype, axis=axis)
         for axis, component in enumerate(face_templates)
@@ -944,9 +946,25 @@ def _pressure_adjoint_probe_residual(
         face_probe,
         face_weight_components,
     )
-    pressure_dot = xp.sum(pressure * div_op.divergence_from_faces(face_probe))
-    scale = xp.abs(face_dot) + xp.abs(pressure_dot) + xp.asarray(1.0e-30, dtype=pressure.dtype)
-    return xp.abs(face_dot - pressure_dot) / scale
+    pressure_dot = xp.sum(
+        pressure
+        * div_op.divergence_from_faces(face_probe)
+        * _pressure_node_weights(xp=xp, div_op=div_op, pressure=pressure)
+    )
+    scale = (
+        xp.abs(face_dot)
+        + xp.abs(pressure_dot)
+        + xp.asarray(1.0e-30, dtype=pressure.dtype)
+    )
+    return xp.abs(face_dot + pressure_dot) / scale
+
+
+def _pressure_node_weights(*, xp, div_op, pressure):
+    fccd = getattr(div_op, "_fccd", None)
+    grid = getattr(fccd, "grid", None)
+    if grid is None or not hasattr(grid, "cell_volumes"):
+        return xp.ones_like(pressure)
+    return xp.asarray(grid.cell_volumes(), dtype=xp.asarray(pressure).dtype)
 
 
 def _deterministic_pressure_probe(xp, shape, dtype):
