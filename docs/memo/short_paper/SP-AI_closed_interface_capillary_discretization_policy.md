@@ -1,6 +1,6 @@
 # SP-AI: Closed-Interface Capillary Discretization Policy
 
-**Status**: ACTIVE / first component-augmented implementation slice
+**Status**: ACTIVE / trace-vertex VJP theory before implementation
 **Date**: 2026-05-07
 **Scope**: ch14 closed-interface capillary force, affine pressure jump, weighted Hodge projection, implementation policy
 **Companion papers**: SP-AA, SP-AC, SP-AF, SP-AG
@@ -18,8 +18,8 @@ The correct discretization target is a fixed-stratum, trace-based,
 projection-native construction:
 
 ```text
-s      = -M_f^{-1} T^T d(sigma S_h)^T
-B      =  M_f^{-1} T^T [dV_1 ... dV_M]^T
+s      = -M_f^{-1} C_K^T d_z(sigma S_h)^T
+B      =  M_f^{-1} C_K^T [d_z V_1 ... d_z V_M]^T
 K      = ker D intersection ker(B^T M_f)
 R_aug  = K^{perp_M} = range(A G) + range(B)
 Pi_aug = M_f-orthogonal projection onto R_aug
@@ -88,7 +88,7 @@ Verdict: rejected as final law.
 Reason: it moves, but it has not passed the Riesz pullback gate:
 
 ```text
-s ?= -M_f^{-1} T^T d(sigma S_h)^T.
+s ?= -M_f^{-1} C_K^T d_z(sigma S_h)^T.
 ```
 
 Previous closed-interface probes show a residual that is not curvature noise,
@@ -323,8 +323,8 @@ Use the production face metric:
 Build:
 
 ```text
-s = -M_f^{-1} T^T d(sigma S_h)^T,
-B =  M_f^{-1} T^T [dV_1 ... dV_M]^T.
+s = -M_f^{-1} C_K^T d_z(sigma S_h)^T,
+B =  M_f^{-1} C_K^T [d_z V_1 ... d_z V_M]^T.
 ```
 
 Do not build `s` by multiplying curvature samples by cut-face masks unless
@@ -576,7 +576,7 @@ closed interface receives a nonzero corrected Hodge drive instead of the
 previous `~1e-37` kinetic energy freeze.  The static droplet is not yet a
 roundoff static equilibrium; the residual is small compared with the
 oscillating drive but nonzero.  This remaining residual is exactly the reason
-the full trace/Riesz cochain `s=-M_f^{-1}T^Td(sigma S_h)^T` is still required:
+the full trace/Riesz cochain `s=-M_f^{-1}C_K^Td_z(sigma S_h)^T` is still required:
 the current scalar face-implicit curvature cochain is not yet proven to be
 the discrete surface-energy gradient.
 
@@ -936,33 +936,97 @@ stratum: an N12 ellipse gives finite difference
 `-3.550367776828e+01`, gradient action `-3.550367702084e+01`, capillary
 power `3.550367702084e+01`, and Riesz residual `0`.
 
-The static gate fails.  After best component-volume reaction removal, a
-nearly round circle retains component Hodge residuals around
-`1.786111893948e-02` to `4.583342999469e-02` for N10--N24, with
-divergence-free residuals under the same dense `D_f` solve.  Ellipses retain
-the expected nonzero dynamic drive, but the circle failure blocks production
-acceptance.
+The finite-grid static interpretation is now refined.  A continuum circle
+sampled by a P1 marching-squares trace is not automatically an exact discrete
+constrained critical point of polygonal `S_h` at finite `N`.  The observed
+circle residuals around `1.786111893948e-02` to `4.583342999469e-02` for
+N10--N24 are therefore convergence data, not a roundoff oracle.  The dense
+`D_f` solve still shows they are not pressure-solve artifacts.
 
-Therefore the current conservative indicator transport
-`T(u)=-D_f(psi_f u_f)` is a valid Riesz law for its own transport map, but not
-the final capillary law for sharp fixed-stratum geometry.  The next candidate
-must differentiate the actual zero-crossing trace vertices under face
-velocities and then re-run the same virtual-work/static/dynamic gates.
+The correct conclusion is:
+
+```text
+T(u)=-D_f(psi_f u_f) is Riesz-correct for its own conservative nodal
+transport map, but this does not prove it is the physical sharp-trace
+transport map.
+```
+
+The next candidate must differentiate the actual zero-crossing trace vertices
+under face velocities and then re-run virtual-work, static convergence, and
+dynamic nonconstant-mode gates without classifying the shape as circular or
+elliptical.
+
+## 16. Trace-Vertex VJP Theory
+
+On a fixed trace stratum, each cut edge `e=(i,j)` has
+
+```text
+alpha_e = (tau - q_i)/(q_j - q_i),
+z_e     = x_i + alpha_e (x_j - x_i).
+```
+
+The force primitive is the polygon geometry, not curvature:
+
+```text
+S_h(z) = sum_segments |z_b-z_a|,
+V_h(z) = shoelace component area.
+```
+
+For a segment `a -> b`,
+
+```text
+ell = |z_b-z_a|,
+t   = (z_b-z_a)/ell,
+delta S_segment = sigma t . (delta z_b - delta z_a).
+```
+
+The area differential is the shoelace vertex covector:
+
+```text
+delta V = sum_k delta z_k . 0.5 R_-90 (z_{k+1}-z_{k-1}),
+```
+
+with sign fixed by the implementation convention.
+
+The missing map is
+
+```text
+C_K : face velocities -> trace vertex velocities.
+```
+
+The production theorem then becomes:
+
+```text
+s_K = -M_f^{-1} C_K^T d_z(sigma S_h)^T
+B_K =  M_f^{-1} C_K^T d_z V_h^T
+h   =  s_K - X(X^T M_f X)^+ X^T M_f s_K,  X=[A_fG_f B_K].
+```
+
+This is the shape-free static/dynamic criterion.  Static means `h ~= 0` for a
+discrete constrained critical trace; dynamic means a resolved nonconstant
+trace perturbation gives `h != 0` above the static consistency floor.
+Sampled analytic circles are used for convergence trends only.
 
 ## Final Policy
 
 The discretization is settled when the solver can state and verify:
 
 ```text
-s = -M_f^{-1} T^T d(sigma S_h)^T
-B =  M_f^{-1} T^T [dV_m]^T
+s = -M_f^{-1} C_K^T d_z(sigma S_h)^T
+B =  M_f^{-1} C_K^T [d_z V_m]^T
 h = s - X (X^T M_f X)^+ X^T M_f s,  X=[A G B]
 ```
 
 on a fixed trace stratum, with reinit handled by a separate ledger.  This is
 the implementation-facing form of the physical law.
 
-[SOLID-X] Theory/design updated for the component-augmented implementation
-slice; no tested implementation deleted; no FD/WENO/PPE fallback, damping,
+Required gates are fixed-stratum preservation, vertex finite differences,
+face Riesz identities, weighted Hodge projection identity, sampled-circle
+convergence rather than finite-N shape oracle, nonconstant-mode drive, rigid
+translation neutrality, tangential/gauge neutrality, and pre-reinit/reinit
+work separation.
+
+[SOLID-X] Theory/design updated for the trace-vertex VJP implementation
+contract; no tested implementation deleted; no FD/WENO/PPE fallback, damping,
 CFL workaround, curvature cap, smoothing, blanket `c -> Pi_R c`, or QP-as-
 physics path introduced.

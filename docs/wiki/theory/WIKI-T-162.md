@@ -11,6 +11,7 @@ sources:
   - path: artifacts/A/capillary_remedy_candidates_CHK-RA-CH14-CAP-REMEDY-001.md
   - path: artifacts/A/capillary_closed_interface_cochain_rca_CHK-RA-CH14-CAP-VOL-001.md
   - path: artifacts/A/capillary_virtual_work_gate_rca_CHK-RA-CH14-CAP-VW-001.md
+  - path: artifacts/A/ch14_trace_vertex_transport_theory_CHK-RA-CH14-TRACE-VJP-THEORY-001.md
   - path: docs/02_ACTIVE_LEDGER.md
 depends_on:
   - "[[WIKI-T-155]]"
@@ -31,8 +32,8 @@ formula, range-projection option, or benchmark branch.  It is the
 finite-dimensional weighted variational construction:
 
 ```text
-s      = -M_f^{-1} T^T d(sigma S_h)^T
-B      =  M_f^{-1} T^T [dV_1 ... dV_M]^T
+s      = -M_f^{-1} C_K^T d_z(sigma S_h)^T
+B      =  M_f^{-1} C_K^T [d_z V_1 ... d_z V_M]^T
 K      = ker D intersection ker(B^T M_f)
 R_aug  = K^{perp_M} = range(A G) + range(B)
 Pi_aug = M_f-orthogonal projection onto R_aug
@@ -224,8 +225,8 @@ The runtime mode is `capillary_range_projection: component_hodge_augmented`.
 It uses the same `D_f,A_f,G_f`, affine-jump coefficient, pressure history, and
 corrector face space as the production pressure stage.  It is still a first
 slice, not the final trace/Riesz construction, because the raw `c` must still
-be replaced by or verified against the full `s=-M_f^{-1}T^Td(sigma S_h)^T`
-object on a fixed trace stratum.
+be replaced by or verified against the full trace-vertex pullback
+`s=-M_f^{-1}C_K^Td_z(sigma S_h)^T` on a fixed trace stratum.
 
 ## N32 T1 Validation Note
 
@@ -283,8 +284,8 @@ contamination.  The next accepted route remains the fixed-stratum
 transport-adjoint Riesz cochain:
 
 ```text
-s = -M_f^{-1} T^T d(sigma S_h)^T
-B =  M_f^{-1} T^T [dV_m]^T
+s = -M_f^{-1} C_K^T d_z(sigma S_h)^T
+B =  M_f^{-1} C_K^T [d_z V_m]^T
 ```
 
 and a stored `q^n -> q_T -> q^{n+1}` ledger that separates capillary transport
@@ -617,9 +618,10 @@ with Hodge projection performed by a dense diagnostic matrix for the same
 `D_f` and `M_f`.  The result is split:
 
 ```text
-Riesz virtual work:        PASS
-static Young-Laplace gate: FAIL
-dynamic nonzero gate:      PASS
+Riesz virtual work for T_c:             PASS
+sampled-circle finite-N residual:       nonzero; convergence data, not oracle
+dynamic nonconstant-mode drive:         PASS
+production acceptance for final force:  not yet
 ```
 
 For an N12 ellipse, the fixed-stratum virtual-work check gives:
@@ -634,18 +636,96 @@ Riesz residual        0
 Thus `d(sigma S_h)[T(u)] + <s,u>_M = 0` is algebraically correct for the
 chosen transport map.
 
-However, a nearly round circle does not become a constrained critical point
-after component-volume reaction removal.  For N10--N24, the circle residual
-stays at `1.786111893948e-02`--`4.583342999469e-02`, while the residual
-divergence is only `~1e-12` under the same Hodge solve.  This is not a PPE
-artifact.  It means the conservative nodal indicator transport map
-`-D_f(psi_f u_f)` is not the correct fixed-stratum trace transport
-differential for sharp zero-crossing geometry.
+The finite-grid static reading is now sharpened by
+`CHK-RA-CH14-TRACE-VJP-THEORY-001`.  A continuum circle sampled by a P1
+marching-squares polygon is not automatically an exact discrete
+area-constrained minimizer of `S_h`.  Therefore the sampled-circle residual
+from N10--N24 is a convergence gate, not a roundoff static gate.
 
-This is a theorem-level negative result.  The next implementation candidate
-must use the VJP of the actual marching-squares trace vertices under face
-velocities, not damping, smoothing, CFL tuning, curvature caps, or projection
-deletion.
+The theorem-level conclusion is still negative for production acceptance, but
+it is more precise:
+
+```text
+T(u)=-D_f(psi_f u_f) is Riesz-correct for conservative nodal indicator transport.
+It has not been proven to be the sharp trace-vertex transport differential.
+```
+
+The next implementation candidate must therefore use the VJP of the actual
+marching-squares trace vertices under face velocities, not damping, smoothing,
+CFL tuning, curvature caps, projection deletion, or a shape-name branch.
+
+## Trace-Vertex Transport Contract
+
+On a fixed trace stratum `K`, each cut edge `e=(i,j)` has a vertex
+
+```text
+alpha_e = (tau - q_i)/(q_j - q_i),
+z_e     = x_i + alpha_e (x_j - x_i).
+```
+
+The discrete geometric primitives are the polygonal trace functionals:
+
+```text
+S_h(z) = sum_segments |z_b-z_a|,
+V_h(z) = shoelace area of each component.
+```
+
+For segment `a -> b`,
+
+```text
+ell = |z_b-z_a|,
+t   = (z_b-z_a)/ell,
+delta S_segment = sigma t . (delta z_b - delta z_a).
+```
+
+For an oriented polygon,
+
+```text
+delta V = sum_k delta z_k . 0.5 R_-90 (z_{k+1}-z_{k-1}),
+```
+
+with the sign fixed by the implementation's shoelace convention.
+
+The missing theorem object is the fixed-stratum trace velocity map:
+
+```text
+C_K : face velocities -> trace vertex velocities,
+delta z = C_K u_f.
+```
+
+The production-grade cochains must then be:
+
+```text
+s_K = -M_f^{-1} C_K^T d_z(sigma S_h)^T
+B_K =  M_f^{-1} C_K^T d_z V_h^T.
+```
+
+This is shape-free.  It does not ask whether the component is a circle,
+ellipse, or a deeper nonconstant mode.  A static component is defined only as
+a discrete constrained critical point; a dynamic mode is defined by nonzero
+component-constrained Hodge residual.
+
+## Theory Gates Before Production
+
+The next implementation is accepted only after these gates:
+
+```text
+fixed-stratum topology unchanged under probes,
+vertex finite differences of S_h and V_h match d_z forms,
+face Riesz identities hold for s_K and B_K,
+weighted Hodge residual equals s - X(X^T M_f X)^+X^T M_f s with X=[A_fG_f B],
+sampled analytic circle is treated as convergence data, not a finite-N oracle,
+constructed discrete critical traces give h ~= 0 if available,
+resolved nonconstant perturbations give h != 0 above the static floor,
+constant translations give delta S_h ~= delta V_h ~= 0,
+zero-normal trace velocities give no first-order work up to C_K interpolation error,
+pre-reinit and reinit geometry changes are ledgered separately.
+```
+
+The first concrete `C_K` may be `reconstructed_nodal_p1`: reconstruct nodal
+vector velocity from face DOFs and P1-interpolate it to trace vertices.  It is
+only a proof candidate.  If it fails the gates, the theory points to direct
+face interpolation or a mimetic/Whitney trace map, not to scalar tuning.
 
 ## Full Implementation Target
 
@@ -654,7 +734,7 @@ The full implementation should expose:
 ```text
 ClosedInterfaceStratum
 CapillaryVariationalCochain
-M_f, D, R, T, S_h, V_m, s, B
+M_f, D, R, C_K, S_h, V_m, s_K, B_K
 Riesz residuals
 component range residuals
 normal-equation projection residuals
