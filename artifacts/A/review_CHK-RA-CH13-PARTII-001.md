@@ -25,6 +25,8 @@ Remote-first execution used `SSH_AUTH_SOCK=/private/tmp/codex-ssh-agent-test.soc
 | V8 `experiment/ch13/exp_V8_nonuniform_ns_static.py` | PASS. Final pressure errors and speed values match the paper-scale claims; `N=96, alpha=2` pressure error remains `2.86%`. |
 | V9 `experiment/ch13/exp_V9_local_eps_nonuniform.py` | PASS. B/C identical at `N=32`; max speed `4.269e-10`; max volume drift refreshed to `3.81e-16`. |
 
+Follow-up graph sync: after the text/table patch, `make cycle EXP=experiment/ch13/exp_V6_density_ratio_convergence.py ARGS=--plot-only` and `make cycle EXP=experiment/ch13/exp_V9_local_eps_nonuniform.py ARGS=--plot-only` were run on the remote environment. The regenerated result PDFs were copied into `paper/figures/ch13_v6_density_ratio*.pdf` and `paper/figures/ch13_v9_*.pdf` so the checked-in paper figures match the refreshed V6/V9 values.
+
 Production static-droplet data formerly associated with the Chapter 14 static route was incorporated into Chapter 13 as a V3 production-stack static gate:
 
 | Run | Final KE | Max KE | Max volume drift | Deformation | Final speed Linf |
