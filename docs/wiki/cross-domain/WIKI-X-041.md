@@ -26,6 +26,8 @@ sources:
     description: "Closed-interface capillary discretization policy after variational/Riesz rigor pass"
   - path: docs/wiki/theory/WIKI-T-163.md
     description: "Survey of reinitialization-free/reinitialization-minimized LS/CLS candidate routes"
+  - path: docs/wiki/cross-domain/WIKI-X-048.md
+    description: "Ch14 capillary Hodge trial ledger for knowledge, failures, and falsified routes"
 depends_on:
   - "[[WIKI-X-037]]"
   - "[[WIKI-X-040]]"
@@ -42,6 +44,7 @@ depends_on:
   - "[[WIKI-T-161]]"
   - "[[WIKI-T-162]]"
   - "[[WIKI-T-163]]"
+  - "[[WIKI-X-048]]"
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-157]]"
   - "[[WIKI-E-062]]"
@@ -57,7 +60,7 @@ consumers:
   - domain: paper
     usage: "Keep wiki retrieval synchronized with current paper terminology"
 compiled_by: ResearchArchitect
-compiled_at: 2026-05-06
+compiled_at: 2026-05-07
 ---
 
 # Curated Wiki Retrieval Map
@@ -77,9 +80,9 @@ algorithm policy.
 | Capillary jump | [[WIKI-X-039]], [[WIKI-X-040]] | Use oriented affine interface stress and face acceleration, not a regular pressure field. |
 | PPE residual | [[WIKI-T-152]], [[WIKI-E-059]] | Production projection accuracy is the high-order residual contract, not fixed DC iteration count. |
 | Pressure representative | [[WIKI-T-154]], [[WIKI-T-158]], [[WIKI-E-060]], [[WIKI-E-062]] | Raw interface-band pressure is diagnostic; read Hodge representatives and face cochains, never masked-band substitutes. |
-| Reinit-aware capillary Hodge | [[WIKI-T-162]], [[WIKI-T-159]], [[WIKI-T-160]], [[WIKI-T-155]], [[WIKI-T-157]], [[WIKI-T-161]], [[WIKI-T-163]] | Build capillary work from the labelled physical transport endpoint; for the current solver use [[WIKI-T-162]] first because it fixes the risk-closed conservative theorem: endpoint-closed `q_c=q_T`, pressure-adjoint active `G_A=pressure_fluxes` range, component-constrained saddle projection `h=s-G_Ap-Bmu`, GPU-native P1 geometry, reinit endpoint ledger, CCD/FCCD/UCCD coupling contract, and fail-close gates.  Treat endpoint/material time-level mismatch, corrector cochain loss, host-loop geometry, and trace aliasing as implementation blockers.  Treat trace-vertex `C_K` as future trace-primary redesign work only; read [[WIKI-T-163]] for reinit-free/profile-control candidate routes and [[WIKI-T-161]] only as the retired fixed-stratum candidate, not as a current route. |
+| Reinit-aware capillary Hodge | [[WIKI-T-162]], [[WIKI-X-048]], [[WIKI-T-159]], [[WIKI-T-160]], [[WIKI-T-155]], [[WIKI-T-157]], [[WIKI-T-161]], [[WIKI-T-163]] | Build capillary work from the labelled physical transport endpoint; for the current solver use [[WIKI-T-162]] first because it fixes the risk-closed conservative theorem: endpoint-closed `q_c=q_T`, pressure-adjoint active `G_A=pressure_fluxes` range, component-constrained saddle projection `h=s-G_Ap-Bmu`, GPU-native P1 geometry, reinit endpoint ledger, CCD/FCCD/UCCD coupling contract, and fail-close gates.  Read [[WIKI-X-048]] before proposing a new fix because it records the zero-drive theorem, `none`/component-Hodge limits, reinit contamination, pressure-representative RCA, trace-Riesz endpoint mismatch, static-critical residual, and falsified shortcut routes.  Treat endpoint/material time-level mismatch, corrector cochain loss, host-loop geometry, and trace aliasing as implementation blockers.  Treat trace-vertex `C_K` as future trace-primary redesign work only; read [[WIKI-T-163]] for reinit-free/profile-control candidate routes and [[WIKI-T-161]] only as the retired fixed-stratum candidate, not as a current route. |
 | ALE/remap energy | [[WIKI-T-162]], [[WIKI-T-160]], [[WIKI-T-155]], [[WIKI-T-157]], [[WIKI-T-159]], [[WIKI-T-161]], [[WIKI-T-163]] | Variational curvature work needs shared pressure-work pairing, labelled transport/reinit endpoints, named reinit residuals/defects, and step-local energy accounting; [[WIKI-T-162]] is the current closed-interface discretization policy, [[WIKI-T-163]] is the current reinit-free survey, and [[WIKI-T-161]] is negative knowledge about an abandoned retraction surface. |
-| Paper/wiki split | [[WIKI-X-046]], [[WIKI-E-061]] | Put successful contracts in the paper; preserve failed controls and trial variants in the wiki. |
+| Paper/wiki split | [[WIKI-X-046]], [[WIKI-X-048]], [[WIKI-E-061]] | Put successful contracts in the paper; preserve failed controls, falsified hypotheses, and trial variants in the wiki. |
 | Negative shortcuts | [[WIKI-X-045]] | Damping/CFL/smoothing/caps/hyperviscosity are retained as rejected detours, not paper success claims. |
 | Verification reading | [[WIKI-E-040]], [[WIKI-X-040]] | V-series labels encode what was certified; stale FFT/CCD-LU/CN readings are historical only. |
 | Density-ratio evidence | [[WIKI-E-053]], [[WIKI-X-040]], paper §13 | Current §14 stack evidence reaches density ratio 833 in V6; older nonuniform-grid gates are not global limits. |
@@ -140,6 +143,10 @@ They are retained with a bounded reading:
   other non-DC probes remain useful controls only with their acceptance gates;
 - rejected shortcuts such as damping, smoothing, curvature caps, hyperviscosity,
   and blind CFL reduction remain negative knowledge, not solver fixes;
+- the ch14 capillary Hodge trial sequence in [[WIKI-X-048]] is the canonical
+  place to check already-falsified zero-drive, raw-`none`, component-only,
+  pressure-representative, trace-endpoint, and static-critical explanations
+  before starting another remedy loop;
 - pre-projection-native nonuniform density-ratio limits remain experiment
   history, not the current solver envelope.
 
