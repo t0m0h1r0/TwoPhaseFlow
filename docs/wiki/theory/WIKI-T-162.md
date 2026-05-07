@@ -13,6 +13,7 @@ sources:
   - path: artifacts/A/capillary_virtual_work_gate_rca_CHK-RA-CH14-CAP-VW-001.md
   - path: artifacts/A/ch14_trace_vertex_transport_theory_CHK-RA-CH14-TRACE-VJP-THEORY-001.md
   - path: artifacts/A/ch14_trace_vertex_impl_ux_CHK-RA-CH14-TRACE-IMPL-UX-001.md
+  - path: artifacts/A/ch14_conservative_endpoint_theory_CHK-RA-CH14-CONS-ENDPOINT-THEORY-001.md
   - path: docs/02_ACTIVE_LEDGER.md
 depends_on:
   - "[[WIKI-T-155]]"
@@ -29,20 +30,26 @@ depends_on:
 ## Claim
 
 The accepted closed-interface capillary discretization is not a curvature
-formula, range-projection option, or benchmark branch.  It is the
-finite-dimensional weighted variational construction:
+formula, range-projection option, or benchmark branch.  For the current
+LevelSet/CLS solver the production endpoint is the conservative face-psi
+transport endpoint, so the finite-dimensional weighted variational
+construction is:
 
 ```text
-s      = -M_f^{-1} C_K^T d_z(sigma S_h)^T
-B      =  M_f^{-1} C_K^T [d_z V_1 ... d_z V_M]^T
+s      = -M_f^{-1} T_f(q)^T d_q(sigma S_h)^T
+B      =  M_f^{-1} T_f(q)^T [d_q V_1 ... d_q V_M]^T
 K      = ker D intersection ker(B^T M_f)
-R_aug  = K^{perp_M} = range(A G) + range(B)
+R_aug  = K^{perp_M} = range(M_f^{-1}D_f^T) + range(B)
 Pi_aug = M_f-orthogonal projection onto R_aug
 h      = s - Pi_aug s
 ```
 
-`h` is the physical incompressible capillary drive, up to the code sign
-convention.  The pressure reaction is `Pi_aug s`.
+Here `T_f(q)u_f=-D_f(P_f q u_f)` is the same pre-reinit conservative transport
+differential used by the current solver.  `h` is the physical incompressible
+capillary drive, up to the code sign convention.  The pressure and component
+reactions are `Pi_aug s`.  The trace-vertex `C_K` theorem in this card remains
+valid only for a future trace-primary transport/state redesign; it must not be
+mixed with the current conservative endpoint.
 
 ## Discretization Policy
 
@@ -898,3 +905,88 @@ transport endpoint and capillary VJP identical: either use the conservative
 endpoint VJP for the current transport, or change transport to the trace-vertex
 endpoint.  The static residual must not be hidden by projection, damping,
 smoothing, or curvature clipping.
+
+## Conservative Face-Psi Endpoint Theorem
+
+`CHK-RA-CH14-CONS-ENDPOINT-THEORY-001` fixes the theorem object for the current
+solver.  The state advanced by physical transport is nodal `psi`, and the
+pre-reinit endpoint differential is
+
+```text
+T_f(q)u_f = -D_f(P_f q u_f),
+```
+
+with `P_f` the FCCD face interpolation and `D_f` the FCCD face divergence.  The
+surface-energy and component-volume cochains must be the Riesz representatives
+of this same map:
+
+```text
+<s,u>_M   = - d_q(sigma S_h)(T_f(q)u),
+s         = -M_f^{-1}T_f(q)^T d_q(sigma S_h)^T,
+<B_m,u>_M =  d_q V_m,h(T_f(q)u),
+B_m       =  M_f^{-1}T_f(q)^T d_q V_m,h^T.
+```
+
+The sign is set by release from rest.  If `u` aligns with `s`, surface energy
+decreases and kinetic work is positive:
+
+```text
+d_q(sigma S_h)(T_f(q)u) = -<s,u>_M < 0.
+```
+
+Pressure and component-volume reactions are then removed by the same weighted
+Hodge complex as the corrector:
+
+```text
+R = range(M_f^{-1}D_f^T),
+X = [R, B_1, ..., B_M],
+h = (I - Pi_X^M)s,
+Pi_X^M s = X(X^TM_fX)^+X^TM_fs.
+```
+
+This is a Lagrange-reaction decomposition, not a replacement of the force by
+its pressure range.  The production corrector must receive the full
+conservative surface cochain in the same sign convention as
+`pressure_fluxes(..., capillary_jump_components=...)`; diagnostics may report
+`Pi_X^M s`, but `s -> Pi_R s` is again the zero-drive theorem because it sets
+the physical Hodge part to zero.
+
+The static criterion is finite-dimensional criticality:
+
+```text
+d_q(sigma S_h) = sum_m lambda_m d_qV_m,h,
+```
+
+or equivalently `||h||_M ~= 0` in the same `S_h,V_h,T_f,M_f,D_f` complex.  It
+does not ask whether the interface is a circle, ellipse, Fourier mode, or any
+named shape.  A noncritical perturbation, including a deep non-elliptic mode,
+must produce `||h||_M` above the static consistency floor.
+
+The theorem covers only the labelled physical transport arrow
+
+```text
+q^n -> q_T.
+```
+
+The following arrow
+
+```text
+q_T -> q^{n+1}
+```
+
+is reinitialization/profile/mass-closure projection and must be ledgered
+separately.  The conservative endpoint is necessarily profile dependent because
+the solver state is `psi`; profile sensitivity is a fail-close diagnostic.  If
+profile invariance is made the primary contract, the solver must move to a
+trace-primary state with a CCD-family trace map instead of mixing endpoints.
+
+The CCD/FCCD/UCCD compatibility is direct: `P_f`, `D_f`, the pressure range,
+the face mass metric, and the projected face velocity are the same objects used
+by FCCD transport/projection and UCCD6 momentum.  CCD viscosity receives the
+corrected velocity and does not need a separate capillary law.
+
+Production promotion requires fixed-stratum virtual-work checks, surface and
+volume Riesz checks, manufactured pure-pressure range checks, component
+orthogonality, static constrained-critical references, noncritical dynamic
+modes, corrector sign-power checks, pre-reinit/reinit endpoint ledgers, and
+profile-sensitivity reports.
