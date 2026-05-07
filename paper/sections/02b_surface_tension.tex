@@ -22,7 +22,7 @@ $\delta_s$ を幅 $\Ord{\varepsilon}$ の平滑化関数で置き換え，
 一括一流体/Balanced--Force 経路の体積力
 $\bm{f}_\sigma \approx \sigma\kappa_{lg}\bnabla\psi$ を構成する
 （完全な定式化は付録~\ref{app:csf_full}）．
-第二に，高密度比・低 $We$ の主経路では，同じ Young--Laplace 応力を
+第二に，高密度比・低 $We$ を扱う主たる圧力ジャンプ経路では，同じ Young--Laplace 応力を
 体積力として拡散させず，向き付き圧力ジャンプ
 $j_{gl}=p_g-p_l=-\sigma\kappa_{lg}$ として分相 PPE に渡す
 （§~\ref{sec:split_ppe_framework}）．
@@ -30,9 +30,9 @@ Ghost-Fluid Method（GFM）~\cite{Fedkiw1999, Kang2000} と
 HFE（Hermite 場延長法；§~\ref{sec:field_extension}）は，
 このジャンプを CCD/FCCD の片側面ジェットへ供給するための高次データ構成である．
 したがって本稿で保持する階層は，
-CSF が一流体/BF 経路の縮約モデルを与え，
+CSF が一流体/BF 経路で扱う拡散界面近似を与え，
 分相圧力ジャンプ PPE が高密度比の圧力閉包を担う，というものである．
-CSF 縮約では $\Ord{\varepsilon^2} \approx \Ord{\Delta x^2}$ のモデル誤差が残るため
+CSF 経路では $\Ord{\varepsilon^2} \approx \Ord{\Delta x^2}$ のモデル誤差が残るため
 ~\cite{Popinet2009, Francois2006}，
 その精度上限は §~\ref{sec:pressure_accuracy_summary} で圧力ジャンプ型閉包と分けて整理する．
 
@@ -111,7 +111,7 @@ Young--Laplace 則は，閉じた界面の表面エネルギー
 圧力反力で吸収できない毛管加速度として残る．
 第~\ref{sec:split_ppe_capillary_range_projection}節では，
 この連続仮想仕事を同じ面上の Riesz 表現と直交分解へ写し，
-再初期化前の物理輸送終点上の本番力，成分体積反力，静的平衡判定を
+再初期化前の物理輸送終点上で実際の速度補正に用いる毛管補正量，成分体積反力，静的平衡判定を
 圧力補正が使うものと同じ面計量で区別して定式化する．
 
 切断面圧力ジャンプでは，このジャンプを節点平均ではなく界面が通過する
