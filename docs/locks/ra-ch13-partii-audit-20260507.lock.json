@@ -1,0 +1,8 @@
+{
+  "id": "CHK-RA-CH13-PARTII-001",
+  "branch": "codex/ra-ch13-partii-audit-20260507",
+  "worktree": ".claude/worktrees/codex-ra-ch12-partii-audit-20260507",
+  "created": "2026-05-07",
+  "scope": "Chapter 13 Part II integration coverage audit, static-droplet rerun, paper update loop",
+  "main_merge": "forbidden until explicit user instruction; no-ff only when requested"
+}
