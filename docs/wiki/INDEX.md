@@ -1,4 +1,4 @@
-# Wiki Index — 360 entries
+# Wiki Index — 361 entries
 
 ## Active Retrieval Gate
 
@@ -176,7 +176,7 @@ their curation notes.
 | [WIKI-T-162](theory/WIKI-T-162.md) | Closed-Interface Capillary Discretization Policy |
 | [WIKI-T-163](theory/WIKI-T-163.md) | Reinitialization-Free CLS Survey and Candidate Routes |
 
-## Cross-Domain (47)
+## Cross-Domain (48)
 
 | REF-ID | Title |
 |--------|-------|
@@ -227,6 +227,7 @@ their curation notes.
 | [WIKI-X-045](cross-domain/WIKI-X-045.md) | Rejected Shortcuts Preserve the Theory Boundary |
 | [WIKI-X-046](cross-domain/WIKI-X-046.md) | Paper Success Narrative and Wiki Trial Ledger Have Different Filters |
 | [WIKI-X-047](cross-domain/WIKI-X-047.md) | Static-Droplet RCA Consolidates Projection, Geometry, and Output Contracts |
+| [WIKI-X-048](cross-domain/WIKI-X-048.md) | Ch14 Capillary Hodge Trial Ledger: Knowledge, Failures, and Falsified Routes |
 
 ## Experiment (62)
 

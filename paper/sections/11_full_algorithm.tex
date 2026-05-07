@@ -406,6 +406,13 @@ $p^n_{\mathrm{ext}}$ そのものではなく，
         の式~\eqref{eq:gfm_gradient_jump} で定義する密度重み付けゴーストジェット形式
         $p_q^{*\prime}(x_f)=(\rho_q/\rho_{\bar q})p_{\bar q}'(x_f)$ で勾配境界条件を構成する）
         を HFE（§\ref{sec:field_extension}）で課す．
+        補正段で使う圧力面加速度は，scalar PPE の発散代表だけではなく，
+        式~\eqref{eq:pressure_reaction_green_identity} の変分随伴条件を満たす
+        $G_A$ とし，scalar operator も同じ組から
+        $L_A=D_fG_A$ として作る．
+        これは高次 compact 勾配を捨てるための低次 fallback ではなく，
+        固定した面発散・面係数・圧力仕事計量に対して圧力反力を一意に決める
+        制約力の定式化である．
         表面張力を圧力ジャンプとして扱う場合，毛管補正量は
         式~\eqref{eq:capillary_surface_energy_riesz_cochain} の
         表面エネルギー仮想仕事から構成し，
