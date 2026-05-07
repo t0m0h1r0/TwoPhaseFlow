@@ -1,4 +1,4 @@
-# Wiki Index — 359 entries
+# Wiki Index — 360 entries
 
 ## Active Retrieval Gate
 
@@ -8,7 +8,7 @@ research findings.  Older cards remain listed for provenance, but cards marked
 SUPERSEDED or REFERENCE must not be used as current algorithm policy without
 their curation notes.
 
-## Theory (162)
+## Theory (163)
 
 | REF-ID | Title |
 |--------|-------|
@@ -174,6 +174,7 @@ their curation notes.
 | [WIKI-T-160](theory/WIKI-T-160.md) | Discrete Reinit-Aware Capillary Hodge Reference |
 | [WIKI-T-161](theory/WIKI-T-161.md) | Retired Fixed-Stratum Variational Reinit Candidate |
 | [WIKI-T-162](theory/WIKI-T-162.md) | Closed-Interface Capillary Discretization Policy |
+| [WIKI-T-163](theory/WIKI-T-163.md) | Reinitialization-Free CLS Survey and Candidate Routes |
 
 ## Cross-Domain (47)
 
