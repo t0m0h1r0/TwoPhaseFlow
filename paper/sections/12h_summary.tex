@@ -12,7 +12,7 @@
 9 件の単体テストは Part 2 (§\ref{sec:ccd_def}--§\ref{sec:grid}) のうち
 単体化できる primitive を依存順に検査する．
 一方，face-jet $J_f$ の複数経路共有，CLS A→F 6-stage，運動量対流，
-pressure-jump IPC projection，履歴圧力面加速度，capillary range projection は
+圧力ジャンプ IPC 射影，履歴圧力面加速度，毛管成分の圧力勾配射影は
 第~\ref{sec:verification}章の V 系列で統合効果として再検査する．
 この分担は表~\ref{tab:partii_component_integration_boundary} の
 Part II 分担境界に従う．
@@ -132,7 +132,7 @@ $\times$（不合格）は本章では該当なし．主要結果：
   \item \textbf{PPE--速度結合}：圧力勾配と速度補正の整合性（非圧縮条件の維持）
   \item \textbf{界面--圧力相互作用}：曲率由来の圧力跳びが移流と共鳴しないか
   \item \textbf{密度比依存性}：$\rho_l/\rho_g \gg 1$ で精度が劣化・発散しないか
-  \item \textbf{面データ引き渡し}：projection-native 面速度，affine pressure-history faces，capillary range projection が同じ面複体を共有するか
+  \item \textbf{面データ引き渡し}：射影後面速度，アフィン圧力履歴面加速度，毛管成分の圧力勾配射影が同じ面複体を共有するか
 \end{itemize}
 
 \noindent\textbf{第~\ref{sec:verification}章 への接続：}
@@ -151,12 +151,12 @@ U 系列と V 系列の対応は，単なる章番号の継承ではなく
 結合効果 & 主に引き継ぐ U primitive & §13 での再検査 \\
 \midrule
 単相・縮約 PPE 時間速度結合 & U2-b, U8 & V1-b（Taylor--Green 渦；単相 PPE の $O(\Delta t)$ trend）と V2（Kovasznay 残差）． \\
-運動量対流・全応力粘性の NS 残差 & U1, U8 & V1/V2（単相 NS）と V7（二相 coupled-stack 時間診断）． \\
+運動量対流・全応力粘性の NS 残差 & U1, U8 & V1/V2（単相 NS）と V7（二相結合系時間診断）． \\
 BF 圧力--界面バランス & U5, U7, U9 & V3/V5（静止液滴と寄生流れ），V8（非一様静止液滴）． \\
-高密度比 range-projected pressure-jump stack & U6, U8, U9（U7 は縮約 BF 対照） & V6（密度比 sweep）と V7（FCCD, HFE, 分相 PPE/DC, capillary range projection, projection-native face closure, affine pressure-history faces を含む coupled-stack 時間精度）．U7 は Neumann BF 縮約との差分整理にのみ用いる． \\
-非一様格子・局所厚み & U3, U5 & V8（非一様 NS 静止）と V9（range-projected pressure-jump stack 条件下の nominal/local $\varepsilon$ switch）． \\
+高密度比の圧力ジャンプ・毛管射影結合系 & U6, U8, U9（U7 は縮約 BF 対照） & V6（密度比 sweep）と V7（FCCD, HFE, 分相 PPE/DC, 毛管成分の圧力勾配射影, 射影後面速度閉包, アフィン圧力履歴面加速度を含む結合系時間精度）．U7 は Neumann BF 縮約との差分整理にのみ用いる． \\
+非一様格子・局所厚み & U3, U5 & V8（非一様 NS 静止）と V9（圧力ジャンプ・毛管射影結合系条件下の nominal/local $\varepsilon$ switch）． \\
 CLS 保存移流 & U4, U5, U8 & V10-a/V10-b（一様格子・NS 非連成 CLS 強変形移流；非一様 moving-interface CLS は本章の保証範囲外）． \\
-7 ステップ更新順序・面データ引き渡し & U1--U9 全体 & V1--V10 と表~\ref{tab:v_accuracy_summary}（更新順序，projection-native face closure，affine pressure-history faces，pressure-jump stack の適用限界）． \\
+7 ステップ更新順序・面データ引き渡し & U1--U9 全体 & V1--V10 と表~\ref{tab:v_accuracy_summary}（更新順序，射影後面速度閉包，アフィン圧力履歴面加速度，圧力ジャンプ結合系の適用限界）． \\
 \bottomrule
 \end{tabularx}
 \end{table}
