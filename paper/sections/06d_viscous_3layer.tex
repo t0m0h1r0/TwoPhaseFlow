@@ -149,7 +149,7 @@ x-/y-運動量方程式の両方で同じ配列を参照する．
 = \mu(\partial_y u + \partial_x v)^2$ から導かれる．
 等号は $\mathbf{D}(\bu)\equiv 0$（歪速度テンソル恒等零；
 剛体並進・剛体回転で成立する）でのみ成立．
-非一様格子，one-sided 境界，および界面帯の normal/tangent 低次化では
+非一様格子，片側境界，および界面帯の法線/接線方向の低次化では
 \eqref{eq:viscous_energy_identity} を厳密恒等式とは主張せず，
 共有 $\tau_{xy}$ と単一の応力発散を正の人工生成を避けるための設計条件として用いる．
 
@@ -282,7 +282,7 @@ implicit-BDF2 Helmholtz の低次補正演算子（§\ref{sec:time_viscous}，§
 \end{itemize}
 
 % -------------------------------------------------------------------------------
-\subsubsection{\texorpdfstring{Corner $\mu$：4 点平均}{Corner μ：4 点平均}}
+\subsubsection{\texorpdfstring{コーナー配置の $\mu$：4 点平均}{コーナー配置の μ：4 点平均}}
 \label{sec:mu_corner_interpolation}
 % -------------------------------------------------------------------------------
 
