@@ -60,6 +60,9 @@ _PREDICTOR_ASSEMBLY_ALIASES = {
     "buoyancy_split": "balanced_buoyancy",
     "buoyancy_faceresidual_stagesplit_transversefullband": "balanced_buoyancy",
 }
+_CLOSED_INTERFACE_ENDPOINTS = ("conservative_psi",)
+_CLOSED_INTERFACE_METRICS = ("pressure_adjoint",)
+_CLOSED_INTERFACE_CONSTRAINTS = ("component_volume",)
 
 
 def parse_run_operator_settings(
@@ -209,6 +212,13 @@ def parse_run_operator_settings(
             "is implemented and verified."
         )
     if capillary_force_source == "closed_interface_riesz":
+        closed_interface_contract = _parse_closed_interface_contract(
+            surface_tension=surface_tension,
+            path=(
+                f"{layout['paths']['surface_tension_source'].rsplit('.', 1)[0]}"
+                ".closed_interface"
+            ),
+        )
         if surface_tension_scheme != "pressure_jump":
             raise ValueError(
                 f"{layout['paths']['surface_tension_source']}='closed_interface_riesz' "
@@ -232,6 +242,8 @@ def parse_run_operator_settings(
                 "'pressure_component_hodge'."
             )
         poisson_settings["capillary_range_projection"] = "none"
+    else:
+        closed_interface_contract = _default_closed_interface_contract()
     uccd6_sigma = float(convection.get("uccd6_sigma", 1.0e-3))
     if uccd6_sigma <= 0.0:
         raise ValueError(
@@ -366,6 +378,7 @@ def parse_run_operator_settings(
         "capillary_force_source": capillary_force_source,
         "curvature_method": curvature_method,
         "capillary_reaction_projection": poisson_settings["capillary_reaction_projection"],
+        **closed_interface_contract,
         "surface_tension_gradient_scheme": surface_tension_gradient_scheme,
         "momentum_gradient_scheme": momentum_gradient_scheme,
         "uccd6_sigma": uccd6_sigma,
@@ -380,4 +393,65 @@ def parse_run_operator_settings(
         "viscous_dc_low_operator": viscous_dc_low_operator,
         "cn_mode": cn_mode,
         "cn_buoyancy_predictor_assembly_mode": predictor_assembly,
+    }
+
+
+def _default_closed_interface_contract() -> dict:
+    return {
+        "capillary_closed_interface_endpoint": "conservative_psi",
+        "capillary_closed_interface_metric": "pressure_adjoint",
+        "capillary_closed_interface_constraints": ("component_volume",),
+        "capillary_closed_interface_fail_close": True,
+    }
+
+
+def _parse_closed_interface_contract(*, surface_tension: dict, path: str) -> dict:
+    raw_contract = surface_tension.get("closed_interface", {})
+    if raw_contract is None:
+        raw_contract = {}
+    if not isinstance(raw_contract, dict):
+        raise ValueError(f"{path} must be a mapping when provided.")
+    endpoint = validate_choice(
+        str(raw_contract.get("endpoint", "conservative_psi")).strip().lower(),
+        _CLOSED_INTERFACE_ENDPOINTS,
+        f"{path}.endpoint",
+    )
+    residual_contract = raw_contract.get("residual_contract", {})
+    if residual_contract is None:
+        residual_contract = {}
+    if not isinstance(residual_contract, dict):
+        raise ValueError(f"{path}.residual_contract must be a mapping when provided.")
+    metric = validate_choice(
+        str(residual_contract.get("metric", "pressure_adjoint")).strip().lower(),
+        _CLOSED_INTERFACE_METRICS,
+        f"{path}.residual_contract.metric",
+    )
+    constraints = residual_contract.get("constraints", ("component_volume",))
+    if isinstance(constraints, str):
+        constraints = (constraints,)
+    try:
+        constraint_tuple = tuple(
+            validate_choice(
+                str(constraint).strip().lower(),
+                _CLOSED_INTERFACE_CONSTRAINTS,
+                f"{path}.residual_contract.constraints",
+            )
+            for constraint in constraints
+        )
+    except TypeError as exc:
+        raise ValueError(
+            f"{path}.residual_contract.constraints must be a sequence."
+        ) from exc
+    if constraint_tuple != ("component_volume",):
+        raise ValueError(
+            f"{path}.residual_contract.constraints must be ['component_volume']."
+        )
+    fail_close = residual_contract.get("fail_close", True)
+    if fail_close is not True:
+        raise ValueError(f"{path}.residual_contract.fail_close must be true.")
+    return {
+        "capillary_closed_interface_endpoint": endpoint,
+        "capillary_closed_interface_metric": metric,
+        "capillary_closed_interface_constraints": constraint_tuple,
+        "capillary_closed_interface_fail_close": True,
     }

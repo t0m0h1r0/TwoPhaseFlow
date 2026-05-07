@@ -5,9 +5,9 @@ Symbol mapping
 ``T`` -> conservative face transport ``-D_f(psi_f u_f)``
 ``dE`` -> :func:`trace_surface_length_gradient_2d`
 ``dV`` -> :func:`liquid_area_gradient_2d`
-``M_f`` -> face kinetic-energy/mass weights
-``s`` -> acceleration cochain ``-M_f^{-1} T^T dE``
-``B`` -> component-volume reaction cochain ``M_f^{-1} T^T dV``
+``M_A`` -> active pressure-adjoint face weights
+``s`` -> acceleration cochain ``-M_A^{-1} T^T dE``
+``B`` -> component-volume reaction cochain ``M_A^{-1} T^T dV``
 
 The conservative cochain builder in this file is the production
 ``closed_interface_riesz`` source.  The dense Hodge routines remain diagnostic
@@ -133,15 +133,20 @@ def closed_interface_riesz_cochain(
     fccd,
     sigma: float,
     rho=None,
+    face_weight_components=None,
     phase_threshold: float = 0.5,
     threshold_tol: float = 0.0,
 ) -> ClosedInterfaceRieszCochain:
-    """Build ``s=-M_f^{-1}T^Td(sigma S_h)`` and ``B=M_f^{-1}T^TdV_h``.
+    """Build ``s=-M_A^{-1}T^Td(sigma S_h)`` and ``B=M_A^{-1}T^TdV_h``.
 
     The transport map is the conservative face map already used by the current
     transport-variational capillary diagnostics:
 
     ``T(u) = -D_f(psi_f u_f)``.
+
+    ``face_weight_components`` may supply the active pressure-adjoint metric
+    ``M_A`` used by the projection/corrector.  When omitted, the legacy
+    arithmetic face-mass metric is retained for standalone diagnostics.
     """
     stratum = build_closed_interface_stratum(
         xp=xp,
@@ -166,7 +171,11 @@ def closed_interface_riesz_cochain(
         psi=psi_arr,
         phase_threshold=float(phase_threshold),
     )
-    weights = face_mass_components(xp=xp, grid=grid, rho=rho)
+    weights = (
+        [xp.asarray(component) for component in face_weight_components]
+        if face_weight_components is not None
+        else face_mass_components(xp=xp, grid=grid, rho=rho)
+    )
     surface_force = _negative_transport_adjoint_force_covector(
         xp=xp,
         fccd=fccd,

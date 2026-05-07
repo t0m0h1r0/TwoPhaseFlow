@@ -101,6 +101,10 @@ class RunCfg:
     capillary_range_projection: str = "auto"
     capillary_reaction_projection: str = "none"
     capillary_force_source: str = "curvature_jump"
+    capillary_closed_interface_endpoint: str = "conservative_psi"
+    capillary_closed_interface_metric: str = "pressure_adjoint"
+    capillary_closed_interface_constraints: tuple[str, ...] = ("component_volume",)
+    capillary_closed_interface_fail_close: bool = True
     surface_tension_scheme: str = "pressure_jump"
     curvature_method: str = "psi_direct_filtered"
     convection_time_scheme: str = "imex_bdf2"

@@ -91,6 +91,12 @@ numerics:
       surface_tension:
         formulation: pressure_jump
         source: closed_interface_riesz
+        closed_interface:
+          endpoint: conservative_psi
+          residual_contract:
+            metric: pressure_adjoint
+            constraints: [component_volume]
+            fail_close: true
   projection:
     face_flux_projection: true
     canonical_face_state: true
