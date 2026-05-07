@@ -85,6 +85,29 @@ _CAPILLARY_RANGE_PROJECTION_ALIASES = {
     "component_augmented": "component_hodge_augmented",
     "augmented": "component_hodge_augmented",
 }
+_PRESSURE_FORCE_CONTRACTS = ("raw_compact_gradient", "variational_adjoint")
+_PRESSURE_FORCE_CONTRACT_ALIASES = {
+    "raw": "raw_compact_gradient",
+    "raw_gradient": "raw_compact_gradient",
+    "raw_compact": "raw_compact_gradient",
+    "fccd_gradient": "raw_compact_gradient",
+    "variational": "variational_adjoint",
+    "adjoint": "variational_adjoint",
+    "pressure_adjoint": "variational_adjoint",
+}
+_SCALAR_OPERATOR_PAIRINGS = (
+    "legacy",
+    "require_certified",
+    "variational_operator",
+)
+_SCALAR_OPERATOR_PAIRING_ALIASES = {
+    "old": "legacy",
+    "raw": "legacy",
+    "certified": "require_certified",
+    "require": "require_certified",
+    "variational": "variational_operator",
+    "l_var": "variational_operator",
+}
 _SURFACE_TENSION_SCHEMES = ("csf", "pressure_jump", "none")
 _SURFACE_TENSION_ALIASES = {
     "gfm_jump": "pressure_jump",

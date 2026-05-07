@@ -311,6 +311,14 @@ The dynamic ch14 YAMLs share the production stack:
 - `momentum.terms.pressure.gradient: fccd` and
   `momentum.terms.surface_tension.formulation: pressure_jump` — surface tension
   enters the PPE as an interface stress condition rather than as a CSF body force.
+- `momentum.terms.surface_tension.source: closed_interface_riesz` may expose
+  `closed_interface.endpoint: conservative_psi` and
+  `residual_contract: {metric: pressure_adjoint, constraints: [component_volume],
+  fail_close: true}`. These keys state the production theorem contract: the
+  surface-energy covector, component-volume reaction, PPE source, and face
+  corrector all use the conservative face-psi endpoint and the same
+  pressure-adjoint face metric. Other endpoint/metric/constraint choices are
+  rejected until a matching A3 proof and implementation exist.
 - `momentum.terms.viscosity.spatial: ccd` + `time_integrator: implicit_bdf2` —
   BDF2 Helmholtz path for stiffness-relevant viscous terms. The nested
   `solver.kind` selects `defect_correction` (default production path) or

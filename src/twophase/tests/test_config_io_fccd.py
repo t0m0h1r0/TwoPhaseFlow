@@ -300,6 +300,10 @@ def test_ch14_static_droplet_yaml_uses_base_dynamic_route():
     assert cfg.run.capillary_force_source == "closed_interface_riesz"
     assert cfg.run.capillary_range_projection == "none"
     assert cfg.run.capillary_reaction_projection == "pressure_component_hodge"
+    assert cfg.run.capillary_closed_interface_endpoint == "conservative_psi"
+    assert cfg.run.capillary_closed_interface_metric == "pressure_adjoint"
+    assert cfg.run.capillary_closed_interface_constraints == ("component_volume",)
+    assert cfg.run.capillary_closed_interface_fail_close is True
 
 
 def test_ch14_canonical_yamls_use_theory_cfl_not_fixed_dt():
@@ -529,6 +533,10 @@ def test_closed_interface_riesz_source_requires_reaction_projection():
     assert cfg.run.capillary_force_source == "closed_interface_riesz"
     assert cfg.run.capillary_reaction_projection == "pressure_component_hodge"
     assert cfg.run.capillary_range_projection == "none"
+    assert cfg.run.capillary_closed_interface_endpoint == "conservative_psi"
+    assert cfg.run.capillary_closed_interface_metric == "pressure_adjoint"
+    assert cfg.run.capillary_closed_interface_constraints == ("component_volume",)
+    assert cfg.run.capillary_closed_interface_fail_close is True
 
     with pytest.raises(ValueError, match="capillary_reaction_projection"):
         ExperimentConfig.from_dict(_minimal({
@@ -623,6 +631,64 @@ def test_closed_interface_riesz_source_requires_reaction_projection():
                     },
                 },
             },
+        }))
+
+
+def test_closed_interface_riesz_contract_is_fail_closed():
+    def config_with_closed_interface(closed_interface):
+        return _minimal({
+            "physics": {"surface_tension": 0.1},
+            "numerics": {
+                "momentum": {
+                    "terms": {
+                        "surface_tension": {
+                            "formulation": "pressure_jump",
+                            "gradient": "none",
+                            "source": "closed_interface_riesz",
+                            "closed_interface": closed_interface,
+                        },
+                    },
+                },
+                "projection": {
+                    "poisson": {
+                        "operator": {
+                            "discretization": "fccd",
+                            "coefficient": "phase_separated",
+                            "interface_coupling": "affine_jump",
+                            "capillary_reaction_projection": (
+                                "pressure_component_hodge"
+                            ),
+                        },
+                        "solver": {
+                            "kind": "defect_correction",
+                            "base_solver": {"discretization": "fd", "kind": "direct"},
+                        },
+                    },
+                },
+            },
+        })
+
+    cfg = ExperimentConfig.from_dict(config_with_closed_interface({
+        "endpoint": "conservative_psi",
+        "residual_contract": {
+            "metric": "pressure_adjoint",
+            "constraints": ["component_volume"],
+            "fail_close": True,
+        },
+    }))
+    assert cfg.run.capillary_closed_interface_endpoint == "conservative_psi"
+
+    with pytest.raises(ValueError, match="closed_interface.endpoint"):
+        ExperimentConfig.from_dict(config_with_closed_interface({
+            "endpoint": "trace_vertices",
+        }))
+    with pytest.raises(ValueError, match="residual_contract.metric"):
+        ExperimentConfig.from_dict(config_with_closed_interface({
+            "residual_contract": {"metric": "mass_face"},
+        }))
+    with pytest.raises(ValueError, match="residual_contract.fail_close"):
+        ExperimentConfig.from_dict(config_with_closed_interface({
+            "residual_contract": {"fail_close": False},
         }))
 
 

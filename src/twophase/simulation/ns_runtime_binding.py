@@ -31,6 +31,8 @@ def bind_ns_ppe_runtime(solver, state) -> None:
     solver._ppe_interface_coupling_scheme = state.ppe_interface_coupling_scheme
     solver._capillary_range_projection = state.capillary_range_projection
     solver._capillary_reaction_projection = state.capillary_reaction_projection
+    solver._pressure_force_contract = state.pressure_force_contract
+    solver._scalar_operator_pairing = state.scalar_operator_pairing
     solver._ppe_tolerance = state.ppe_tolerance
     solver._ppe_max_iterations = state.ppe_max_iterations
     solver._ppe_restart = state.ppe_restart

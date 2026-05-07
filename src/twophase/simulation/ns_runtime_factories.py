@@ -24,6 +24,8 @@ class NSPPEFactoryOptions:
     iteration_method: str
     coefficient_scheme: str
     interface_coupling_scheme: str
+    pressure_force_contract: str
+    scalar_operator_pairing: str
     defect_correction: bool
     dc_max_iterations: int
     dc_tolerance: float
@@ -79,6 +81,8 @@ def build_ns_ppe_cfg_shim(
             ppe_pcr_stages=pcr_stages,
             ppe_coefficient_scheme=options.coefficient_scheme,
             ppe_interface_coupling_scheme=options.interface_coupling_scheme,
+            pressure_force_contract=options.pressure_force_contract,
+            scalar_operator_pairing=options.scalar_operator_pairing,
         )
     )
 

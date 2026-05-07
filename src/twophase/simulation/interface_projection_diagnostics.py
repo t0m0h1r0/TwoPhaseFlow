@@ -55,6 +55,10 @@ _FACE_ZERO_DIAGNOSTICS = {
     "capillary_static_critical_residual_l2": 0.0,
     "capillary_static_critical_residual_ratio": 0.0,
     "capillary_static_critical_component_count": 0.0,
+    "capillary_contract_pressure_adjoint_residual": 0.0,
+    "capillary_contract_saddle_constraint_linf": 0.0,
+    "capillary_contract_active_metric": 0.0,
+    "capillary_contract_failed_gate_code": 0.0,
 }
 
 
@@ -139,6 +143,10 @@ def capillary_face_cochain_diagnostics(
     component_hodge_coefficients=None,
     component_hodge_denominator=None,
     static_criticality=None,
+    contract_pressure_adjoint_residual=None,
+    contract_saddle_constraint_linf=None,
+    contract_active_metric=None,
+    contract_failed_gate_code=None,
 ) -> dict[str, float]:
     """Measure the post-PPE face cochain left in the projection face space.
 
@@ -236,6 +244,26 @@ def capillary_face_cochain_diagnostics(
     static_surface, static_residual, static_ratio, static_components = (
         _static_criticality_values(static_criticality)
     )
+    contract_pressure_adjoint = _optional_scalar_value(
+        xp,
+        contract_pressure_adjoint_residual,
+        dtype=face_linf.dtype,
+    )
+    contract_saddle_constraint = _optional_scalar_value(
+        xp,
+        contract_saddle_constraint_linf,
+        dtype=face_linf.dtype,
+    )
+    contract_active_metric_value = _optional_scalar_value(
+        xp,
+        contract_active_metric,
+        dtype=face_linf.dtype,
+    )
+    contract_failed_gate = _optional_scalar_value(
+        xp,
+        contract_failed_gate_code,
+        dtype=face_linf.dtype,
+    )
     solved = xp.asarray(
         1.0 if hodge_residual_components is not None else 0.0,
         dtype=face_linf.dtype,
@@ -266,6 +294,10 @@ def capillary_face_cochain_diagnostics(
                     xp.asarray(static_residual, dtype=face_linf.dtype),
                     xp.asarray(static_ratio, dtype=face_linf.dtype),
                     xp.asarray(static_components, dtype=face_linf.dtype),
+                    contract_pressure_adjoint,
+                    contract_saddle_constraint,
+                    contract_active_metric_value,
+                    contract_failed_gate,
                 ]
             )
         )
@@ -292,6 +324,10 @@ def capillary_face_cochain_diagnostics(
         "capillary_static_critical_residual_l2": values[18],
         "capillary_static_critical_residual_ratio": values[19],
         "capillary_static_critical_component_count": values[20],
+        "capillary_contract_pressure_adjoint_residual": values[21],
+        "capillary_contract_saddle_constraint_linf": values[22],
+        "capillary_contract_active_metric": values[23],
+        "capillary_contract_failed_gate_code": values[24],
     }
 
 
@@ -375,6 +411,7 @@ def capillary_external_component_saddle_projection(
     pressure_flux_kwargs: dict[str, Any],
     raw_components,
     component_reaction_components,
+    face_weight_components=None,
     rcond: float = 1.0e-12,
 ) -> dict[str, Any]:
     """Project an external capillary cochain through the component saddle gate.
@@ -400,13 +437,25 @@ def capillary_external_component_saddle_projection(
         [xp.asarray(axis_component) for axis_component in component]
         for component in component_reaction_components
     ]
-    face_weights = _capillary_face_hodge_weights(
+    face_weights = (
+        [xp.asarray(component) for component in face_weight_components]
+        if face_weight_components is not None
+        else capillary_pressure_adjoint_face_weights(
+            xp=xp,
+            div_op=div_op,
+            rho=rho,
+            pressure_flux_kwargs=pressure_flux_kwargs,
+        )
+    )
+    zero_jump_kwargs = _zero_jump_pressure_flux_kwargs(pressure_flux_kwargs)
+    pressure_adjoint_residual = _pressure_adjoint_probe_residual(
         xp=xp,
         div_op=div_op,
         rho=rho,
-        pressure_flux_kwargs=pressure_flux_kwargs,
+        pressure_flux_kwargs=zero_jump_kwargs,
+        face_weight_components=face_weights,
+        face_templates=raw_faces,
     )
-    zero_jump_kwargs = _zero_jump_pressure_flux_kwargs(pressure_flux_kwargs)
     snapshots = _snapshot_solver_graph(ppe_solver)
     try:
         _invalidate_solver_graph_cache(ppe_solver)
@@ -497,6 +546,13 @@ def capillary_external_component_saddle_projection(
     first_component_hodge = (
         component_hodge_faces[0] if component_hodge_faces else None
     )
+    constraint_residual = _component_constraint_linf(
+        xp=xp,
+        component_faces=component_faces,
+        hodge_faces=augmented_hodge_faces,
+        face_weight_components=face_weights,
+        dtype=xp.asarray(rho).dtype,
+    )
     return {
         "capillary_jump_components": raw_faces,
         "range_projection_components": range_faces,
@@ -506,6 +562,13 @@ def capillary_external_component_saddle_projection(
         "component_hodge_residual_components": first_component_hodge,
         "component_hodge_coefficients": coefficients,
         "component_hodge_denominator": denominator,
+        "contract_pressure_adjoint_residual": pressure_adjoint_residual,
+        "contract_saddle_constraint_linf": constraint_residual,
+        "contract_active_metric": xp.asarray(
+            1.0 if face_weights is not None else 0.0,
+            dtype=xp.asarray(rho).dtype,
+        ),
+        "contract_failed_gate_code": xp.asarray(0.0, dtype=xp.asarray(rho).dtype),
     }
 
 
@@ -740,14 +803,24 @@ def _face_components_divergence_linf(xp, div_op, face_components, *, dtype) -> A
     return xp.max(xp.abs(div_field))
 
 
-def _capillary_face_hodge_weights(
+def capillary_pressure_adjoint_face_weights(
     *,
     xp,
     div_op,
     rho,
     pressure_flux_kwargs: dict[str, Any],
 ) -> list[Any] | None:
-    """Return face weights for the ``A_f^{-1}`` Hodge diagnostic norm."""
+    """Return face weights for the active pressure-adjoint capillary norm.
+
+    Symbol mapping:
+      ``G_A`` -> ``div_op.pressure_fluxes(..., zero jump)``
+      ``M_A`` -> returned face weights
+
+    The weights use the same nonuniform face measure and affine-jump inverse
+    density as the pressure face action.  Paired with ``grid.cell_volumes()``
+    on pressure nodes, they are the theorem metric for closed-interface
+    residual diagnostics and component saddles.
+    """
     fccd = getattr(div_op, "_fccd", None)
     grid = getattr(fccd, "grid", None)
     if grid is None:
@@ -803,6 +876,121 @@ def _capillary_face_hodge_weights(
         measure = d_face.reshape(d_shape) * face_area.reshape(area_shape)
         weights.append(xp.where(coeff > 0.0, measure / coeff, 0.0))
     return weights
+
+
+def _capillary_face_hodge_weights(
+    *,
+    xp,
+    div_op,
+    rho,
+    pressure_flux_kwargs: dict[str, Any],
+) -> list[Any] | None:
+    """Backward-compatible alias for the active pressure-adjoint weights."""
+    return capillary_pressure_adjoint_face_weights(
+        xp=xp,
+        div_op=div_op,
+        rho=rho,
+        pressure_flux_kwargs=pressure_flux_kwargs,
+    )
+
+
+def _component_constraint_linf(
+    *,
+    xp,
+    component_faces,
+    hodge_faces,
+    face_weight_components,
+    dtype,
+) -> Any:
+    if not component_faces:
+        return xp.asarray(0.0, dtype=dtype)
+    residuals = [
+        xp.abs(
+            _face_components_weighted_dot(
+                xp,
+                component,
+                hodge_faces,
+                face_weight_components,
+            )
+        )
+        for component in component_faces
+    ]
+    return xp.max(xp.stack(residuals))
+
+
+def _pressure_adjoint_probe_residual(
+    *,
+    xp,
+    div_op,
+    rho,
+    pressure_flux_kwargs: dict[str, Any],
+    face_weight_components,
+    face_templates,
+) -> Any:
+    if face_weight_components is None:
+        return xp.asarray(0.0, dtype=xp.asarray(rho).dtype)
+    rho_arr = xp.asarray(rho)
+    pressure = _deterministic_pressure_probe(xp, rho_arr.shape, rho_arr.dtype)
+    face_probe = [
+        _deterministic_face_probe(xp, component.shape, component.dtype, axis=axis)
+        for axis, component in enumerate(face_templates)
+    ]
+    pressure_faces = div_op.pressure_fluxes(
+        pressure,
+        rho,
+        **pressure_flux_kwargs,
+    )
+    face_dot = _face_components_weighted_dot(
+        xp,
+        pressure_faces,
+        face_probe,
+        face_weight_components,
+    )
+    pressure_dot = xp.sum(
+        pressure
+        * div_op.divergence_from_faces(face_probe)
+        * _pressure_node_weights(xp=xp, div_op=div_op, pressure=pressure)
+    )
+    scale = (
+        xp.abs(face_dot)
+        + xp.abs(pressure_dot)
+        + xp.asarray(1.0e-30, dtype=pressure.dtype)
+    )
+    return xp.abs(face_dot + pressure_dot) / scale
+
+
+def _pressure_node_weights(*, xp, div_op, pressure):
+    fccd = getattr(div_op, "_fccd", None)
+    grid = getattr(fccd, "grid", None)
+    if grid is None or not hasattr(grid, "cell_volumes"):
+        return xp.ones_like(pressure)
+    return xp.asarray(grid.cell_volumes(), dtype=xp.asarray(pressure).dtype)
+
+
+def _deterministic_pressure_probe(xp, shape, dtype):
+    probe = xp.zeros(shape, dtype=dtype)
+    ndim = len(shape)
+    for axis, size in enumerate(shape):
+        index = xp.arange(size, dtype=dtype)
+        reshape = [1] * ndim
+        reshape[axis] = size
+        phase = (index + 1.0) / (float(size) + 1.0)
+        probe = probe + xp.sin((axis + 1.0) * math.pi * phase.reshape(reshape))
+    return probe - xp.mean(probe)
+
+
+def _deterministic_face_probe(xp, shape, dtype, *, axis: int):
+    probe = xp.zeros(shape, dtype=dtype)
+    ndim = len(shape)
+    for local_axis, size in enumerate(shape):
+        index = xp.arange(size, dtype=dtype)
+        reshape = [1] * ndim
+        reshape[local_axis] = size
+        phase = (index + 0.5) / max(float(size), 1.0)
+        probe = probe + xp.cos(
+            (axis + local_axis + 1.0) * math.pi * phase.reshape(reshape)
+        )
+    return probe
 
 
 def _zero_jump_pressure_flux_kwargs(pressure_flux_kwargs: dict[str, Any]) -> dict[str, Any]:

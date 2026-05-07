@@ -112,6 +112,10 @@ class ActiveStepDiagnostics(IStepDiagnostics):
             "capillary_static_critical_residual_l2": 0.0,
             "capillary_static_critical_residual_ratio": 0.0,
             "capillary_static_critical_component_count": 0.0,
+            "capillary_contract_pressure_adjoint_residual": 0.0,
+            "capillary_contract_saddle_constraint_linf": 0.0,
+            "capillary_contract_active_metric": 0.0,
+            "capillary_contract_failed_gate_code": 0.0,
         }
 
     def record_kappa(self, kappa_max: float) -> None:

@@ -25,6 +25,7 @@ from .interface_projection_diagnostics import (
     capillary_external_component_saddle_projection,
     capillary_jump_range_projection,
     capillary_face_cochain_diagnostics,
+    capillary_pressure_adjoint_face_weights,
     zero_capillary_face_diagnostics,
 )
 from .ns_step_state import NSStepState
@@ -190,8 +191,15 @@ def _pressure_face_flux_kwargs(
             "fccd"
             if getattr(ppe_runtime, "ppe_solver_name", None) == "fccd_iterative"
             else "fvm"
-        )
+        ),
     }
+    pressure_force_contract = getattr(
+        ppe_runtime,
+        "pressure_force_contract",
+        "raw_compact_gradient",
+    )
+    if pressure_force_contract != "raw_compact_gradient":
+        kwargs["pressure_force_contract"] = pressure_force_contract
     if getattr(ppe_runtime, "ppe_coefficient_scheme", None) == "phase_separated":
         kwargs["coefficient_scheme"] = "phase_separated"
     if getattr(ppe_runtime, "ppe_interface_coupling_scheme", "none") == "affine_jump":
@@ -909,6 +917,12 @@ def solve_ns_pressure_stage(
                     transport_variational_temporaries
                 ),
             )
+            capillary_face_weights = capillary_pressure_adjoint_face_weights(
+                xp=xp,
+                div_op=div_op,
+                rho=state.rho,
+                pressure_flux_kwargs=pressure_flux_kwargs_for_projection,
+            )
             cochain = closed_interface_riesz_cochain(
                 xp=xp,
                 grid=jump_grid,
@@ -916,6 +930,7 @@ def solve_ns_pressure_stage(
                 fccd=fccd,
                 sigma=physical_jump_sigma,
                 rho=state.rho,
+                face_weight_components=capillary_face_weights,
             )
             trace_projection_diagnostics = capillary_external_component_saddle_projection(
                 xp=xp,
@@ -927,6 +942,7 @@ def solve_ns_pressure_stage(
                 component_reaction_components=[
                     cochain.volume_reaction_acceleration
                 ],
+                face_weight_components=capillary_face_weights,
             )
             corrected_capillary_components = (
                 trace_projection_diagnostics["corrected_jump_components"]

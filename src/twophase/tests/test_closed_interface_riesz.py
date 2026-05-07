@@ -94,6 +94,39 @@ def test_surface_riesz_matches_fixed_stratum_virtual_work():
     assert check.finite_difference_power_residual < 1.0e-6
 
 
+def test_closed_interface_riesz_uses_supplied_active_face_metric():
+    grid, backend, fccd, _ = _setup(12)
+    xp = backend.xp
+    base_weights = face_measure_components(xp=xp, grid=grid)
+    active_weights = [
+        (axis + 2.0) * xp.asarray(component)
+        for axis, component in enumerate(base_weights)
+    ]
+
+    cochain = closed_interface_riesz_cochain(
+        xp=xp,
+        grid=grid,
+        psi=_ellipse_psi(grid),
+        fccd=fccd,
+        sigma=0.072,
+        face_weight_components=active_weights,
+    )
+
+    for acceleration, force, weight in zip(
+        cochain.surface_acceleration,
+        cochain.surface_force_covector,
+        active_weights,
+        strict=True,
+    ):
+        np.testing.assert_allclose(acceleration, force / weight)
+    for stored, expected in zip(
+        cochain.face_weight_components,
+        active_weights,
+        strict=True,
+    ):
+        np.testing.assert_allclose(stored, expected)
+
+
 def test_liquid_area_gradient_matches_fixed_stratum_virtual_work():
     grid, backend, _, _ = _setup(12)
     xp = backend.xp

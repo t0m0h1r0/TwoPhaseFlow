@@ -112,6 +112,48 @@ def test_fccd_projection_divergence_matches_ppe_operator_nonuniform_wall():
     )
 
 
+def test_variational_fccd_pressure_reaction_pairs_with_lvar_wall():
+    """Variational pressure faces must pair with ``L_var=D(Gp)``."""
+    backend, grid, fccd = _make_nonuniform_fccd_wall_stack()
+    div_op = FCCDDivergenceOperator(fccd)
+    cfg = type(
+        "Cfg",
+        (),
+        {
+            "ppe_coefficient_scheme": "phase_density",
+            "ppe_interface_coupling_scheme": "none",
+            "pressure_force_contract": "variational_adjoint",
+            "scalar_operator_pairing": "variational_operator",
+        },
+    )()
+    ppe = PPESolverFCCDMatrixFree(backend, cfg, grid, fccd)
+    rng = np.random.default_rng(57721)
+    pressure = rng.standard_normal(grid.shape)
+    rho = 1.0 + rng.uniform(0.0, 0.5, grid.shape)
+
+    ppe.prepare_operator(rho)
+    ppe_apply = np.asarray(ppe._apply_operator_core(np.asarray(pressure))).ravel()
+    projection_apply = np.asarray(
+        div_op.divergence_from_faces(
+            div_op.pressure_fluxes(
+                pressure,
+                rho,
+                pressure_gradient="fccd",
+                pressure_force_contract="variational_adjoint",
+            )
+        )
+    ).ravel()
+
+    mask = np.ones_like(ppe_apply, dtype=bool)
+    mask[ppe._pin_dof] = False
+    np.testing.assert_allclose(
+        projection_apply[mask],
+        ppe_apply[mask],
+        rtol=1.0e-12,
+        atol=1.0e-12,
+    )
+
+
 def test_fccd_projection_rejects_unknown_face_options():
     """Chapter 8 face subsystem must fail closed instead of changing locus."""
     backend, grid, fccd = _make_nonuniform_fccd_wall_stack()

@@ -28,6 +28,8 @@ def make_ns_ppe_factory_options(
         iteration_method=state.ppe_iteration_method,
         coefficient_scheme=state.ppe_coefficient_scheme,
         interface_coupling_scheme=state.ppe_interface_coupling_scheme,
+        pressure_force_contract=state.pressure_force_contract,
+        scalar_operator_pairing=state.scalar_operator_pairing,
         defect_correction=state.ppe_defect_correction,
         dc_max_iterations=state.ppe_dc_max_iterations,
         dc_tolerance=state.ppe_dc_tolerance,

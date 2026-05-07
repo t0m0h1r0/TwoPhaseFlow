@@ -24,6 +24,11 @@ from ..coupling.interface_stress_closure import (
     evaluate_interface_face_curvature_lg,
     signed_pressure_jump_gradient,
 )
+from .pressure_complex import (
+    PRESSURE_FORCE_CONTRACT_VARIATIONAL,
+    normalise_pressure_force_contract,
+    variational_pressure_reaction_faces,
+)
 
 if TYPE_CHECKING:
     from ..backend import Backend
@@ -270,6 +275,7 @@ class FCCDDivergenceOperator(IDivergenceOperator):
         rho: "array",
         *,
         pressure_gradient: str = "fvm",
+        pressure_force_contract: str = "raw_compact_gradient",
         coefficient_scheme: str = "phase_density",
         phase_threshold=None,
         interface_coupling_scheme: str = "none",
@@ -283,6 +289,9 @@ class FCCDDivergenceOperator(IDivergenceOperator):
         gradient_scheme = _canonical_face_gradient_scheme(
             pressure_gradient,
             owner=type(self).__name__,
+        )
+        pressure_force_contract = normalise_pressure_force_contract(
+            pressure_force_contract
         )
         coefficient_scheme = str(coefficient_scheme).strip().lower()
         interface_coupling_scheme = str(interface_coupling_scheme).strip().lower()
@@ -307,7 +316,8 @@ class FCCDDivergenceOperator(IDivergenceOperator):
                 context=interface_stress_context,
                 fccd=self._fccd,
             )
-        faces = []
+        coeff_faces = []
+        jump_gradient_faces = []
         for axis in range(ndim):
             n_cells = grid.N[axis]
 
@@ -339,7 +349,9 @@ class FCCDDivergenceOperator(IDivergenceOperator):
                     threshold = 0.5 * (xp.min(rho) + xp.max(rho))
                 same_phase = (rho_lo >= threshold) == (rho_hi >= threshold)
                 coeff = xp.where(same_phase, coeff, 0.0)
-            if gradient_scheme == "fccd":
+            if pressure_force_contract == PRESSURE_FORCE_CONTRACT_VARIATIONAL:
+                pressure_face_gradient = None
+            elif gradient_scheme == "fccd":
                 pressure_face_gradient = self._fccd.face_gradient(p, axis)
             else:
                 if self._face_spacing is None:
@@ -351,21 +363,49 @@ class FCCDDivergenceOperator(IDivergenceOperator):
                 interface_coupling_scheme == "affine_jump"
                 and capillary_jump_components is None
             ):
-                pressure_face_gradient = pressure_face_gradient - signed_pressure_jump_gradient(
-                    xp=xp,
-                    grid=grid,
-                    context=interface_stress_context,
-                    axis=axis,
-                    face_curvature_lg=face_curvature_lg,
-                    fccd=self._fccd,
-                )
+                jump_gradient = signed_pressure_jump_gradient(
+                        xp=xp,
+                        grid=grid,
+                        context=interface_stress_context,
+                        axis=axis,
+                        face_curvature_lg=face_curvature_lg,
+                        fccd=self._fccd,
+                    )
+            else:
+                jump_gradient = None
+            coeff_faces.append(coeff)
+            jump_gradient_faces.append(jump_gradient)
+            if pressure_force_contract == PRESSURE_FORCE_CONTRACT_VARIATIONAL:
+                continue
             face = coeff * pressure_face_gradient
+            if jump_gradient is not None:
+                face = face - coeff * jump_gradient
             if (
                 interface_coupling_scheme == "affine_jump"
                 and capillary_jump_components is not None
             ):
                 face = face - xp.asarray(capillary_jump_components[axis])
-            faces.append(face)
+            coeff_faces[-1] = face
+        if pressure_force_contract == PRESSURE_FORCE_CONTRACT_VARIATIONAL:
+            faces = variational_pressure_reaction_faces(
+                xp=xp,
+                grid=grid,
+                bc_type=self._fccd.bc_type,
+                pressure=p,
+                coeff_faces=coeff_faces,
+            )
+            for axis, jump_gradient in enumerate(jump_gradient_faces):
+                if jump_gradient is not None:
+                    faces[axis] = faces[axis] - coeff_faces[axis] * jump_gradient
+                if (
+                    interface_coupling_scheme == "affine_jump"
+                    and capillary_jump_components is not None
+                ):
+                    faces[axis] = faces[axis] - xp.asarray(
+                        capillary_jump_components[axis]
+                    )
+        else:
+            faces = coeff_faces
         return faces
 
     def project(
@@ -376,6 +416,7 @@ class FCCDDivergenceOperator(IDivergenceOperator):
         dt: float,
         force_components: list["array"] | None = None,
         pressure_gradient: str = "fvm",
+        pressure_force_contract: str = "raw_compact_gradient",
         coefficient_scheme: str = "phase_density",
         phase_threshold=None,
         interface_coupling_scheme: str = "none",
@@ -391,6 +432,7 @@ class FCCDDivergenceOperator(IDivergenceOperator):
                 dt,
                 force_components,
                 pressure_gradient=pressure_gradient,
+                pressure_force_contract=pressure_force_contract,
                 coefficient_scheme=coefficient_scheme,
                 phase_threshold=phase_threshold,
                 interface_coupling_scheme=interface_coupling_scheme,
@@ -407,6 +449,7 @@ class FCCDDivergenceOperator(IDivergenceOperator):
         dt: float,
         force_components: list["array"] | None = None,
         pressure_gradient: str = "fvm",
+        pressure_force_contract: str = "raw_compact_gradient",
         coefficient_scheme: str = "phase_density",
         phase_threshold=None,
         interface_coupling_scheme: str = "none",
@@ -425,6 +468,7 @@ class FCCDDivergenceOperator(IDivergenceOperator):
             p,
             rho,
             pressure_gradient=pressure_gradient,
+            pressure_force_contract=pressure_force_contract,
             coefficient_scheme=coefficient_scheme,
             phase_threshold=phase_threshold,
             interface_coupling_scheme=interface_coupling_scheme,
