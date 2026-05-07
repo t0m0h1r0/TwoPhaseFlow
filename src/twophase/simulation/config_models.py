@@ -100,6 +100,8 @@ class RunCfg:
     ppe_interface_coupling_scheme: str = "affine_jump"
     capillary_range_projection: str = "auto"
     capillary_reaction_projection: str = "none"
+    pressure_force_contract: str = "raw_compact_gradient"
+    scalar_operator_pairing: str = "legacy"
     capillary_force_source: str = "curvature_jump"
     capillary_closed_interface_endpoint: str = "conservative_psi"
     capillary_closed_interface_metric: str = "pressure_adjoint"

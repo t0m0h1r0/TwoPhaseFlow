@@ -176,6 +176,8 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
         ppe_interface_coupling_scheme=options.operator_settings["poisson_interface_coupling"],
         capillary_range_projection=options.operator_settings["capillary_range_projection"],
         capillary_reaction_projection=options.operator_settings["capillary_reaction_projection"],
+        pressure_force_contract=options.operator_settings["pressure_force_contract"],
+        scalar_operator_pairing=options.operator_settings["scalar_operator_pairing"],
         capillary_closed_interface_endpoint=options.operator_settings[
             "capillary_closed_interface_endpoint"
         ],

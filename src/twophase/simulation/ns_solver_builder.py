@@ -112,6 +112,12 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             capillary_reaction_projection=str(
                 getattr(run, "capillary_reaction_projection", "none")
             ),
+            pressure_force_contract=str(
+                getattr(run, "pressure_force_contract", "raw_compact_gradient")
+            ),
+            scalar_operator_pairing=str(
+                getattr(run, "scalar_operator_pairing", "legacy")
+            ),
             ppe_iteration_method=str(getattr(run, "ppe_iteration_method", "gmres")),
             ppe_tolerance=float(getattr(run, "ppe_tolerance", 1.0e-8)),
             ppe_max_iterations=int(getattr(run, "ppe_max_iterations", 500)),

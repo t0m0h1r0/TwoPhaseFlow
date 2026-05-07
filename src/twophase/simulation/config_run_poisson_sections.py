@@ -13,6 +13,10 @@ from .config_constants import (
     _POISSON_COEFFICIENTS,
     _POISSON_INTERFACE_COUPLING_ALIASES,
     _POISSON_INTERFACE_COUPLINGS,
+    _PRESSURE_FORCE_CONTRACT_ALIASES,
+    _PRESSURE_FORCE_CONTRACTS,
+    _SCALAR_OPERATOR_PAIRING_ALIASES,
+    _SCALAR_OPERATOR_PAIRINGS,
 )
 from .config_run_ppe_sections import parse_ppe_solver_config
 from .config_sections import validate_choice
@@ -101,6 +105,34 @@ def parse_run_poisson_settings(*, layout: dict, projection: dict) -> dict:
             f"{layout['paths']['poisson_capillary_reaction_projection']} requires "
             "poisson.operator.interface_coupling='affine_jump'."
         )
+    pressure_force_contract = validate_choice(
+        _PRESSURE_FORCE_CONTRACT_ALIASES.get(
+            str(poisson_operator.get("pressure_force_contract", "raw_compact_gradient"))
+            .strip()
+            .lower(),
+            poisson_operator.get("pressure_force_contract", "raw_compact_gradient"),
+        ),
+        _PRESSURE_FORCE_CONTRACTS,
+        "numerics.projection.poisson.operator.pressure_force_contract",
+    )
+    scalar_operator_pairing = validate_choice(
+        _SCALAR_OPERATOR_PAIRING_ALIASES.get(
+            str(poisson_operator.get("scalar_operator_pairing", "legacy"))
+            .strip()
+            .lower(),
+            poisson_operator.get("scalar_operator_pairing", "legacy"),
+        ),
+        _SCALAR_OPERATOR_PAIRINGS,
+        "numerics.projection.poisson.operator.scalar_operator_pairing",
+    )
+    if (
+        pressure_force_contract == "raw_compact_gradient"
+        and scalar_operator_pairing != "legacy"
+    ):
+        raise ValueError(
+            "poisson.operator.scalar_operator_pairing requires "
+            "pressure_force_contract='variational_adjoint' unless using legacy."
+        )
 
     (
         ppe_solver,
@@ -128,6 +160,8 @@ def parse_run_poisson_settings(*, layout: dict, projection: dict) -> dict:
         "poisson_interface_coupling": poisson_interface_coupling,
         "capillary_range_projection": capillary_range_projection,
         "capillary_reaction_projection": capillary_reaction_projection,
+        "pressure_force_contract": pressure_force_contract,
+        "scalar_operator_pairing": scalar_operator_pairing,
         "ppe_solver": ppe_solver,
         "ppe_dc_base_solver": ppe_dc_base_solver,
         "pressure_scheme": _PPE_TO_PRESSURE_SCHEME[ppe_solver],

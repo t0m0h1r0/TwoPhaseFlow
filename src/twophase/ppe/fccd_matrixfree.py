@@ -37,6 +37,14 @@ from ..coupling.interface_stress_closure import (
     interface_stress_context_is_active,
     signed_pressure_jump_gradient,
 )
+from ..simulation.pressure_complex import (
+    PRESSURE_FORCE_CONTRACT_VARIATIONAL,
+    SCALAR_OPERATOR_PAIRING_REQUIRE_CERTIFIED,
+    SCALAR_OPERATOR_PAIRING_VARIATIONAL,
+    normalise_pressure_force_contract,
+    normalise_scalar_operator_pairing,
+    variational_pressure_reaction_faces,
+)
 from .interfaces import IPPESolver
 from .fccd_matrixfree_helpers import (
     apply_fccd_interface_jump,
@@ -131,6 +139,22 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         self.interface_coupling_scheme = str(
             getattr(solver_cfg, "ppe_interface_coupling_scheme", "none")
         ).strip().lower()
+        self.pressure_force_contract = normalise_pressure_force_contract(
+            getattr(solver_cfg, "pressure_force_contract", None)
+        )
+        self.scalar_operator_pairing = normalise_scalar_operator_pairing(
+            getattr(solver_cfg, "scalar_operator_pairing", None)
+        )
+        if (
+            self.scalar_operator_pairing == SCALAR_OPERATOR_PAIRING_REQUIRE_CERTIFIED
+            and self.pressure_force_contract == PRESSURE_FORCE_CONTRACT_VARIATIONAL
+        ):
+            raise RuntimeError(
+                "scalar_operator_pairing='require_certified' is fail-closed for "
+                "FCCD until PPE.apply(p)==D(Gp) certification is implemented; "
+                "use scalar_operator_pairing='variational_operator' to select "
+                "L_var=D(Gp)."
+            )
         if self.coefficient_scheme not in {"phase_density", "phase_separated"}:
             raise ValueError(
                 "FCCD PPE supports ppe_coefficient_scheme="
@@ -338,6 +362,8 @@ class PPESolverFCCDMatrixFree(IPPESolver):
 
     def _apply_operator_core(self, p_dev):
         """Apply physical ``D_f[(1/rho)_f G_f(p)]`` without a gauge row."""
+        if self.scalar_operator_pairing == SCALAR_OPERATOR_PAIRING_VARIATIONAL:
+            return self._apply_variational_operator_core(p_dev)
         xp = self.xp
         out = xp.zeros_like(p_dev)
         for axis in range(self.ndim):
@@ -348,6 +374,21 @@ class PPESolverFCCDMatrixFree(IPPESolver):
                 self._coeff_face[axis],
                 axis,
             )
+        return out
+
+    def _apply_variational_operator_core(self, p_dev):
+        """Apply the variational scalar operator ``L_var = D(Gp)``."""
+        xp = self.xp
+        out = xp.zeros_like(p_dev)
+        pressure_faces = variational_pressure_reaction_faces(
+            xp=xp,
+            grid=self.grid,
+            bc_type=self.fccd.bc_type,
+            pressure=p_dev,
+            coeff_faces=self._coeff_face,
+        )
+        for axis, face in enumerate(pressure_faces):
+            self._accumulate_face_flux_divergence(out, face, axis)
         return out
 
     def _subtract_interface_jump_operator(self, rhs_dev):

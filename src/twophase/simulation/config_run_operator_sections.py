@@ -378,6 +378,8 @@ def parse_run_operator_settings(
         "capillary_force_source": capillary_force_source,
         "curvature_method": curvature_method,
         "capillary_reaction_projection": poisson_settings["capillary_reaction_projection"],
+        "pressure_force_contract": poisson_settings["pressure_force_contract"],
+        "scalar_operator_pairing": poisson_settings["scalar_operator_pairing"],
         **closed_interface_contract,
         "surface_tension_gradient_scheme": surface_tension_gradient_scheme,
         "momentum_gradient_scheme": momentum_gradient_scheme,

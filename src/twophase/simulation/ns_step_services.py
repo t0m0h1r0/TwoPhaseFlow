@@ -191,8 +191,15 @@ def _pressure_face_flux_kwargs(
             "fccd"
             if getattr(ppe_runtime, "ppe_solver_name", None) == "fccd_iterative"
             else "fvm"
-        )
+        ),
     }
+    pressure_force_contract = getattr(
+        ppe_runtime,
+        "pressure_force_contract",
+        "raw_compact_gradient",
+    )
+    if pressure_force_contract != "raw_compact_gradient":
+        kwargs["pressure_force_contract"] = pressure_force_contract
     if getattr(ppe_runtime, "ppe_coefficient_scheme", None) == "phase_separated":
         kwargs["coefficient_scheme"] = "phase_separated"
     if getattr(ppe_runtime, "ppe_interface_coupling_scheme", "none") == "affine_jump":
