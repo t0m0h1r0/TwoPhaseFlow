@@ -16,6 +16,7 @@ sources:
   - path: artifacts/A/ch14_conservative_endpoint_theory_CHK-RA-CH14-CONS-ENDPOINT-THEORY-001.md
   - path: artifacts/A/ch14_conservative_endpoint_impl_ux_CHK-RA-CH14-CONS-ENDPOINT-IMPL-UX-001.md
   - path: artifacts/A/ch14_conservative_endpoint_risk_audit_CHK-RA-CH14-CONS-ENDPOINT-RISK-001.md
+  - path: artifacts/A/ch14_risk_closed_conservative_endpoint_theory_CHK-RA-CH14-CONS-ENDPOINT-RISK-THEORY-001.md
   - path: docs/02_ACTIVE_LEDGER.md
 depends_on:
   - "[[WIKI-T-155]]"
@@ -1149,3 +1150,107 @@ The prior trace-Riesz N32/T10 results remain useful as zero-drive negative
 evidence, but they are not validation of the selected conservative endpoint.
 After implementation, static/oscillating droplets must be rerun and judged by
 endpoint-exact gates and reinit split fields.
+
+## Risk-Closed Conservative Endpoint Theory
+
+`CHK-RA-CH14-CONS-ENDPOINT-RISK-THEORY-001` absorbs the risk audit into the
+mathematics.  The production theorem must not assume that the implemented
+pressure range is automatically `range(M_f^{-1}D_f^T)`.  Instead, define the
+active pressure action as
+
+```text
+G_A p = div_op.pressure_fluxes(p, rho_c, zero_jump_kwargs).
+```
+
+The face metric used for reaction orthogonality and energy power is the
+pressure-adjoint metric `M_A`, characterized by
+
+```text
+<G_Ap,w>_{M_A} = <p,D_fw>_{W_p}.
+```
+
+If this adjointness gate fails, the active scheme has no capillary Hodge energy
+theorem and must fail closed.  The metric is therefore induced by the active
+face coefficient and measure, not by an arbitrary diagnostic norm.
+
+The capillary substep is endpoint-closed:
+
+```text
+q_c = q_T,
+T_f(q_c)u_f = -D_f(P_f q_c u_f),
+rho_c = rho(q_c),
+G_A = G_A(q_c),
+M_A = M_A(q_c).
+```
+
+Using post-reinit `q^{n+1}` material coefficients with pre-reinit `q_T`
+geometry is not a theorem unless an endpoint-equivalence ledger passes.  The
+safe default is to build capillary coefficients from `q_T`; otherwise fail
+closed when reinit/profile movement is non-negligible.
+
+The primitive reaction law is the coupled constrained system:
+
+```text
+h = s - G_Ap - Bmu,
+D_fh = 0,
+B^T M_A h = 0.
+```
+
+Equivalently:
+
+```text
+D_fG_Ap + D_fBmu = D_fs,
+B^TM_AG_Ap + B^TM_ABmu = B^TM_As.
+```
+
+For implementation with existing PPE solves, define a divergence lift:
+
+```text
+L_A(c)=G_Ap_c,    D_fG_Ap_c=D_fc,
+Z_A(c)=c-L_A(c).
+```
+
+Then:
+
+```text
+z_s = Z_A(s),
+z_m = Z_A(B_m),
+C_ij = B_i^T M_A z_j,
+r_i  = B_i^T M_A z_s,
+Cmu = r,
+h = z_s - sum_m mu_m z_m,
+c_corrected = s - Bmu.
+```
+
+The PPE RHS and corrector both receive `c_corrected`:
+
+```text
+rhs += D_f(c_corrected),
+pressure_faces = G_Ap - c_corrected,
+u_f^{n+1}=u_f^* + dt(c_corrected-G_Ap)+...
+```
+
+The symmetric shortcut
+
+```text
+C_ij = z_i^T M_A z_j
+```
+
+is valid only after proving `range(G_A)` is `M_A`-orthogonal to
+`ker D_f`.  Otherwise it can miss the full component condition
+`B^TM_Ah=0`.
+
+With pressure adjointness and component orthogonality:
+
+```text
+<s,h>_{M_A}=||h||_{M_A}^2,
+d_q(sigma S_h)(q_c)[T_f(q_c)h] = -||h||_{M_A}^2 <= 0.
+```
+
+This is the strengthened sign-power theorem.  It links the corrector sign,
+pressure range, component reaction, and endpoint VJP into one gate.
+
+Finally, GPU geometry is part of the theorem.  Production `dS_h` and `dV_h`
+must be the local P1 formulas implemented as `xp` kernels with the same
+crossing masks and regularity thresholds.  Host-loop graph traversal is
+diagnostic unless explicitly proven identical.
