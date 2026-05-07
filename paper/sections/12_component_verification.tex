@@ -1,9 +1,10 @@
 % paper/sections/12_component_verification.tex
 %
 % §12  計算コンポーネントの数学的検証
-%       Part 2 (§4–§10) の数値手法 primitive を 9 件の単体テスト (U1–U9) /
-%       7 Tier に分類し,各 primitive が単体で設計通りの数学的精度を有することを
-%       格子細分化 / MMS / 解析参照解との比較によって系統的に確認する.
+%       Part II (§4–§11) のうち単体実験へ分離できる数値手法 primitive を
+%       9 件の単体テスト (U1–U9) / 7 Tier に分類し,各 primitive が単体で
+%       設計通りの数学的精度を有することを格子細分化 / MMS / 解析参照解との
+%       比較によって系統的に確認する.
 % ═══════════════════════════════════════════════════════════════════════════════
 \section{数値要素の単体検証実験}
 \label{sec:numerical_integrity}%
@@ -36,8 +37,8 @@
 
 \paragraph{目的．}
 本章は，Part 2 各章に分散して提示した
-Predictor--PPE--Corrector を含む 7 ステップ統合アルゴリズムの
-数値手法 primitive を，Part 2（§\ref{sec:CCD}--§\ref{sec:grid}）の
+数値手法 primitive のうち，単体実験へ分離できるものを，
+Part 2（§\ref{sec:CCD}--§\ref{sec:grid}）の
 理論定義から検証可能な実験指標まで対応付け，
 \textbf{各 primitive が単体で設計通りの数学的精度を有する}
 ことを格子細分化 / MMS（製造解法~\cite{Roache2002,SalariKnupp2000}）/ 解析参照解との比較によって
@@ -49,6 +50,10 @@ Predictor--PPE--Corrector を含む 7 ステップ統合アルゴリズムの
 および単体実験で観測された限界を次章の統合実験へ持ち越すことである．第~\ref{sec:verification}章
 （統合実験）はここで合格した primitive のみを用いて，
 組み立てられたアルゴリズム全体の物理的妥当性を検証する．
+§\ref{sec:algorithm} の 7 ステップ更新順序，履歴圧力面加速度，
+projection-native 面速度，表面エネルギー毛管閉包，および
+pressure-jump stack の時間発展は，単体テストではなく
+第~\ref{sec:verification}章の V 系列で扱う．
 
 \paragraph{構成（7 Tier / 9 単体テスト U1--U9）．}
 本章の U 系列は component verification 専用であり，
@@ -77,6 +82,52 @@ Part 2 の手法を依存関係の下流方向にトポロジカル整列し，
 \end{description}
 
 各 U-test は独立した単体実験として実施し，表と図には本章で採用する検証値のみを記載する．
+
+\paragraph{Part II 主要内容の分担境界．}
+本章は Part II の全内容を 12 章へ詰め込む章ではない．
+式または演算子だけを切り出して格子収束，MMS，解析参照値で評価できるものを U 系列で単体確認し，
+複数の primitive を同じ面空間・同じ時刻レベル・同じ界面幾何で接続して初めて意味を持つ主張は
+第~\ref{sec:verification}章で統合検証する．
+表~\ref{tab:partii_component_integration_boundary} に，Part II の主要内容を
+本章で確認する単体軸と次章へ送る統合軸に分けて示す．
+
+\begin{table}[!ht]
+\caption{Part II 主要内容の §12/§13 分担}
+\label{tab:partii_component_integration_boundary}
+\PaperCaptionNote{§12 は component verification，§13 は integration verification である．
+単体軸に記した U-test が，その内容の統合挙動まで保証するという意味ではない．}
+\centering\small
+\begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.23\linewidth}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}X@{}}
+\toprule
+Part II の主要内容 & §12 で単体確認する範囲 & §13 で統合確認する範囲 \\
+\midrule
+CCD 系と face jet (§\ref{sec:CCD}) &
+U1 で節点・面演算子の設計次数と DCCD damping を確認する．face jet の式自体は U1-c の face value/grad に含める． &
+face jet を CLS flux，圧力補正，HFE，運動量 face state が共有する効果は V1/V2/V6/V7/V10 で読む． \\
+CLS, Ridge--Eikonal, $H_\varepsilon/\delta_\varepsilon$ (§\ref{sec:cls_stages}) &
+U4 は Godunov Eikonal 比較 primitive と DGR，U5 は $H_\varepsilon/\delta_\varepsilon$ モーメントを確認する． &
+標準 Ridge--Eikonal A--F 手順，保存移流，reinit cadence，質量閉鎖は V10-a/V10-b で読む． \\
+変数別演算子割当，運動量対流，全応力粘性 (§\ref{sec:scheme_per_variable}) &
+U1 が UCCD6/FCCD，U8 が粘性 3-layer BDF2 の時間 primitive を確認する． &
+NS residual，運動量対流，粘性，PPE の結合は V1/V2/V7 で読む． \\
+時間積分と capillary work endpoint (§\ref{sec:time_int}) &
+U8 で TVD-RK3，EXT2/AB2，implicit-BDF2，3-layer BDF2 の単体次数を確認する． &
+projection と pressure-jump/capillary stack を含む実効時間次数は V1-b/V7/V10 で読む． \\
+Balanced--Force とコロケート圧力 (§\ref{sec:collocate}) &
+U7 は縮約 BF 1-step と face $\mu$ 補間，U9 は DCCD-on-pressure 禁止を確認する． &
+長時間静止液滴，寄生流れ，非一様静止，pressure-jump face-balance gate は V3/V5/V8 と V6/V7/V9 で読む． \\
+分相 PPE，HFE，DC，毛管 Hodge 閉包 (§\ref{sec:ppe_solve}) &
+U2 が滑らかな Poisson/PPE BC，U6 が DC guard と HFE 単体精度を確認する． &
+分相 PPE+HFE+DC，capillary range projection，projection-native face closure，affine pressure-history faces は V6/V7/V9 で読む． \\
+非一様格子と同一幾何データ (§\ref{sec:grid}) &
+U3 が非一様 CCD/FCCD と D1--D4 metric 診断を確認する． &
+固定非一様 NS 静止と nominal/local $\varepsilon$ switch は V8/V9．移動界面の追随格子は本章の保証範囲外とする． \\
+7 ステップ統合更新 (§\ref{sec:algorithm}) &
+新しい単体 U-test ではなく，U1--U9 の検証済み primitive を入力として扱う． &
+V1--V10 と §\ref{sec:error_budget} が更新順序，面データ引き渡し，物理指標，適用限界を検証する． \\
+\bottomrule
+\end{tabularx}
+\end{table}
 
 \paragraph{バックエンド方針（CPU 固定）．}
 本章 U1--U9 はすべて \texttt{Backend(use\_gpu=False)} 固定で実行する．
