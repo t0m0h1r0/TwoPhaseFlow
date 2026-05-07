@@ -302,15 +302,17 @@ def weighted_hodge_decomposition(
         div_op=div_op,
         face_templates=face_components,
     )
-    component_flat = _flatten_face_components(xp, face_components)
-    weight_flat = _flatten_face_components(xp, face_weight_components)
-    if np.any(weight_flat <= 0.0):
+    component_flat = _flatten_face_components_backend(xp, face_components)
+    weight_flat = _flatten_face_components_backend(xp, face_weight_components)
+    if _to_bool(xp, xp.any(weight_flat <= 0.0)):
         raise ValueError("weighted Hodge decomposition requires positive face weights")
     inv_weight = 1.0 / weight_flat
     source = D @ component_flat
-    if sp.issparse(D):
-        normal_matrix = D @ sp.diags(inv_weight, format="csr") @ D.T
+    if _is_sparse_matrix(D):
+        sparse_mod = _sparse_module_for_xp(xp)
+        normal_matrix = D @ sparse_mod.diags(inv_weight, format="csr") @ D.T
         potential = _solve_gauge_fixed_normal_matrix(
+            xp,
             normal_matrix,
             source,
             rcond=float(rcond),
@@ -318,6 +320,7 @@ def weighted_hodge_decomposition(
     else:
         normal_matrix = D @ (inv_weight[:, None] * D.T)
         potential = _solve_gauge_fixed_normal_matrix(
+            xp,
             normal_matrix,
             source,
             rcond=float(rcond),
@@ -329,46 +332,88 @@ def weighted_hodge_decomposition(
     return WeightedHodgeDecomposition(
         range_components=range_components,
         hodge_components=hodge_components,
-        component_weighted_l2=_weighted_norm_from_flat(component_flat, weight_flat),
-        range_weighted_l2=_weighted_norm_from_flat(range_flat, weight_flat),
-        hodge_weighted_l2=_weighted_norm_from_flat(hodge_flat, weight_flat),
-        hodge_divergence_linf=float(np.max(np.abs(D @ hodge_flat))),
+        component_weighted_l2=_weighted_norm_from_flat_backend(
+            xp, component_flat, weight_flat
+        ),
+        range_weighted_l2=_weighted_norm_from_flat_backend(xp, range_flat, weight_flat),
+        hodge_weighted_l2=_weighted_norm_from_flat_backend(xp, hodge_flat, weight_flat),
+        hodge_divergence_linf=_to_float(xp, xp.max(xp.abs(D @ hodge_flat))),
     )
 
 
-def _solve_gauge_fixed_normal_matrix(normal_matrix, source, *, rcond: float):
+def _solve_gauge_fixed_normal_matrix(xp, normal_matrix, source, *, rcond: float):
     """Solve the singular Hodge normal equation with one pressure gauge pin."""
-    source = np.asarray(source, dtype=float)
+    source = xp.asarray(source, dtype=float)
     if source.size == 0:
-        return np.zeros_like(source)
+        return xp.zeros_like(source)
     diagonal = (
-        np.asarray(normal_matrix.diagonal(), dtype=float)
-        if sp.issparse(normal_matrix)
-        else np.diag(np.asarray(normal_matrix, dtype=float))
+        xp.asarray(normal_matrix.diagonal(), dtype=float)
+        if _is_sparse_matrix(normal_matrix)
+        else xp.diag(xp.asarray(normal_matrix, dtype=float))
     )
-    pin = int(np.argmax(np.abs(diagonal)))
-    if abs(float(diagonal[pin])) <= float(rcond):
-        return np.zeros_like(source)
+    pin = int(_to_float(xp, xp.argmax(xp.abs(diagonal))))
+    if abs(_to_float(xp, diagonal[pin])) <= float(rcond):
+        return xp.zeros_like(source)
+    if _is_sparse_matrix(normal_matrix):
+        if _is_gpu_xp(xp):
+            potential = _solve_gpu_sparse_gauge_fixed_normal_matrix(
+                xp=xp,
+                normal_matrix=normal_matrix,
+                source=source,
+                pin=pin,
+            )
+        else:
+            potential = _solve_cpu_sparse_gauge_fixed_normal_matrix(
+                normal_matrix=normal_matrix,
+                source=source,
+                pin=pin,
+            )
+    else:
+        pinned = xp.array(normal_matrix, copy=True, dtype=float)
+        rhs = xp.array(source, copy=True, dtype=float)
+        pinned[pin, :] = 0.0
+        pinned[:, pin] = 0.0
+        pinned[pin, pin] = 1.0
+        rhs[pin] = 0.0
+        potential = xp.linalg.solve(pinned, rhs)
+    if not _to_bool(xp, xp.all(xp.isfinite(potential))):
+        raise np.linalg.LinAlgError("gauge-fixed Hodge normal solve failed")
+    return xp.asarray(potential, dtype=float)
+
+
+def _solve_cpu_sparse_gauge_fixed_normal_matrix(*, normal_matrix, source, pin: int):
+    """CPU sparse gauge-fixed solve using the row/column pin convention."""
+    source_host = np.asarray(source, dtype=float)
     if sp.issparse(normal_matrix):
         pinned = normal_matrix.tolil(copy=True)
-        rhs = np.array(source, copy=True, dtype=float)
+        rhs = np.array(source_host, copy=True, dtype=float)
         pinned[pin, :] = 0.0
         pinned[:, pin] = 0.0
         pinned[pin, pin] = 1.0
         rhs[pin] = 0.0
-        potential = spla.spsolve(pinned.tocsr(), rhs)
-    else:
-        pinned = np.array(normal_matrix, copy=True, dtype=float)
-        rhs = np.array(source, copy=True, dtype=float)
-        pinned[pin, :] = 0.0
-        pinned[:, pin] = 0.0
-        pinned[pin, pin] = 1.0
-        rhs[pin] = 0.0
-        potential = np.linalg.solve(pinned, rhs)
-    potential = np.asarray(potential, dtype=float)
-    if not np.all(np.isfinite(potential)):
-        raise np.linalg.LinAlgError("gauge-fixed Hodge normal solve failed")
-    return potential
+        return spla.spsolve(pinned.tocsr(), rhs)
+    raise TypeError("expected a SciPy sparse matrix")
+
+
+def _solve_gpu_sparse_gauge_fixed_normal_matrix(
+    *,
+    xp,
+    normal_matrix,
+    source,
+    pin: int,
+):
+    """GPU sparse solve with a compatible pressure-gauge diagonal pin."""
+    sparse_mod = _sparse_module_for_xp(xp)
+    sparse_linalg = _sparse_linalg_module_for_xp(xp)
+    gauge = xp.zeros(source.size, dtype=source.dtype)
+    gauge[pin] = 1.0
+    pinned = normal_matrix + sparse_mod.diags(gauge, format="csr")
+    try:
+        return sparse_linalg.spsolve(pinned, source)
+    except Exception as exc:
+        raise np.linalg.LinAlgError(
+            "CuPy sparse gauge-fixed Hodge normal solve failed"
+        ) from exc
 
 
 def component_reaction_hodge_gate(
@@ -425,7 +470,8 @@ def component_reaction_hodge_gate(
         div_op=div_op,
         face_templates=residual,
     )
-    residual_div = float(np.max(np.abs(D @ _flatten_face_components(xp, residual))))
+    residual_divergence = D @ _flatten_face_components_backend(xp, residual)
+    residual_div = _to_float(xp, xp.max(xp.abs(residual_divergence)))
     return ComponentReactionHodgeGate(
         surface_hodge_weighted_l2=surface.hodge_weighted_l2,
         volume_hodge_weighted_l2=volume.hodge_weighted_l2,
@@ -496,7 +542,7 @@ def _divide_face_components(xp, numerator_components, denominator_components):
 def _dense_divergence_matrix(*, xp, div_op, face_templates):
     templates = [xp.asarray(component) for component in face_templates]
     shapes = [tuple(component.shape) for component in templates]
-    cache_key = tuple(shapes)
+    cache_key = (_backend_cache_key(xp), tuple(shapes))
     cache = getattr(div_op, "_twophase_dense_divergence_matrix_cache", None)
     if cache is not None and cache.get("key") == cache_key:
         cached_matrix, cached_shapes, cached_sizes = cache["value"]
@@ -535,6 +581,8 @@ def _dense_divergence_matrix(*, xp, div_op, face_templates):
                 div_op.divergence_from_faces(faces),
             ).ravel()
         offset += size
+    if _is_gpu_xp(xp):
+        matrix = xp.asarray(matrix)
     result = (matrix, shapes, sizes)
     try:
         div_op._twophase_dense_divergence_matrix_cache = {
@@ -601,11 +649,12 @@ def _dense_divergence_matrix_from_fccd(*, xp, div_op, shapes, sizes):
                     face_axis_index=face_axis_index,
                 )
         offset += size
-    return sp.csr_matrix(
+    host_matrix = sp.csr_matrix(
         (matrix["data"], (matrix["rows"], matrix["columns"])),
         shape=matrix["shape"],
         dtype=float,
     )
+    return _to_backend_sparse_matrix(xp, host_matrix)
 
 
 def _axis_is_periodic(fccd, axis: int) -> bool:
@@ -762,6 +811,16 @@ def _flatten_face_components(xp, face_components) -> np.ndarray:
     )
 
 
+def _flatten_face_components_backend(xp, face_components):
+    flattened = [
+        xp.asarray(component, dtype=float).ravel()
+        for component in face_components
+    ]
+    if not flattened:
+        return xp.asarray([], dtype=float)
+    return xp.concatenate(flattened)
+
+
 def _unflatten_face_components(xp, flat, shapes, sizes):
     components = []
     offset = 0
@@ -773,6 +832,47 @@ def _unflatten_face_components(xp, flat, shapes, sizes):
 
 def _weighted_norm_from_flat(component_flat, weight_flat) -> float:
     return float(np.sqrt(np.sum(component_flat * component_flat * weight_flat)))
+
+
+def _weighted_norm_from_flat_backend(xp, component_flat, weight_flat) -> float:
+    squared = xp.sum(component_flat * component_flat * weight_flat)
+    return _to_float(xp, xp.sqrt(xp.maximum(squared, 0.0)))
+
+
+def _backend_cache_key(xp) -> str:
+    return "cupy" if _is_gpu_xp(xp) else "numpy"
+
+
+def _is_gpu_xp(xp) -> bool:
+    return hasattr(xp, "asnumpy")
+
+
+def _is_sparse_matrix(matrix) -> bool:
+    if sp.issparse(matrix):
+        return True
+    return type(matrix).__module__.split(".", 1)[0] == "cupyx"
+
+
+def _sparse_module_for_xp(xp):
+    if _is_gpu_xp(xp):
+        import cupyx.scipy.sparse as cupy_sparse
+
+        return cupy_sparse
+    return sp
+
+
+def _sparse_linalg_module_for_xp(xp):
+    if _is_gpu_xp(xp):
+        import cupyx.scipy.sparse.linalg as cupy_sparse_linalg
+
+        return cupy_sparse_linalg
+    return spla
+
+
+def _to_backend_sparse_matrix(xp, matrix):
+    if _is_gpu_xp(xp):
+        return _sparse_module_for_xp(xp).csr_matrix(matrix)
+    return matrix
 
 
 def _axis_slice(axis: int, start: int, stop: int, ndim: int):
@@ -792,3 +892,7 @@ def _relative_residual(left: float, right: float) -> float:
 
 def _to_float(xp, value) -> float:
     return float(np.asarray(array_to_numpy(xp, value)))
+
+
+def _to_bool(xp, value) -> bool:
+    return bool(np.asarray(array_to_numpy(xp, value)))

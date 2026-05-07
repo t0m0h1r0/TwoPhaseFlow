@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from twophase.backend import Backend
 from twophase.ccd.ccd_solver import CCDSolver
@@ -22,8 +23,8 @@ from twophase.coupling.closed_interface_riesz import (
 from twophase.simulation.divergence_ops import FCCDDivergenceOperator
 
 
-def _setup(n=12):
-    backend = Backend(use_gpu=False)
+def _setup(n=12, *, backend=None):
+    backend = Backend(use_gpu=False) if backend is None else backend
     grid = Grid(GridConfig(ndim=2, N=(n, n), L=(1.0, 1.0)), backend)
     ccd = CCDSolver(grid, backend, bc_type="periodic")
     fccd = FCCDSolver(grid, backend, bc_type="periodic", ccd_solver=ccd)
@@ -147,6 +148,55 @@ def test_weighted_hodge_projection_recovers_manufactured_pressure_range():
     np.testing.assert_allclose(recovered_flat, range_flat, rtol=1.0e-10, atol=1.0e-10)
     assert decomposition.hodge_divergence_linf < 1.0e-9
     assert decomposition.hodge_divergence_linf / source_linf < 1.0e-12
+
+
+@pytest.mark.gpu
+def test_weighted_hodge_projection_gpu_matches_cpu(gpu_backend):
+    grid_cpu, _, _, div_cpu = _setup(8)
+    grid_gpu, backend_gpu, _, div_gpu = _setup(8, backend=gpu_backend)
+    xp = backend_gpu.xp
+    weights_cpu = face_measure_components(xp=np, grid=grid_cpu)
+    weights_gpu = face_measure_components(xp=xp, grid=grid_gpu)
+    D, shapes, sizes = _dense_divergence_matrix(
+        xp=np,
+        div_op=div_cpu,
+        face_templates=weights_cpu,
+    )
+    weight_flat = _flatten_face_components(np, weights_cpu)
+    x = np.asarray(grid_cpu.coords[0])
+    y = np.asarray(grid_cpu.coords[1])
+    X, Y = np.meshgrid(x, y, indexing="ij")
+    potential = np.sin(2.0 * np.pi * X) * np.cos(2.0 * np.pi * Y)
+    range_flat = (D.T @ potential.ravel()) / weight_flat
+    range_cpu = _unflatten_face_components(np, range_flat, shapes, sizes)
+    range_gpu = [xp.asarray(component) for component in range_cpu]
+
+    cpu = weighted_hodge_decomposition(
+        xp=np,
+        div_op=div_cpu,
+        face_components=range_cpu,
+        face_weight_components=weights_cpu,
+    )
+    gpu = weighted_hodge_decomposition(
+        xp=xp,
+        div_op=div_gpu,
+        face_components=range_gpu,
+        face_weight_components=weights_gpu,
+    )
+
+    assert type(gpu.range_components[0]).__module__.split(".", 1)[0] == "cupy"
+    assert gpu.hodge_divergence_linf < 1.0e-9
+    for gpu_component, cpu_component in zip(
+        gpu.range_components,
+        cpu.range_components,
+        strict=True,
+    ):
+        np.testing.assert_allclose(
+            backend_gpu.to_host(gpu_component),
+            cpu_component,
+            rtol=1.0e-10,
+            atol=1.0e-10,
+        )
 
 
 def test_component_reaction_gate_reveals_circle_is_not_static_for_this_transport():
