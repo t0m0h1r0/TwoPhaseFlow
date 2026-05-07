@@ -35,7 +35,7 @@ $\rho_r \in \{2,10,100,833\}$, $N \in \{24,32\}$．
 \begin{table}[!ht]
 \caption{V6：range-projected pressure-jump stack による密度比掃引}
 \label{tab:V6_density_ratio}
-\PaperCaptionNote{全 8 ケースでブローアップなし． $|\Delta V_\psi|/V_{\psi,0}$ は全ケースで round-off floor（$\le 1.3\times10^{-16}$）に留まり，capillary range projection 後の $u_\infty^{\mathrm{end}}$ は最大でも $5.8\times10^{-10}$ である． $|\Delta p_{\mathrm{corr}}|/(\sigma/r)$ は pressure-jump PPE の補正圧診断であり， Laplace 絶対圧誤差ではない．}
+\PaperCaptionNote{全 8 ケースでブローアップなし． $|\Delta V_\psi|/V_{\psi,0}$ は全ケースで round-off floor（$\le 2.4\times10^{-16}$）に留まり，capillary range projection 後の $u_\infty^{\mathrm{end}}$ は最大でも $3.3\times10^{-10}$ である． $|\Delta p_{\mathrm{corr}}|/(\sigma/r)$ は pressure-jump PPE の補正圧診断であり， Laplace 絶対圧誤差ではない．}
 \centering\small
 \begin{tabular}{r r r r r}
 \toprule
@@ -44,13 +44,13 @@ $\rho_r$ & $N$ & $u_\infty^{\mathrm{end}}$ & $|\Delta V_\psi|/V_{\psi,0}$ & $|\D
 2    & 24 & $1.528\times 10^{-15}$ & $0.000$ & $0.746$ \\
 2    & 32 & $0.000$ & $1.269\times 10^{-16}$ & $1.003$ \\
 \midrule
-10   & 24 & $2.588\times 10^{-11}$ & $1.183\times 10^{-16}$ & $0.739$ \\
+10   & 24 & $2.591\times 10^{-11}$ & $0.000$ & $0.739$ \\
 10   & 32 & $0.000$ & $1.269\times 10^{-16}$ & $1.003$ \\
 \midrule
-100  & 24 & $5.723\times 10^{-10}$ & $0.000$ & $0.742$ \\
+100  & 24 & $3.012\times 10^{-10}$ & $2.365\times 10^{-16}$ & $0.757$ \\
 100  & 32 & $0.000$ & $1.269\times 10^{-16}$ & $1.002$ \\
 \midrule
-833  & 24 & $3.079\times 10^{-11}$ & $1.183\times 10^{-16}$ & $0.737$ \\
+833  & 24 & $3.290\times 10^{-10}$ & $0.000$ & $0.737$ \\
 833  & 32 & $0.000$ & $1.269\times 10^{-16}$ & $1.002$ \\
 \bottomrule
 \end{tabular}
@@ -76,8 +76,8 @@ $\rho_r$ & $N$ & $u_\infty^{\mathrm{end}}$ & $|\Delta V_\psi|/V_{\psi,0}$ & $|\D
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item \textbf{主指標（合格条件）}：(a) 全 $8$ ケースで\textbf{ブローアップなし}
         （水--空気相当 $\rho_r=833$ を含む）\checkmark，
-        (b) $|\Delta V_\psi|/V_{\psi,0} \le 1.3\times10^{-16}$ で CLS 体積は実質保存\checkmark，
-        (c) $u_\infty^{\mathrm{end}}\le 5.8\times10^{-10}$ で capillary face balance が丸め誤差近傍に閉じる\checkmark．
+        (b) $|\Delta V_\psi|/V_{\psi,0} \le 2.4\times10^{-16}$ で CLS 体積は実質保存\checkmark，
+        (c) $u_\infty^{\mathrm{end}}\le 3.3\times10^{-10}$ で capillary face balance が丸め誤差近傍に閉じる\checkmark．
   \item \textbf{補助指標（scale 確認）}：
         $|\Delta p_{\mathrm{corr}}|/(\sigma/r) \sim 0.74$--$1.01$ は
         pressure-jump PPE の補正圧 diagnostic（§\ref{sec:verification}「圧力出力の取り扱い」参照；
