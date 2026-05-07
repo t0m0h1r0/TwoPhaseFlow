@@ -12,6 +12,9 @@ A3 chain:
 from __future__ import annotations
 
 
+_EDGE_CORNERS = ((0, 1), (1, 2), (2, 3), (3, 0))
+
+
 def _cell_corner_fields(xp, grid, psi):
     x = xp.asarray(grid.coords[0], dtype=psi.dtype)
     y = xp.asarray(grid.coords[1], dtype=psi.dtype)
@@ -47,8 +50,7 @@ def _cell_geometry_fields(xp, grid, dtype):
 
 
 def _edge_crossing(xp, values, points, edge, threshold):
-    edge_corners = ((0, 1), (1, 2), (2, 3), (3, 0))
-    lo, hi = edge_corners[edge]
+    lo, hi = _EDGE_CORNERS[edge]
     value_lo = values[lo]
     value_hi = values[hi]
     shifted_lo = value_lo - threshold
@@ -420,6 +422,120 @@ def marching_squares_surface_energy_gradient_2d(
     gradient[1:, 1:] = gradient[1:, 1:] + local[2]
     gradient[:-1, 1:] = gradient[:-1, 1:] + local[3]
     return gradient
+
+
+def marching_squares_liquid_area_gradient_2d(
+    *,
+    xp,
+    grid,
+    psi,
+    phase_threshold: float = 0.5,
+):
+    """Return the derivative of the sharp P1 liquid area on the active backend."""
+    if grid.ndim != 2:
+        raise ValueError("marching_squares_liquid_area_gradient_2d supports 2D")
+    psi = xp.asarray(psi)
+    values, points = _cell_corner_fields(xp, grid, psi)
+    threshold = xp.asarray(phase_threshold, dtype=psi.dtype)
+    crossings = [
+        _edge_crossing(xp, values, points, edge, threshold)
+        for edge in range(4)
+    ]
+    inside = tuple(value >= threshold for value in values)
+    case_field = xp.zeros_like(values[0])
+    for corner, mask in enumerate(inside):
+        case_field = case_field + mask.astype(psi.dtype) * float(1 << corner)
+    local = [xp.zeros_like(values[0]) for _ in range(4)]
+
+    for case_id in range(16):
+        tokens = _liquid_polygon_tokens(case_id)
+        if len(tokens) < 3:
+            continue
+        active = case_field == float(case_id)
+        for kind, index in tokens:
+            if kind == "edge":
+                active = active & crossings[index]["mask"]
+        for index, token in enumerate(tokens):
+            previous_token = tokens[(index - 1) % len(tokens)]
+            next_token = tokens[(index + 1) % len(tokens)]
+            _add_area_gradient_vertex_contribution(
+                xp,
+                local,
+                token,
+                previous_token,
+                next_token,
+                active,
+                points=points,
+                crossings=crossings,
+            )
+
+    gradient = xp.zeros_like(psi)
+    gradient[:-1, :-1] = gradient[:-1, :-1] + local[0]
+    gradient[1:, :-1] = gradient[1:, :-1] + local[1]
+    gradient[1:, 1:] = gradient[1:, 1:] + local[2]
+    gradient[:-1, 1:] = gradient[:-1, 1:] + local[3]
+    return gradient
+
+
+def _liquid_polygon_tokens(case_id: int):
+    inside = tuple(bool(case_id & (1 << corner)) for corner in range(4))
+    tokens = []
+    for edge, (lo, hi) in enumerate(_EDGE_CORNERS):
+        if inside[lo]:
+            tokens.append(("corner", lo))
+        if inside[lo] != inside[hi]:
+            tokens.append(("edge", edge))
+    return tuple(tokens)
+
+
+def _token_point(token, *, points, crossings):
+    kind, index = token
+    if kind == "corner":
+        return points[index][0], points[index][1]
+    crossing = crossings[index]
+    return crossing["x"], crossing["y"]
+
+
+def _token_derivatives(token, *, crossings):
+    kind, index = token
+    if kind == "corner":
+        return ()
+    return crossings[index]["derivatives"]
+
+
+def _add_area_gradient_vertex_contribution(
+    xp,
+    local,
+    token,
+    previous_token,
+    next_token,
+    active,
+    *,
+    points,
+    crossings,
+):
+    previous_x, previous_y = _token_point(
+        previous_token,
+        points=points,
+        crossings=crossings,
+    )
+    next_x, next_y = _token_point(
+        next_token,
+        points=points,
+        crossings=crossings,
+    )
+    area_gradient_x = 0.5 * (next_y - previous_y)
+    area_gradient_y = 0.5 * (previous_x - next_x)
+    for corner, derivative_x, derivative_y in _token_derivatives(
+        token,
+        crossings=crossings,
+    ):
+        contribution = area_gradient_x * derivative_x + area_gradient_y * derivative_y
+        local[corner] = local[corner] + xp.where(
+            active,
+            contribution,
+            xp.zeros_like(contribution),
+        )
 
 
 def p2_trace_surface_energy_2d(

@@ -64,7 +64,6 @@ _CAPILLARY_FORCE_SOURCE_ALIASES = {
     "curvature": "curvature_jump",
     "scalar_jump": "curvature_jump",
     "closed_interface": "closed_interface_riesz",
-    "trace_riesz": "closed_interface_riesz",
 }
 _CAPILLARY_REACTION_PROJECTION_MODES = (
     "none",

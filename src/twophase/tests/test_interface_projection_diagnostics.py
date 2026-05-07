@@ -12,6 +12,7 @@ from twophase.coupling.interface_stress_closure import InterfaceStressContext
 from twophase.levelset.transport_strategy import PsiDirectTransport
 from twophase.simulation.interface_projection_diagnostics import (
     capillary_component_hodge_augmented_projection,
+    capillary_external_component_saddle_projection,
     capillary_jump_range_projection,
     capillary_face_cochain_diagnostics,
     reinit_projection_diagnostics,
@@ -274,6 +275,46 @@ def test_component_hodge_augmented_projection_removes_unit_reaction_component():
         projection["hodge_residual_components"][0],
         xp.asarray([-1.0, 1.0]),
     )
+
+
+def test_external_component_saddle_projection_removes_reaction_row():
+    xp = np
+    rho = xp.ones(1)
+    raw = [xp.asarray([1.0, -1.0])]
+    reaction = [[xp.asarray([1.0, -1.0])]]
+
+    class MeanRangeFaces:
+        def divergence_from_faces(self, face_components):
+            return xp.asarray([xp.sum(face_components[0])])
+
+        def pressure_fluxes(self, pressure, rho, **kwargs):
+            return [0.5 * xp.asarray(pressure)[0] * xp.ones(2)]
+
+    class MeanRangeSolver:
+        def set_interface_jump_context(self, **kwargs):
+            self.context = kwargs
+
+        def invalidate_cache(self):
+            self.invalidated = True
+
+        def solve(self, rhs, rho, dt=0.0, p_init=None):
+            return xp.asarray(rhs)
+
+    solver = MeanRangeSolver()
+    projection = capillary_external_component_saddle_projection(
+        xp=xp,
+        div_op=MeanRangeFaces(),
+        ppe_solver=solver,
+        rho=rho,
+        pressure_flux_kwargs={},
+        raw_components=raw,
+        component_reaction_components=reaction,
+    )
+
+    np.testing.assert_allclose(projection["component_hodge_coefficients"], 1.0)
+    np.testing.assert_allclose(projection["corrected_jump_components"][0], 0.0)
+    np.testing.assert_allclose(projection["hodge_residual_components"][0], 0.0)
+    assert not hasattr(solver, "invalidated")
 
 
 def test_psi_direct_transport_records_reinit_projection_pair():
