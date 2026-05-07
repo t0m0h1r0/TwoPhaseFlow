@@ -39,7 +39,7 @@ $\psi\leftrightarrow\phi$ 対応・Ridge--Eikonal ハイブリッド）を，
 \label{sec:cls_compression}
 % ─────────────────────────────────────────────────────────────────────────────
 
-\noindent\textbf{Part 1 からの継承：}
+\noindent\textbf{前章までの定式化との関係：}
 本節は §~\ref{sec:reinit}（§3.2 末，再初期化方程式 \eqref{eq:cls_reinit_iso}）の
 連続定式化と §~\ref{sec:ridge_eikonal}（§3.4 Ridge--Eikonal 連続定式化）に基づく
 補助的な距離再構成の離散構成を示す．§3.4 と同様，本経路は
@@ -49,7 +49,7 @@ CLS 基本経路（保存形移流・$\psi$ 直接曲率）を置き換えるも
 本節の構成は以下である：
 \begin{itemize}
   \item \textbf{補助 Ridge--Eikonal 系}：§~\ref{sec:xi_sdf_reinit}（後述 $\xi$ 空間符号距離関数法）
-        が一様格子での基底形であり，非一様格子・Gaussian ridge 版は
+        が一様格子での基底形であり，非一様格子・ガウス型リッジ版は
         §~\ref{sec:ridge_eikonal_nu_grid} に接続する．
   \item \textbf{過渡 Eikonal 法}：§~\ref{sec:eikonal_reinit}（後述「統一再初期化：Eikonal 法」）は
         Ridge--Eikonal の前段である Eikonal 距離構築の単独運用形．
@@ -113,7 +113,7 @@ $\Delta S_{\Pi}$ は別の診断記録に載せる．
 % ─────────────────────────────────────────────────────────────────────────────
 
 再初期化の実行頻度は，本文中で暗黙の安定化パラメタとして扱わない．
-各検証・ベンチマークは，Ridge--Eikonal を毎ステップ適用するか，
+各検証では，Ridge--Eikonal を毎ステップ適用するか，
 トポロジー変化時・格子再構成時だけ適用するかを条件として明示する．
 その上で，界面帯の品質量
 $Q_\Gamma = \int \psi(1-\psi)\,\mathrm{d}V$ を受理診断として併用する：
@@ -169,7 +169,7 @@ CLS プロファイルへ戻す幾何射影である：
 $M_{\psi,h}$ は拡散 CLS 質量，
 $d_\Gamma$ は $\psi=1/2$ 線の離散変位，$S_h$ は界面測度
 （または表面エネルギー代理量）である．
-実装上は，まず符号付き距離場の一様シフト
+計算上は，まず符号付き距離場の一様シフト
 \begin{equation}
   \phi_{\mathrm{sdf}}\leftarrow\phi_{\mathrm{sdf}}+\lambda_\Gamma
   \quad\text{so that}\quad
@@ -211,7 +211,7 @@ Navier--Stokes の運動エネルギー収支にも現れないため，
 表面張力または粘性の仕事と区別できなくなる．
 本稿の標準離散経路は，物理移流，Ridge--Eikonal 幾何射影，
 および §~\ref{sec:split_ppe_capillary_range_projection} の
-毛管 Hodge 平衡判定を別々の離散 identity として監視する．
+毛管平衡判定を別々の離散同一性として監視する．
 
 
 % ─────────────────────────────────────────────────────────────────────────────
@@ -223,7 +223,7 @@ Navier--Stokes の運動エネルギー収支にも現れないため，
 （DGR）は，本稿の標準段階 D/F 経路ではない．
 これらは，圧縮項と拡散項を逐次適用する比較経路が
 界面幅をどのように変えるかを調べるための参照であり，
-標準計算へ隠れた後処理として加えない．
+標準計算へ暗黙の後処理として加えない．
 
 DGR を比較経路として明示する場合だけ，界面帯の有効幅を
 \begin{equation}
@@ -265,7 +265,7 @@ $\phi$ 空間一様シフトで液相体積を閉じる．
 \phantomsection\label{sec:eikonal_reinit}% 外部参照保護
 % ─────────────────────────────────────────────────────────────────────────────
 
-\noindent\textbf{Part 1 連続定式化との関係：}
+\noindent\textbf{前章までの連続定式化との関係：}
 本節は §~\ref{sec:reinit}（§3.3 再初期化方程式）と
 §~\ref{sec:ridge_eikonal}（§3.4 Ridge--Eikonal 連続定式化）の離散定式化である．
 本稿の補助距離再構成はここで定式化する Ridge--Eikonal 系
@@ -481,7 +481,7 @@ $\delta\phi$ として別に監視する．
 $\sigma>0$ で界面振動を伴う系では表面張力の空間集中
 （$\sim\varepsilon^{-1}$ スケール）が PPE 投影残差を介して
 体積誤差に伝播し得る．
-この効果を標準経路の隠れた正則化として処理してはならない．
+この効果を標準経路の暗黙の正則化として処理してはならない．
 幅拡大係数 $f$ は，Ridge--Eikonal 距離再構成の感度を測る
 明示的な比較パラメタとしてのみ導入し，
 \begin{equation}
