@@ -130,6 +130,13 @@ $\varepsilon_\text{scale}\ne1$ は §~\ref{sec:xi_sdf_reinit} の幅拡大係数
 感度・比較条件として明示された場合に限る．
 したがって非一様格子の既定記述は，空間倍率による隠れた幅正則化ではなく，
 D3 の物理空間 FMM と Stage F の $\phi$ 空間体積閉鎖を組にした幅保存経路である．
+この体積閉鎖では，計算座標上のセル数ではなく物理セル体積を用いる．
+さらに §~\ref{sec:transport_reinit_projection_split} の通り，
+sharp phase volume $V_{\Gamma,h}$ と拡散 CLS 質量 $M_{\psi,h}$ は別制約であり，
+非一様格子でも $V_{\Gamma,h}$ は物理 P1 界面で囲まれる面積，
+$M_{\psi,h}$ は $\sum_i\psi_i\Delta V_i$ として評価する．
+Ridge--Eikonal の SDF 一様シフトは前者を閉じ，
+局所幅またはプロファイルパラメタ補正は後者を閉じる．
 
 \paragraph{W — 壁閉包補正}
 壁面に接する界面は領域内部の多様体ではなく，閉領域上の

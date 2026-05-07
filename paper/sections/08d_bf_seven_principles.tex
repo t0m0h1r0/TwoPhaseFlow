@@ -167,11 +167,14 @@ CCD は滑らかな場を仮定する．静止液滴で $j_{gl}=-\sigma\kappa_{l
   \end{equation}
   バルク側ステンシルは変更せず，ジャンプだけを面フラックスに注入する．
   HFE が同相側 Hermite データを供給し，
-  補正後の毛管 cochain は §~\ref{sec:split_ppe_capillary_range_projection} の
-  $D_f A_f G_f$ 値域へ射影してから速度補正へ渡す．
+  毛管 cochain は §~\ref{sec:split_ppe_capillary_range_projection} の
+  surface-energy virtual-work/Riesz 構成で face space へ渡す．
+  $D_f A_f G_f$ 値域への射影は静的平衡 gate と原因診断であり，
+  非平衡界面の Hodge 駆動を本番補正前に消す操作ではない．
   \item \textbf{本稿の標準経路}：
-  GFM/affine-jump + HFE + DC 残差契約 + range projection を用い，
-  補正段階に渡る毛管 cochain を同じ face complex の値域へ閉じる．
+  GFM/affine-jump + HFE + DC 残差契約 + 変分毛管 Hodge gate を用い，
+  補正段階に渡る毛管 cochain を同じ face complex の
+  Riesz 表現として閉じる．
   固定回数 $k=3$ は §~\ref{sec:defect_correction_ppe} の成分検証で観測された実用上限であり，
   標準 BF 閉包そのものの精度契約ではない．
 \end{itemize}
