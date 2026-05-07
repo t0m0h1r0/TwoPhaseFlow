@@ -129,9 +129,9 @@ $u''_f$  & 節点二次導関数の単純面平均（補助量）        & $\Ord
 \subsubsection*{数値特性比較表}
 % -------------------------------------------------------------------------------
 
-\begin{center}
+\noindent
 {\footnotesize
-\begin{tabular}{l l l l l l}
+\begin{tabularx}{\linewidth}{@{}l l >{\raggedright\arraybackslash}X l >{\raggedright\arraybackslash}X l@{}}
 \hline
 \textbf{スキーム} & \textbf{配置} & \textbf{散逸チャンネル} & \textbf{微分精度}$^\dagger$ & \textbf{安定性} & \textbf{計算量} \\ \hline
 {\CCD} (§\ref{sec:ccd_def})              & 節点      & なし                          & $\Ord{h^6}$           & 中心差分（散逸ゼロ）         & $\Ord{N}$ \\
@@ -140,8 +140,7 @@ $u''_f$  & 節点二次導関数の単純面平均（補助量）        & $\Ord
 {\UCCD[6]} (§\ref{sec:uccd6_def})        & 節点      & \textbf{演算子内部}（ハイパー粘性） & $\Ord{h^6}$  & CN で無条件安定（周期格子）    & $\Ord{N}$ \\
 $\FaceJet{u}$ (§\ref{sec:face_jet_def})  & 面（入出力形式） & ---                           & $\Ord{H^4}$/$\Ord{H^2}$$^\S$ & 基底スキーム継承   & $\Ord{N}$ 後処理 \\
 \hline
-\end{tabular}}
-\end{center}
+\end{tabularx}}
 
 \noindent
 {\footnotesize
