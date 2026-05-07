@@ -20,7 +20,7 @@
 一括一流体/Balanced--Force 経路では CSF 体積力を圧力勾配と同じ面演算子に乗せる．
 一方，高密度比・低 Weber 数の主経路では，Young--Laplace 圧力差を
 分相 PPE の向き付きジャンプ条件として保持し，
-HFE と面共鎖投影で速度補正まで同じ面上の離散構造に閉じる
+HFE で片側データを構成し，速度補正で使う面上の補正量まで同じ離散構造に閉じる
 （§~\ref{sec:split_ppe_framework}, §~\ref{sec:algorithm}）．
 この階層を先に固定しておくことで，第~\ref{sec:levelset}章以降の
 CLS，曲率，Balanced--Force，分相 PPE の議論が同じ符号と同じ物理量を参照できる．
@@ -54,19 +54,15 @@ $\psi$ の定義・性質・移流方程式は第~\ref{sec:levelset}章で詳述
 密度・粘性の補間（式~\eqref{eq:interp_intro}）および
 曲率の直接計算（§~\ref{sec:curvature_direct_psi}）に用いる．
 
-\begin{tcolorbox}[defbox, title={Eikonal 制約のトポロジー硬直性}]
-$\phi=0$ を界面とする境界条件と組み合わせた符号付き距離関数 $\phi$ の定義は，
-Eikonal 条件 $|\bnabla\phi|=1$ と対応しており，
-これは零等位集合の\textbf{平行オフセット性}を強制する．
-幾何的頑健性と一意性の代償として，Eikonal 制約は
-極値とリッジを抑制し，零等位集合のトポロジーは
-滑らかな時間発展の下で凍結される．
-FMM/FSM/Godunov Hamilton--Jacobi の各再初期化は，
-幾何学的に見ればこのトポロジー硬直性を反復強制する手続きである．
-§~\ref{sec:levelset} で導入する Ridge--Eikonal ハイブリッドは，
-この硬直性を緩め界面の融合・分裂に必要な自由度を
-Gaussian 補助場（§~\ref{sec:ridge_eikonal} で定義）により回復しつつ，
-Eikonal 由来の距離精度を保つ設計である．
+\begin{tcolorbox}[defbox, title={距離関数としての $\phi$ と保存変数としての $\psi$}]
+本章では，$\phi$ を符号付き距離関数として定義する．
+この定義は Eikonal 条件 $|\bnabla\phi|=1$ と対応し，
+法線・曲率を幾何的に読みやすくする．
+一方で，数値計算では界面移流後に $|\bnabla\phi|=1$ が崩れるため，
+距離関数の再構成をどう行うかが界面形状と体積保存に影響する．
+本稿ではこの混同を避けるため，保存形移流の主変数を $\psi$，
+法線・曲率の幾何評価を支える補助場を $\phi$ として分けて扱う．
+再初期化と体積閉鎖の具体的な設計は，第~\ref{sec:reinit}章で述べる．
 \end{tcolorbox}
 
 \begin{tcolorbox}[defbox, title={符号規約の統一：$\kappa$ の符号と Young-Laplace 則（本稿全章共通）}]
