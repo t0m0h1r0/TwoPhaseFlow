@@ -7,8 +7,8 @@
 本章では，後続章で用いる空間演算子の共通基盤として
 \textbf{3 点コンパクト性}と\textbf{同一面評価位置}を満たす CCD 演算子族を定式化する．
 基底 CCD は滑らかな節点場に対して $f',f''$ を同時連立し，
-DCCD は節点中心 CCD に外殻散逸を加える補助 post-filter，
-UCCD6 は運動量 bulk 対流の節点中心ハイパー粘性演算子，
+DCCD は節点中心 CCD に外殻散逸を加える補助後置フィルタ，
+UCCD6 は運動量の領域内部対流に用いる節点中心ハイパー粘性演算子，
 FCCD と面ジェットは保存形面フラックス・圧力勾配・毛管面閉包に渡す
 面評価位置の入力条件である．
 したがって本章は「単一の万能差分」を選ぶ章ではなく，
@@ -49,18 +49,18 @@ $\Ord{\varepsilon}$ で滑らかに変化する界面に対しては
 \medskip
 \noindent\textbf{標準経路での役割地図．}
 本稿の標準離散経路では，CLS $\psi$ は FCCD 保存形面フラックス，
-運動量 bulk は UCCD6，圧力勾配・CSF・ジャンプ条件は面ジェット/FCCD による
+運動量の領域内部対流は UCCD6，圧力勾配・CSF・ジャンプ条件は面ジェット/FCCD による
 同一評価位置閉包で評価する．
-DCCD は節点中心 CCD 出力への補助 post-filter として導出・検証するが，
+DCCD は節点中心 CCD 出力への補助後置フィルタとして導出・検証するが，
 標準 CLS 移流，圧力場，Balanced--Force 毛管面閉包には入れない．
 この役割地図を先に固定することで，本章の各派生スキームは
-後続章の用途に対する入力契約として読むことができる．
+後続章の用途に対する入力前提として読むことができる．
 
 \medskip
-\noindent\textbf{本章の構成：4 スキーム + 出力 API のロードマップ．}
+\noindent\textbf{本章の構成：4 スキーム + 出力インターフェイスのロードマップ．}
 派生スキームは出力位置により\textbf{2 つの系統}に分かれる：
 \textbf{節点中心散逸系統}（CCD / DCCD / UCCD6）と
-\textbf{面中心系統}（FCCD），そしてその両者の出力を面位置で統合する API（面ジェット）．
+\textbf{面中心系統}（FCCD），そしてその両者の出力を面位置で統合するインターフェイス（面ジェット）．
 \begin{enumerate}[leftmargin=*, label=(\arabic*), itemsep=2pt, topsep=2pt]
   \item \textbf{CCD}（§~\ref{sec:ccd_def}）：
         $f, f', f''$ を同時連立する基底スキーム．
@@ -68,25 +68,25 @@ DCCD は節点中心 CCD 出力への補助 post-filter として導出・検証
         境界条件 + ブロック Thomas 行列構造を §~\ref{sec:ccd_bc}--§~\ref{sec:ccd_matrix} で確立し，
         標準閉区間では 6 点 $\Ord{h^4}$ 境界閉包を採用する．
   \item \textbf{DCCD}（§~\ref{sec:dccd_derivation}）：
-        節点中心 family の補助散逸版．
+        節点中心系統の補助散逸版．
         中心差分系の最高波数 $\xi=\pi$ におけるスプリアス振動を抑制する
-        基底 CCD への\textbf{散逸 post-filter}．
-        導出形と spectral post-filter 形を順に提示し，標準経路へ混入しない適用境界を明示する．
+        基底 CCD への\textbf{散逸後置フィルタ}．
+        導出形とスペクトル後置フィルタ形を順に提示し，標準経路へ混入しない適用境界を明示する．
   \item \textbf{UCCD6}（§~\ref{sec:uccd6_def}）：
-        節点中心 family の第 3 員．
+        節点中心系統の第 3 員．
         ハイパー粘性 $(-D_2^{\CCD})^4$ を\textbf{演算子内部}に埋め込み，
-        DCCD の post-filter とは異なる経路で散逸を供給．
+        DCCD の後置フィルタとは異なる経路で散逸を供給．
         周期格子では Crank--Nicolson 時間積分で無条件 $L^2$ 安定．
   \item \textbf{FCCD}（§~\ref{sec:fccd_def}）：
-        面中心 family．
+        面中心系統．
         節点値から\textbf{面値・面導関数}を $\Ord{h^4}$ で構成する．
-        4 設計原理（共通プリミティブ／$\lambda=1/24$ 打ち消し／行列単一化／
+        4 設計原理（共通基盤量／$\lambda=1/24$ 打ち消し／行列単一化／
         DFT 正準解析）を順次導出．
   \item \textbf{面ジェット $\FaceJet{u}$}（§~\ref{sec:face_jet_def}）：
-        FCCD と等価な面 API．
+        FCCD と等価な面インターフェイス．
         基底 CCD 出力 $(u_i, q_i = u''_i)$ から面値・面勾配・面二次を $(u_f, u'_f, u''_f)$ として構成し，
-        節点中心 family の任意の派生スキーム（CCD/DCCD/UCCD6）から面値を得る統一手段を提供する．
-        以降の消費先章はすべて本 API のみを入力契約として用いる
+        節点中心系統の任意の派生スキーム（CCD/DCCD/UCCD6）から面値を得る統一手段を提供する．
+        以降の消費先章はすべて本インターフェイスのみを入力前提として用いる
         （消費先章一覧は §~\ref{sec:ccd_summary} の比較表に集約）．
 \end{enumerate}
 
@@ -287,11 +287,11 @@ $\tfrac{\beta_2}{12} - (\tfrac{a_2}{360}+\tfrac{b_2}{60})=0$
 $h^0, h^2, h^4$ の各係数がゼロになることを直接代入で確認できる（付録参照）．
 主要打ち切り誤差係数は $-1/5040$（Eq-I）および $-1/20160$（Eq-II）であり，
 いずれも $\Ord{h^6}$ の精度次数を持つ．
-Eq-I の stencil residual 係数（$-1/5040$）は7点陽的スキームと一致する一方，
+Eq-I のステンシル残差係数（$-1/5040$）は7点陽的スキームと一致する一方，
 modified-wavenumber に対応する operator-level の打切り誤差係数は約 $-1/9450$ で
 1.875× 小さく，両者は\textbf{区別}される（前者はテイラー展開の局所係数，
 後者はスペクトル解析で実効分散誤差を測る指標~\cite{KimMoin1985}）．
-Eq-II の stencil residual は $-1/20160$ で Eq-I より約4倍小さい．
+Eq-II のステンシル残差は $-1/20160$ で Eq-I より約4倍小さい．
 3点ステンシルで7点相当以上の精度を実現していることを示す．
 
 \subsubsection{Chu--Fan 修正波数 $\omega_1,\omega_2$ の厳密形}
