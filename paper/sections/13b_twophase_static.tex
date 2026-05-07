@@ -81,31 +81,31 @@ $N$ & $h$ & $\Delta p_{\mathrm{meas}}$ & $|\Delta p_{\mathrm{rel}}|$ & $u_\infty
 検証対応：式~\eqref{eq:bf_fccd_unification} と \autoref{sec:csf} の曲率評価に対し，
 長時間の Laplace 圧維持と寄生流れ最大値を測定する．
 
-\paragraph{production stack 静止液滴 gate．}
+\paragraph{本番構成の静止液滴判定．}
 上の V3 は CSF/BF 縮約経路の長時間診断である．
 一方，水--空気級の pressure-jump 経路では，表面張力を
 CSF 体積力ではなく §~\ref{sec:split_ppe_pressure_jump_formulation} の
 向き付き pressure-jump と閉界面 Riesz 毛管源として閉じる．
-この production-stack 静止液滴は，第~\ref{sec:validation}章の
+この本番構成の静止液滴は，第~\ref{sec:validation}章の
 移動界面 benchmark ではなく，本章の統合検証に置く．
 第~\ref{sec:validation}章では静止円形液滴を重複させず，毛管波，振動液滴，
 気泡上昇，Rayleigh--Taylor のように有限界面運動を伴う物理応答だけを扱う．
 
-本 gate は \texttt{ch14\_static\_droplet.yaml} 系譜で用意した
-production 設定を，V3 の pressure-jump 側補助診断として取り込むものである．
+本判定は \texttt{ch14\_static\_droplet.yaml} 系譜で用意した
+本番設定を，V3 の圧力ジャンプ側補助診断として取り込むものである．
 構成は periodic，interface-fitted $\alpha=2$，FCCD/TVD--RK3 界面輸送，
-UCCD6/IMEX--BDF2 運動量更新，pressure-jump affine PPE，
-closed-interface Riesz 毛管源，pressure-adjoint residual contract，
+UCCD6/IMEX--BDF2 運動量更新，圧力ジャンプ付きアフィン PPE，
+閉界面 Riesz 毛管源，圧力補正と随伴な残差受理条件，
 pressure-component Hodge 反応，variational operator pairing，
 静止 reinitialization なしである．
 したがって，CSF/BF 縮約経路の Laplace 圧誤差だけでは読めない
-production pressure-jump/Riesz stack の幾何保持，体積保持，および
+圧力ジャンプ/Riesz 本番構成の幾何保持，体積保持，および
 小さな運動エネルギー漏れを同じ V3 節で評価する．
 
 \begin{table}[!ht]
-\caption{V3：production stack 静止液滴 gate}
+\caption{V3：本番構成の静止液滴判定}
 \label{tab:V3_production_static_droplet}
-\PaperCaptionNote{水--空気物性，periodic，interface-fitted $\alpha=2$，pressure-jump affine PPE，closed-interface Riesz 毛管源，pressure-adjoint residual contract，静止 reinitialization なし．$D$ は signed/deformation 診断の絶対変形量である．}
+\PaperCaptionNote{水--空気物性，periodic，interface-fitted $\alpha=2$，圧力ジャンプ付きアフィン PPE，閉界面 Riesz 毛管源，圧力補正と随伴な残差受理条件，静止 reinitialization なし．$D$ は signed/deformation 診断の絶対変形量である．}
 \centering\small
 \begin{tabular}{l r r r r r}
 \toprule
@@ -117,12 +117,12 @@ $N=32,T=10$ & $3.871\times10^{-7}$ & $1.718\times10^{-6}$ & $2.919\times10^{-15}
 \end{tabular}
 \end{table}
 
-表~\ref{tab:V3_production_static_droplet} は，production stack が
+表~\ref{tab:V3_production_static_droplet} は，本番構成が
 静止円形液滴の形状と体積を保ち，有限時間の kinetic leakage を
 $K_{\max}\le1.718\times10^{-6}$，$\|u(T)\|_\infty\le1.686\times10^{-4}$
 に抑えることを示す．ただし，これは「解析円を標本化しただけで
 丸め誤差まで完全静止する」ことの証明ではない．標本化円は一般には
-離散面積汎関数の制約付き臨界点ではないため，production stack の gate は
+離散面積汎関数の制約付き臨界点ではないため，本番構成の判定は
 幾何保持・体積保持・bounded kinetic leakage を判定対象とする．
 この位置付けにより，静止液滴は本章の統合検証へ吸収し，
 第~\ref{sec:validation}章では重複した静止液滴実験を行わない．
@@ -185,8 +185,8 @@ $N$ & CCD & FD & CCD & FD & CCD & FD \\
   \item \textbf{比較参照（CCD/FD 比）}：$\rho_r=1, N=32$ で CCD は FD の $1/5.44$，
         $\rho_r=100, N=64$ で $1/2.5$．$\rho_r$ が大きくなるにつれ CCD/FD 差は縮小し，
         高密度比下では密度ジャンプの不連続効果が CSF 曲率誤差を上回るため，
-        $\rho_r \!\ge\! 100$ では range-projected pressure-jump stack
-        （分相 PPE + DC + HFE + capillary range projection；
+        $\rho_r \!\ge\! 100$ では圧力ジャンプ・毛管射影結合系
+        （分相 PPE + DC + HFE + 毛管成分の圧力勾配射影；
         U6 を入口 primitive とし，V6/V7/V9 で統合挙動を読む）が必要．
   \item \textbf{$N=64\!\to\!128$ の N 軸 monotonicity（緩慢増加）について}：CCD 列は
         $\rho_r$ 全条件で $u_\infty^{\mathrm{end}}$ が緩やかに増加する

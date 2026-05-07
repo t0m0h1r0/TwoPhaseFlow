@@ -15,7 +15,7 @@ smooth reference として local FD ヘルパで構成し，
 §\ref{sec:defect_correction_main} の段階収束理論を独立に検証する．
 U2-b は本稿の縮約 FVM--PPE Neumann gauge を直接測る．
 ここでの Neumann PPE は，V1/V2 の単相・V3/V5/V8 の縮約 BF 経路に渡す基礎作用素であり，
-水--空気級の range-projected pressure-jump 標準（U6, V6/V7/V9）の代替ではない．
+水--空気級の圧力ジャンプ・毛管射影標準（U6, V6/V7/V9）の代替ではない．
 
 \paragraph{設定．}
 2D 矩形領域 $[0,1]^2$ 上で MMS による格子収束（壁境界条件下）．
@@ -93,7 +93,7 @@ $N$ & $h$ & $\|e\|_\infty$ \\
         （DC が $k=3$ 時点で既に飽和；§\ref{sec:ppe_dc_accuracy} の段階理論と整合）．\checkmark
   \item U2-b 縮約 FVM--PPE + Neumann ゲージ：slope $2.00$．
         定数密度 Neumann MMS で設計 2 次を再現することを確認．
-        この合格は単相・縮約 BF 経路に限り，range-projected pressure-jump stack の高密度比精度は U6/V6/V7/V9 で扱う．\checkmark
+        この合格は単相・縮約 BF 経路に限り，圧力ジャンプ・毛管射影結合系の高密度比精度は U6/V6/V7/V9 で扱う．\checkmark
 \end{itemize}
 検証対応：§\ref{sec:defect_correction_main} の DC 反復式に対し，
 Dirichlet MMS と本稿の Neumann ゲージ固定 PPE の格子収束を測定する．
