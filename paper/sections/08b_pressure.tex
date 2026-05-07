@@ -102,6 +102,70 @@ HFE による場延長を要する（§~\ref{sec:field_extension}，§~\ref{sec:
 PPE 内の圧力勾配，速度補正に用いる圧力勾配，および界面力が
 同じ面評価位置と係数を共有することが，後続の Balanced--Force 条件の主題である．
 
+\subsubsection{圧力反力としての面勾配：PPE だけでは代表が決まらない}
+\label{sec:variational_pressure_reaction}
+
+圧力射影を面速度空間で書くと，補正段は
+\begin{equation}
+  \bu_f^{n+1}
+  =
+  \bu_f^\ast
+  -
+  \Delta t_{\mathrm{proj}}\,
+  a_f(p;c),
+  \qquad
+  a_f(p;c)=G_Ap-c_f
+  \label{eq:subtractive_face_pressure_reaction}
+\end{equation}
+である．ここで $c_f$ は既知の毛管補正量または界面ジャンプ補正量であり，
+$G_Ap$ は圧力が面速度へ及ぼす反力である．
+この $G_A$ は，単に $D_fG_Ap$ が PPE 左辺を作るという条件だけでは決まらない．
+圧力が非圧縮制約のラグランジュ乗数であるためには，面運動量計量 $M_A$ と
+圧力節点計量 $W_p$ に対して
+\begin{equation}
+  \langle G_Ap,w_f\rangle_{M_A}
+  +
+  \langle p,D_fw_f\rangle_{W_p}
+  =0
+  \qquad
+  \forall p,\ \forall w_f
+  \label{eq:pressure_reaction_green_identity}
+\end{equation}
+を満たさなければならない（符号は式~\eqref{eq:subtractive_face_pressure_reaction}
+の減算型補正に合わせたもの）．
+したがって
+\begin{equation}
+  G_A=-M_A^{-1}D_f^TW_p,
+  \qquad
+  L_Ap\equiv D_fG_Ap
+  \label{eq:variational_pressure_operator_pair}
+\end{equation}
+が，固定した $D_f,M_A,W_p$ に対する圧力反力と scalar PPE の組である．
+この組を用いると，圧力補正による仕事は
+\begin{equation}
+  \langle G_Ap,G_Ap\rangle_{M_A}
+  =
+  -\langle p,L_Ap\rangle_{W_p}
+  \label{eq:pressure_reaction_energy_identity}
+\end{equation}
+として同じ離散内積で読める（$L_A$ の符号は
+式~\eqref{eq:variational_pressure_operator_pair} の発散向きに従う）．
+
+ここで重要なのは，$D_fG_Ap$ が同じでも $G_Ap$ の代表は一意ではない点である．
+もし
+\[
+  \widetilde Gp = G_Ap+Zp,\qquad D_fZp=0,\qquad Zp\ne0
+\]
+なら，$\widetilde G$ は同じ PPE 右辺を満たし得るが，
+式~\eqref{eq:pressure_reaction_green_identity} の圧力仕事を一般には満たさない．
+この divergence-free な余剰成分は，静的液滴では寄生流れとして，
+非平衡界面では毛管駆動の過小または過大評価として現れる．
+したがって本稿の圧力ジャンプ標準経路では，
+補正段の圧力面加速度を
+式~\eqref{eq:pressure_reaction_green_identity} の変分随伴代表に限定し，
+高次 compact 勾配のような divergence-equivalent な代表は，
+この随伴性が証明された場合を除き，圧力反力としては用いない．
+
 \subsubsection{非一様格子での面平均補正}
 \label{sec:fvm_ccd_corrector}
 

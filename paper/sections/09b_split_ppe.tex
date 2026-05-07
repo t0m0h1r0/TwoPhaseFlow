@@ -733,9 +733,25 @@ $V_{m,h}(q_c)$ から，表面エネルギーの Riesz 代表を
   \mathrm{pressure\_fluxes}(p,\rho_c;\mathrm{zero\ jump})
   \label{eq:capillary_active_pressure_range_operator}
 \end{equation}
-と書くとき，$M_A$ は
-$\langle G_Ap,w_f\rangle_{M_A}=\langle p,D_fw_f\rangle_{W_p}$
-を満たす重みであり，一様係数の場合は通常の面運動量質量に縮約する．
+と書くとき，$G_A$ と $M_A$ は
+式~\eqref{eq:pressure_reaction_green_identity} の圧力仕事恒等式を満たす組であり，
+一様係数の場合は通常の面運動量質量に縮約する．
+現在の分相 FCCD/FVM 面発散でこの条件を満たす代表は，
+物理面 $f=(i+1/2,j)$ を例にとれば
+\begin{equation}
+  (G_Ap)_f
+  =
+  A_f\,\frac{p_{i+1,j}-p_{i,j}}{H_f}
+  \quad
+  \text{（各軸で同様；周期軸は物理商空間で隣接値を取る）}
+  \label{eq:variational_pressure_two_point_face}
+\end{equation}
+である．これは低次化のための便宜ではなく，固定した $D_f$ と面係数 $A_f$ に対する
+Riesz 随伴代表である．高次 compact 勾配を同じ場所で評価しても，
+$D_fG$ が同じ scalar PPE を与えるだけでは式~\eqref{eq:pressure_reaction_green_identity}
+の仕事恒等式は保証されない．
+実際，$\widetilde G=G_A+Z,\ D_fZ=0,\ Z\ne0$ という代表差が残ると，
+PPE は同じ発散を満たしても，補正段の圧力仕事と毛管 Hodge 分解は別の面空間を見てしまう．
 体積制約の反力も同じ写像で
 \begin{equation}
   B_{m,f}

@@ -52,6 +52,33 @@ HFE により界面近傍の片側データを構成し，
 この区別により，節点速度へ戻してから界面を移流する不一致だけでなく，
 非平衡界面を動かす毛管成分を数値的な射影で消してしまう不整合も避ける．
 
+\noindent\textbf{圧力ジャンプ型スキームの導出の見取り図．}
+本稿の標準二相スキームは，曲率式を経験的に補正して得るのではなく，
+次の有限次元の制約力問題として導く．
+\begin{enumerate}[noitemsep,leftmargin=2em]
+  \item 連続界面では，Young--Laplace 則を
+        表面エネルギー $E_\Gamma=\sigma|\Gamma|$ の体積制約付き第一変分として読む
+        （式~\eqref{eq:surface_energy_virtual_work}--\eqref{eq:surface_energy_constrained_equilibrium}）．
+  \item 離散界面では，再初期化後の形ではなく，保存形 CLS が実際に運んだ
+        再初期化前の輸送終点 $q_T$ を毛管仕事の幾何状態にする
+        （式~\eqref{eq:capillary_transport_endpoint}）．
+  \item その幾何状態の表面エネルギー変分を，CLS 面輸送の線形化
+        $T_f(q_T)$ を通じて面速度空間へ引き戻し，
+        圧力仕事と同じ面計量で Riesz 表現 $s_f$ と成分体積反力 $B_h$ を定義する
+        （式~\eqref{eq:capillary_surface_energy_riesz_cochain}--\eqref{eq:capillary_component_volume_reactions}）．
+  \item 圧力反力は，PPE が使う発散 $D_f$ と同じ面計量に対する
+        Riesz 随伴 $G_A$ として一意に決める．
+        同じ発散を持つ別の面勾配代表は，PPE 解だけを見れば同等でも，
+        圧力仕事としては同等ではない（§~\ref{sec:projection_derivation}）．
+  \item 最後に，$s_f$ から圧力反力と成分体積反力で表せる静的反力を除き，
+        残り $h_{\sigma,f}$ を非圧縮・体積保存の許容毛管駆動として得る
+        （式~\eqref{eq:capillary_component_saddle}--\eqref{eq:capillary_corrected_cochain_and_drive}）．
+\end{enumerate}
+したがって本稿の毛管閉包は，真円・楕円などの形状名や
+曲率 cap，damping，CFL 縮小によって選ぶ近似ではない．
+同じ面空間上で「表面エネルギーの仕事」「圧力の仕事」
+「成分体積制約の仕事」を同時に釣り合わせる離散変分原理から導く．
+
 本稿で検証済みと主張する範囲は後続の検証章で確定する．
 単相 NS，一流体 Balanced--Force 経路，高密度比静止液滴，
 圧力ジャンプと離散平衡判定を含む有限時間二相計算，
