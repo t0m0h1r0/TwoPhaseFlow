@@ -22,6 +22,8 @@ sources:
     description: "Fully discrete reinit-aware capillary Hodge reference and defect-ledger lesson"
   - path: docs/wiki/theory/WIKI-T-161.md
     description: "Retired fixed-stratum variational reinit candidate; negative knowledge only"
+  - path: docs/wiki/theory/WIKI-T-162.md
+    description: "Survey of reinitialization-free/reinitialization-minimized LS/CLS candidate routes"
 depends_on:
   - "[[WIKI-X-037]]"
   - "[[WIKI-X-040]]"
@@ -36,6 +38,7 @@ depends_on:
   - "[[WIKI-T-159]]"
   - "[[WIKI-T-160]]"
   - "[[WIKI-T-161]]"
+  - "[[WIKI-T-162]]"
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-157]]"
   - "[[WIKI-E-062]]"
@@ -71,7 +74,7 @@ algorithm policy.
 | Capillary jump | [[WIKI-X-039]], [[WIKI-X-040]] | Use oriented affine interface stress and face acceleration, not a regular pressure field. |
 | PPE residual | [[WIKI-T-152]], [[WIKI-E-059]] | Production projection accuracy is the high-order residual contract, not fixed DC iteration count. |
 | Pressure representative | [[WIKI-T-154]], [[WIKI-T-158]], [[WIKI-E-060]], [[WIKI-E-062]] | Raw interface-band pressure is diagnostic; read Hodge representatives and face cochains, never masked-band substitutes. |
-| Reinit-aware capillary Hodge | [[WIKI-T-159]], [[WIKI-T-160]], [[WIKI-T-155]], [[WIKI-T-157]], [[WIKI-T-161]] | Build capillary work from the labelled physical transport endpoint; use the production weighted Hodge residual for static/dynamic separation; read [[WIKI-T-160]] for discrete defect-ledger requirements and [[WIKI-T-161]] only as the retired fixed-stratum candidate, not as a current implementation route. |
+| Reinit-aware capillary Hodge | [[WIKI-T-159]], [[WIKI-T-160]], [[WIKI-T-155]], [[WIKI-T-157]], [[WIKI-T-161]], [[WIKI-T-162]] | Build capillary work from the labelled physical transport endpoint; use the production weighted Hodge residual for static/dynamic separation; read [[WIKI-T-160]] for discrete defect-ledger requirements, [[WIKI-T-162]] for reinit-free candidate routes, and [[WIKI-T-161]] only as the retired fixed-stratum candidate, not as a current implementation route. |
 | ALE/remap energy | [[WIKI-T-160]], [[WIKI-T-155]], [[WIKI-T-157]], [[WIKI-T-159]], [[WIKI-T-161]] | Variational curvature work needs shared pressure-work pairing, labelled transport/reinit endpoints, named reinit residuals/defects, and step-local energy accounting; [[WIKI-T-161]] is negative knowledge about an abandoned retraction surface. |
 | Paper/wiki split | [[WIKI-X-046]], [[WIKI-E-061]] | Put successful contracts in the paper; preserve failed controls and trial variants in the wiki. |
 | Negative shortcuts | [[WIKI-X-045]] | Damping/CFL/smoothing/caps/hyperviscosity are retained as rejected detours, not paper success claims. |
