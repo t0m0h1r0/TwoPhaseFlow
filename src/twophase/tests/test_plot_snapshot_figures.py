@@ -148,7 +148,7 @@ def test_pressure_hodge_snapshot_requires_face_cochain():
         pressure_hodge_snapshot({"t_idx": 0}, {"snapshots": [snap]}, cfg)
 
 
-def test_velocity_snapshot_uses_normalized_speed_colored_quiver():
+def test_velocity_snapshot_can_use_normalized_speed_colored_quiver():
     cfg = SimpleNamespace(
         grid=SimpleNamespace(LX=1.0, LY=1.0, NX=2, NY=2),
     )
@@ -174,7 +174,12 @@ def test_velocity_snapshot_uses_normalized_speed_colored_quiver():
     }
 
     fig = velocity_snapshot(
-        {"t_idx": 0, "quiver_stride": 1},
+        {
+            "t_idx": 0,
+            "quiver_stride": 1,
+            "arrow_color": None,
+            "arrow_outline_color": None,
+        },
         {"snapshots": [snap]},
         cfg,
     )
@@ -184,6 +189,59 @@ def test_velocity_snapshot_uses_normalized_speed_colored_quiver():
     quiver = quivers[0]
     assert np.nanmax(np.sqrt(quiver.U ** 2 + quiver.V ** 2)) <= 1.0 + 1.0e-12
     np.testing.assert_allclose(quiver.get_array(), np.sqrt(u.ravel() ** 2 + v.ravel() ** 2))
+    plt.close(fig)
+
+
+def test_velocity_snapshot_defaults_to_haloed_uniform_arrows():
+    cfg = SimpleNamespace(
+        grid=SimpleNamespace(LX=1.0, LY=1.0, NX=2, NY=2),
+    )
+    snap = {
+        "t": 0.0,
+        "psi": np.ones((3, 3)),
+        "u": np.ones((3, 3)),
+        "v": np.zeros((3, 3)),
+    }
+
+    fig = velocity_snapshot(
+        {"t_idx": 0, "quiver_stride": 1},
+        {"snapshots": [snap]},
+        cfg,
+    )
+
+    quivers = [artist for artist in fig.axes[0].collections if hasattr(artist, "U")]
+    assert len(quivers) == 2
+    assert quivers[-1].get_array() is None
+    assert quivers[-1].get_alpha() == pytest.approx(0.9)
+    assert quivers[0].width > quivers[-1].width
+    plt.close(fig)
+
+
+def test_velocity_snapshot_can_suppress_subthreshold_arrows():
+    cfg = SimpleNamespace(
+        grid=SimpleNamespace(LX=1.0, LY=1.0, NX=1, NY=1),
+    )
+    snap = {
+        "t": 0.0,
+        "psi": np.ones((2, 2)),
+        "u": np.array([[1.0, 0.0], [0.1, 0.0]]),
+        "v": np.zeros((2, 2)),
+    }
+
+    fig = velocity_snapshot(
+        {
+            "t_idx": 0,
+            "quiver_stride": 1,
+            "speed_vmax": 1.0,
+            "quiver_min_speed_fraction": 0.5,
+        },
+        {"snapshots": [snap]},
+        cfg,
+    )
+
+    quivers = [artist for artist in fig.axes[0].collections if hasattr(artist, "U")]
+    assert len(quivers) == 2
+    assert quivers[-1].U.size == 1
     plt.close(fig)
 
 
@@ -218,6 +276,75 @@ def test_snapshot_series_velocity_uses_shared_speed_and_raw_quiver_scale():
     assert shared["quiver_scale"] == pytest.approx(100.0)
 
 
+def test_snapshot_series_velocity_can_use_robust_shared_color_axis():
+    cfg = SimpleNamespace(
+        grid=SimpleNamespace(LX=1.0, LY=1.0, NX=1, NY=1),
+    )
+    psi = np.ones((2, 2))
+    snaps = [
+        {
+            "t": 0.0,
+            "psi": psi,
+            "u": np.array([[1.0, 1.0], [1.0, 1.0]]),
+            "v": np.zeros((2, 2)),
+        },
+        {
+            "t": 1.0,
+            "psi": psi,
+            "u": np.array([[1.0, 1.0], [1.0, 100.0]]),
+            "v": np.zeros((2, 2)),
+        },
+    ]
+
+    shared = build_snapshot_series_shared_spec(
+        "velocity",
+        {
+            "speed_scale": "robust",
+            "speed_vmax_percentile": 50.0,
+            "speed_vmax_margin": 1.0,
+            "normalize_arrows": False,
+            "quiver_length_fraction": 0.1,
+        },
+        snaps,
+        cfg,
+    )
+
+    assert shared["speed_vmax"] == pytest.approx(1.0)
+    assert shared["quiver_scale"] == pytest.approx(1000.0)
+
+
+def test_snapshot_series_velocity_radial_color_uses_symmetric_axis():
+    cfg = SimpleNamespace(
+        grid=SimpleNamespace(LX=1.0, LY=1.0, NX=1, NY=1),
+    )
+    psi = np.ones((2, 2))
+    snap = {
+        "t": 0.0,
+        "psi": psi,
+        "u": np.ones((2, 2)),
+        "v": np.zeros((2, 2)),
+    }
+
+    shared = build_snapshot_series_shared_spec(
+        "velocity",
+        {
+            "color_quantity": "radial",
+            "velocity_center": [0.5, 0.5],
+            "color_scale": "max",
+            "normalize_arrows": False,
+            "quiver_length_fraction": 0.1,
+        },
+        [snap],
+        cfg,
+    )
+
+    assert shared["vmin"] < 0.0
+    assert shared["vmax"] > 0.0
+    assert abs(shared["vmin"]) == pytest.approx(shared["vmax"])
+    assert shared["speed_vmax"] == pytest.approx(1.0)
+    assert shared["quiver_scale"] == pytest.approx(10.0)
+
+
 def test_snapshot_series_pressure_uses_shared_symmetric_color_axis():
     cfg = SimpleNamespace(
         grid=SimpleNamespace(LX=1.0, LY=1.0, NX=1, NY=1),
@@ -248,6 +375,7 @@ def test_plot_velocity_uses_clean_default_quiver_style():
     fig = plot_velocity(u, v, GridStub(), quiver_stride=1)
 
     quivers = [artist for artist in fig.axes[0].collections if hasattr(artist, "U")]
-    assert len(quivers) == 1
-    assert quivers[0].cmap.name == "hot"
+    assert len(quivers) == 2
+    assert quivers[-1].get_array() is None
+    assert quivers[0].width > quivers[-1].width
     plt.close(fig)

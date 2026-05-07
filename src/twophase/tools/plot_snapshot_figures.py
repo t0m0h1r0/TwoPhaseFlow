@@ -23,8 +23,11 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from ..simulation.visualization.plot_fields import (
+    DEFAULT_QUIVER_OUTLINE_WIDTH_FACTOR,
     DEFAULT_SPEED_CMAP,
     DEFAULT_VECTOR_CMAP,
+    DEFAULT_VECTOR_COLOR,
+    DEFAULT_VECTOR_OUTLINE_COLOR,
     draw_clean_velocity_arrows,
     positive_range,
 )
@@ -156,6 +159,54 @@ def pressure_hodge_field(
     return remap_snapshot_field(context, hodge_native)
 
 
+def velocity_color_center(context: SnapshotPlotContext, spec: dict) -> tuple[float, float]:
+    """Return the center used by signed radial velocity visualization."""
+    center = spec.get("velocity_center", "phase_centroid")
+    grid = context.cfg.grid
+    if isinstance(center, (list, tuple)) and len(center) == 2:
+        return float(center[0]), float(center[1])
+    if center == "domain_center":
+        return 0.5 * grid.LX, 0.5 * grid.LY
+    if center != "phase_centroid":
+        raise ValueError(
+            "velocity_center must be 'phase_centroid', 'domain_center', or [x, y]"
+        )
+
+    Xg, Yg = np.meshgrid(context.X, context.Y, indexing="ij")
+    weights = np.clip(np.asarray(context.psi, dtype=float), 0.0, 1.0)
+    total = float(np.sum(weights))
+    if total <= 1.0e-14:
+        return 0.5 * grid.LX, 0.5 * grid.LY
+    cx = float(np.sum(weights * Xg) / total)
+    cy = float(np.sum(weights * Yg) / total)
+    return cx, cy
+
+
+def velocity_color_field(
+    context: SnapshotPlotContext,
+    u: np.ndarray,
+    v: np.ndarray,
+    spec: dict,
+) -> tuple[np.ndarray, str]:
+    """Return the scalar field used to color a velocity snapshot."""
+    quantity = str(spec.get("color_quantity", "speed"))
+    if quantity == "speed":
+        return np.sqrt(u ** 2 + v ** 2), "|u|"
+    if quantity == "u":
+        return u, "$u_x$"
+    if quantity == "v":
+        return v, "$u_y$"
+    if quantity == "radial":
+        cx, cy = velocity_color_center(context, spec)
+        Xg, Yg = np.meshgrid(context.X, context.Y, indexing="ij")
+        rx = Xg - cx
+        ry = Yg - cy
+        radius = np.sqrt(rx ** 2 + ry ** 2)
+        radius = np.maximum(radius, 1.0e-14)
+        return (u * rx + v * ry) / radius, "$u_r$"
+    raise ValueError("velocity color_quantity must be 'speed', 'u', 'v', or 'radial'")
+
+
 def snapshot_series_field_array(
     field: str,
     snap: dict,
@@ -167,7 +218,8 @@ def snapshot_series_field_array(
     if field == "velocity":
         u = remap_snapshot_field(context, context.snap["u"])
         v = remap_snapshot_field(context, context.snap["v"])
-        return np.sqrt(u ** 2 + v ** 2)
+        color_field, _ = velocity_color_field(context, u, v, spec)
+        return color_field
     if field == "psi":
         return context.psi
     if field == "pressure":
@@ -196,14 +248,62 @@ def build_snapshot_series_shared_spec(
     shared: dict = {}
 
     if field == "velocity":
-        if "speed_vmax" not in spec:
-            _, speed_max = finite_min_max(arrays)
-            shared["speed_vmax"] = max(speed_max, 1.0e-14)
+        speed_arrays = []
+        for snap in snaps:
+            context = build_snapshot_plot_context({"t_idx": 0}, {"snapshots": [snap]}, cfg)
+            u = remap_snapshot_field(context, context.snap["u"])
+            v = remap_snapshot_field(context, context.snap["v"])
+            speed_arrays.append(np.sqrt(u ** 2 + v ** 2))
+        _, speed_max = finite_min_max(speed_arrays)
+        color_quantity = str(spec.get("color_quantity", "speed"))
+        finite_values = np.concatenate(
+            [np.asarray(array, dtype=float).ravel() for array in arrays]
+        )
+        if color_quantity == "speed":
+            if "speed_vmax" not in spec:
+                color_scale = str(spec.get("color_scale", spec.get("speed_scale", "max")))
+                if color_scale == "max":
+                    shared["speed_vmax"] = max(speed_max, 1.0e-14)
+                elif color_scale == "robust":
+                    shared["speed_vmax"] = positive_range(
+                        finite_values,
+                        percentile=float(spec.get("speed_vmax_percentile", 99.0)),
+                        margin=float(spec.get("speed_vmax_margin", 1.05)),
+                    )
+                else:
+                    raise ValueError(
+                        "snapshot_series velocity color_scale must be 'max' or 'robust'"
+                    )
+        else:
+            if "vmin" not in spec or "vmax" not in spec:
+                color_scale = str(spec.get("color_scale", "robust"))
+                if bool(spec.get("symmetric_scale", True)):
+                    if color_scale == "max":
+                        vmin, vmax = finite_min_max(arrays)
+                        bound = max(abs(vmin), abs(vmax), 1.0e-14)
+                    elif color_scale == "robust":
+                        bound = positive_range(
+                            finite_values,
+                            percentile=float(spec.get("color_vmax_percentile", 99.0)),
+                            margin=float(spec.get("color_vmax_margin", 1.05)),
+                        )
+                    else:
+                        raise ValueError(
+                            "snapshot_series velocity color_scale must be 'max' or 'robust'"
+                        )
+                    shared.setdefault("vmin", -bound)
+                    shared.setdefault("vmax", bound)
+                else:
+                    vmin, vmax = finite_min_max(arrays)
+                    shared.setdefault("vmin", vmin)
+                    shared.setdefault("vmax", vmax)
+            shared.setdefault("speed_vmax", max(speed_max, 1.0e-14))
         normalize = bool(spec.get("normalize_arrows", True))
         if not normalize and "quiver_scale" not in spec:
             arrow_fraction = float(spec.get("quiver_length_fraction", 0.04))
-            speed_vmax = float(shared.get("speed_vmax", spec.get("speed_vmax", 1.0)))
-            shared["quiver_scale"] = max(speed_vmax / max(arrow_fraction, 1.0e-6), 1.0e-14)
+            shared["quiver_scale"] = max(
+                speed_max / max(arrow_fraction, 1.0e-6), 1.0e-14
+            )
         return shared
 
     if field in {"pressure", "pressure_hodge"}:
@@ -275,26 +375,58 @@ def velocity_snapshot(
     u = remap_snapshot_field(context, context.snap["u"])
     v = remap_snapshot_field(context, context.snap["v"])
     speed = np.sqrt(u ** 2 + v ** 2)
+    color_field, color_label = velocity_color_field(context, u, v, spec)
     title = spec.get("title", f"Velocity at t = {context.t_val:.3f}")
     cmap = spec.get("cmap", DEFAULT_SPEED_CMAP)
     vector_cmap = spec.get("vector_cmap", DEFAULT_VECTOR_CMAP)
+    arrow_color = spec.get("arrow_color", DEFAULT_VECTOR_COLOR)
+    arrow_outline_color = spec.get("arrow_outline_color", DEFAULT_VECTOR_OUTLINE_COLOR)
     stride = int(spec.get("quiver_stride", 4))
+    color_quantity = str(spec.get("color_quantity", "speed"))
     speed_vmax = spec.get("speed_vmax")
     if speed_vmax is None:
-        speed_vmax = positive_range(speed)
+        speed_vmax = max(float(np.nanmax(speed)), 1.0e-14)
+    if color_quantity == "speed":
+        vmin = 0.0
+        vmax = float(speed_vmax)
+    else:
+        vmin = spec.get("vmin")
+        vmax = spec.get("vmax")
+        if vmin is None or vmax is None:
+            if bool(spec.get("symmetric_scale", True)):
+                bound = positive_range(
+                    color_field,
+                    percentile=float(spec.get("color_vmax_percentile", 99.0)),
+                    margin=float(spec.get("color_vmax_margin", 1.05)),
+                )
+                vmin = -bound
+                vmax = bound
+            else:
+                vmin, vmax = finite_min_max([color_field])
+    min_display_speed = spec.get("quiver_min_display_speed")
+    if min_display_speed is None and "quiver_min_speed_fraction" in spec:
+        min_display_speed = float(spec["quiver_min_speed_fraction"]) * float(speed_vmax)
 
     fig, ax = plt.subplots(figsize=(4, 4 * grid.LY / grid.LX))
+    ax.set_facecolor(spec.get("background_color", "#d9d9d9"))
     im = ax.pcolormesh(
         context.X,
         context.Y,
-        speed.T,
+        color_field.T,
         cmap=cmap,
-        vmin=0.0,
-        vmax=float(speed_vmax),
-        shading="nearest",
+        vmin=float(vmin),
+        vmax=float(vmax),
+        shading=spec.get("shading", "nearest"),
+        alpha=float(spec.get("field_alpha", 1.0)),
     )
     if spec.get("colorbar", True):
-        cb = fig.colorbar(im, ax=ax, label="|u|", fraction=0.046, pad=0.04)
+        cb = fig.colorbar(
+            im,
+            ax=ax,
+            label=spec.get("colorbar_label", color_label),
+            fraction=0.046,
+            pad=0.04,
+        )
         cb.ax.tick_params(labelsize=8)
     if spec.get("contour", True):
         ax.contour(
@@ -310,8 +442,18 @@ def velocity_snapshot(
         stride=stride,
         normalize=bool(spec.get("normalize_arrows", True)),
         cmap=vector_cmap,
+        color=arrow_color,
+        outline_color=arrow_outline_color,
+        alpha=float(spec.get("arrow_alpha", 0.9)),
+        outline_alpha=float(spec.get("arrow_outline_alpha", 0.75)),
         scale=float(spec.get("quiver_scale", 30.0)),
         width=float(spec.get("quiver_width", 0.003)),
+        outline_width_factor=float(
+            spec.get("quiver_outline_width_factor", DEFAULT_QUIVER_OUTLINE_WIDTH_FACTOR)
+        ),
+        min_display_speed=(
+            None if min_display_speed is None else float(min_display_speed)
+        ),
     )
     ax.set_aspect("equal")
     ax.set_xlabel(spec.get("xlabel", "x"))

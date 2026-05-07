@@ -92,6 +92,9 @@ The paper version imports the run PDFs into `paper/figures/` under stable names:
 `paper/sections/14_benchmarks.tex` now includes these as a time-history figure,
 a five-time $\psi$ snapshot figure, and a velocity/pressure two-dimensional
 field figure.  The snapshot-series regeneration uses shared numerical axes:
-the $\psi$ color axis is fixed to `[0, 1]`, the velocity panels share one speed
-color axis and one raw-arrow quiver scale, and the pressure-Hodge panels share
-one symmetric pressure color axis.
+the $\psi$ color axis is fixed to `[0, 1]`, the velocity panels share one
+signed radial-velocity color axis and one raw-arrow quiver scale, and the
+pressure-Hodge panels share one symmetric pressure color axis.  The velocity
+paper panels use a quiet gray background, red/blue signed $u_r$ shading about
+the liquid-phase centroid, and haloed black arrows for the full velocity vector
+so the in/out oscillation mode is visible without per-time rescaling.
