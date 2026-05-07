@@ -108,6 +108,10 @@ class ActiveStepDiagnostics(IStepDiagnostics):
             "capillary_component_hodge_weighted_l2": 0.0,
             "capillary_component_hodge_coefficient_linf": 0.0,
             "capillary_component_hodge_denominator": 0.0,
+            "capillary_static_critical_surface_l2": 0.0,
+            "capillary_static_critical_residual_l2": 0.0,
+            "capillary_static_critical_residual_ratio": 0.0,
+            "capillary_static_critical_component_count": 0.0,
         }
 
     def record_kappa(self, kappa_max: float) -> None:

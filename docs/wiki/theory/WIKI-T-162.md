@@ -13,6 +13,10 @@ sources:
   - path: artifacts/A/capillary_virtual_work_gate_rca_CHK-RA-CH14-CAP-VW-001.md
   - path: artifacts/A/ch14_trace_vertex_transport_theory_CHK-RA-CH14-TRACE-VJP-THEORY-001.md
   - path: artifacts/A/ch14_trace_vertex_impl_ux_CHK-RA-CH14-TRACE-IMPL-UX-001.md
+  - path: artifacts/A/ch14_conservative_endpoint_theory_CHK-RA-CH14-CONS-ENDPOINT-THEORY-001.md
+  - path: artifacts/A/ch14_conservative_endpoint_impl_ux_CHK-RA-CH14-CONS-ENDPOINT-IMPL-UX-001.md
+  - path: artifacts/A/ch14_conservative_endpoint_risk_audit_CHK-RA-CH14-CONS-ENDPOINT-RISK-001.md
+  - path: artifacts/A/ch14_risk_closed_conservative_endpoint_theory_CHK-RA-CH14-CONS-ENDPOINT-RISK-THEORY-001.md
   - path: docs/02_ACTIVE_LEDGER.md
 depends_on:
   - "[[WIKI-T-155]]"
@@ -29,20 +33,26 @@ depends_on:
 ## Claim
 
 The accepted closed-interface capillary discretization is not a curvature
-formula, range-projection option, or benchmark branch.  It is the
-finite-dimensional weighted variational construction:
+formula, range-projection option, or benchmark branch.  For the current
+LevelSet/CLS solver the production endpoint is the conservative face-psi
+transport endpoint, so the finite-dimensional weighted variational
+construction is:
 
 ```text
-s      = -M_f^{-1} C_K^T d_z(sigma S_h)^T
-B      =  M_f^{-1} C_K^T [d_z V_1 ... d_z V_M]^T
+s      = -M_f^{-1} T_f(q)^T d_q(sigma S_h)^T
+B      =  M_f^{-1} T_f(q)^T [d_q V_1 ... d_q V_M]^T
 K      = ker D intersection ker(B^T M_f)
-R_aug  = K^{perp_M} = range(A G) + range(B)
+R_aug  = K^{perp_M} = range(M_f^{-1}D_f^T) + range(B)
 Pi_aug = M_f-orthogonal projection onto R_aug
 h      = s - Pi_aug s
 ```
 
-`h` is the physical incompressible capillary drive, up to the code sign
-convention.  The pressure reaction is `Pi_aug s`.
+Here `T_f(q)u_f=-D_f(P_f q u_f)` is the same pre-reinit conservative transport
+differential used by the current solver.  `h` is the physical incompressible
+capillary drive, up to the code sign convention.  The pressure and component
+reactions are `Pi_aug s`.  The trace-vertex `C_K` theorem in this card remains
+valid only for a future trace-primary transport/state redesign; it must not be
+mixed with the current conservative endpoint.
 
 ## Discretization Policy
 
@@ -874,3 +884,373 @@ manufactured analytic pure-range cochain
 previous `O(1e-2..1e-1)` trace Hodge divergence was a linear-solve contaminant,
 while the remaining nonzero Hodge norm is the force-cochain/static-critical
 problem, not a projection algebra failure.
+
+`CHK-RA-CH14-HODGE-NORM-001` adds the missing static-criticality gate.  The
+gate is the finite-dimensional Euler--Lagrange residual
+
+```text
+d_z(sigma S_h) - projection_span{d_z V_m} d_z(sigma S_h).
+```
+
+It is shape-free: it never asks whether a component is a circle or ellipse.
+The N32 sampled analytic circle has vertex criticality ratio
+`1.568664e-01`, so it is not a roundoff static oracle for the P1 trace
+geometry.  The trace-Hodge residual is also not an affine-weight or boundary
+artifact: periodic and wall probes match, and affine cut-face weights leave the
+N32 static Hodge ratio unchanged (`3.732547e-02` vs `3.736686e-02`).
+
+The same checkpoint separates endpoint theorems.  The trace-vertex cochain has
+self Riesz residual `1.054671e-16` under its own `C_K`, but against the
+solver's conservative `psi` transport endpoint the work residual is
+`2.413967e-01`.  The conservative transport Riesz cochain matches that same
+endpoint with residual `5.761773e-09`.  Therefore production must make the
+transport endpoint and capillary VJP identical: either use the conservative
+endpoint VJP for the current transport, or change transport to the trace-vertex
+endpoint.  The static residual must not be hidden by projection, damping,
+smoothing, or curvature clipping.
+
+## Conservative Face-Psi Endpoint Theorem
+
+`CHK-RA-CH14-CONS-ENDPOINT-THEORY-001` fixes the theorem object for the current
+solver.  The state advanced by physical transport is nodal `psi`, and the
+pre-reinit endpoint differential is
+
+```text
+T_f(q)u_f = -D_f(P_f q u_f),
+```
+
+with `P_f` the FCCD face interpolation and `D_f` the FCCD face divergence.  The
+surface-energy and component-volume cochains must be the Riesz representatives
+of this same map:
+
+```text
+<s,u>_M   = - d_q(sigma S_h)(T_f(q)u),
+s         = -M_f^{-1}T_f(q)^T d_q(sigma S_h)^T,
+<B_m,u>_M =  d_q V_m,h(T_f(q)u),
+B_m       =  M_f^{-1}T_f(q)^T d_q V_m,h^T.
+```
+
+The sign is set by release from rest.  If `u` aligns with `s`, surface energy
+decreases and kinetic work is positive:
+
+```text
+d_q(sigma S_h)(T_f(q)u) = -<s,u>_M < 0.
+```
+
+Pressure and component-volume reactions are then removed by the same weighted
+Hodge complex as the corrector:
+
+```text
+R = range(M_f^{-1}D_f^T),
+X = [R, B_1, ..., B_M],
+h = (I - Pi_X^M)s,
+Pi_X^M s = X(X^TM_fX)^+X^TM_fs.
+```
+
+This is a Lagrange-reaction decomposition, not a replacement of the force by
+its pressure range.  The production corrector must receive the full
+conservative surface cochain in the same sign convention as
+`pressure_fluxes(..., capillary_jump_components=...)`; diagnostics may report
+`Pi_X^M s`, but `s -> Pi_R s` is again the zero-drive theorem because it sets
+the physical Hodge part to zero.
+
+The static criterion is finite-dimensional criticality:
+
+```text
+d_q(sigma S_h) = sum_m lambda_m d_qV_m,h,
+```
+
+or equivalently `||h||_M ~= 0` in the same `S_h,V_h,T_f,M_f,D_f` complex.  It
+does not ask whether the interface is a circle, ellipse, Fourier mode, or any
+named shape.  A noncritical perturbation, including a deep non-elliptic mode,
+must produce `||h||_M` above the static consistency floor.
+
+The theorem covers only the labelled physical transport arrow
+
+```text
+q^n -> q_T.
+```
+
+The following arrow
+
+```text
+q_T -> q^{n+1}
+```
+
+is reinitialization/profile/mass-closure projection and must be ledgered
+separately.  The conservative endpoint is necessarily profile dependent because
+the solver state is `psi`; profile sensitivity is a fail-close diagnostic.  If
+profile invariance is made the primary contract, the solver must move to a
+trace-primary state with a CCD-family trace map instead of mixing endpoints.
+
+The CCD/FCCD/UCCD compatibility is direct: `P_f`, `D_f`, the pressure range,
+the face mass metric, and the projected face velocity are the same objects used
+by FCCD transport/projection and UCCD6 momentum.  CCD viscosity receives the
+corrected velocity and does not need a separate capillary law.
+
+Production promotion requires fixed-stratum virtual-work checks, surface and
+volume Riesz checks, manufactured pure-pressure range checks, component
+orthogonality, static constrained-critical references, noncritical dynamic
+modes, corrector sign-power checks, pre-reinit/reinit endpoint ledgers, and
+profile-sensitivity reports.
+
+## Conservative Endpoint Implementation And UX
+
+`CHK-RA-CH14-CONS-ENDPOINT-IMPL-UX-001` maps the theorem onto the current
+CCD/FCCD/UCCD6 runtime.  The source name can remain
+`surface_tension.source: closed_interface_riesz`, but its production meaning
+is now conservative endpoint Riesz, not trace-vertex Riesz.  The current
+runtime branch still calls `closed_interface_trace_riesz_cochain`; the
+implementation change is to call the conservative cochain builder instead.
+
+The coupling layer should build only endpoint-exact face cochains:
+
+```text
+closed_interface_riesz_cochain
+  psi = state.psi_transport_endpoint
+  fccd = div_op._fccd
+  surface_acceleration = -M_f^{-1}T_f(q)^T d_q(sigma S_h)^T
+  volume_reaction_accelerations = [M_f^{-1}T_f(q)^T d_qV_m,h^T]
+```
+
+The simulation layer must do the Hodge/reaction projection through the actual
+pressure range used by the corrector:
+
+```text
+G_A p = div_op.pressure_fluxes(p, rho, zero_jump_kwargs)
+D_f G_A p = D_f c
+Pi_R c = G_A p
+```
+
+This is the FCCD/affine-jump range.  It is preferable to the dense diagnostic
+`M_f^{-1}D_f^T` projector in production because it exactly shares the active
+coefficient, nonuniform grid, and interface-coupling implementation.
+
+The component-reaction helper should accept external cochains:
+
+```text
+raw_hodge = raw - Pi_R raw
+B_hodge[m] = B_m - Pi_R B_m
+beta = argmin ||raw_hodge - sum_m beta_m B_hodge[m]||_M
+corrected = raw - sum_m beta_m B_hodge[m]
+h = raw_hodge - sum_m beta_m B_hodge[m]
+```
+
+The corrector receives `corrected`, not `h` alone:
+
+```text
+rhs += D_f(corrected)
+div_op.pressure_fluxes(..., capillary_jump_components=corrected)
+```
+
+so the pressure representative is preserved while the final projected face
+acceleration is the component-constrained Hodge drive.  The corrector should
+fail closed if `closed_interface_riesz` recomputes pressure faces without the
+stored `state.pressure_correction_face_components`, because that path would
+drop the capillary cochain by using `sigma=0`.
+
+GPU-first requirements:
+
+```text
+use xp-vectorized marching-squares surface and volume gradients;
+use FCCD face_value/face_divergence and existing PPE solves;
+compute weighted dots and tiny beta solves on device;
+transfer only scalar diagnostics to host;
+avoid dense D matrices, per-cell host loops, and array_to_numpy in production.
+```
+
+The current surface gradient already follows this pattern.  The sharp P1 area
+gradient must be promoted from the host-loop diagnostic implementation to an
+`xp` vectorized kernel before the source is a GPU-first production route.
+
+The UX contract is:
+
+```yaml
+surface_tension:
+  formulation: pressure_jump
+  source: closed_interface_riesz
+  closed_interface:
+    endpoint: conservative_psi
+    transport_vjp: fccd_face_psi
+    surface_energy: p1_marching_squares_length
+    component_volume: p1_liquid_area
+    topology: fail_closed
+    diagnostics:
+      mode: strict
+      virtual_work: sampled
+      profile_sensitivity: report
+projection:
+  face_flux_projection: true
+  canonical_face_state: true
+  face_native_predictor_state: true
+  poisson:
+    operator:
+      discretization: fccd
+      coefficient: phase_separated
+      interface_coupling: affine_jump
+      capillary_reaction_projection: pressure_component_hodge
+```
+
+The nested block can default, but if present it must agree with the theorem.
+The parser should reject `curvature`, smoothing, damping, curvature caps,
+Rayleigh scaling, benchmark branches, `capillary_range_projection`, boolean
+projection aliases, and trace endpoint fields under this production source.
+The alias `trace_riesz` should be retired or made explicitly experimental
+because it no longer names the production endpoint.
+
+## Conservative Endpoint Risk Audit
+
+`CHK-RA-CH14-CONS-ENDPOINT-RISK-001` identifies the remaining implementation
+risks before code changes.  The theorem is not the largest risk; object
+identity in the runtime is.  The following objects must refer to the same
+time-level and face complex:
+
+```text
+psi_transport_endpoint,
+FCCD P_f and D_f,
+affine pressure_fluxes range G_A,
+face reaction metric M_f,
+density/coefficient field,
+stored pressure/corrector face components.
+```
+
+The critical risks are:
+
+```text
+R1  runtime source still calls closed_interface_trace_riesz_cochain;
+R2  production Hodge projection uses dense diagnostic range instead of G_A;
+R3  M_f reaction metric disagrees with active pressure_fluxes coefficient;
+R4  psi_transport_endpoint is pre-reinit but rho/mu are post-reinit;
+R5  corrector recomputes pressure faces and drops capillary_jump_components;
+R6  pressure_fluxes sign convention flips capillary work;
+R9  GPU hot path uses host-loop liquid_area_gradient_2d;
+R17 sampled analytic circle is mistaken for a static oracle.
+```
+
+These are implementation blockers, not clean-up notes.  The first code slice
+must pass:
+
+```text
+source no longer calls trace cochain;
+external cochain projection uses pressure_fluxes zero-jump range;
+same corrected cochain reaches PPE RHS and pressure_fluxes;
+release-from-rest sign-power is positive;
+GPU path has vectorized area gradient, no host-loop geometry;
+endpoint/material/reinit mismatch is measured and fails closed.
+```
+
+The endpoint/material time-level is the sharpest unresolved design choice.
+Either materialize capillary projection coefficients from
+`psi_transport_endpoint`, or require the reinit/profile displacement to be
+below a strict tolerance so post-reinit material fields are equivalent for the
+capillary step.  Mixing pre-reinit geometry with post-reinit coefficients
+without a gate is not a theorem.
+
+The prior trace-Riesz N32/T10 results remain useful as zero-drive negative
+evidence, but they are not validation of the selected conservative endpoint.
+After implementation, static/oscillating droplets must be rerun and judged by
+endpoint-exact gates and reinit split fields.
+
+## Risk-Closed Conservative Endpoint Theory
+
+`CHK-RA-CH14-CONS-ENDPOINT-RISK-THEORY-001` absorbs the risk audit into the
+mathematics.  The production theorem must not assume that the implemented
+pressure range is automatically `range(M_f^{-1}D_f^T)`.  Instead, define the
+active pressure action as
+
+```text
+G_A p = div_op.pressure_fluxes(p, rho_c, zero_jump_kwargs).
+```
+
+The face metric used for reaction orthogonality and energy power is the
+pressure-adjoint metric `M_A`, characterized by
+
+```text
+<G_Ap,w>_{M_A} = <p,D_fw>_{W_p}.
+```
+
+If this adjointness gate fails, the active scheme has no capillary Hodge energy
+theorem and must fail closed.  The metric is therefore induced by the active
+face coefficient and measure, not by an arbitrary diagnostic norm.
+
+The capillary substep is endpoint-closed:
+
+```text
+q_c = q_T,
+T_f(q_c)u_f = -D_f(P_f q_c u_f),
+rho_c = rho(q_c),
+G_A = G_A(q_c),
+M_A = M_A(q_c).
+```
+
+Using post-reinit `q^{n+1}` material coefficients with pre-reinit `q_T`
+geometry is not a theorem unless an endpoint-equivalence ledger passes.  The
+safe default is to build capillary coefficients from `q_T`; otherwise fail
+closed when reinit/profile movement is non-negligible.
+
+The primitive reaction law is the coupled constrained system:
+
+```text
+h = s - G_Ap - Bmu,
+D_fh = 0,
+B^T M_A h = 0.
+```
+
+Equivalently:
+
+```text
+D_fG_Ap + D_fBmu = D_fs,
+B^TM_AG_Ap + B^TM_ABmu = B^TM_As.
+```
+
+For implementation with existing PPE solves, define a divergence lift:
+
+```text
+L_A(c)=G_Ap_c,    D_fG_Ap_c=D_fc,
+Z_A(c)=c-L_A(c).
+```
+
+Then:
+
+```text
+z_s = Z_A(s),
+z_m = Z_A(B_m),
+C_ij = B_i^T M_A z_j,
+r_i  = B_i^T M_A z_s,
+Cmu = r,
+h = z_s - sum_m mu_m z_m,
+c_corrected = s - Bmu.
+```
+
+The PPE RHS and corrector both receive `c_corrected`:
+
+```text
+rhs += D_f(c_corrected),
+pressure_faces = G_Ap - c_corrected,
+u_f^{n+1}=u_f^* + dt(c_corrected-G_Ap)+...
+```
+
+The symmetric shortcut
+
+```text
+C_ij = z_i^T M_A z_j
+```
+
+is valid only after proving `range(G_A)` is `M_A`-orthogonal to
+`ker D_f`.  Otherwise it can miss the full component condition
+`B^TM_Ah=0`.
+
+With pressure adjointness and component orthogonality:
+
+```text
+<s,h>_{M_A}=||h||_{M_A}^2,
+d_q(sigma S_h)(q_c)[T_f(q_c)h] = -||h||_{M_A}^2 <= 0.
+```
+
+This is the strengthened sign-power theorem.  It links the corrector sign,
+pressure range, component reaction, and endpoint VJP into one gate.
+
+Finally, GPU geometry is part of the theorem.  Production `dS_h` and `dV_h`
+must be the local P1 formulas implemented as `xp` kernels with the same
+crossing masks and regularity thresholds.  Host-loop graph traversal is
+diagnostic unless explicitly proven identical.

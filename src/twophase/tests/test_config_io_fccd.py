@@ -626,6 +626,24 @@ def test_closed_interface_riesz_source_requires_reaction_projection():
         }))
 
 
+def test_trace_riesz_force_source_alias_is_not_production_yaml():
+    with pytest.raises(ValueError, match="surface_tension.source"):
+        ExperimentConfig.from_dict(_minimal({
+            "physics": {"surface_tension": 0.1},
+            "numerics": {
+                "momentum": {
+                    "terms": {
+                        "surface_tension": {
+                            "formulation": "pressure_jump",
+                            "gradient": "none",
+                            "source": "trace_riesz",
+                        },
+                    },
+                },
+            },
+        }))
+
+
 def test_legacy_buoyancy_predictor_assembly_alias_maps_to_balanced_name():
     cfg = ExperimentConfig.from_dict(_minimal({
         "numerics": {

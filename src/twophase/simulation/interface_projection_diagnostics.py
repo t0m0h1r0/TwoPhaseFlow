@@ -16,6 +16,7 @@ does not alter interface transport or Ridge-Eikonal reconstruction.
 
 from __future__ import annotations
 
+import math
 from dataclasses import replace
 from typing import Any
 
@@ -50,6 +51,10 @@ _FACE_ZERO_DIAGNOSTICS = {
     "capillary_component_hodge_weighted_l2": 0.0,
     "capillary_component_hodge_coefficient_linf": 0.0,
     "capillary_component_hodge_denominator": 0.0,
+    "capillary_static_critical_surface_l2": 0.0,
+    "capillary_static_critical_residual_l2": 0.0,
+    "capillary_static_critical_residual_ratio": 0.0,
+    "capillary_static_critical_component_count": 0.0,
 }
 
 
@@ -133,6 +138,7 @@ def capillary_face_cochain_diagnostics(
     component_hodge_residual_components=None,
     component_hodge_coefficients=None,
     component_hodge_denominator=None,
+    static_criticality=None,
 ) -> dict[str, float]:
     """Measure the post-PPE face cochain left in the projection face space.
 
@@ -227,6 +233,9 @@ def capillary_face_cochain_diagnostics(
         component_hodge_denominator,
         dtype=face_linf.dtype,
     )
+    static_surface, static_residual, static_ratio, static_components = (
+        _static_criticality_values(static_criticality)
+    )
     solved = xp.asarray(
         1.0 if hodge_residual_components is not None else 0.0,
         dtype=face_linf.dtype,
@@ -253,6 +262,10 @@ def capillary_face_cochain_diagnostics(
                     component_hodge_weighted_l2,
                     component_hodge_coefficient_linf,
                     component_hodge_denominator_value,
+                    xp.asarray(static_surface, dtype=face_linf.dtype),
+                    xp.asarray(static_residual, dtype=face_linf.dtype),
+                    xp.asarray(static_ratio, dtype=face_linf.dtype),
+                    xp.asarray(static_components, dtype=face_linf.dtype),
                 ]
             )
         )
@@ -275,6 +288,10 @@ def capillary_face_cochain_diagnostics(
         "capillary_component_hodge_weighted_l2": values[14],
         "capillary_component_hodge_coefficient_linf": values[15],
         "capillary_component_hodge_denominator": values[16],
+        "capillary_static_critical_surface_l2": values[17],
+        "capillary_static_critical_residual_l2": values[18],
+        "capillary_static_critical_residual_ratio": values[19],
+        "capillary_static_critical_component_count": values[20],
     }
 
 
@@ -347,6 +364,209 @@ def capillary_jump_range_projection(
         "hodge_residual_components": hodge_residual_faces,
         "face_weight_components": face_weights,
     }
+
+
+def capillary_external_component_saddle_projection(
+    *,
+    xp,
+    div_op,
+    ppe_solver,
+    rho,
+    pressure_flux_kwargs: dict[str, Any],
+    raw_components,
+    component_reaction_components,
+    rcond: float = 1.0e-12,
+) -> dict[str, Any]:
+    """Project an external capillary cochain through the component saddle gate.
+
+    The linear algebra follows the pressure-adjoint Hodge saddle theorem:
+    ``Z_A(c)=c-L_A(c)``, ``D_f L_A(c)=D_f c`` and
+    ``B_i^T M_A (Z_A(s)-Z_A(B) μ)=0``.  The returned corrected cochain
+    ``s-Bμ`` is the only object that may enter the PPE source/corrector.
+    """
+    if not hasattr(div_op, "pressure_fluxes") or not hasattr(
+        div_op,
+        "divergence_from_faces",
+    ):
+        raise RuntimeError("external component saddle requires face flux/divergence")
+    if not hasattr(ppe_solver, "solve") or not hasattr(
+        ppe_solver,
+        "set_interface_jump_context",
+    ):
+        raise RuntimeError("external component saddle requires jump-aware PPE solver")
+
+    raw_faces = [xp.asarray(component) for component in raw_components]
+    component_faces = [
+        [xp.asarray(axis_component) for axis_component in component]
+        for component in component_reaction_components
+    ]
+    face_weights = _capillary_face_hodge_weights(
+        xp=xp,
+        div_op=div_op,
+        rho=rho,
+        pressure_flux_kwargs=pressure_flux_kwargs,
+    )
+    zero_jump_kwargs = _zero_jump_pressure_flux_kwargs(pressure_flux_kwargs)
+    snapshots = _snapshot_solver_graph(ppe_solver)
+    try:
+        _invalidate_solver_graph_cache(ppe_solver)
+        _set_zero_jump_solver_context(ppe_solver, zero_jump_kwargs)
+        raw_range, raw_hodge = _external_hodge_split(
+            xp=xp,
+            div_op=div_op,
+            ppe_solver=ppe_solver,
+            rho=rho,
+            face_components=raw_faces,
+            pressure_flux_kwargs=zero_jump_kwargs,
+        )
+        component_splits = [
+            _external_hodge_split(
+                xp=xp,
+                div_op=div_op,
+                ppe_solver=ppe_solver,
+                rho=rho,
+                face_components=component,
+                pressure_flux_kwargs=zero_jump_kwargs,
+            )
+            for component in component_faces
+        ]
+    finally:
+        _restore_solver_graph(snapshots)
+
+    component_hodge_faces = [split[1] for split in component_splits]
+    component_count = len(component_faces)
+    if component_count == 0:
+        coefficients = xp.zeros((0,), dtype=xp.asarray(rho).dtype)
+        corrected_faces = raw_faces
+        augmented_hodge_faces = raw_hodge
+        range_faces = raw_range
+        denominator = xp.asarray(0.0, dtype=xp.asarray(rho).dtype)
+    else:
+        matrix = xp.zeros((component_count, component_count), dtype=xp.asarray(rho).dtype)
+        rhs = xp.zeros((component_count,), dtype=xp.asarray(rho).dtype)
+        for row, component in enumerate(component_faces):
+            rhs[row] = _face_components_weighted_dot(
+                xp,
+                component,
+                raw_hodge,
+                face_weights,
+            )
+            for column, hodge_component in enumerate(component_hodge_faces):
+                matrix[row, column] = _face_components_weighted_dot(
+                    xp,
+                    component,
+                    hodge_component,
+                    face_weights,
+                )
+        coefficients = _solve_small_component_system(
+            xp,
+            matrix,
+            rhs,
+            rcond=float(rcond),
+        )
+        corrected_faces = [
+            raw_face
+            - sum(
+                coefficients[index] * component[index_axis]
+                for index, component in enumerate(component_faces)
+            )
+            for index_axis, raw_face in enumerate(raw_faces)
+        ]
+        augmented_hodge_faces = [
+            raw_hodge_face
+            - sum(
+                coefficients[index] * component_hodge[index_axis]
+                for index, component_hodge in enumerate(component_hodge_faces)
+            )
+            for index_axis, raw_hodge_face in enumerate(raw_hodge)
+        ]
+        range_faces = [
+            corrected_face - hodge_face
+            for corrected_face, hodge_face in zip(
+                corrected_faces,
+                augmented_hodge_faces,
+                strict=True,
+            )
+        ]
+        denominator = (
+            matrix[0, 0]
+            if component_count == 1
+            else xp.max(xp.abs(matrix))
+        )
+
+    first_component_hodge = (
+        component_hodge_faces[0] if component_hodge_faces else None
+    )
+    return {
+        "capillary_jump_components": raw_faces,
+        "range_projection_components": range_faces,
+        "hodge_residual_components": augmented_hodge_faces,
+        "face_weight_components": face_weights,
+        "corrected_jump_components": corrected_faces,
+        "component_hodge_residual_components": first_component_hodge,
+        "component_hodge_coefficients": coefficients,
+        "component_hodge_denominator": denominator,
+    }
+
+
+def _external_hodge_split(
+    *,
+    xp,
+    div_op,
+    ppe_solver,
+    rho,
+    face_components,
+    pressure_flux_kwargs: dict[str, Any],
+):
+    source = div_op.divergence_from_faces(face_components)
+    projected_pressure = xp.asarray(ppe_solver.solve(source, rho, dt=0.0, p_init=None))
+    range_projection_faces = div_op.pressure_fluxes(
+        projected_pressure,
+        rho,
+        **pressure_flux_kwargs,
+    )
+    hodge_residual_faces = [
+        face_component - range_component
+        for face_component, range_component in zip(
+            face_components,
+            range_projection_faces,
+            strict=True,
+        )
+    ]
+    return range_projection_faces, hodge_residual_faces
+
+
+def _solve_small_component_system(xp, matrix, rhs, *, rcond: float):
+    scale = _host_scalar(xp.max(xp.abs(matrix))) if matrix.size else 0.0
+    if not math.isfinite(scale) or scale <= 0.0:
+        raise RuntimeError("component saddle matrix is singular")
+    tolerance = max(float(rcond), 0.0) * max(scale, 1.0)
+    if matrix.shape == (1, 1):
+        denominator = _host_scalar(matrix[0, 0])
+        if (not math.isfinite(denominator)) or abs(denominator) <= tolerance:
+            raise RuntimeError("component saddle matrix is singular")
+        return rhs / matrix[0, 0]
+    try:
+        condition = _host_scalar(xp.linalg.cond(matrix))
+    except Exception:
+        condition = 0.0
+    if condition and (
+        (not math.isfinite(condition))
+        or condition >= 1.0 / max(float(rcond), 1.0e-30)
+    ):
+        raise RuntimeError("component saddle matrix is ill-conditioned")
+    coefficients = xp.linalg.solve(matrix, rhs)
+    residual = xp.linalg.norm(matrix @ coefficients - rhs)
+    rhs_norm = xp.linalg.norm(rhs)
+    relative_residual = _host_scalar(residual / xp.maximum(rhs_norm, 1.0))
+    if (not math.isfinite(relative_residual)) or relative_residual > max(1.0e-10, 10.0 * float(rcond)):
+        raise RuntimeError("component saddle solve residual is too large")
+    return coefficients
+
+
+def _host_scalar(value) -> float:
+    scalar = value.item() if hasattr(value, "item") else value
+    return float(scalar)
 
 
 def capillary_component_hodge_augmented_projection(
@@ -500,6 +720,17 @@ def _optional_scalar_value(xp, scalar, *, dtype) -> Any:
     if scalar is None:
         return xp.asarray(0.0, dtype=dtype)
     return xp.asarray(scalar, dtype=dtype)
+
+
+def _static_criticality_values(static_criticality) -> tuple[float, float, float, float]:
+    if static_criticality is None:
+        return 0.0, 0.0, 0.0, 0.0
+    return (
+        float(static_criticality.surface_vertex_l2),
+        float(static_criticality.residual_l2),
+        float(static_criticality.residual_ratio),
+        float(static_criticality.component_count),
+    )
 
 
 def _face_components_divergence_linf(xp, div_op, face_components, *, dtype) -> Any:

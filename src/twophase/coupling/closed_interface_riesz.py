@@ -9,8 +9,9 @@ Symbol mapping
 ``s`` -> acceleration cochain ``-M_f^{-1} T^T dE``
 ``B`` -> component-volume reaction cochain ``M_f^{-1} T^T dV``
 
-The routines in this file are diagnostic proof tools.  They do not change the
-production pressure-jump force.  Their purpose is to test the A3 chain
+The conservative cochain builder in this file is the production
+``closed_interface_riesz`` source.  The dense Hodge routines remain diagnostic
+proof tools for testing the A3 chain
 
     surface-energy virtual work -> face-space Riesz representative -> Hodge gate
 

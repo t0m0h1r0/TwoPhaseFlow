@@ -20,6 +20,11 @@ from twophase.coupling.closed_interface_riesz import (
     fixed_stratum_virtual_work_check,
     weighted_hodge_decomposition,
 )
+from twophase.coupling.closed_interface_geometry import (
+    fixed_stratum_directional_derivative_check as geometry_derivative_check,
+    liquid_area_2d,
+    liquid_area_gradient_2d,
+)
 from twophase.simulation.divergence_ops import FCCDDivergenceOperator
 
 
@@ -87,6 +92,26 @@ def test_surface_riesz_matches_fixed_stratum_virtual_work():
     assert check.finite_difference_gradient_residual < 1.0e-6
     assert check.riesz_residual < 1.0e-12
     assert check.finite_difference_power_residual < 1.0e-6
+
+
+def test_liquid_area_gradient_matches_fixed_stratum_virtual_work():
+    grid, backend, _, _ = _setup(12)
+    xp = backend.xp
+    psi = xp.asarray(_ellipse_psi(grid))
+    direction = xp.ones_like(psi)
+
+    check = geometry_derivative_check(
+        xp=xp,
+        grid=grid,
+        psi=psi,
+        direction=direction,
+        value_fn=liquid_area_2d,
+        gradient_fn=liquid_area_gradient_2d,
+        epsilon=1.0e-7,
+    )
+
+    assert check.valid, check.reason
+    assert check.residual < 1.0e-6
 
 
 def test_weighted_hodge_projection_leaves_divergence_free_residual():

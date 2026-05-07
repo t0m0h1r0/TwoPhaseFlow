@@ -14,10 +14,7 @@ from .ns_predictor_assembly import (
 )
 from ..coupling.interface_stress_closure import build_young_laplace_interface_stress_context
 from ..coupling.capillary_geometry import apply_wall_compatible_curvature
-from ..coupling.closed_interface_trace_riesz import (
-    closed_interface_trace_riesz_cochain,
-    trace_component_hodge_projection,
-)
+from ..coupling.closed_interface_riesz import closed_interface_riesz_cochain
 from ..coupling.transport_variational_capillary import (
     p2_trace_surface_energy_ale_discrete_gradient_2d,
     p2_trace_surface_energy_discrete_gradient_2d,
@@ -25,6 +22,7 @@ from ..coupling.transport_variational_capillary import (
 )
 from .interface_projection_diagnostics import (
     capillary_component_hodge_augmented_projection,
+    capillary_external_component_saddle_projection,
     capillary_jump_range_projection,
     capillary_face_cochain_diagnostics,
     zero_capillary_face_diagnostics,
@@ -231,6 +229,7 @@ def _closed_interface_trace_projection_diagnostics(projection) -> dict:
         "component_hodge_residual_components": component_hodge_components,
         "component_hodge_coefficients": projection.component_hodge_coefficients,
         "component_hodge_denominator": projection.component_hodge_denominator,
+        "static_criticality": projection.static_criticality,
     }
 
 
@@ -889,28 +888,48 @@ def solve_ns_pressure_stage(
                 raise RuntimeError(
                     "closed_interface_riesz requires face divergence"
                 )
+            fccd = getattr(div_op, "_fccd", None)
+            if fccd is None:
+                raise RuntimeError(
+                    "closed_interface_riesz requires the active FCCD operator"
+                )
             if jump_grid is None:
                 raise RuntimeError(
                     "closed_interface_riesz requires a pressure-jump grid"
                 )
-            cochain = closed_interface_trace_riesz_cochain(
+            pressure_flux_kwargs_for_projection = _pressure_face_flux_kwargs(
+                xp=xp,
+                state=state,
+                ppe_runtime=ppe_runtime,
+                interface_sigma=jump_sigma,
+                curvature_method=curvature_method,
+                interface_psi=interface_psi,
+                interface_psi_previous=interface_psi_previous,
+                transport_variational_temporaries=(
+                    transport_variational_temporaries
+                ),
+            )
+            cochain = closed_interface_riesz_cochain(
                 xp=xp,
                 grid=jump_grid,
                 psi=_closed_interface_trace_psi(state=state),
+                fccd=fccd,
                 sigma=physical_jump_sigma,
                 rho=state.rho,
-                bc_type=bc_type,
             )
-            trace_projection = trace_component_hodge_projection(
+            trace_projection_diagnostics = capillary_external_component_saddle_projection(
                 xp=xp,
                 div_op=div_op,
-                cochain=cochain,
+                ppe_solver=ppe_solver,
+                rho=state.rho,
+                pressure_flux_kwargs=pressure_flux_kwargs_for_projection,
+                raw_components=cochain.surface_acceleration,
+                component_reaction_components=[
+                    cochain.volume_reaction_acceleration
+                ],
             )
             corrected_capillary_components = (
-                trace_projection.corrected_capillary_components
-            )
-            trace_projection_diagnostics = (
-                _closed_interface_trace_projection_diagnostics(trace_projection)
+                trace_projection_diagnostics["corrected_jump_components"]
             )
             rhs = rhs + div_op.divergence_from_faces(
                 corrected_capillary_components
@@ -1202,18 +1221,24 @@ def correct_ns_velocity_stage(
             and hasattr(proj_op, "face_fluxes")
             and hasattr(proj_op, "reconstruct_nodes")
         ):
-            pressure_faces = (
-                [
+            if state.pressure_correction_face_components is not None:
+                pressure_faces = [
                     xp.asarray(component)
                     for component in state.pressure_correction_face_components
                 ]
-                if state.pressure_correction_face_components is not None
-                else proj_op.pressure_fluxes(
+            else:
+                pressure_faces = None
+            if pressure_faces is None:
+                if capillary_force_source == "closed_interface_riesz":
+                    raise RuntimeError(
+                        "closed_interface_riesz corrector requires stored "
+                        "component-saddle pressure faces"
+                    )
+                pressure_faces = proj_op.pressure_fluxes(
                     state.p_corrector,
                     state.rho,
                     **project_kwargs,
                 )
-            )
             force_faces = proj_op.face_fluxes([state.f_x / state.rho, state.f_y / state.rho])
             state.projected_face_components = [
                 predictor_face - projection_dt * pressure_face + projection_dt * force_face
