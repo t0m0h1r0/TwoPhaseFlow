@@ -17,9 +17,12 @@ from typing import Optional, Sequence
 
 DEFAULT_SPEED_CMAP = "viridis"
 DEFAULT_VECTOR_CMAP = "hot"
+DEFAULT_VECTOR_COLOR = "#111827"
+DEFAULT_VECTOR_OUTLINE_COLOR = "#ffffff"
 DEFAULT_INTERFACE_COLOR = "k"
 DEFAULT_QUIVER_SCALE = 30.0
 DEFAULT_QUIVER_WIDTH = 0.003
+DEFAULT_QUIVER_OUTLINE_WIDTH_FACTOR = 2.2
 
 
 def field_with_contour(
@@ -120,11 +123,15 @@ def velocity_arrows(
     stride: int = 4,
     speed_cmap: str = DEFAULT_SPEED_CMAP,
     vector_cmap: str = DEFAULT_VECTOR_CMAP,
+    vector_color: Optional[str] = DEFAULT_VECTOR_COLOR,
+    vector_outline_color: Optional[str] = DEFAULT_VECTOR_OUTLINE_COLOR,
     speed_vmax: Optional[float] = None,
     bg_alpha: float = 0.5,
     normalize_arrows: bool = True,
     quiver_scale: float = DEFAULT_QUIVER_SCALE,
     quiver_width: float = DEFAULT_QUIVER_WIDTH,
+    quiver_outline_width_factor: float = DEFAULT_QUIVER_OUTLINE_WIDTH_FACTOR,
+    quiver_min_display_speed: Optional[float] = None,
     contour_field: Optional[np.ndarray] = None,
     contour_level: float = 0.0,
     contour_color: str = DEFAULT_INTERFACE_COLOR,
@@ -149,8 +156,12 @@ def velocity_arrows(
         stride=stride,
         normalize=normalize_arrows,
         cmap=vector_cmap,
+        color=vector_color,
+        outline_color=vector_outline_color,
         scale=quiver_scale,
         width=quiver_width,
+        outline_width_factor=quiver_outline_width_factor,
+        min_display_speed=quiver_min_display_speed,
     )
     if contour_field is not None:
         ax.contour(x1d, y1d, contour_field.T, levels=[contour_level],
@@ -168,10 +179,18 @@ def draw_clean_velocity_arrows(
     stride: int = 4,
     normalize: bool = True,
     cmap: str = DEFAULT_VECTOR_CMAP,
+    color: Optional[str] = DEFAULT_VECTOR_COLOR,
+    outline_color: Optional[str] = DEFAULT_VECTOR_OUTLINE_COLOR,
     alpha: float = 0.85,
+    outline_alpha: float = 0.75,
     scale: float = DEFAULT_QUIVER_SCALE,
     width: float = DEFAULT_QUIVER_WIDTH,
+    outline_width_factor: float = DEFAULT_QUIVER_OUTLINE_WIDTH_FACTOR,
+    headwidth: float = 3.6,
+    headlength: float = 4.8,
+    headaxislength: float = 4.2,
     min_speed: float = 1.0e-14,
+    min_display_speed: Optional[float] = None,
 ):
     """Draw sparse velocity arrows with ch14 diagnostic styling.
 
@@ -190,6 +209,13 @@ def draw_clean_velocity_arrows(
     us = np.asarray(u)[::stride, ::stride]
     vs = np.asarray(v)[::stride, ::stride]
     speed = np.sqrt(us ** 2 + vs ** 2)
+    if min_display_speed is not None:
+        visible = speed > max(float(min_display_speed), min_speed)
+        Xs = Xs[visible]
+        Ys = Ys[visible]
+        us = us[visible]
+        vs = vs[visible]
+        speed = speed[visible]
     if normalize:
         denom = np.maximum(speed, min_speed)
         uq = us / denom
@@ -198,7 +224,38 @@ def draw_clean_velocity_arrows(
     else:
         uq = us
         vq = vs
-        scale_arg = None
+        scale_arg = scale
+    common_kwargs = dict(
+        scale=scale_arg,
+        headwidth=headwidth,
+        headlength=headlength,
+        headaxislength=headaxislength,
+        pivot="middle",
+    )
+    if outline_color is not None:
+        ax.quiver(
+            Xs,
+            Ys,
+            uq,
+            vq,
+            color=outline_color,
+            alpha=outline_alpha,
+            width=width * outline_width_factor,
+            zorder=3.0,
+            **common_kwargs,
+        )
+    if color is not None:
+        return ax.quiver(
+            Xs,
+            Ys,
+            uq,
+            vq,
+            color=color,
+            alpha=alpha,
+            width=width,
+            zorder=3.1,
+            **common_kwargs,
+        )
     return ax.quiver(
         Xs,
         Ys,
@@ -209,6 +266,11 @@ def draw_clean_velocity_arrows(
         alpha=alpha,
         scale=scale_arg,
         width=width,
+        headwidth=headwidth,
+        headlength=headlength,
+        headaxislength=headaxislength,
+        pivot="middle",
+        zorder=3.1,
     )
 
 

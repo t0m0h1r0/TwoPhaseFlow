@@ -18,8 +18,11 @@ from .plot_vector import (
     plot_streamlines,
 )
 from .plot_fields import (
+    DEFAULT_QUIVER_OUTLINE_WIDTH_FACTOR,
     DEFAULT_SPEED_CMAP,
     DEFAULT_VECTOR_CMAP,
+    DEFAULT_VECTOR_COLOR,
+    DEFAULT_VECTOR_OUTLINE_COLOR,
     draw_clean_velocity_arrows,
     field_with_contour,
     positive_range,
@@ -39,6 +42,9 @@ __all__ = [
     "plot_streamlines",
     "DEFAULT_SPEED_CMAP",
     "DEFAULT_VECTOR_CMAP",
+    "DEFAULT_VECTOR_COLOR",
+    "DEFAULT_VECTOR_OUTLINE_COLOR",
+    "DEFAULT_QUIVER_OUTLINE_WIDTH_FACTOR",
     "draw_clean_velocity_arrows",
     "field_with_contour",
     "positive_range",

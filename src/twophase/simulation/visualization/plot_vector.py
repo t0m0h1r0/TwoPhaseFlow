@@ -12,9 +12,12 @@ from typing import Optional, Tuple, TYPE_CHECKING
 from .plot_fields import (
     DEFAULT_INTERFACE_COLOR,
     DEFAULT_QUIVER_SCALE,
+    DEFAULT_QUIVER_OUTLINE_WIDTH_FACTOR,
     DEFAULT_QUIVER_WIDTH,
     DEFAULT_SPEED_CMAP,
     DEFAULT_VECTOR_CMAP,
+    DEFAULT_VECTOR_COLOR,
+    DEFAULT_VECTOR_OUTLINE_COLOR,
     draw_clean_velocity_arrows,
     positive_range,
 )
@@ -32,10 +35,14 @@ def plot_velocity(
     title: str = "速度場",
     speed_cmap: str = DEFAULT_SPEED_CMAP,
     vector_cmap: str = DEFAULT_VECTOR_CMAP,
+    vector_color: Optional[str] = DEFAULT_VECTOR_COLOR,
+    vector_outline_color: Optional[str] = DEFAULT_VECTOR_OUTLINE_COLOR,
     quiver_stride: int = 4,
     normalize_arrows: bool = True,
     quiver_scale: float = DEFAULT_QUIVER_SCALE,
     quiver_width: float = DEFAULT_QUIVER_WIDTH,
+    quiver_outline_width_factor: float = DEFAULT_QUIVER_OUTLINE_WIDTH_FACTOR,
+    quiver_min_display_speed: Optional[float] = None,
     speed_vmax: Optional[float] = None,
     interface_psi: Optional[np.ndarray] = None,
     save_path: Optional[str] = None,
@@ -51,10 +58,13 @@ def plot_velocity(
     grid : Grid
     title : タイトル
     speed_cmap : 速度の大きさに使うカラーマップ
-    vector_cmap : 矢印を速度で着色するカラーマップ
+    vector_cmap : vector_color=None の場合に矢印を速度で着色するカラーマップ
+    vector_color : 矢印本体色。None の場合は vector_cmap で速度着色
+    vector_outline_color : 矢印の下敷き色。None の場合は下敷きなし
     quiver_stride : 矢印を描くサンプリング間隔（間引き）
     normalize_arrows : True の場合、矢印長は方向表示用に正規化
     speed_vmax : 速度背景の上限（None の場合は robust percentile）
+    quiver_min_display_speed : これ以下の速度ベクトルは矢印表示しない
     interface_psi : 界面表示用 ψ フィールド
     save_path : 保存先パス
     ax : 既存の Axes
@@ -93,8 +103,12 @@ def plot_velocity(
         stride=quiver_stride,
         normalize=normalize_arrows,
         cmap=vector_cmap,
+        color=vector_color,
+        outline_color=vector_outline_color,
         scale=quiver_scale,
         width=quiver_width,
+        outline_width_factor=quiver_outline_width_factor,
+        min_display_speed=quiver_min_display_speed,
     )
 
     if interface_psi is not None:
