@@ -1,0 +1,11 @@
+{
+  "branch": "codex/ra-cls-reinit-free-survey-20260507",
+  "branch_slug": "ra-cls-reinit-free-survey-20260507",
+  "id_prefix": "RA-CLS",
+  "session_id": "A8EDE1BF-1828-4AB7-B33E-A5F68B5F91A6",
+  "worktree_path": ".claude/worktrees/codex-ra-cls-reinit-free-survey-20260507",
+  "holder_agent": "ResearchArchitect",
+  "acquired_at": "2026-05-07T00:25:19Z",
+  "expires_at": "2026-05-08T00:25:19Z",
+  "meta_version": "8.0.0-candidate"
+}
