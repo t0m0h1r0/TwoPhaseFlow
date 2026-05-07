@@ -1,6 +1,6 @@
 % paper/sections/06b_advection.tex
 %
-% §6.1  CLS $\psi$ 用 FCCD と運動量用 UCCD6 (per-term spatial discretization)
+% §6.1  CLS $\psi$ 用 FCCD と運動量用 UCCD6
 %       §6 chapter intro は 06_scheme_per_variable.tex に移行済み (CHK-223).
 %       本ファイルは §6.1 subsection から始まる．
 %
@@ -13,7 +13,7 @@
 \label{sec:advection_motivation}
 % ─────────────────────────────────────────────────────────────────────────────
 
-\noindent\textbf{Part 1 連続定式化との関係：}
+\noindent\textbf{連続定式化との関係：}
 本節は §~\ref{sec:cls_advection}（§3.2 CLS 保存形移流方程式，
 式~\eqref{eq:cls_advection}）と §~\ref{sec:onefluid}（§2 One-Fluid NS，
 式~\eqref{eq:NS_onefluid}）の運動量移流項 $(\bu\cdot\bnabla)\bu$ の
@@ -52,7 +52,7 @@ CLS 界面移流には以下の 3 点で非適合である：
         寄生流れ $\Ord{h^6}$ の高精度を実用上無効化する危険がある．
 
   \item \textbf{ステンシル非整合：}
-        本フレームワークは全空間離散化に CCD の 3 点コンパクトステンシルを用いるが，
+        本稿の空間離散化は CCD の 3 点コンパクトステンシルを基準にするが，
         WENO5 の 5 点ステンシルを混在させると
         打ち切り誤差の非整合（$\Ord{h^5}$ が $\Ord{h^6}$ を律速）が生じ，
         境界条件処理の一元化も失われる．
@@ -67,10 +67,10 @@ $u_{f,i+1/2}$ から共有面フラックス
 $\mathcal{F}^{\psi}_{i+1/2}=(P_f\psi)_{i+1/2}u_{f,i+1/2}$ を構成し，
 その差分でセル中心の発散
 $F_i = [\mathcal{F}^{\psi}_{i+1/2} - \mathcal{F}^{\psi}_{i-1/2}]/h$ を求める
-（§\ref{sec:cls_stages} Stage A，本稿の FCCD 面ジェット移流）．
-FCCD は\textbf{保存型 FVM のテレスコーピング構造}を持ち，
-$\psi$ プロファイル kink での節点 CCD overshoot を経由しないため，
-clamp 前のフラックス評価では総量変化を境界フラックスで閉じる．
+（§\ref{sec:cls_stages} の段階 A，本稿の FCCD 面ジェット移流）．
+FCCD は\textbf{保存型有限体積法の隣接面相殺構造}を持ち，
+$\psi$ 分布の折れでの節点 CCD 上振れを経由しないため，
+値域制限前のフラックス評価では総量変化を境界フラックスで閉じる．
 WENO5 は本稿の CLS 主経路には用いない
 （§\ref{sec:verify_weno5_vs_dccd} で FCCD と WENO5 を定量比較）．
 
@@ -126,7 +126,7 @@ $u_{f,i+1/2}$ と掛け合わせて共有面フラックスを作る：
   \mathcal{F}^{\psi}_{i+1/2}
   &= (P_f\psi)_{i+1/2}\,u_{f,i+1/2}
   \quad\text{（FCCD $\psi$ 面値 $\times$ 正準面速度；\S\ref{sec:fccd_adv_primitives}）}
-  \label{eq:dccd_adv_ccd} \\[4pt] % legacy label; active concept = FCCD face flux
+  \label{eq:dccd_adv_ccd} \\[4pt] % legacy label; active concept = FCCD 面フラックス
   F_i &= \frac{\mathcal{F}^{\psi}_{i+1/2} - \mathcal{F}^{\psi}_{i-1/2}}{h}
   \quad\text{（保存型発散）}
   \label{eq:dccd_adv_filter} % legacy label; active concept = FCCD divergence
@@ -138,8 +138,8 @@ $u_{f,i+1/2}$ と掛け合わせて共有面フラックスを作る：
 
 \medskip
 \noindent\textbf{安定化機構：面値評価が振動源を切る．}
-節点 CCD では $\psi$ プロファイルの kink を 3 点コンパクトステンシルが
-直接横切るため，急峻な遷移層で $\partial\psi/\partial x|_i$ の補間が overshoot し，
+節点 CCD では $\psi$ 分布の折れを 3 点コンパクトステンシルが
+直接横切るため，急峻な遷移層で $\partial\psi/\partial x|_i$ の補間が上振れし，
 それが §~\ref{sec:advection_ccd_limit} で示した Gibbs 振動を励起する．
 FCCD は面値 $(P_f\psi)_{i+1/2}$ を Hermite 補間で滑らかに構成し，
 速度は投影で閉じた面上の $\bu_f$ をそのまま用いる．
@@ -151,7 +151,7 @@ FCCD は面値 $(P_f\psi)_{i+1/2}$ を Hermite 補間で滑らかに構成し，
 
 \medskip
 \noindent\textbf{質量保存性．}
-clamp 前の FCCD フラックス評価は\textbf{保存型 FVM のテレスコーピング構造}を持つ：
+値域制限前の FCCD フラックス評価は\textbf{保存型有限体積法の隣接面相殺構造}を持つ：
 セル境界面値 $\mathcal{F}^{\psi}_{i+1/2}$ は隣接セル $i,\,i+1$ で共有されるため，
 領域全体での $F_i\,h$ の総和は境界フラックスのみで決まる：
 \[
@@ -165,10 +165,10 @@ FCCD では構造的に解消される．
 これが本稿で FCCD を採用した第一の理由である．
 
 \medskip
-\noindent\textbf{TVD 性と clamp 操作．}
+\noindent\textbf{TVD 性と値域制限．}
 FCCD は線形 Hermite 補間に基づくため一般には TVD ではなく，
-急峻な界面では $\psi \notin [0,1]$ の overshoot/undershoot が小幅に発生しうる．
-本稿では各 RK3 ステージ完了後に値域制限を課す：
+急峻な界面では $\psi \notin [0,1]$ の上振れ/下振れが小幅に発生しうる．
+本稿では各 RK3 段の完了後に値域制限を課す：
 \begin{equation}
   \psi_i \leftarrow \max(0,\,\min(1,\,\psi_i))
   \label{eq:psi_clamp}
@@ -176,8 +176,8 @@ FCCD は線形 Hermite 補間に基づくため一般には TVD ではなく，
 \label{warn:adv_clamp}%
 これは $\psi \in [0,1]$ の物理的制約を強制する非線形操作であり，
 一般には質量保存形ではない．値域制限や格子転写で総量が変化した場合だけ，
-§~\ref{sec:cls_stages} の Stage B が界面重み付きに総量を閉じる．
-再初期化を実行した場合の最終閉鎖は Stage F の $\phi$ 空間補正に委ねる．
+§~\ref{sec:cls_stages} の段階 B が界面重み付きに総量を閉じる．
+再初期化を実行した場合の最終閉鎖は段階 F の $\phi$ 空間補正に委ねる．
 
 \begin{tcolorbox}[warnbox, title={線形 CFL 上界の目安（FCCD + TVD-RK3，線形評価）}]
 \label{result:dccd_stability}% backward-compat: 旧 DCCD 安定性 ラベル維持
@@ -193,12 +193,12 @@ $\max_\xi |\hat{k}^*_{\mathrm{FCCD}}(\xi)| \approx 2.0$
 \end{tcolorbox}
 
 \label{alg:dccd_adv}%
-TVD-RK3 + FCCD 面値演算子 + 値域制限は本稿の 7-step フロー第1段に対応し，
-その後の Stage B--F は §~\ref{sec:cls_stages} の責務分離に従って適用する．
+TVD-RK3 + FCCD 面値演算子 + 値域制限は本稿の 7 段手順第1段に対応し，
+その後の段階 B--F は §~\ref{sec:cls_stages} の責務分離に従って適用する．
 
 \paragraph{誤差指標の注意：$\psi$ 空間 vs $\phi$ 空間}
 CLS 移流の形状誤差を $L_2(\psi - \psi_0)$ で評価する場合，
-$\psi$ の遷移層幅 $\varepsilon$ に依存するバイアスが生じる：
+$\psi$ の遷移層幅 $\varepsilon$ に依存する偏りが生じる：
 界面厚 $\varepsilon$ が大きいほど $\psi$ 差が空間的に広がり，
 $L_2(\psi)$ が見かけ上悪化する．
 異なる $\varepsilon/h$ 設定間の比較や，
@@ -218,13 +218,13 @@ $L_2(\psi)$ と $L_2(\phi)$ の両方を報告する．
 \hline
 対象 & スキーム & 精度 & 根拠 \\
 \hline
-CLS 移流（$\psi$） & FCCD $\psi$ 面値 + 射影後の正準面速度（§~\ref{sec:fccd_def}，§~\ref{sec:advection_motivation}，§~\ref{sec:cls_stages} Stage A） & 面値 $\Ord{H^4}$；clamp 前は保存型 FVM テレスコーピング & 面値評価で節点 CCD overshoot を回避；総量変化時は Stage B，reinit 後は Stage F で閉じる \\
-運動量移流（$u,v$） & UCCD6（§~\ref{sec:uccd6_def}） & CCD 微分 $\Ord{h^6}$；ハイパー粘性 $\Ord{\sigma h^7}$（次数保存） & 演算子内部散逸；$\omega_2^8$ 選択的 Nyquist（L2/L3 bulk 既定） \\
-CLS 再初期化 & Ridge--Eikonal 補助経路（§~\ref{sec:ridge_eikonal}，§~\ref{sec:cls_compression}） & 零交差線形補間は $\Ord{h^2}$；FMM/ξ距離は距離場整合 & 飽和帯・トポロジー変化時の 1 ショット距離再構成；§3.4 の補助経路を離散手順として具体化 \\
+CLS 移流（$\psi$） & FCCD $\psi$ 面値 + 射影後の正準面速度（§~\ref{sec:fccd_def}，§~\ref{sec:advection_motivation}，§~\ref{sec:cls_stages} 段階 A） & 面値 $\Ord{H^4}$；値域制限前は保存型有限体積法の隣接面相殺構造 & 面値評価で節点 CCD 上振れを回避；総量変化時は段階 B，再初期化後は段階 F で閉じる \\
+運動量移流（$u,v$） & UCCD6（§~\ref{sec:uccd6_def}） & CCD 微分 $\Ord{h^6}$；ハイパー粘性 $\Ord{\sigma h^7}$（次数保存） & 演算子内部散逸；$\omega_2^8$ 選択的 Nyquist（L2/L3 領域内部既定） \\
+CLS 再初期化 & Ridge--Eikonal 補助経路（§~\ref{sec:ridge_eikonal}，§~\ref{sec:cls_compression}） & 零交差線形補間は $\Ord{h^2}$；FMM/ξ距離は距離場整合 & 飽和帯・トポロジー変化時の一回限りの距離再構成；§3.4 の補助経路を離散手順として具体化 \\
 曲率・速度微分 & CCD（§~\ref{sec:CCD}） & $\Ord{h^6}$ & 高精度・コンパクト \\
-圧力/毛管閉包 & 二相標準は affine-jump PPE + 変分毛管 Hodge 閉包（§~\ref{sec:pressure}，§~\ref{sec:split_ppe_framework}）；一括 PPE は縮約・対照経路 & $\Ord{h^5}$--$\Ord{h^7}$† & Balanced--Force 面評価位置と射影後の面速度まで共有する面閉包 \\
+圧力/毛管閉包 & 二相標準はアフィンジャンプ PPE + 変分毛管 Hodge 閉包（§~\ref{sec:pressure}，§~\ref{sec:split_ppe_framework}）；一括 PPE は縮約・対照経路 & $\Ord{h^5}$--$\Ord{h^7}$† & Balanced--Force 面評価位置と射影後の面速度まで共有する面閉包 \\
 \hline
 \end{tabular}
 \end{center}
-{\small †\ DC 残差契約を満たす分相 PPE 成分検証では Dirichlet $\Ord{h^7}$，Neumann BC $\Ord{h^5}$（§~\ref{sec:verify_split_ppe_dc}）．固定回数 $k=3$ は実用上限の観測値であり，標準契約ではない．速度補正の圧力勾配は CCD $\Ord{h^6}$（§~\ref{sec:pressure_accuracy_summary}）．}
+{\small †\ DC 残差の受理条件を満たす分相 PPE 成分検証では Dirichlet $\Ord{h^7}$，Neumann BC $\Ord{h^5}$（§~\ref{sec:verify_split_ppe_dc}）．固定回数 $k=3$ は実用上限の観測値であり，標準前提ではない．速度補正の圧力勾配は CCD $\Ord{h^6}$（§~\ref{sec:pressure_accuracy_summary}）．}
 \end{tcolorbox}

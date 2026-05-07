@@ -1,6 +1,6 @@
 % paper/sections/06c_fccd_advection.tex
 %
-% §6.2  FCCD 移流：Option B/C と面ジェット共通プリミティブ (CHK-223: §6 per-term spatial 配下)
+% §6.2  FCCD 移流：構成 B/C と面ジェット共通基盤量 (CHK-223: §6 per-term spatial 配下)
 %        既存の節点 CCD 移流を保存型に拡張する FCCD 移流演算子群．
 %        §4.5 FCCD の面中心行列 M^FCCD を速度移流に転用する経路を示す．
 %
@@ -9,14 +9,14 @@
 \label{sec:fccd_advection}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-\noindent\textbf{Part 1 連続定式化との関係：}
+\noindent\textbf{連続定式化との関係：}
 本節の FCCD 面移流演算子は §~\ref{sec:onefluid}（§2 One-Fluid NS，
 式~\eqref{eq:NS_onefluid}）の運動量移流項を，
 Balanced--Force の同一面評価位置原理（§~\ref{sec:balanced_force}）と整合する形で
-記述するための演算子契約である．本稿の標準 bulk 運動量移流は
+記述するための演算子前提である．本稿の標準領域内部運動量移流は
 UCCD6（§~\ref{sec:uccd6_def}）であり，FCCD 面フラックス形は
-縮約 CSF 経路で圧力・毛管・対流フラックスを同一 face-to-node divergence で閉じる場合，
-または標準 pressure-jump 経路で毛管面共鎖と動的対流フラックスの評価位置を比較する場合の
+縮約 CSF 経路で圧力・毛管・対流フラックスを同一の面から節点への発散で閉じる場合，
+または標準圧力ジャンプ経路で毛管面共鎖と動的対流フラックスの評価位置を比較する場合の
 面評価位置構成として用いる．純 FCCD DNS 構成での役割は §~\ref{sec:pure_fccd_dns} で境界づける．
 
 本節では \S\ref{sec:fccd_def} で導入した面中心 FCCD 演算子
@@ -25,23 +25,23 @@ $\mathbf{M}^{\FCCD}$（式~\eqref{eq:fccd_composite_matrix}）を
 Balanced--Force 原理（\S\ref{sec:balanced_force}）を一括 CSF 縮約で読む場合に現れる
 「$\bnabla p,\,\sigma\kappa_{lg}\bnabla\psi,\,\bnabla\cdot(\bu\otimes\bu)$
 \textbf{3 項すべてが同一の面中心演算子}で離散化される」条件を完結させる．
-標準 pressure-jump 経路では，この条件を毛管面共鎖と正準面補正の同一評価位置条件として読み替える．
+標準圧力ジャンプ経路では，この条件を毛管面共鎖と正準面補正の同一評価位置条件として読み替える．
 節点版の運動量移流を圧力・毛管面評価位置と混在させると，
 \textbf{移流だけが節点中心に残る}ため，静的 BF 条件は保てても
-動的 RHS に節点--面の往復誤差が残る．
+動的右辺に節点--面の往復誤差が残る．
 本節では 2 つの役割を区別する：
 \begin{itemize}
-  \item \textbf{節点再構成形（Option C）}：面中心 FCCD 勾配を R$_4$
-        Hermite 再構成で節点に戻す参照構成．既存の節点 RHS と比較するときの
+  \item \textbf{節点再構成形（構成 C）}：面中心 FCCD 勾配を R$_4$
+        Hermite 再構成で節点に戻す参照構成．既存の節点右辺と比較するときの
         精度分解に用いる．
-  \item \textbf{保存形面フラックス（Option B）}：
+  \item \textbf{保存形面フラックス（構成 B）}：
         $\bnabla\cdot(\bu\otimes\bu)$ を FCCD 面値 $\mathbf{P}_f$ で
         組み立て，面ダイバージェンスで節点に戻す．動的 BF 評価位置整合を
         最も直接に満たす構成である．
 \end{itemize}
 
 % -------------------------------------------------------------------------------
-\subsubsection{\texorpdfstring{共通プリミティブ：面値演算子 $\mathbf{P}_f$ と面ジェット $\mathcal{J}_f$}{共通プリミティブ：面値演算子 P\_f と面ジェット J\_f}}
+\subsubsection{\texorpdfstring{共通基盤量：面値演算子 $\mathbf{P}_f$ と面ジェット $\mathcal{J}_f$}{共通基盤量：面値演算子 P\_f と面ジェット J\_f}}
 \label{sec:fccd_adv_primitives}
 % -------------------------------------------------------------------------------
 
@@ -71,7 +71,7 @@ $\mathbf{P}_2 = (H_i^2/16)\cdot(1,1)\text{ 双対角}$ として，
 切断誤差 $u_f - u(x_c) = -\tfrac{5}{384}H^4 u^{(4)}(x_c) + \mathcal{O}(H^6)$．
 
 \noindent\textbf{面ジェット $\mathcal{J}_f$}（\S\ref{sec:face_jet_def}）：
-統一プリミティブ $\FaceJet{u} = (u_f, u'_f, u''_f)$ は
+統一基盤量 $\FaceJet{u} = (u_f, u'_f, u''_f)$ は
 \begin{equation}
   \mathcal{J}_f(\mathbf{u}) = \bigl(\mathbf{P}_f\mathbf{u},\,
   \mathbf{M}^{\FCCD}\mathbf{u},\,
@@ -83,7 +83,7 @@ $\mathbf{P}_2 = (H_i^2/16)\cdot(1,1)\text{ 双対角}$ として，
 \textbf{CCD ブロック三重対角解は 1 軸あたり 1 回のみ}で済む．
 
 % -------------------------------------------------------------------------------
-\subsubsection{\texorpdfstring{Option C：R$_4$ Hermite 面→節点再構成}{Option C：R\_4 Hermite 面→節点再構成}}
+\subsubsection{\texorpdfstring{構成 C：R$_4$ Hermite 面→節点再構成}{構成 C：R\_4 Hermite 面→節点再構成}}
 \label{sec:fccd_adv_option_c}
 % -------------------------------------------------------------------------------
 
@@ -105,21 +105,21 @@ $\mathcal{O}(H^2)$ 誤差を $\mathbf{q}$ で相殺する：
   \label{eq:fccd_adv_option_c}
 \end{equation}
 
-\noindent\textbf{Option C の役割}：
-出力が節点値なので，節点中心 RHS を保ったまま
+\noindent\textbf{構成 C の役割}：
+出力が節点値なので，節点中心右辺を保ったまま
 FCCD 面勾配の影響だけを切り出して比較できる．
-したがって Option C は節点中心経路との精度差を説明する参照構成であり，
-標準の二相 face-closure を置き換えるものではない．
+したがって構成 C は節点中心経路との精度差を説明する参照構成であり，
+標準の二相面閉包を置き換えるものではない．
 
-\noindent\textbf{Option C の限界}：
+\noindent\textbf{構成 C の限界}：
 R$_4$ の面→節点変換で BF 整合性が\textbf{部分的に}回復するに留まる．
 縮約 CSF 経路の圧力・毛管項が面中心 FCCD で動く一方，移流だけは R$_4$ 経由の
 節点に戻っているため，節点-面-節点の往復で
 $\mathcal{O}(H^4)$ 誤差が 2 重に蓄積する．
-面評価位置閉包を主張する箇所では Option B を用いる．
+面評価位置閉包を主張する箇所では構成 B を用いる．
 
 % -------------------------------------------------------------------------------
-\subsubsection{Option B：保存形 FCCD 面フラックス}
+\subsubsection{構成 B：保存形 FCCD 面フラックス}
 \label{sec:fccd_adv_option_b}
 % -------------------------------------------------------------------------------
 
@@ -194,9 +194,9 @@ BF 残差は
 (A2) PPE 可解条件 $\sum_i (D_h\bu^*)_i = 0$（離散発散の総和零；
 Neumann BC 下の compatibility）が満たされる．
 (A3) 本定理は\textbf{一括 CSF PPE}（変密度一括 PPE + smoothed Heaviside
-CSF；§\ref{sec:projection_derivation}）の設定．分相 affine-jump PPE 版
+CSF；§\ref{sec:projection_derivation}）の設定．分相アフィンジャンプ PPE 版
 （§\ref{sec:split_ppe_pressure_jump_formulation}）は別建ての
-Corollary~\ref{cor:fccd_split_ppe_bf}．\\
+系~\ref{cor:fccd_split_ppe_bf}．\\
 \textbf{論証}：$\bu\equiv 0$ では対流項は恒等的に零であるため，
 静的 BF 残差は圧力勾配と縮約 CSF 毛管項の演算子一致だけで決まる．
 残る $\bnabla p$ と縮約 CSF 毛管項は (A1) より同一の
@@ -207,34 +207,34 @@ $\Ord{H^4}/\Ord{H^3}$．差分 $G_h p - f_\sigma$ では主項が打ち消し合
 well-defined であることから $G_h p$ の評価が有効．$\square$
 \end{proof}
 
-\begin{corollary}[分相 affine-jump PPE での FCCD-BF 整合]
+\begin{corollary}[分相アフィンジャンプ PPE での FCCD-BF 整合]
 \label{cor:fccd_split_ppe_bf}
-分相 affine-jump PPE（§\ref{sec:split_ppe_framework}）を採用した場合，
+分相アフィンジャンプ PPE（§\ref{sec:split_ppe_framework}）を採用した場合，
 CSF 体積力は予測段階から外れ，毛管効果は
-$J_p^\chi=-\sigma\kappa_{lg}$ の face cochain として PPE/corrector に入る．
+$J_p^\chi=-\sigma\kappa_{lg}$ の面共鎖として PPE/補正段に入る．
 このとき BF 整合性は，HFE が供給する片側 Hermite データを
 §\ref{sec:split_ppe_pressure_jump_formulation} のジャンプ補正付き面法則へ渡し，
 さらに §\ref{sec:split_ppe_capillary_range_projection} の
 表面エネルギーの Riesz 面共鎖と成分体積制約付き鞍点系から得る
 $\widehat c_{\sigma,f}$ を正準面補正へ渡すことで成立する．
-節点延長圧力の raw 勾配を速度補正へ直接渡す経路はこの corollary の仮定ではない．
+節点延長圧力の未補正勾配を速度補正へ直接渡す経路はこの系の仮定ではない．
 \end{corollary}
 
 \noindent\textbf{動的移流評価位置命題}：
-非零速度場では，対流フラックスも圧力・毛管 cochain と同じ面評価位置に置かれて初めて
-運動量 RHS 全体が同一の面中心空間で閉じる．
-Option C（R$_4$ 経由の節点中心）は節点--面--節点の往復を残すため，
+非零速度場では，対流フラックスも圧力・毛管面共鎖と同じ面評価位置に置かれて初めて
+運動量右辺全体が同一の面中心空間で閉じる．
+構成 C（R$_4$ 経由の節点中心）は節点--面--節点の往復を残すため，
 静的 BF 定理の直接の仮定ではないが，動的計算では評価位置不一致の残差源になり得る．
-Option B は $\bnabla\cdot(\bu\otimes\bu)$ を面フラックスとして構成し，
-縮約 CSF 経路では圧力・毛管・対流の 3 項を，標準 pressure-jump 経路では
-毛管 face cochain と対流 face flux の比較基準を，同一の face-to-node divergence で読むための設計である．
+構成 B は $\bnabla\cdot(\bu\otimes\bu)$ を面フラックスとして構成し，
+縮約 CSF 経路では圧力・毛管・対流の 3 項を，標準圧力ジャンプ経路では
+毛管面共鎖と対流面フラックスの比較基準を，同一の面から節点への発散で読むための設計である．
 
 % -------------------------------------------------------------------------------
 \subsubsection{運動量方程式の閉形}
 \label{sec:fccd_adv_closure}
 % -------------------------------------------------------------------------------
 
-FCCD Option B で閉じた運動量更新：
+FCCD 構成 B で閉じた運動量更新：
 \begin{equation}
   \frac{u^{n+1}_j - u^n_j}{\Delta t}
   = -\sum_k\frac{(u_k u_j)^{*}_{f_{i+1/2}} - (u_k u_j)^{*}_{f_{i-1/2}}}{H_i}
@@ -246,18 +246,18 @@ FCCD Option B で閉じた運動量更新：
 で定義された粘性演算子．この式は縮約 CSF 経路の面評価位置を示す代表形であり，
 右辺は粘性・圧力・縮約毛管項・重力を\textbf{面中心}で評価し
 面ダイバージェンスで節点に戻す．
-PPE RHS は自然に $\bnabla_h\cdot\bu^*$ が FCCD 面ダイバージェンスで
+PPE 右辺は自然に $\bnabla_h\cdot\bu^*$ が FCCD 面ダイバージェンスで
 表現され，ループが閉じる．
 
 % -------------------------------------------------------------------------------
-\subsubsection{壁境界条件 Option IV：Dirichlet 無滑り}
+\subsubsection{壁境界条件構成 IV：Dirichlet 無滑り}
 \label{sec:fccd_adv_wall_iv}
 % -------------------------------------------------------------------------------
 
-\S\ref{sec:ccd_bc} で導入した Option III（Neumann $\psi, p$）は
+\S\ref{sec:ccd_bc} で導入した構成 III（Neumann $\psi, p$）は
 移流でも変更不要．
 Dirichlet 無滑り $u(x_\text{wall}) = 0$ に対する
-\textbf{Option IV（Dirichlet 壁境界）}は，
+\textbf{構成 IV（Dirichlet 壁境界）}は，
 $u$ の反対称ゴーストミラー $u_{-1} = -u_1$ と
 $u''$ の反対称性 $q_{-1} = -q_1$ を組み合わせる：
 \begin{align}
@@ -266,7 +266,7 @@ $u''$ の反対称性 $q_{-1} = -q_1$ を組み合わせる：
   u^{\FCCD}_{f_{-1/2}} &= -\tfrac{1}{2}u_1 + \tfrac{H^2}{16}(q_1 - q_0)
   \quad\text{（壁面速度, 連続無滑り極限で零）}. \label{eq:fccd_adv_wall_iv_u}
 \end{align}
-Option B の壁面フラックス
+構成 B の壁面フラックス
 $F^{(k,j)}_{f_{-1/2}} = u^{(k)}_f\cdot u^{(j)}_f$ は
 両因子とも壁で $\to 0$ のため先頭オーダーで恒等零，
 物理的無滑り運動量フラックス零と一致．
@@ -287,15 +287,15 @@ $\mathcal{O}(N)$ 乗算のみで，
 
 \noindent\textbf{本稿内での役割分担}：
 \begin{itemize}
-  \item 標準 bulk 運動量移流は UCCD6（§\ref{sec:uccd6_def}）で担う．
+  \item 標準領域内部運動量移流は UCCD6（§\ref{sec:uccd6_def}）で担う．
   \item 一括 CSF 縮約経路の BF 説明では，共通面評価位置として
-        圧力・毛管・対流フラックスの整合条件を本節の Option B で表現できる．
-  \item 分相 affine-jump 経路では，毛管効果は CSF 体積力ではなく
-        §\ref{sec:split_ppe_pressure_jump_formulation} の face cochain として入り，
+        圧力・毛管・対流フラックスの整合条件を本節の構成 B で表現できる．
+  \item 分相アフィンジャンプ経路では，毛管効果は CSF 体積力ではなく
+        §\ref{sec:split_ppe_pressure_jump_formulation} の面共鎖として入り，
         表面エネルギーの Riesz 面共鎖を成分体積制約付き鞍点系で補正してから
         正準面補正へ渡る．
-  \item Option C は節点中心 RHS と面中心 RHS の差を切り分ける参照構成であり，
-        標準 face-closure の代替ではない．
+  \item 構成 C は節点中心右辺と面中心右辺の差を切り分ける参照構成であり，
+        標準面閉包の代替ではない．
 \end{itemize}
 
 % ═══════════════════════════════════════════════════════════════════════════════
