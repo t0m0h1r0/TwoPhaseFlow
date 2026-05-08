@@ -36,6 +36,150 @@ def test_runtime_snapshots_skip_projection_fields_unless_requested():
     assert runner._snapshot_needs_projection_fields(cfg)
 
 
+def test_pre_blowup_checkpoint_guard_preserves_only_subcritical_states(tmp_path):
+    runner = importlib.import_module("twophase.simulation.runner")
+    limit = runner.BLOWUP_KINETIC_ENERGY_LIMIT
+
+    assert not runner._should_refresh_pre_blowup_checkpoint(0.0)
+    assert not runner._should_refresh_pre_blowup_checkpoint(np.nan)
+    assert not runner._should_refresh_pre_blowup_checkpoint(1.01 * limit)
+    assert runner._should_refresh_pre_blowup_checkpoint(
+        runner.PRE_BLOWUP_CHECKPOINT_FRACTION * limit
+    )
+    assert runner._should_refresh_pre_blowup_checkpoint(0.5 * limit)
+
+    path = runner._pre_blowup_checkpoint_path(tmp_path / "checkpoint_final.npz")
+    assert path == tmp_path / "checkpoint_pre_blowup.npz"
+
+
+def test_run_simulation_saves_restartable_pre_blowup_state(tmp_path, monkeypatch):
+    runner = importlib.import_module("twophase.simulation.runner")
+    saves = []
+
+    class FakeSolver:
+        _alpha_grid = 1.0
+        _rebuild_freq = 0
+        _p_prev_accel_face_components = None
+        _step_diag = SimpleNamespace(last={})
+        _backend = SimpleNamespace(xp=np, to_host=lambda arr: arr)
+        _grid = SimpleNamespace()
+        X = np.zeros((2, 2))
+        Y = np.zeros((2, 2))
+        h = 1.0
+
+        @classmethod
+        def from_config(cls, cfg):
+            return cls()
+
+        def make_bc_hook(self, cfg):
+            return None
+
+        def dt_budget(self, *args, **kwargs):
+            raise AssertionError("fixed-dt test should not ask for CFL budget")
+
+        def step_request(self, request, return_host_pressure=False):
+            return request.psi, request.u, request.v, np.zeros_like(request.psi)
+
+    class FakeDiagnostics:
+        def __init__(self, *args, **kwargs):
+            self.values = []
+            self._last = 0.0
+
+        def needs_retained_geometry(self):
+            return False
+
+        def collect(self, *args, **kwargs):
+            seq = [
+                2.0 * runner.PRE_BLOWUP_CHECKPOINT_FRACTION
+                * runner.BLOWUP_KINETIC_ENERGY_LIMIT,
+                1.1 * runner.BLOWUP_KINETIC_ENERGY_LIMIT,
+            ]
+            self._last = seq[len(self.values)]
+            self.values.append(self._last)
+
+        def last(self, key, default=0.0):
+            return self._last if key == "kinetic_energy" else default
+
+        def to_arrays(self):
+            return {
+                "times": np.arange(1, len(self.values) + 1, dtype=float),
+                "kinetic_energy": np.asarray(self.values, dtype=float),
+            }
+
+    def fake_load_checkpoint(path, *, solver, config_path):
+        return {
+            "t": 0.0,
+            "step": 0,
+            "psi": np.zeros((2, 2)),
+            "u": np.zeros((2, 2)),
+            "v": np.zeros((2, 2)),
+            "p": np.zeros((2, 2)),
+            "results": {},
+            "snapshots": [],
+            "debug_history": [],
+        }
+
+    def fake_save_checkpoint(path, **kwargs):
+        saves.append({"path": Path(path), "step": kwargs["step"], "t": kwargs["t"]})
+
+    monkeypatch.setattr(
+        "twophase.simulation.ns_pipeline.TwoPhaseNSSolver",
+        FakeSolver,
+    )
+    monkeypatch.setattr(
+        "twophase.simulation.checkpoint.load_checkpoint",
+        fake_load_checkpoint,
+    )
+    monkeypatch.setattr(
+        "twophase.simulation.checkpoint.save_checkpoint",
+        fake_save_checkpoint,
+    )
+    monkeypatch.setattr(
+        "twophase.tools.diagnostics.DiagnosticCollector",
+        FakeDiagnostics,
+    )
+
+    cfg = SimpleNamespace(
+        physics=SimpleNamespace(
+            rho_l=1.0,
+            rho_g=1.0,
+            sigma=0.0,
+            mu=0.0,
+            g_acc=0.0,
+            rho_ref=None,
+            mu_l=None,
+            mu_g=None,
+        ),
+        run=SimpleNamespace(
+            T_final=2.0,
+            max_steps=None,
+            dt_fixed=1.0,
+            snap_interval=None,
+            snap_times=[],
+            print_every=100,
+            debug_diagnostics=False,
+        ),
+        output=SimpleNamespace(figures=[]),
+        diagnostics=["kinetic_energy"],
+        initial_condition={},
+    )
+
+    results = runner.run_simulation(
+        cfg,
+        resume_from=tmp_path / "checkpoint_old.npz",
+        checkpoint_path=tmp_path / "checkpoint_final.npz",
+        config_path=tmp_path / "cfg.yaml",
+    )
+
+    assert saves[0] == {
+        "path": tmp_path / "checkpoint_pre_blowup.npz",
+        "step": 1,
+        "t": 1.0,
+    }
+    assert saves[-1]["path"] == tmp_path / "checkpoint_final.npz"
+    assert bool(results["pre_blowup_checkpoint_written"])
+
+
 def test_snapshot_fields_are_saved_as_npz_series():
     runner = _load_ns_simulation_runner()
     flat = {}

@@ -15,6 +15,10 @@ if TYPE_CHECKING:
     from .config_io import ExperimentConfig
 
 
+BLOWUP_KINETIC_ENERGY_LIMIT = 1.0e6
+PRE_BLOWUP_CHECKPOINT_FRACTION = 1.0e-2
+
+
 def run_simulation(
     cfg: "ExperimentConfig",
     *,
@@ -41,6 +45,13 @@ def run_simulation(
             f"  [resume] loaded {resume_from} at "
             f"step={resume_state['step']} t={resume_state['t']:.8g}"
         )
+    pre_blowup_path = (
+        _pre_blowup_checkpoint_path(checkpoint_path)
+        if checkpoint_path is not None
+        else None
+    )
+    if resume_from is None and pre_blowup_path is not None and pre_blowup_path.exists():
+        pre_blowup_path.unlink()
 
     psi = resume_state["psi"] if resume_state else solver.build_ic(cfg)
     psi_initial_host = np.asarray(solver._backend.to_host(psi))
@@ -102,6 +113,8 @@ def run_simulation(
     step = int(resume_state["step"]) if resume_state else 0
     previous_results = resume_state["results"] if resume_state else {}
     dbg_history: list = list(resume_state["debug_history"]) if resume_state else []
+    pre_blowup_checkpoint_written = False
+    pre_blowup_checkpoint_announced = False
     # Retain per-node control volumes from the current grid build for reuse.
     control_volumes = solver._grid.cell_volumes() if solver._alpha_grid > 1.0 else None
 
@@ -225,9 +238,35 @@ def run_simulation(
                 )
 
         ke = diag.last("kinetic_energy", 0.0)
-        if np.isnan(ke) or ke > 1e6:
+        if _is_blowup_kinetic_energy(ke):
             print(f"  BLOWUP at step={step}, t={t:.4f}")
             break
+        if pre_blowup_path is not None and _should_refresh_pre_blowup_checkpoint(ke):
+            if not pre_blowup_checkpoint_announced:
+                print(
+                    "  [pre-blowup] refreshing "
+                    f"{pre_blowup_path.name} while KE is near the guard limit"
+                )
+                pre_blowup_checkpoint_announced = True
+            current_results = _merge_time_series(
+                previous_results,
+                {**diag.to_arrays()},
+            )
+            save_checkpoint(
+                pre_blowup_path,
+                solver=solver,
+                psi=psi,
+                u=u,
+                v=v,
+                p=p,
+                t=t,
+                step=step,
+                config_path=config_path,
+                results=current_results,
+                snapshots=snaps,
+                debug_history=dbg_history,
+            )
+            pre_blowup_checkpoint_written = True
         if (
             checkpoint_every_steps is not None
             and checkpoint_path is not None
@@ -255,6 +294,10 @@ def run_simulation(
 
     results = _merge_time_series(previous_results, {**diag.to_arrays()})
     results["snapshots"] = snaps
+    results["pre_blowup_checkpoint_written"] = np.asarray(
+        pre_blowup_checkpoint_written,
+        dtype=bool,
+    )
     if dbg_history:
         results["debug_diagnostics"] = {
             key: np.array([entry[key] for entry in dbg_history]) for key in dbg_history[0]
@@ -276,6 +319,29 @@ def run_simulation(
             debug_history=dbg_history,
         )
     return results
+
+
+def _is_blowup_kinetic_energy(ke: float) -> bool:
+    """Return whether the run should fail closed on kinetic-energy growth."""
+    return bool(np.isnan(ke) or ke > BLOWUP_KINETIC_ENERGY_LIMIT)
+
+
+def _should_refresh_pre_blowup_checkpoint(ke: float) -> bool:
+    """Return whether a successful state is close enough to preserve.
+
+    The file is a restart artifact for diagnosis, not a stabilisation device:
+    only finite, still-subcritical states are written, and the actual BLOWUP
+    condition remains fail-closed.
+    """
+    if not np.isfinite(ke):
+        return False
+    lower = BLOWUP_KINETIC_ENERGY_LIMIT * PRE_BLOWUP_CHECKPOINT_FRACTION
+    return bool(lower <= ke <= BLOWUP_KINETIC_ENERGY_LIMIT)
+
+
+def _pre_blowup_checkpoint_path(checkpoint_path: str | Path) -> Path:
+    """Return the sibling restart checkpoint used for pre-failure diagnosis."""
+    return Path(checkpoint_path).with_name("checkpoint_pre_blowup.npz")
 
 
 def _snapshot_needs_projection_fields(cfg: "ExperimentConfig") -> bool:
