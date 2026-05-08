@@ -25,6 +25,9 @@ from twophase.coupling.closed_interface_geometry import (
     liquid_area_2d,
     liquid_area_gradient_2d,
 )
+from twophase.coupling.transport_variational_capillary import (
+    _negative_face_divergence_adjoint,
+)
 from twophase.simulation.divergence_ops import FCCDDivergenceOperator
 
 
@@ -65,6 +68,64 @@ def _smooth_face_velocity(grid, fccd):
         fccd.xp.asarray(np.sin(2.0 * np.pi * X0) * np.cos(np.pi * Y0)),
         fccd.xp.asarray(-0.5 * np.cos(np.pi * X1) * np.sin(2.0 * np.pi * Y1)),
     ]
+
+
+def _setup_nonuniform_periodic_wall(nx=5, ny=6):
+    backend = Backend(use_gpu=False)
+    grid = Grid(
+        GridConfig(
+            ndim=2,
+            N=(nx, ny),
+            L=(1.0, 1.3),
+            alpha_grid=2.0,
+        ),
+        backend,
+    )
+    for axis, power in enumerate((1.15, 1.35)):
+        xi = np.linspace(0.0, 1.0, grid.N[axis] + 1)
+        coords = grid.L[axis] * xi**power
+        coords[-1] = grid.L[axis]
+        grid.coords[axis] = coords
+        cell_width = np.diff(coords)
+        node_width = np.empty(grid.N[axis] + 1)
+        node_width[0] = cell_width[0]
+        node_width[-1] = cell_width[-1]
+        node_width[1:-1] = 0.5 * (cell_width[:-1] + cell_width[1:])
+        grid.h[axis] = node_width
+    ccd = CCDSolver(grid, backend, bc_type="periodic_wall")
+    grid._build_metrics(ccd=ccd)
+    fccd = FCCDSolver(grid, backend, bc_type="periodic_wall", ccd_solver=ccd)
+    return grid, backend, fccd
+
+
+def test_negative_face_divergence_adjoint_matches_periodic_wall_fccd_divergence():
+    grid, backend, fccd = _setup_nonuniform_periodic_wall()
+    xp = backend.xp
+    nodal_index = np.arange(np.prod(grid.shape), dtype=float).reshape(grid.shape)
+    covector = np.sin(0.23 * nodal_index) + 0.3 * np.cos(0.41 * nodal_index)
+
+    for axis in range(grid.ndim):
+        face_shape = list(grid.shape)
+        face_shape[axis] = grid.N[axis]
+        face_index = np.arange(np.prod(face_shape), dtype=float).reshape(face_shape)
+        face_flux = np.cos(0.17 * face_index) - 0.2 * np.sin(0.31 * face_index)
+
+        divergence = np.asarray(
+            fccd.face_divergence(xp.asarray(face_flux), axis=axis)
+        )
+        adjoint = np.asarray(
+            _negative_face_divergence_adjoint(
+                xp=xp,
+                fccd=fccd,
+                nodal_covector=xp.asarray(covector),
+                axis=axis,
+            )
+        )
+
+        assert adjoint.shape == face_flux.shape
+        lhs = float(np.vdot(covector, -divergence))
+        rhs = float(np.vdot(adjoint, face_flux))
+        assert lhs == pytest.approx(rhs, rel=1.0e-12, abs=1.0e-12)
 
 
 def test_surface_riesz_matches_fixed_stratum_virtual_work():
