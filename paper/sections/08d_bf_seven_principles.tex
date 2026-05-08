@@ -12,6 +12,9 @@
 
 §\ref{sec:bf_failure_modes} の 5 失敗モードを回避するため，
 本節では 7 原則 P-1..P-7 を与える．
+Balanced--Force の動機は CSF 表面力~\cite{Brackbill1992} と
+寄生流れ抑制の VOF/CSF 系列~\cite{Francois2006,Popinet2009,DennerVanWachem2015}
+にあり，本節はその要求を本稿の面演算子・圧力ジャンプ経路へ移す．
 \textbf{BF 整合性の核は P-1（位置一致）/ P-2（補正 $G_h$ 共有）/ P-4（面係数 $A_f$ 統一）/
 P-6（界面ジャンプ補正）の 4 原則}が担い，これらが欠けると寄生流れが
 $\Ord{h^0}$ で残留する．残る P-3（幾何経路統一）/ P-5（曲率非 CCD 化）/
@@ -63,6 +66,9 @@ PPE を\textbf{随伴ペア}から組み立てる：
 \end{equation}
 零空間（定数モード）除去後に $A_h$ は対称正定値となり，
 \textbf{補正側 $G_h$ = PPE 側 $G_h^\text{bf}$} が保証される．
+投影法の圧力境界・補正経路の整合性は Chorin 型射影法
+~\cite{Chorin1968} から増分圧力補正・精度解析
+~\cite{vanKan1986,BrownCortezMinion2001,Guermond2006} に至る主要論点である．
 
 \noindent\textbf{rising bubble への含意}：
 PPE 右辺の発散だけを修正しても，補正側が別の $G_h$ を参照する限り
@@ -166,6 +172,8 @@ CCD は滑らかな場を仮定する．静止液滴で $j_{gl}=-\sigma\kappa_{l
     \label{eq:bf_p6_gfm}
   \end{equation}
   領域内部側ステンシルは保ち，ジャンプだけを面フラックスに注入する．
+  圧力ジャンプを界面条件として扱う立場は GFM/IIM 系の標準的発想
+  ~\cite{Fedkiw1999,Kang2000,LeVequeLi1994,Li2022} と整合する．
   HFE が同相側 Hermite データを供給し，
   毛管補正量は §~\ref{sec:split_ppe_capillary_range_projection} の
   表面エネルギー仮想仕事に基づく Riesz 表現で面空間へ渡す．

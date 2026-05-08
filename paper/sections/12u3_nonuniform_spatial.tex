@@ -12,6 +12,10 @@
 （§\ref{sec:scheme_per_variable}: 連鎖律 $\mathrm{d}J/\mathrm{d}\xi$ 経由の高次精度），
 および D1--D4 metric 診断
 （§\ref{sec:ridge_eikonal_nu_grid}）の単体精度を確認する．
+非一様・曲線格子上での高次差分と metric/GCL の扱いは
+Vinokur~\cite{Vinokur1983}，Thomas--Lombard の GCL~\cite{ThomasLombard1979}，
+および Visbal--Gaitonde の高次 compact 差分~\cite{VisbalGaitonde2002}
+を背景文献とする．
 
 格子は界面近傍に集中する gauss 密度
 $\rho_d(\xi) = 1 + (\alpha-1)\exp\!\bigl(-(\psi/\varepsilon)^2\bigr)$
@@ -27,7 +31,8 @@ $\alpha = 1$ で一様格子（密度恒等的に 1），$\alpha = 2$ で
         $f = \sin(\pi x)$，壁境界条件，$\alpha \in \{1, 2\}$，
         $N \in \{16, 32, 64, 128\}$．GCL チェック（$f \equiv 1$ で
         $\|\mathrm{d}f / \mathrm{d}x\|_\infty < 3\times 10^{-13}$，
-        倍精度 $\eps_{\mathrm{mach}}$ に CCD compact stencil の N 倍累積を見込んだ機械零閾値）併用．
+        倍精度 $\eps_{\mathrm{mach}}$ に CCD compact stencil の N 倍累積を見込んだ機械零閾値）併用
+        （保存形・対称性維持の観点は~\cite{VerstappenVeldman2003}）．
   \item[U3-b] FCCD face value/grad．$\alpha = 2$ 上の同 MMS．
   \item[U3-c] Ridge--Eikonal D1--D4 メトリック補正．
         円界面 $\psi = R^2 - (x-0.5)^2 - (y-0.5)^2$（$R = 0.25$），

@@ -24,6 +24,9 @@
 最高波数 $\xi=k h\to\pi$ におけるシンボル
 $\omega_1(\xi),\omega_2(\xi)$ の挙動から，
 \textbf{Nyquist 近傍のチェッカーボード（$2h$ 波長振動）が散逸ゼロで温存される}．
+中心コンパクト差分の修正波数解析と高次フィルタ設計については
+Lele~\cite{Lele1992} および Visbal--Gaitonde 系の境界フィルタ解析
+~\cite{GaitondeVisbal2000,VisbalGaitonde2002} を参照する．
 これは平滑場の純伝搬では問題ないが，
 実用シミュレーションでは離散化誤差・非線形相互作用・初期データ不規則性が
 このモードを励起し，スプリアス振動として顕在化する．
@@ -95,6 +98,9 @@ DCCD の後置フィルタ形は定数 $\varepsilon$ を
   \label{eq:dccd_filter_transfer}
 \end{equation}
 に置き換える．
+この「微分演算子は中心 compact のまま保ち，別の伝達関数で高波数を制御する」
+読み方は，Padé/compact 系に対する明示フィルタの標準的整理
+~\cite{Lele1992,GaitondeVisbal2000,VisbalGaitonde2002} と同じである．
 低波数極限 $H\approx 1-\varepsilon_d\xi^2$ は，
 式~\eqref{eq:dccd_pde_form} の散逸項を 1 回の時間ステップ $\Delta t$ で
 後置フィルタとして適用した近似に対応する．

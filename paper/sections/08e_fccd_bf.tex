@@ -10,6 +10,10 @@
 §~\ref{sec:fccd_def} で導出した FCCD 面フラックス表現
 $\FaceJet{q}=(q_f,q'_f,q''_f)$ は，BF 部分系の
 P-1..P-4 を\textbf{同時に}満たす面表現である．
+この「圧力勾配と表面張力を同じ離散位置で釣り合わせる」要請は
+Brackbill--Kothe--Zemach の CSF~\cite{Brackbill1992} と
+Fran{\c{c}}ois らの Balanced--Force 構成~\cite{Francois2006} に由来し，
+寄生流れ評価の標準 benchmark~\cite{Popinet2009,DennerVanWachem2015} と直接対応する．
 圧力勾配，速度補正，HFE/GFM ジャンプ行，毛管補正量を同じ面の評価範囲へ写すことで，
 連続平衡
 $-\bnabla p+\mathbf{f}_\sigma=\mathbf{0}$
@@ -77,6 +81,9 @@ PPE は有限体積法セル積分で
 ジャンプ条件 $j_{gl}=p_g-p_l=-\sigma\kappa_{lg}$，$[A_f\partial_n p]_\Gamma=0$
 （非相変化）で補正する．標準経路では，ジャンプ演算子
 $B_f(j_{gl})$ を同じ局所物理距離 $H_f$ と同じ面係数 $A_f$ から定義し，
+この圧力ジャンプ補正は GFM/IIM の界面条件処理
+~\cite{Fedkiw1999,Kang2000,LeVequeLi1994,Li2022} を
+本稿の FCCD 面空間へ移したものとして読む．
 \begin{equation}
   a_f(p;c)
     = A_f G_f p - A_f B_f(j_{gl})
