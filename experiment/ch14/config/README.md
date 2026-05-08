@@ -49,6 +49,12 @@ interface.  Production pressure figures should therefore use `snapshot_series`
 field `pressure_hodge`, which reconstructs a phase-wise Hodge representative
 from the stored affine face pressure cochain.  This is fail-closed: if old data
 do not contain that cochain, plotting must stop and the data must be regenerated.
+The same fail-closed rule applies when the same-phase exact-gradient residual
+is not small: then the saved face cochain is not a scalar pressure field on the
+current phase graph, and the plot must be treated as a cochain diagnostic rather
+than as physical pressure.  `pressure_hodge` therefore rejects residuals above
+`max_relative_residual` (default `1e-2`) instead of forcing a misleading scalar
+image.
 Do not mask the fitted interface band as "undefined"; that hides the pressure
 representative instead of testing the discrete pressure-work contract.
 

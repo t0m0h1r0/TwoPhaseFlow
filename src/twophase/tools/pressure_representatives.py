@@ -19,9 +19,23 @@ problem for visualization only; it does not alter the momentum update.
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 from scipy import sparse
 from scipy.sparse import linalg as sparse_linalg
+
+
+@dataclass(frozen=True)
+class PhaseHodgePressureDiagnostics:
+    """Pressure representative plus exact-gradient residual diagnostics."""
+
+    pressure: np.ndarray
+    used_face_count: int
+    face_rhs_l2: float
+    face_residual_l2: float
+    face_relative_residual: float
+    face_residual_linf: float
 
 
 def phase_hodge_pressure_representative(
@@ -40,6 +54,32 @@ def phase_hodge_pressure_representative(
     gradients best match the stored affine face acceleration cochain.  Faces
     crossing the phase boundary are excluded; their jump lives in the affine
     cochain rather than in one nodal point value.
+    """
+    return phase_hodge_pressure_representative_diagnostics(
+        psi=psi,
+        rho=rho,
+        pressure=pressure,
+        pressure_accel_faces=pressure_accel_faces,
+        coords=coords,
+        phase_threshold=phase_threshold,
+    ).pressure
+
+
+def phase_hodge_pressure_representative_diagnostics(
+    *,
+    psi: np.ndarray,
+    rho: np.ndarray,
+    pressure: np.ndarray,
+    pressure_accel_faces: list[np.ndarray],
+    coords: list[np.ndarray],
+    phase_threshold: float = 0.5,
+) -> PhaseHodgePressureDiagnostics:
+    """Return a pressure representative and same-phase integrability residual.
+
+    The residual is measured only on same-phase face-gradient equations, not on
+    the per-phase gauge rows.  A non-small value means the stored affine face
+    cochain contains a pressure-work component that cannot be represented by a
+    single scalar pressure field on the current phase graph.
     """
     psi_arr = np.asarray(psi, dtype=float)
     rho_arr = np.asarray(rho, dtype=float)
@@ -82,6 +122,7 @@ def phase_hodge_pressure_representative(
             rhs.append(float(face_arr[face_index]) / rho_face_inverse)
             row_index += 1
 
+    face_row_count = row_index
     volume_weights = _node_volume_weights(coords, psi_arr.shape)
     for liquid_phase in (False, True):
         mask = phase_label == liquid_phase
@@ -103,14 +144,43 @@ def phase_hodge_pressure_representative(
         row_index += 1
 
     if row_index == 0:
-        return pressure_arr.copy()
+        return PhaseHodgePressureDiagnostics(
+            pressure=pressure_arr.copy(),
+            used_face_count=0,
+            face_rhs_l2=0.0,
+            face_residual_l2=0.0,
+            face_relative_residual=0.0,
+            face_residual_linf=0.0,
+        )
 
+    rhs_arr = np.asarray(rhs, dtype=float)
     matrix = sparse.coo_matrix(
         (data, (rows, cols)),
         shape=(row_index, pressure_arr.size),
     ).tocsr()
-    solution = sparse_linalg.lsqr(matrix, np.asarray(rhs, dtype=float))[0]
-    return solution.reshape(pressure_arr.shape)
+    solution = sparse_linalg.lsqr(matrix, rhs_arr)[0]
+
+    if face_row_count:
+        face_residual = matrix[:face_row_count] @ solution - rhs_arr[:face_row_count]
+        face_rhs_l2 = float(np.linalg.norm(rhs_arr[:face_row_count]))
+        face_residual_l2 = float(np.linalg.norm(face_residual))
+        face_residual_linf = float(np.max(np.abs(face_residual)))
+        face_relative_residual = face_residual_l2 / max(face_rhs_l2, 1.0e-300)
+    else:
+        face_rhs_l2 = 0.0
+        face_residual_l2 = 0.0
+        face_residual_linf = 0.0
+        face_relative_residual = 0.0
+
+    return PhaseHodgePressureDiagnostics(
+        pressure=solution.reshape(pressure_arr.shape),
+        used_face_count=face_row_count,
+        face_rhs_l2=face_rhs_l2,
+        face_residual_l2=face_residual_l2,
+        face_relative_residual=face_relative_residual,
+        face_residual_linf=face_residual_linf,
+    )
+
 
 
 def _node_volume_weights(coords: list[np.ndarray], shape: tuple[int, ...]) -> np.ndarray:

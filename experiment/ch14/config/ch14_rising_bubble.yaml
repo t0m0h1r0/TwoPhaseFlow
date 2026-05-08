@@ -1,5 +1,6 @@
 # N=128x256 water-air rising-bubble probe derived from the capillary alpha=2 stack.
-# Production numerical stack: FCCD PPE + direct-ψ filtered curvature + UCCD6.
+# Production numerical stack: FCCD variational pressure + closed-interface
+# Riesz capillary reaction + direct-ψ filtered curvature + UCCD6.
 # - FCCD: conservative interface transport and pressure gradient use the `fccd`
 #   scheme; flux-locus form is the default option for these terms.
 # - Surface tension: `pressure_jump` enters as an affine interface-stress
@@ -7,6 +8,11 @@
 # - Curvature: interface geometry uses the scalar face-native Young-Laplace
 #   pressure jump.  The P2 ALE discrete-gradient face-cochain route is not a
 #   validated production pressure-jump path.
+# - Pressure force: the projection corrector uses the pressure-adjoint
+#   variational face reaction, not the raw compact gradient representative.
+# - Capillary reaction: closed-interface Riesz constructs the surface-energy
+#   virtual-work cochain and projects component-volume reactions in the same
+#   pressure-adjoint metric as the oscillating-droplet benchmark.
 # - UCCD6: momentum convection uses `uccd6` per WIKI-T-062 / WIKI-X-028.
 
 experiment:
@@ -47,6 +53,7 @@ interface:
     profile:
       eps_scale: 1.4
       ridge_sigma_0: 3.0
+      volume_constraint: sharp_phase_volume
 
 physics:
   phases:
@@ -96,6 +103,13 @@ numerics:
             relaxation: 0.8
       surface_tension:
         formulation: pressure_jump
+        source: closed_interface_riesz
+        closed_interface:
+          endpoint: conservative_psi
+          residual_contract:
+            metric: pressure_adjoint
+            constraints: [component_volume]
+            fail_close: true
   projection:
     face_flux_projection: true
     canonical_face_state: true
@@ -105,7 +119,9 @@ numerics:
         discretization: fccd
         coefficient: phase_separated
         interface_coupling: affine_jump
-        capillary_range_projection: component_hodge_augmented
+        pressure_force_contract: variational_adjoint
+        scalar_operator_pairing: variational_operator
+        capillary_reaction_projection: pressure_component_hodge
       solver:
         kind: defect_correction
         corrections:

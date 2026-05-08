@@ -347,6 +347,7 @@ def test_ch14_canonical_yamls_share_base_numerical_stack():
         if path.name in {
             "ch14_static_droplet.yaml",
             "ch14_oscillating_droplet.yaml",
+            "ch14_rising_bubble.yaml",
         }:
             assert cfg.run.capillary_force_source == "closed_interface_riesz", path.name
             assert cfg.run.capillary_range_projection == "none", path.name
@@ -354,6 +355,8 @@ def test_ch14_canonical_yamls_share_base_numerical_stack():
                 cfg.run.capillary_reaction_projection
                 == "pressure_component_hodge"
             ), path.name
+            assert cfg.run.pressure_force_contract == "variational_adjoint", path.name
+            assert cfg.run.scalar_operator_pairing == "variational_operator", path.name
         else:
             assert cfg.run.capillary_force_source == "curvature_jump", path.name
             assert (
@@ -392,7 +395,15 @@ def test_ch14_rising_bubble_yaml_loads_execution_stack():
     assert cfg.run.face_native_predictor_state is True
     assert cfg.run.pressure_scheme == "fccd_matrixfree"
     assert cfg.run.ppe_interface_coupling_scheme == "affine_jump"
-    assert cfg.run.capillary_range_projection == "component_hodge_augmented"
+    assert cfg.run.capillary_force_source == "closed_interface_riesz"
+    assert cfg.run.capillary_range_projection == "none"
+    assert cfg.run.capillary_reaction_projection == "pressure_component_hodge"
+    assert cfg.run.pressure_force_contract == "variational_adjoint"
+    assert cfg.run.scalar_operator_pairing == "variational_operator"
+    assert cfg.run.capillary_closed_interface_endpoint == "conservative_psi"
+    assert cfg.run.capillary_closed_interface_metric == "pressure_adjoint"
+    assert cfg.run.capillary_closed_interface_constraints == ("component_volume",)
+    assert cfg.run.capillary_closed_interface_fail_close is True
 
 
 def test_capillary_range_projection_parses_and_requires_affine_jump():
