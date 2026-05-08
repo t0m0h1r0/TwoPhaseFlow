@@ -213,6 +213,267 @@ def test_run_simulation_saves_restartable_pre_blowup_state(tmp_path, monkeypatch
     assert bool(results["pre_blowup_checkpoint_written"])
 
 
+def test_pre_step_restart_matches_uninterrupted_run(tmp_path, monkeypatch):
+    runner = importlib.import_module("twophase.simulation.runner")
+    checkpoint = importlib.import_module("twophase.simulation.checkpoint")
+
+    class FakeBackend:
+        xp = np
+        device = "cpu"
+
+        def to_host(self, arr):
+            return arr
+
+    class FakeGrid:
+        ndim = 2
+        shape = (2, 2)
+        N = (1, 1)
+        L = (1.0, 1.0)
+
+        def __init__(self):
+            self.coords = [
+                np.array([0.0, 1.0], dtype=float),
+                np.array([0.0, 1.0], dtype=float),
+            ]
+            self.h = [
+                np.array([1.0, 1.0], dtype=float),
+                np.array([1.0, 1.0], dtype=float),
+            ]
+
+        def _build_metrics(self, ccd=None):
+            self.metrics_rebuilt = True
+
+        def meshgrid(self):
+            return np.meshgrid(*self.coords, indexing="ij")
+
+    class FakeGridAware:
+        def update_grid(self, grid):
+            self.grid = grid
+
+        def invalidate_cache(self):
+            self.invalidated = True
+
+        def update_weights(self):
+            self.weights_updated = True
+
+    class FakeStepDiag:
+        last = {}
+
+    class FakeSolver:
+        _alpha_grid = 1.0
+        _rebuild_freq = 0
+        bc_type = "periodic"
+        h = 1.0
+
+        @classmethod
+        def from_config(cls, cfg):
+            return cls()
+
+        def __init__(self):
+            self._backend = FakeBackend()
+            self._grid = FakeGrid()
+            self._ccd = None
+            self._reinit = FakeGridAware()
+            self._ppe_solver = FakeGridAware()
+            self._fccd_div_op = FakeGridAware()
+            self._runtime_setup_ctx = None
+            self._runtime_timestep_ctx = None
+            self._step_diag = FakeStepDiag()
+            self._transport = None
+            self._p_prev_dev = None
+            self._p_base_prev_dev = None
+            self._p_prev_accel_face_components = None
+            self._conv_prev = None
+            self._velocity_prev = None
+            self._projected_face_components = None
+            self._conv_ab2_ready = False
+            self._velocity_bdf2_ready = False
+            self._wall_contacts = None
+            self.X, self.Y = self._grid.meshgrid()
+
+        def set_wall_contacts(self, contacts):
+            self._wall_contacts = contacts
+
+        def build_ic(self, cfg):
+            return np.array([[0.1, 0.2], [0.3, 0.4]], dtype=float)
+
+        def build_velocity(self, cfg, psi):
+            return (
+                np.array([[0.0, 0.1], [0.2, 0.3]], dtype=float),
+                np.array([[0.4, 0.5], [0.6, 0.7]], dtype=float),
+            )
+
+        def make_bc_hook(self, cfg):
+            return None
+
+        def step_request(self, request, return_host_pressure=False):
+            zeros = np.zeros_like(request.psi)
+            prev_u = self._velocity_prev[0] if self._velocity_prev else zeros
+            prev_v = self._velocity_prev[1] if self._velocity_prev else zeros
+            prev_c = self._conv_prev[0] if self._conv_prev else zeros
+            prev_p = self._p_prev_dev if self._p_prev_dev is not None else zeros
+
+            dt = float(request.dt)
+            psi_next = request.psi + dt * (
+                1.0 + request.u + 0.01 * prev_u + 0.001 * prev_p
+            )
+            u_next = request.u + dt * (
+                2.0 + request.v + 0.02 * prev_c + 0.002 * prev_p
+            )
+            v_next = request.v + dt * (
+                3.0 + request.psi + 0.03 * prev_v + 0.003 * prev_p
+            )
+            p_next = (
+                psi_next
+                + 2.0 * u_next
+                - 0.5 * v_next
+                + float(request.step_index)
+            )
+
+            self._p_prev_dev = p_next.copy()
+            self._p_base_prev_dev = (p_next + 10.0).copy()
+            self._p_prev_accel_face_components = [
+                (u_next + 20.0).copy(),
+                (v_next + 30.0).copy(),
+            ]
+            self._conv_prev = [(psi_next + 40.0).copy(), (u_next + 50.0).copy()]
+            self._velocity_prev = [u_next.copy(), v_next.copy()]
+            self._projected_face_components = [
+                (psi_next + 60.0).copy(),
+                (p_next + 70.0).copy(),
+            ]
+            self._conv_ab2_ready = True
+            self._velocity_bdf2_ready = True
+            return psi_next, u_next, v_next, p_next
+
+    class FakeDiagnostics:
+        def __init__(self, *args, **kwargs):
+            self.times = []
+            self.ke = []
+
+        def needs_retained_geometry(self):
+            return False
+
+        def collect(self, t, psi, u, v, p, dV=None):
+            self.times.append(float(t))
+            self.ke.append(float(np.sum(u * u + v * v)))
+
+        def last(self, key, default=0.0):
+            return self.ke[-1] if key == "kinetic_energy" and self.ke else default
+
+        def to_arrays(self):
+            return {
+                "times": np.asarray(self.times, dtype=float),
+                "kinetic_energy": np.asarray(self.ke, dtype=float),
+            }
+
+    monkeypatch.setattr(
+        "twophase.simulation.ns_pipeline.TwoPhaseNSSolver",
+        FakeSolver,
+    )
+    monkeypatch.setattr(
+        "twophase.tools.diagnostics.DiagnosticCollector",
+        FakeDiagnostics,
+    )
+
+    config = tmp_path / "cfg.yaml"
+    config.write_text(
+        "\n".join(
+            [
+                "run:",
+                "  T_final: 1.2",
+                "  dt_fixed: 0.6",
+                "output:",
+                "  dir: results/restart-equivalence",
+            ]
+        )
+    )
+
+    def make_cfg(t_final):
+        return SimpleNamespace(
+            physics=SimpleNamespace(
+                rho_l=1.0,
+                rho_g=1.0,
+                sigma=0.0,
+                mu=0.0,
+                g_acc=0.0,
+                rho_ref=None,
+                mu_l=None,
+                mu_g=None,
+            ),
+            run=SimpleNamespace(
+                T_final=t_final,
+                max_steps=None,
+                dt_fixed=0.6,
+                snap_interval=None,
+                snap_times=[],
+                print_every=100,
+                debug_diagnostics=False,
+                cfl=1.0,
+                cfl_advective=None,
+                cfl_capillary=None,
+                cfl_viscous=None,
+            ),
+            output=SimpleNamespace(figures=[]),
+            diagnostics=["kinetic_energy"],
+            initial_condition={},
+        )
+
+    continuous_dir = tmp_path / "continuous"
+    split_dir = tmp_path / "split"
+
+    continuous = runner.run_simulation(
+        make_cfg(1.2),
+        checkpoint_path=continuous_dir / "checkpoint_final.npz",
+        config_path=config,
+    )
+    runner.run_simulation(
+        make_cfg(1.0),
+        checkpoint_path=split_dir / "checkpoint_final.npz",
+        config_path=config,
+    )
+    continuation = split_dir / "checkpoint_continuation.npz"
+    manifest = checkpoint.load_manifest(continuation)
+    assert manifest["state_phase"] == "pre_step"
+    assert manifest["time"] == 0.6
+    assert manifest["step"] == 1
+    assert manifest["dt_candidate"] == 0.6
+    assert manifest["dt_effective"] == 0.4
+    assert manifest["terminal_clamped"] is True
+
+    restarted = runner.run_simulation(
+        make_cfg(1.2),
+        resume_from=continuation,
+        checkpoint_path=split_dir / "checkpoint_final.npz",
+        config_path=config,
+    )
+
+    with np.load(continuous_dir / "checkpoint_final.npz") as a, np.load(
+        split_dir / "checkpoint_final.npz"
+    ) as b:
+        for key in (
+            "state/psi",
+            "state/u",
+            "state/v",
+            "state/p",
+            "solver/p_prev_dev",
+            "solver/p_base_prev_dev",
+            "solver/conv_prev/0",
+            "solver/conv_prev/1",
+            "solver/velocity_prev/0",
+            "solver/velocity_prev/1",
+            "solver/projected_face_components/0",
+            "solver/projected_face_components/1",
+            "results/times",
+            "results/kinetic_energy",
+        ):
+            np.testing.assert_array_equal(a[key], b[key], err_msg=key)
+
+    assert continuous["times"].tolist() == [0.6, 1.2]
+    assert restarted["times"].tolist() == [0.6, 1.2]
+    np.testing.assert_array_equal(continuous["kinetic_energy"], restarted["kinetic_energy"])
+
+
 def test_snapshot_fields_are_saved_as_npz_series():
     runner = _load_ns_simulation_runner()
     flat = {}
