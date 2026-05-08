@@ -28,7 +28,13 @@ def run_simulation(
     config_path: str | Path | None = None,
 ) -> dict:
     """Run a complete simulation from an :class:`ExperimentConfig`."""
-    from .checkpoint import CheckpointError, load_checkpoint, save_checkpoint
+    from .checkpoint import (
+        CheckpointError,
+        capture_checkpoint_frame,
+        load_checkpoint,
+        save_checkpoint,
+        write_checkpoint_frame,
+    )
     from .ns_pipeline import TwoPhaseNSSolver
     from .ns_step_state import NSStepRequest
     from ..levelset.wall_contact import WallContactSet
@@ -39,12 +45,26 @@ def run_simulation(
 
     solver = TwoPhaseNSSolver.from_config(cfg)
     resume_state = None
+    resume_dt_candidate = None
     if resume_from is not None:
         resume_state = load_checkpoint(resume_from, solver=solver, config_path=config_path)
+        if resume_state.get("state_phase") != "pre_step":
+            raise CheckpointError(
+                "--resume-from requires a pre-step continuation checkpoint; "
+                "post-step checkpoints are analysis artifacts and may include "
+                "a terminally shortened timestep"
+            )
+        resume_dt_candidate = resume_state.get("dt_candidate")
         print(
             f"  [resume] loaded {resume_from} at "
-            f"step={resume_state['step']} t={resume_state['t']:.8g}"
+            f"step={resume_state['step']} t={resume_state['t']:.8g} "
+            f"phase={resume_state['state_phase']}"
         )
+    continuation_path = (
+        _continuation_checkpoint_path(checkpoint_path)
+        if checkpoint_path is not None
+        else None
+    )
     pre_blowup_path = (
         _pre_blowup_checkpoint_path(checkpoint_path)
         if checkpoint_path is not None
@@ -52,6 +72,8 @@ def run_simulation(
     )
     if resume_from is None and pre_blowup_path is not None and pre_blowup_path.exists():
         pre_blowup_path.unlink()
+    if resume_from is None and continuation_path is not None and continuation_path.exists():
+        continuation_path.unlink()
 
     psi = resume_state["psi"] if resume_state else solver.build_ic(cfg)
     psi_initial_host = np.asarray(solver._backend.to_host(psi))
@@ -115,13 +137,14 @@ def run_simulation(
     dbg_history: list = list(resume_state["debug_history"]) if resume_state else []
     pre_blowup_checkpoint_written = False
     pre_blowup_checkpoint_announced = False
+    last_pre_step_frame = None
     # Retain per-node control volumes from the current grid build for reuse.
     control_volumes = solver._grid.cell_volumes() if solver._alpha_grid > 1.0 else None
 
     while t < T and (max_steps is None or step < max_steps):
         dt_budget = None
         if cfg.run.dt_fixed is not None:
-            dt = min(cfg.run.dt_fixed, T - t)
+            dt_candidate = float(cfg.run.dt_fixed)
         else:
             dt_budget = solver.dt_budget(
                 u,
@@ -132,9 +155,44 @@ def run_simulation(
                 cfl_capillary=cfg.run.cfl_capillary,
                 cfl_viscous=cfg.run.cfl_viscous,
             )
-            dt = min(dt_budget.dt, T - t)
+            dt_candidate = float(dt_budget.dt)
+        if resume_dt_candidate is not None:
+            dt_candidate = float(resume_dt_candidate)
+            resume_dt_candidate = None
+        dt = min(dt_candidate, T - t)
         if dt < 1e-12:
             break
+        terminal_clamped = bool(dt < dt_candidate - max(1.0e-15, 1.0e-12 * dt_candidate))
+        pre_step_results = _merge_time_series(
+            previous_results,
+            {**diag.to_arrays()},
+        )
+        p_pre = _checkpoint_pressure(solver, p, psi)
+        last_pre_step_frame = capture_checkpoint_frame(
+            solver=solver,
+            psi=psi,
+            u=u,
+            v=v,
+            p=p_pre,
+            t=t,
+            step=step,
+            config_path=config_path,
+            results=pre_step_results,
+            snapshots=snaps,
+            debug_history=dbg_history,
+            state_phase="pre_step",
+            dt_candidate=dt_candidate,
+            dt_effective=dt,
+            terminal_clamped=terminal_clamped,
+        )
+        if (
+            checkpoint_every_steps is not None
+            and continuation_path is not None
+            and checkpoint_every_steps > 0
+            and step > 0
+            and step % checkpoint_every_steps == 0
+        ):
+            write_checkpoint_frame(continuation_path, last_pre_step_frame)
         will_snapshot = snap_idx < len(snap_times) and t + dt >= snap_times[snap_idx]
         solver._record_interface_projection_fields = bool(
             will_snapshot and _snapshot_needs_projection_fields(cfg)
@@ -239,33 +297,24 @@ def run_simulation(
 
         ke = diag.last("kinetic_energy", 0.0)
         if _is_blowup_kinetic_energy(ke):
+            if pre_blowup_path is not None and last_pre_step_frame is not None:
+                write_checkpoint_frame(pre_blowup_path, last_pre_step_frame)
+                pre_blowup_checkpoint_written = True
+                print(
+                    "  [pre-blowup] saved input frame "
+                    f"{pre_blowup_path.name} for the failed step"
+                )
             print(f"  BLOWUP at step={step}, t={t:.4f}")
             break
         if pre_blowup_path is not None and _should_refresh_pre_blowup_checkpoint(ke):
             if not pre_blowup_checkpoint_announced:
                 print(
-                    "  [pre-blowup] refreshing "
+                    "  [pre-blowup] refreshing input frame "
                     f"{pre_blowup_path.name} while KE is near the guard limit"
                 )
                 pre_blowup_checkpoint_announced = True
-            current_results = _merge_time_series(
-                previous_results,
-                {**diag.to_arrays()},
-            )
-            save_checkpoint(
-                pre_blowup_path,
-                solver=solver,
-                psi=psi,
-                u=u,
-                v=v,
-                p=p,
-                t=t,
-                step=step,
-                config_path=config_path,
-                results=current_results,
-                snapshots=snaps,
-                debug_history=dbg_history,
-            )
+            if last_pre_step_frame is not None:
+                write_checkpoint_frame(pre_blowup_path, last_pre_step_frame)
             pre_blowup_checkpoint_written = True
         if (
             checkpoint_every_steps is not None
@@ -290,6 +339,7 @@ def run_simulation(
                 results=current_results,
                 snapshots=snaps,
                 debug_history=dbg_history,
+                state_phase="post_step",
             )
 
     results = _merge_time_series(previous_results, {**diag.to_arrays()})
@@ -303,6 +353,8 @@ def run_simulation(
             key: np.array([entry[key] for entry in dbg_history]) for key in dbg_history[0]
         }
     if checkpoint_path is not None:
+        if continuation_path is not None and last_pre_step_frame is not None:
+            write_checkpoint_frame(continuation_path, last_pre_step_frame)
         p_save = p if p is not None else solver._backend.xp.zeros_like(psi)
         save_checkpoint(
             checkpoint_path,
@@ -317,6 +369,7 @@ def run_simulation(
             results={k: v for k, v in results.items() if isinstance(v, np.ndarray)},
             snapshots=snaps,
             debug_history=dbg_history,
+            state_phase="post_step",
         )
     return results
 
@@ -340,8 +393,20 @@ def _should_refresh_pre_blowup_checkpoint(ke: float) -> bool:
 
 
 def _pre_blowup_checkpoint_path(checkpoint_path: str | Path) -> Path:
-    """Return the sibling restart checkpoint used for pre-failure diagnosis."""
-    return Path(checkpoint_path).with_name("checkpoint_pre_blowup.npz")
+    """Return the sibling pre-step frame used for pre-failure diagnosis."""
+    return Path(checkpoint_path).with_name("checkpoint_pre_blowup_input.npz")
+
+
+def _continuation_checkpoint_path(checkpoint_path: str | Path) -> Path:
+    """Return the sibling pre-step frame for exact continuation restarts."""
+    return Path(checkpoint_path).with_name("checkpoint_continuation.npz")
+
+
+def _checkpoint_pressure(solver, p, psi):
+    """Return a pressure array suitable for checkpoint payloads."""
+    if p is not None:
+        return p
+    return solver._backend.xp.zeros_like(psi)
 
 
 def _snapshot_needs_projection_fields(cfg: "ExperimentConfig") -> bool:

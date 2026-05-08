@@ -195,6 +195,10 @@ def test_checkpoint_roundtrip_restores_solver_runtime_state(tmp_path):
             }
         ],
         debug_history=[{"kappa_max": 1.0}],
+        state_phase="pre_step",
+        dt_candidate=0.01,
+        dt_effective=0.004,
+        terminal_clamped=True,
     )
 
     restored_solver = _solver()
@@ -202,6 +206,11 @@ def test_checkpoint_roundtrip_restores_solver_runtime_state(tmp_path):
 
     assert state["t"] == 0.125
     assert state["step"] == 5
+    assert state["state_phase"] == "pre_step"
+    assert state["dt_candidate"] == 0.01
+    assert state["dt_effective"] == 0.004
+    assert state["terminal_clamped"] is True
+    assert isinstance(state["grid_hash"], str)
     assert np.all(state["u"] == 2.0)
     assert np.all(restored_solver._p_prev_dev == 7.0)
     assert restored_solver._conv_ab2_ready is True

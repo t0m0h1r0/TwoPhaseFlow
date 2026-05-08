@@ -22,8 +22,10 @@ from typing import Any
 
 import numpy as np
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
+SUPPORTED_SCHEMA_VERSIONS = (1, 2)
 MAGIC = "twophase.ch14.restart"
+CHECKPOINT_STATE_PHASES = ("pre_step", "post_step")
 RESTART_ALLOWED_CONFIG_PATHS = (
     ("run", "T_final"),
     ("run", "time", "final"),
@@ -79,6 +81,10 @@ def save_checkpoint(
     results: dict[str, Any] | None = None,
     snapshots: list[dict[str, Any]] | None = None,
     debug_history: list[dict[str, Any]] | None = None,
+    state_phase: str = "post_step",
+    dt_candidate: float | None = None,
+    dt_effective: float | None = None,
+    terminal_clamped: bool = False,
 ) -> None:
     """Persist the full restart state with an atomic replace.
 
@@ -86,7 +92,56 @@ def save_checkpoint(
     CUDA-backed runs write ordinary NumPy arrays without leaking device objects
     into the on-disk format.
     """
-    path = pathlib.Path(path)
+    frame = capture_checkpoint_frame(
+        solver=solver,
+        psi=psi,
+        u=u,
+        v=v,
+        p=p,
+        t=t,
+        step=step,
+        config_path=config_path,
+        results=results,
+        snapshots=snapshots,
+        debug_history=debug_history,
+        state_phase=state_phase,
+        dt_candidate=dt_candidate,
+        dt_effective=dt_effective,
+        terminal_clamped=terminal_clamped,
+    )
+    write_checkpoint_frame(path, frame)
+
+
+def capture_checkpoint_frame(
+    *,
+    solver,
+    psi,
+    u,
+    v,
+    p,
+    t: float,
+    step: int,
+    config_path: str | pathlib.Path,
+    results: dict[str, Any] | None = None,
+    snapshots: list[dict[str, Any]] | None = None,
+    debug_history: list[dict[str, Any]] | None = None,
+    state_phase: str = "post_step",
+    dt_candidate: float | None = None,
+    dt_effective: float | None = None,
+    terminal_clamped: bool = False,
+) -> dict[str, Any]:
+    """Capture a restart frame without writing it to disk.
+
+    ``state_phase='pre_step'`` denotes the input state for the next discrete
+    map ``q^{n+1}=Phi(q^n; dt_n)``.  Keeping this separate from post-step
+    artifacts avoids continuing from a terminally shortened final step.
+    """
+    state_phase = str(state_phase).strip().lower()
+    if state_phase not in CHECKPOINT_STATE_PHASES:
+        raise CheckpointError(
+            f"checkpoint state_phase must be one of {CHECKPOINT_STATE_PHASES}, "
+            f"got {state_phase!r}"
+        )
     config_path = pathlib.Path(config_path).resolve()
     arrays: dict[str, np.ndarray] = {}
     _put(arrays, "state/psi", psi, solver)
@@ -101,8 +156,22 @@ def save_checkpoint(
         config_path=config_path,
         t=t,
         step=step,
+        state_phase=state_phase,
+        dt_candidate=dt_candidate,
+        dt_effective=dt_effective,
+        terminal_clamped=terminal_clamped,
     )
-    arrays["__manifest_json__"] = _encode_manifest(manifest)
+    return {"arrays": arrays, "manifest": manifest}
+
+
+def write_checkpoint_frame(path: str | pathlib.Path, frame: dict[str, Any]) -> None:
+    """Write a frame captured by :func:`capture_checkpoint_frame` atomically."""
+    path = pathlib.Path(path)
+    arrays = {
+        key: np.asarray(value)
+        for key, value in dict(frame["arrays"]).items()
+    }
+    arrays["__manifest_json__"] = _encode_manifest(frame["manifest"])
     _atomic_savez(path, arrays)
 
 
@@ -123,6 +192,11 @@ def load_checkpoint(
     return {
         "t": float(manifest["time"]),
         "step": int(manifest["step"]),
+        "state_phase": manifest.get("state_phase", "post_step"),
+        "dt_candidate": _optional_manifest_float(manifest, "dt_candidate"),
+        "dt_effective": _optional_manifest_float(manifest, "dt_effective"),
+        "terminal_clamped": bool(manifest.get("terminal_clamped", False)),
+        "grid_hash": manifest.get("grid_hash"),
         "psi": solver._backend.xp.asarray(arrays["state/psi"]),
         "u": solver._backend.xp.asarray(arrays["state/u"]),
         "v": solver._backend.xp.asarray(arrays["state/v"]),
@@ -140,6 +214,10 @@ def _build_manifest(
     config_path: pathlib.Path,
     t: float,
     step: int,
+    state_phase: str,
+    dt_candidate: float | None,
+    dt_effective: float | None,
+    terminal_clamped: bool,
 ) -> dict[str, Any]:
     payload_hash = hashlib.sha256()
     for key in sorted(arrays):
@@ -152,13 +230,37 @@ def _build_manifest(
         "schema_version": SCHEMA_VERSION,
         "time": float(t),
         "step": int(step),
+        "state_phase": state_phase,
+        "dt_candidate": None if dt_candidate is None else float(dt_candidate),
+        "dt_effective": None if dt_effective is None else float(dt_effective),
+        "terminal_clamped": bool(terminal_clamped),
         "backend_device": getattr(solver._backend, "device", "unknown"),
         "grid_shape": list(getattr(solver._grid, "shape", ())),
+        "grid_hash": _grid_payload_hash(arrays),
         "config_path": str(config_path),
         "config_hash_excluding_restart_allowed_paths": config_fingerprint(config_path),
         "code_fingerprint": code_fingerprint(_repo_root(config_path)),
         "payload_hash": payload_hash.hexdigest(),
     }
+
+
+def _optional_manifest_float(manifest: dict[str, Any], key: str) -> float | None:
+    value = manifest.get(key)
+    return None if value is None else float(value)
+
+
+def _grid_payload_hash(arrays: dict[str, np.ndarray]) -> str:
+    """Hash the metric-bearing grid arrays that define a discrete complex."""
+    digest = hashlib.sha256()
+    for key in sorted(arrays):
+        if not (key.startswith("grid/coords/") or key.startswith("grid/h/")):
+            continue
+        value = np.asarray(arrays[key])
+        digest.update(key.encode("utf-8"))
+        digest.update(str(value.shape).encode("ascii"))
+        digest.update(str(value.dtype).encode("ascii"))
+        digest.update(np.ascontiguousarray(value).tobytes())
+    return digest.hexdigest()
 
 
 def _validate_manifest(
@@ -170,10 +272,13 @@ def _validate_manifest(
 ) -> None:
     if manifest.get("magic") != MAGIC:
         raise CheckpointError("checkpoint magic does not match ch14 restart format")
-    if manifest.get("schema_version") != SCHEMA_VERSION:
+    if manifest.get("schema_version") not in SUPPORTED_SCHEMA_VERSIONS:
         raise CheckpointError(
             f"unsupported checkpoint schema {manifest.get('schema_version')}"
         )
+    state_phase = manifest.get("state_phase", "post_step")
+    if state_phase not in CHECKPOINT_STATE_PHASES:
+        raise CheckpointError(f"unsupported checkpoint state_phase {state_phase!r}")
     expected_config = config_fingerprint(config_path)
     stored_config = manifest.get(
         "config_hash_excluding_restart_allowed_paths",
@@ -194,6 +299,8 @@ def _validate_manifest(
             raise CheckpointError(f"checkpoint missing required array {key}")
         if tuple(arrays[key].shape) != tuple(getattr(solver._grid, "shape", ())):
             raise CheckpointError(f"checkpoint array {key} shape mismatch")
+    if "grid_hash" in manifest and manifest["grid_hash"] != _grid_payload_hash(arrays):
+        raise CheckpointError("checkpoint grid hash mismatch")
     payload_hash = hashlib.sha256()
     for key in sorted(arrays):
         payload_hash.update(key.encode("utf-8"))
@@ -238,9 +345,9 @@ def code_fingerprint(repo_root: str | pathlib.Path) -> str:
 
 def _capture_solver_state(arrays: dict[str, np.ndarray], solver) -> None:
     for axis, coord in enumerate(solver._grid.coords):
-        arrays[f"grid/coords/{axis}"] = np.asarray(coord)
+        arrays[f"grid/coords/{axis}"] = np.array(coord, copy=True)
     for axis, widths in enumerate(solver._grid.h):
-        arrays[f"grid/h/{axis}"] = np.asarray(widths)
+        arrays[f"grid/h/{axis}"] = np.array(widths, copy=True)
     _put_optional(arrays, "solver/p_prev_dev", getattr(solver, "_p_prev_dev", None), solver)
     _put_optional(
         arrays, "solver/p_base_prev_dev", getattr(solver, "_p_base_prev_dev", None), solver
@@ -269,6 +376,7 @@ def _capture_solver_state(arrays: dict[str, np.ndarray], solver) -> None:
         dtype=bool,
     )
     _capture_wall_contacts(arrays, solver)
+    _capture_transport_state(arrays, solver)
 
 
 def _restore_solver_state(solver, arrays: dict[str, np.ndarray]) -> None:
@@ -308,6 +416,7 @@ def _restore_solver_state(solver, arrays: dict[str, np.ndarray]) -> None:
     solver._velocity_bdf2_ready = bool(flags[1])
     contacts = _restore_wall_contacts(arrays)
     solver.set_wall_contacts(contacts)
+    _restore_transport_state(solver, arrays)
 
 
 def _capture_results(
@@ -430,7 +539,7 @@ def _restore_debug_history(arrays: dict[str, np.ndarray]) -> list[dict[str, Any]
 
 
 def _put(arrays: dict[str, np.ndarray], key: str, value, solver) -> None:
-    arrays[key] = np.asarray(solver._backend.to_host(value))
+    arrays[key] = np.array(solver._backend.to_host(value), copy=True)
 
 
 def _put_optional(arrays: dict[str, np.ndarray], key: str, value, solver) -> None:
@@ -500,6 +609,29 @@ def _capture_wall_contacts(arrays: dict[str, np.ndarray], solver) -> None:
             trace.values,
             dtype=np.float64,
         )
+
+
+def _capture_transport_state(arrays: dict[str, np.ndarray], solver) -> None:
+    """Store transport/reinitialization scalars that affect future triggers."""
+    transport = getattr(solver, "_transport", None)
+    if transport is None:
+        return
+    monitor = getattr(transport, "_reinit_reference_monitor", None)
+    if monitor is not None:
+        arrays["solver/transport/reinit_reference_monitor"] = np.asarray(
+            float(monitor),
+            dtype=np.float64,
+        )
+
+
+def _restore_transport_state(solver, arrays: dict[str, np.ndarray]) -> None:
+    """Restore optional transport state saved by ``_capture_transport_state``."""
+    transport = getattr(solver, "_transport", None)
+    if transport is None:
+        return
+    key = "solver/transport/reinit_reference_monitor"
+    if key in arrays and hasattr(transport, "_reinit_reference_monitor"):
+        transport._reinit_reference_monitor = float(arrays[key])
 
 
 def _restore_wall_contacts(arrays: dict[str, np.ndarray]):

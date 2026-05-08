@@ -49,7 +49,7 @@ def test_pre_blowup_checkpoint_guard_preserves_only_subcritical_states(tmp_path)
     assert runner._should_refresh_pre_blowup_checkpoint(0.5 * limit)
 
     path = runner._pre_blowup_checkpoint_path(tmp_path / "checkpoint_final.npz")
-    assert path == tmp_path / "checkpoint_pre_blowup.npz"
+    assert path == tmp_path / "checkpoint_pre_blowup_input.npz"
 
 
 def test_run_simulation_saves_restartable_pre_blowup_state(tmp_path, monkeypatch):
@@ -110,6 +110,8 @@ def test_run_simulation_saves_restartable_pre_blowup_state(tmp_path, monkeypatch
         return {
             "t": 0.0,
             "step": 0,
+            "state_phase": "pre_step",
+            "dt_candidate": 1.0,
             "psi": np.zeros((2, 2)),
             "u": np.zeros((2, 2)),
             "v": np.zeros((2, 2)),
@@ -119,8 +121,29 @@ def test_run_simulation_saves_restartable_pre_blowup_state(tmp_path, monkeypatch
             "debug_history": [],
         }
 
+    def fake_capture_checkpoint_frame(**kwargs):
+        return {
+            "path": None,
+            "step": kwargs["step"],
+            "t": kwargs["t"],
+            "state_phase": kwargs["state_phase"],
+        }
+
+    def fake_write_checkpoint_frame(path, frame):
+        saves.append({
+            "path": Path(path),
+            "step": frame["step"],
+            "t": frame["t"],
+            "state_phase": frame["state_phase"],
+        })
+
     def fake_save_checkpoint(path, **kwargs):
-        saves.append({"path": Path(path), "step": kwargs["step"], "t": kwargs["t"]})
+        saves.append({
+            "path": Path(path),
+            "step": kwargs["step"],
+            "t": kwargs["t"],
+            "state_phase": kwargs.get("state_phase"),
+        })
 
     monkeypatch.setattr(
         "twophase.simulation.ns_pipeline.TwoPhaseNSSolver",
@@ -133,6 +156,14 @@ def test_run_simulation_saves_restartable_pre_blowup_state(tmp_path, monkeypatch
     monkeypatch.setattr(
         "twophase.simulation.checkpoint.save_checkpoint",
         fake_save_checkpoint,
+    )
+    monkeypatch.setattr(
+        "twophase.simulation.checkpoint.capture_checkpoint_frame",
+        fake_capture_checkpoint_frame,
+    )
+    monkeypatch.setattr(
+        "twophase.simulation.checkpoint.write_checkpoint_frame",
+        fake_write_checkpoint_frame,
     )
     monkeypatch.setattr(
         "twophase.tools.diagnostics.DiagnosticCollector",
@@ -172,11 +203,13 @@ def test_run_simulation_saves_restartable_pre_blowup_state(tmp_path, monkeypatch
     )
 
     assert saves[0] == {
-        "path": tmp_path / "checkpoint_pre_blowup.npz",
-        "step": 1,
-        "t": 1.0,
+        "path": tmp_path / "checkpoint_pre_blowup_input.npz",
+        "step": 0,
+        "t": 0.0,
+        "state_phase": "pre_step",
     }
     assert saves[-1]["path"] == tmp_path / "checkpoint_final.npz"
+    assert saves[-1]["state_phase"] == "post_step"
     assert bool(results["pre_blowup_checkpoint_written"])
 
 
