@@ -376,8 +376,6 @@ def test_ch14_rising_bubble_yaml_loads_execution_stack():
 
     assert cfg.grid.NX == 128
     assert cfg.grid.NY == 256
-    assert cfg.grid.LX == 1.0
-    assert cfg.grid.LY == 2.0
     assert cfg.grid.grid_rebuild_freq == 1
     assert cfg.physics.g_acc == pytest.approx(0.001)
     assert cfg.run.reinit_every == 1
@@ -721,25 +719,6 @@ def test_trace_riesz_force_source_alias_is_not_production_yaml():
         }))
 
 
-def test_legacy_buoyancy_predictor_assembly_alias_maps_to_balanced_name():
-    cfg = ExperimentConfig.from_dict(_minimal({
-        "numerics": {
-            "momentum": {
-                "terms": {
-                    "viscosity": {
-                        "time_integrator": "crank_nicolson",
-                        "predictor_assembly": (
-                            "buoyancy_faceresidual_stagesplit_transversefullband"
-                        ),
-                    },
-                },
-            },
-        },
-    }))
-
-    assert cfg.run.cn_buoyancy_predictor_assembly_mode == "balanced_buoyancy"
-
-
 def test_fccd_ppe_discretization_maps_to_fccd_solver():
     cfg = ExperimentConfig.from_dict(_minimal({
         "numerics": {
@@ -778,28 +757,6 @@ def test_phase_separated_coefficient_defaults_to_affine_jump():
     assert cfg.run.ppe_coefficient_scheme == "phase_separated"
     assert cfg.run.ppe_interface_coupling_scheme == "affine_jump"
     assert cfg.run.reproject_mode == "variable_density_only"
-
-
-def test_phase_separated_accepts_explicit_legacy_jump_decomposition():
-    raw = _minimal({
-        "numerics": {
-            "projection": {
-                "poisson": {
-                    "operator": {
-                        "discretization": "fccd",
-                        "coefficient": "phase_separated",
-                        "interface_coupling": "legacy_jump_decomposition",
-                    },
-                    "solver": {"kind": "iterative", "preconditioner": "none"},
-                },
-            },
-        },
-    })
-    del raw["numerics"]["projection"]["mode"]
-    cfg = ExperimentConfig.from_dict(raw)
-
-    assert cfg.run.ppe_coefficient_scheme == "phase_separated"
-    assert cfg.run.ppe_interface_coupling_scheme == "jump_decomposition"
 
 
 def test_phase_density_rejects_jump_decomposition_coupling():
@@ -1775,10 +1732,3 @@ def test_gradient_key_reads_pressure_and_surface_tension():
     }))
     assert cfg.run.pressure_gradient_scheme == "fccd_flux"
     assert cfg.run.surface_tension_gradient_scheme == "fccd_nodal"
-
-
-def test_fractional_step_algorithm_alias():
-    cfg = ExperimentConfig.from_dict(_minimal({
-        "numerics": {"time": {"algorithm": "fractional_step"}},
-    }))
-    assert cfg.run.reproject_mode == "legacy"

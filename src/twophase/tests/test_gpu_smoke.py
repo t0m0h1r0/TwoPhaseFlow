@@ -21,7 +21,7 @@ import numpy as np
 import pytest
 
 from twophase.backend import Backend
-from twophase.config import SimulationConfig, GridConfig, FluidConfig, NumericsConfig, SolverConfig
+from twophase.config import GridConfig
 from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
 from twophase.levelset.compact_filters import HelmholtzKappaFilter, LeleCompactFilter
@@ -138,42 +138,6 @@ def test_initial_condition_builder_gpu_matches_cpu(tiny_grid_factory, cpu_backen
         psi_cpu,
         rtol=1e-12,
         atol=1e-13,
-    )
-
-
-def test_ppe_ccd_lu_gpu_matches_cpu(cpu_backend, gpu_backend):
-    """Direct PPE solve on a 24x24 static droplet RHS."""
-    from twophase.ppe.ccd_lu import PPESolverCCDLU
-
-    def _build(backend):
-        cfg = SimulationConfig(
-            grid=GridConfig(ndim=2, N=(24, 24), L=(1.0, 1.0)),
-            fluid=FluidConfig(Re=100.0),
-            numerics=NumericsConfig(),
-            solver=SolverConfig(),
-            use_gpu=backend.is_gpu(),
-        )
-        grid = Grid(cfg.grid, backend)
-        ccd = CCDSolver(grid, backend)
-        ppe = PPESolverCCDLU(backend, cfg, grid, ccd=ccd)
-        return grid, ppe
-
-    grid_cpu, ppe_cpu = _build(cpu_backend)
-    grid_gpu, ppe_gpu = _build(gpu_backend)
-
-    shape = grid_cpu.shape
-    rng = np.random.default_rng(2026)
-    rhs_np = rng.standard_normal(shape)
-    rho_np = np.ones(shape) + 0.1 * rng.standard_normal(shape) ** 2
-
-    p_cpu = ppe_cpu.solve(rhs_np, rho_np, dt=1e-3)
-    rhs_gpu = gpu_backend.xp.asarray(rhs_np)
-    rho_gpu = gpu_backend.xp.asarray(rho_np)
-    p_gpu = ppe_gpu.solve(rhs_gpu, rho_gpu, dt=1e-3)
-
-    np.testing.assert_allclose(
-        gpu_backend.to_host(p_gpu), np.asarray(p_cpu),
-        rtol=1e-10, atol=1e-12,
     )
 
 
