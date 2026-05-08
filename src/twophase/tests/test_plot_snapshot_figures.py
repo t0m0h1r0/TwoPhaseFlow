@@ -13,6 +13,7 @@ from twophase.tools.plot_snapshot_figures import (
 )
 from twophase.tools.plot_factory import generate_figures
 from twophase.tools.pressure_representatives import (
+    phase_hodge_pressure_representative_diagnostics,
     phase_hodge_pressure_representative,
 )
 from twophase.simulation.visualization import plot_velocity
@@ -110,6 +111,29 @@ def test_phase_hodge_pressure_representative_recovers_same_phase_gradient():
     np.testing.assert_allclose(represented, pressure, atol=1.0e-12)
 
 
+def test_phase_hodge_pressure_diagnostics_reports_nonintegrable_face_cochain():
+    coords = [np.array([0.0, 1.0]), np.array([0.0, 1.0])]
+    pressure = np.zeros((2, 2))
+    psi = np.ones_like(pressure)
+    rho = np.ones_like(pressure)
+    face_accel = [
+        np.array([[1.0, 0.0]]),
+        np.array([[0.0], [0.0]]),
+    ]
+
+    diagnostics = phase_hodge_pressure_representative_diagnostics(
+        psi=psi,
+        rho=rho,
+        pressure=pressure,
+        pressure_accel_faces=face_accel,
+        coords=coords,
+    )
+
+    assert diagnostics.used_face_count == 4
+    assert diagnostics.face_relative_residual > 0.0
+    assert diagnostics.face_residual_linf > 0.0
+
+
 def test_pressure_hodge_snapshot_uses_face_cochain_representative():
     cfg = SimpleNamespace(
         grid=SimpleNamespace(LX=1.0, LY=1.0, NX=1, NY=1),
@@ -130,6 +154,27 @@ def test_pressure_hodge_snapshot_uses_face_cochain_representative():
 
     assert fig.axes[0].get_title() == "Hodge pressure at t = 0.000"
     plt.close(fig)
+
+
+def test_pressure_hodge_snapshot_fails_on_nonintegrable_face_cochain():
+    cfg = SimpleNamespace(
+        grid=SimpleNamespace(LX=1.0, LY=1.0, NX=1, NY=1),
+        physics=SimpleNamespace(rho_l=1.0, rho_g=1.0),
+    )
+    snap = {
+        "t": 0.0,
+        "psi": np.ones((2, 2)),
+        "p": np.zeros((2, 2)),
+        "rho": np.ones((2, 2)),
+        "pressure_accel_faces": [
+            np.array([[1.0, 0.0]]),
+            np.array([[0.0], [0.0]]),
+        ],
+        "grid_coords": [np.array([0.0, 1.0]), np.array([0.0, 1.0])],
+    }
+
+    with pytest.raises(ValueError, match="cannot represent"):
+        pressure_hodge_snapshot({"t_idx": 0}, {"snapshots": [snap]}, cfg)
 
 
 def test_pressure_hodge_snapshot_requires_face_cochain():

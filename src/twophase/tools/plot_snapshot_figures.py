@@ -31,7 +31,9 @@ from ..simulation.visualization.plot_fields import (
     draw_clean_velocity_arrows,
     positive_range,
 )
-from .pressure_representatives import phase_hodge_pressure_representative
+from .pressure_representatives import phase_hodge_pressure_representative_diagnostics
+
+DEFAULT_PRESSURE_HODGE_MAX_RELATIVE_RESIDUAL = 1.0e-2
 
 if TYPE_CHECKING:
     from ..simulation.config_models import ExperimentConfig
@@ -145,7 +147,7 @@ def pressure_hodge_field(
             np.linspace(0.0, grid.LX, grid.NX + 1),
             np.linspace(0.0, grid.LY, grid.NY + 1),
         ]
-    hodge_native = phase_hodge_pressure_representative(
+    diagnostics = phase_hodge_pressure_representative_diagnostics(
         psi=original_psi,
         rho=original_rho,
         pressure=original_pressure,
@@ -156,7 +158,27 @@ def pressure_hodge_field(
         coords=[np.asarray(coord) for coord in coords],
         phase_threshold=float(spec.get("phase_threshold", 0.5)),
     )
-    return remap_snapshot_field(context, hodge_native)
+    max_relative_residual = spec.get(
+        "max_relative_residual",
+        DEFAULT_PRESSURE_HODGE_MAX_RELATIVE_RESIDUAL,
+    )
+    if (
+        max_relative_residual is not None
+        and diagnostics.face_relative_residual > float(max_relative_residual)
+    ):
+        raise ValueError(
+            "pressure_hodge cannot represent the saved affine face cochain as "
+            "a scalar pressure field: "
+            f"relative same-phase gradient residual "
+            f"{diagnostics.face_relative_residual:.6e} exceeds "
+            f"{float(max_relative_residual):.6e} "
+            f"(Linf residual {diagnostics.face_residual_linf:.6e}, "
+            f"faces {diagnostics.used_face_count}). "
+            "Use the stored scalar pressure field only as a gauge quantity, or "
+            "plot a face-cochain residual diagnostic instead of labeling this "
+            "Hodge projection as physical pressure."
+        )
+    return remap_snapshot_field(context, diagnostics.pressure)
 
 
 def velocity_color_center(context: SnapshotPlotContext, spec: dict) -> tuple[float, float]:
