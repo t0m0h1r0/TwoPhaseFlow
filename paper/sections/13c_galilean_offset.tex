@@ -11,6 +11,9 @@
 静止 run の摂動場とどの residual scale で一致するかを診断する．
 固定 no-slip 壁では Galilean 変換後の moving-wall 問題とは同一でないため，
 ゼロ残差ではなく $O(\|\bU\|)$ 残差を合格基準とする縮約テストである．
+固定 Eulerian 評価と moving/ALE 評価の差は，保存形移流・固定格子誤差の標準例
+~\cite{LeVeque1996} および ALE/flow-problem 定式化~\cite{DoneaHuerta2003}
+の観点から読む．
 
 \paragraph{設定．}
 $L=1$, 半径 $r=0.25$ の二相静止液滴，$\rho_l=10, \rho_g=1$,

@@ -16,13 +16,19 @@
 $\omega$--緩和 guard と，
 (ii) Hermite Field Extension（HFE；§\ref{sec:hfe}）による界面越し場延長の
 \textbf{単体精度}を確認する．
+この経路は，投影法・変密度圧力補正文献
+~\cite{Guermond2006,GuermondQuartapelle1998,PyoShen2007}，
+界面ジャンプ/GFM 文献~\cite{Fedkiw1999,Kang2000,LeVequeLi1994}，
+および Aslam の Extension PDE~\cite{Aslam2004} を組み合わせた
+本稿固有の primitive 分解である．
 
 \paragraph{設定．}
 \begin{description}\setlength{\itemsep}{0pt}
   \item[U6-a] DC $\omega$--緩和 guard．$N=64$ 円界面 $R=0.25$，
         $\rho_l \in \{1, 100, 1000\}$，relaxation $\omega \in \{0.2,0.3,0.5,0.7,0.9\}$，
         $k_{\mathrm{DC}} \in \{2,3\}$．低密度比では clean であること，高密度比では一括 PPE を
-        保証対象 primitive と見なせないことを route guard として記録する．
+        保証対象 primitive と見なせないことを route guard として記録する
+        （DC の基本発想は~\cite{Stetter1978,Kelley2003}）．
   \item[U6-b] HFE 単独：1D MMS（外挿ステンシル単体精度），
         2D MMS（$\rho^{-1}\bnabla p$ の界面跨ぎ精度の \textbf{max} と \textbf{med}）．
 \end{description}
