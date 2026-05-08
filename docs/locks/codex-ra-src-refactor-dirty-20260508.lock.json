@@ -1,0 +1,12 @@
+{
+  "branch": "codex/ra-src-refactor-dirty-20260508",
+  "branch_slug": "codex-ra-src-refactor-dirty-20260508",
+  "session_id": "0E365387-3FC7-4BAC-9146-D346C92DCE54",
+  "worktree_path": ".claude/worktrees/codex-ra-src-refactor-dirty-20260508",
+  "holder_agent": "ResearchArchitect",
+  "id_prefix": "RA-SRC-REFACTOR",
+  "acquired_at": "2026-05-08T10:36:32Z",
+  "expires_at": "2026-05-09T10:36:32Z",
+  "meta_version": "7.1.0",
+  "scope": "targeted src/twophase dirty-code refactor"
+}

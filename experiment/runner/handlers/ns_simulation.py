@@ -27,6 +27,14 @@ import sys
 import matplotlib.pyplot as plt
 import numpy as np
 
+from twophase.simulation.snapshot_payload import (
+    SNAPSHOT_FIELDS,
+    numbered_component_series,
+    snapshot_grid_coord,
+    stack_snapshot_components,
+    stack_snapshot_fields,
+)
+
 from ..registry import ExperimentHandler, register_handler
 
 
@@ -38,20 +46,7 @@ def _add_snapshot_series(flat: dict, snaps) -> None:
         return
 
     flat["fields/times"] = np.asarray([snap["t"] for snap in snaps], dtype=float)
-    for field in (
-        "psi",
-        "u",
-        "v",
-        "p",
-        "rho",
-        "psi_before_transport",
-        "psi_after_transport_before_reinit",
-        "psi_after_reinit",
-    ):
-        if all(field in snap for snap in snaps):
-            flat[f"fields/{field}"] = np.stack(
-                [np.asarray(snap[field]) for snap in snaps], axis=0,
-            )
+    stack_snapshot_fields(flat, "fields", snaps, SNAPSHOT_FIELDS)
     if "p" in snaps[0]:
         flat["fields/pressure"] = flat["fields/p"]
     if "u" in snaps[0] and "v" in snaps[0]:
@@ -62,21 +57,8 @@ def _add_snapshot_series(flat: dict, snaps) -> None:
             ],
             axis=0,
         )
-    if "pressure_accel_faces" in snaps[0]:
-        for axis, _ in enumerate(snaps[0]["pressure_accel_faces"]):
-            flat[f"fields/pressure_accel_faces/{axis}"] = np.stack(
-                [
-                    np.asarray(snap["pressure_accel_faces"][axis])
-                    for snap in snaps
-                ],
-                axis=0,
-            )
-    if all("grid_coords" in snap for snap in snaps):
-        for axis, _coord in enumerate(snaps[0]["grid_coords"]):
-            flat[f"fields/grid_coords/{axis}"] = np.stack(
-                [np.asarray(snap["grid_coords"][axis]) for snap in snaps],
-                axis=0,
-            )
+    stack_snapshot_components(flat, "fields", snaps, "pressure_accel_faces")
+    stack_snapshot_components(flat, "fields", snaps, "grid_coords")
 
 
 def _snapshots_from_field_series(results: dict) -> list[dict]:
@@ -96,11 +78,11 @@ def _snapshots_from_field_series(results: dict) -> list[dict]:
         ),
         "psi_after_reinit": "fields/psi_after_reinit",
     }
-    grid_coords = []
-    axis = 0
-    while f"fields/grid_coords/{axis}" in results:
-        grid_coords.append(np.asarray(results[f"fields/grid_coords/{axis}"]))
-        axis += 1
+    grid_coords = numbered_component_series(results, "fields/grid_coords")
+    pressure_accel_faces = numbered_component_series(
+        results,
+        "fields/pressure_accel_faces",
+    )
 
     snaps = []
     for index, time in enumerate(np.asarray(results["fields/times"])):
@@ -108,30 +90,17 @@ def _snapshots_from_field_series(results: dict) -> list[dict]:
         for field, key in fields.items():
             if key in results:
                 snap[field] = np.asarray(results[key][index])
-        pressure_accel_faces = []
-        axis = 0
-        while f"fields/pressure_accel_faces/{axis}" in results:
-            pressure_accel_faces.append(
-                np.asarray(results[f"fields/pressure_accel_faces/{axis}"][index])
-            )
-            axis += 1
         if pressure_accel_faces:
-            snap["pressure_accel_faces"] = pressure_accel_faces
+            snap["pressure_accel_faces"] = [
+                np.asarray(component[index]) for component in pressure_accel_faces
+            ]
         if grid_coords:
             snap["grid_coords"] = [
-                _grid_coords_for_snapshot(coord, index, len(results["fields/times"]))
+                snapshot_grid_coord(coord, index, len(results["fields/times"]))
                 for coord in grid_coords
             ]
         snaps.append(snap)
     return snaps
-
-
-def _grid_coords_for_snapshot(coord_series, index: int, count: int) -> np.ndarray:
-    """Return per-snapshot grid coordinates with legacy single-grid fallback."""
-    coord_series = np.asarray(coord_series)
-    if coord_series.ndim >= 2 and coord_series.shape[0] == count:
-        return np.asarray(coord_series[index]).copy()
-    return coord_series.copy()
 
 
 def _run_single(cfg, label: str, outdir: pathlib.Path) -> dict:
