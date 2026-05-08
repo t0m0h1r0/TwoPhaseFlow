@@ -1,0 +1,12 @@
+{
+  "branch": "codex/ra-src-tests-prune-20260508",
+  "branch_slug": "codex-ra-src-tests-prune-20260508",
+  "session_id": "935FCA3A-C30B-476F-8439-D91C0EC6FA47",
+  "worktree_path": ".claude/worktrees/codex-ra-src-tests-prune-20260508",
+  "holder_agent": "ResearchArchitect",
+  "id_prefix": "RA-SRC-TESTS-PRUNE",
+  "acquired_at": "2026-05-08T11:59:30Z",
+  "expires_at": "2026-05-09T11:59:30Z",
+  "meta_version": "8.0.0-candidate",
+  "scope": "src/twophase/tests necessity audit and pruning"
+}
