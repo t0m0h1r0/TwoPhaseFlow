@@ -886,8 +886,8 @@ def test_ch14_rising_bubble_yaml_builds_solver():
 
     assert solver._grid.N[0] == 128
     assert solver._grid.N[1] == 256
-    assert solver.LX == pytest.approx(1.0)
-    assert solver.LY == pytest.approx(2.0)
+    assert solver.LX == pytest.approx(0.01)
+    assert solver.LY == pytest.approx(0.02)
     assert isinstance(solver._transport, PsiDirectTransport)
     assert solver._interface_runtime.rebuild_freq == 1
     assert solver._interface_runtime.reinit_every == 1

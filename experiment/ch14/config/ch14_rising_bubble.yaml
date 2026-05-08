@@ -1,4 +1,6 @@
-# N=128x256 water-air rising-bubble probe derived from the capillary alpha=2 stack.
+# Water-air rising-bubble probe in a 10 mm x 20 mm tank, derived from the
+# capillary alpha=2 stack.  The checked-in grid remains the chapter-scale
+# reference grid; lower-resolution probes should override only `grid.cells`.
 # Production numerical stack: FCCD variational pressure + closed-interface
 # Riesz capillary reaction + direct-ψ filtered curvature + UCCD6.
 # - FCCD: conservative interface transport and pressure gradient use the `fccd`
@@ -21,7 +23,7 @@ experiment:
 grid:
   cells: [128, 256]
   domain:
-    size: [1.0, 2.0]
+    size: [0.01, 0.02]
     boundary: wall
   distribution:
     schedule: 1
@@ -64,11 +66,11 @@ physics:
       rho: 1.2
       mu: 1.8e-5
   surface_tension: 0.072
-  gravity: 0.001
+  gravity: 9.81
 
 run:
   time:
-    final: 70.0
+    final: 0.03
     # Multiplier on theory CFL constants; 1.0 uses the theory budget.
     cfl: 1.0
     print_every: 10
@@ -136,7 +138,7 @@ output:
   dir: results/ch14_rising_bubble
   save_npz: true
   snapshots:
-    interval: 0.05
+    interval: 0.01
   figures:
     - type: time_series
       title: "Water-air rising bubble: centroid height"
@@ -193,8 +195,8 @@ initial_condition:
   background_phase: liquid
   objects:
     - type: circle
-      center: [0.5, 0.5]
-      radius: 0.25
+      center: [0.005, 0.005]
+      radius: 0.0025
       interior_phase: gas
 
 initial_velocity: null

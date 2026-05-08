@@ -376,10 +376,12 @@ def test_ch14_rising_bubble_yaml_loads_execution_stack():
 
     assert cfg.grid.NX == 128
     assert cfg.grid.NY == 256
-    assert cfg.grid.LX == 1.0
-    assert cfg.grid.LY == 2.0
+    assert cfg.grid.LX == pytest.approx(0.01)
+    assert cfg.grid.LY == pytest.approx(0.02)
     assert cfg.grid.grid_rebuild_freq == 1
-    assert cfg.physics.g_acc == pytest.approx(0.001)
+    assert cfg.physics.g_acc == pytest.approx(9.81)
+    assert cfg.run.T_final == pytest.approx(0.03)
+    assert cfg.run.snap_interval == pytest.approx(0.01)
     assert cfg.run.reinit_every == 1
     assert cfg.run.reinit_trigger_mode == "fixed"
     assert cfg.run.interface_tracking_method == "psi_direct"
