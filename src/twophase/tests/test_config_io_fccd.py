@@ -103,6 +103,7 @@ def test_readable_defaults_round_trip():
     assert cfg.physics.mu_l == 0.01
     assert cfg.physics.mu_g == 0.01
     assert cfg.run.advection_scheme == "dissipative_ccd"
+    assert cfg.run.momentum_form == "primitive_velocity"
     assert cfg.run.convection_scheme == "ccd"
     assert cfg.run.convection_time_scheme == "ab2"
     assert cfg.run.ppe_solver == "fvm_iterative"
@@ -117,6 +118,18 @@ def test_readable_defaults_round_trip():
     assert cfg.run.cfl_capillary == pytest.approx(0.05)
     assert cfg.run.cfl_viscous == pytest.approx(1.0)
     assert cfg.run.reinit_trigger_mode == "fixed"
+
+
+def test_conservative_common_flux_momentum_form_parses():
+    cfg = ExperimentConfig.from_dict(_minimal({
+        "numerics": {
+            "momentum": {
+                "form": "conservative_common_flux",
+            },
+        },
+    }))
+
+    assert cfg.run.momentum_form == "conservative_common_flux"
 
 
 def test_reinitialization_adaptive_schedule_parses_threshold():

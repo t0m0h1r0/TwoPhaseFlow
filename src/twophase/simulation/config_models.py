@@ -92,6 +92,7 @@ class RunCfg:
     ridge_sigma_0: float = 3.0
     reinit_volume_constraint: str = "diffuse_mass"
     advection_scheme: str = "fccd_flux"
+    momentum_form: str = "primitive_velocity"
     convection_scheme: str = "uccd6"
     ppe_solver: str = "fccd_iterative"
     ppe_dc_base_solver: str | None = "fd_direct"

@@ -129,7 +129,7 @@ _VISCOUS_DC_LOW_OPERATOR_ALIASES = {
 _INTERFACE_TIME_SCHEMES = ("tvd_rk3",)
 _MOMENTUM_PREDICTORS = ("projection_predictor_corrector",)
 _CONVECTION_TIME_SCHEMES = ("ab2", "forward_euler", "imex_bdf2")
-_MOMENTUM_FORMS = ("primitive_velocity",)
+_MOMENTUM_FORMS = ("primitive_velocity", "conservative_common_flux")
 _VISCOUS_SPATIAL_SCHEMES = ("conservative_stress", "ccd_bulk", "ccd_stress_legacy")
 _VISCOUS_SPATIAL_ALIASES = {
     "stress_divergence": "conservative_stress",

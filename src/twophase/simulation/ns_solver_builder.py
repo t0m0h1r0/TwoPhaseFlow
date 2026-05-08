@@ -142,6 +142,7 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
                 getattr(run, "capillary_force_source", "curvature_jump")
             ),
             curvature_method=str(getattr(run, "curvature_method", "psi_direct_filtered")),
+            momentum_form=str(getattr(run, "momentum_form", "primitive_velocity")),
             convection_time_scheme=str(getattr(run, "convection_time_scheme", "imex_bdf2")),
             viscous_spatial_scheme=str(getattr(run, "viscous_spatial_scheme", "ccd_bulk")),
             viscous_time_scheme=str(getattr(run, "viscous_time_scheme", "implicit_bdf2")),

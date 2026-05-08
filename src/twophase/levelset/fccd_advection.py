@@ -30,6 +30,7 @@ from ..core.boundary import sync_periodic_image_nodes
 from .interfaces import ILevelSetAdvection
 from ..time_integration.tvd_rk3 import tvd_rk3
 from .heaviside import apply_mass_correction
+from .transport_ledger import TransportLedger, TransportStageLedger
 
 if TYPE_CHECKING:
     from ..backend import Backend
@@ -133,6 +134,8 @@ class FCCDLevelSetAdvection(ILevelSetAdvection):
         face_velocity_components: List,
         dt: float,
         clip_bounds=(0.0, 1.0),
+        *,
+        return_ledger: bool = False,
     ):
         r"""Advance ψ by ``-D_f(P_f ψ\,u_f)`` using projected face velocities.
 
@@ -153,6 +156,12 @@ class FCCDLevelSetAdvection(ILevelSetAdvection):
             xp.asarray(component) for component in face_velocity_components
         ]
         sync_periodic_image_nodes(psi, self._fccd.bc_type)
+        psi_before = xp.array(psi, copy=True) if return_ledger else None
+        volume_fluxes = (
+            tuple(xp.array(component, copy=True) for component in face_velocity_components)
+            if return_ledger
+            else ()
+        )
 
         if self._mass_correction:
             M_old = xp.sum(psi * self._dV)
@@ -169,14 +178,31 @@ class FCCDLevelSetAdvection(ILevelSetAdvection):
             if self._mass_correction:
                 q_new = apply_mass_correction(xp, q_new, self._dV, M_old)
                 sync_periodic_image_nodes(q_new, self._fccd.bc_type)
+            if return_ledger:
+                ledger = TransportLedger(
+                    dt=float(dt),
+                    face_volume_fluxes=volume_fluxes,
+                    stages=(),
+                    psi_before=psi_before,
+                    psi_after_transport=xp.array(q_new, copy=True),
+                    clip_bounds=clip_bounds,
+                    mass_correction_applied=bool(self._mass_correction),
+                    zero_velocity=True,
+                )
+                return q_new, ledger
             return q_new
 
-        def rhs(q):
+        def rhs(q, *, record_stage: bool = False):
             total = xp.zeros_like(q)
+            phase_fluxes = []
             for axis, face_velocity in enumerate(face_velocity_components):
                 psi_face = self._fccd.face_value(q, axis)
                 flux_face = psi_face * face_velocity
+                if record_stage:
+                    phase_fluxes.append(xp.array(flux_face, copy=True))
                 total = total - self._fccd.face_divergence(flux_face, axis)
+            if record_stage:
+                return total, tuple(phase_fluxes)
             return total
 
         def post_stage(q):
@@ -185,12 +211,59 @@ class FCCDLevelSetAdvection(ILevelSetAdvection):
                 q = xp.clip(q, lo, hi)
             return sync_periodic_image_nodes(q, self._fccd.bc_type)
 
-        q_new = tvd_rk3(xp, psi, dt, rhs, post_stage=post_stage)
+        if return_ledger:
+            project_stage = clip_bounds is not None
+            q0 = psi
+            rhs0, fluxes0 = rhs(q0, record_stage=True)
+            q1 = post_stage(q0 + dt * rhs0)
+            rhs1, fluxes1 = rhs(q1, record_stage=True)
+            q2 = post_stage(0.75 * q0 + 0.25 * (q1 + dt * rhs1))
+            rhs2, fluxes2 = rhs(q2, record_stage=True)
+            q_new = post_stage(
+                (1.0 / 3.0) * q0 + (2.0 / 3.0) * (q2 + dt * rhs2)
+            )
+            stages = (
+                TransportStageLedger(
+                    name="rk3_stage1",
+                    phase_fluxes=fluxes0,
+                    base_weight=0.0,
+                    candidate_weight=1.0,
+                    post_stage_projected=project_stage,
+                ),
+                TransportStageLedger(
+                    name="rk3_stage2",
+                    phase_fluxes=fluxes1,
+                    base_weight=0.75,
+                    candidate_weight=0.25,
+                    post_stage_projected=project_stage,
+                ),
+                TransportStageLedger(
+                    name="rk3_stage3",
+                    phase_fluxes=fluxes2,
+                    base_weight=(1.0 / 3.0),
+                    candidate_weight=(2.0 / 3.0),
+                    post_stage_projected=project_stage,
+                ),
+            )
+        else:
+            q_new = tvd_rk3(xp, psi, dt, rhs, post_stage=post_stage)
 
         if self._mass_correction:
             q_new = apply_mass_correction(xp, q_new, self._dV, M_old)
             sync_periodic_image_nodes(q_new, self._fccd.bc_type)
 
+        if return_ledger:
+            ledger = TransportLedger(
+                dt=float(dt),
+                face_volume_fluxes=volume_fluxes,
+                stages=stages,
+                psi_before=psi_before,
+                psi_after_transport=xp.array(q_new, copy=True),
+                clip_bounds=clip_bounds,
+                mass_correction_applied=bool(self._mass_correction),
+                zero_velocity=False,
+            )
+            return q_new, ledger
         return q_new
 
     # ── RHS: −∇·(ψu) via FCCD ───────────────────────────────────────────

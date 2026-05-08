@@ -99,6 +99,7 @@ class SolverSchemeOptions:
     surface_tension_scheme: str = "pressure_jump"
     capillary_force_source: str = "curvature_jump"
     curvature_method: str = "psi_direct_filtered"
+    momentum_form: str = "primitive_velocity"
     convection_time_scheme: str = "imex_bdf2"
     advection_scheme: str = "fccd_flux"
     convection_scheme: str = "uccd6"
