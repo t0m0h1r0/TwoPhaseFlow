@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import importlib.util
 from copy import deepcopy
 from pathlib import Path
 
@@ -304,6 +305,34 @@ def test_ch14_static_droplet_yaml_uses_base_dynamic_route():
     assert cfg.run.capillary_closed_interface_metric == "pressure_adjoint"
     assert cfg.run.capillary_closed_interface_constraints == ("component_volume",)
     assert cfg.run.capillary_closed_interface_fail_close is True
+
+
+def test_ch14_oscillating_droplet_yaml_uses_signed_deformation_only():
+    path = (
+        Path(__file__).resolve().parents[3]
+        / "experiment/ch14/config/ch14_oscillating_droplet.yaml"
+    )
+    cfg = ExperimentConfig.from_yaml(path)
+
+    assert "signed_deformation" in cfg.diagnostics
+    assert "deformation" not in cfg.diagnostics
+
+
+def test_ch14_oscillating_droplet_variant_uses_signed_deformation_only():
+    path = (
+        Path(__file__).resolve().parents[3]
+        / "experiment/ch14/config_variants.py"
+    )
+    spec = importlib.util.spec_from_file_location("ch14_config_variants", path)
+    assert spec is not None
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+
+    raw = module.n64_oscillating_droplet(one_period=True)
+
+    assert "signed_deformation" in raw["diagnostics"]
+    assert "deformation" not in raw["diagnostics"]
 
 
 def test_ch14_canonical_yamls_use_theory_cfl_not_fixed_dt():
