@@ -26,6 +26,8 @@ sources:
     description: "Closed-interface capillary discretization policy after variational/Riesz rigor pass"
   - path: docs/wiki/theory/WIKI-T-163.md
     description: "Survey of reinitialization-free/reinitialization-minimized LS/CLS candidate routes"
+  - path: docs/wiki/theory/WIKI-T-164.md
+    description: "Conservative common-flux energy ledger for SI water-air rising-bubble blow-up remedy"
   - path: docs/wiki/cross-domain/WIKI-X-048.md
     description: "Ch14 capillary Hodge trial ledger for knowledge, failures, and falsified routes"
   - path: docs/wiki/paper/WIKI-P-018.md
@@ -46,6 +48,7 @@ depends_on:
   - "[[WIKI-T-161]]"
   - "[[WIKI-T-162]]"
   - "[[WIKI-T-163]]"
+  - "[[WIKI-T-164]]"
   - "[[WIKI-X-048]]"
   - "[[WIKI-P-018]]"
   - "[[WIKI-T-156]]"
@@ -80,6 +83,7 @@ algorithm policy.
 |---|---|---|
 | Projection closure | [[WIKI-T-080]], [[WIKI-X-040]] | PPE, corrector, pressure history, and diagnostics share face-space objects. |
 | CLS transport | [[WIKI-T-156]], [[WIKI-T-088]], [[WIKI-T-101]] | Current paper contract is FCCD face-flux CLS transport with projected face velocity. |
+| Rising-bubble conservative remedy | [[WIKI-T-164]] | Treat SI water-air rising-bubble blow-up as an unaccounted energy injection into an interface-band high-k mode.  The active remedy is conservative common-flux transport of `q,m,p`, conservative reinit/remap or fail-close, transported-mass pressure projection, variational capillary/gravity work, dissipative viscosity, face-cochain pressure history, and per-step energy/high-k certificates.  Do not use DCCD/UCCD as a silent velocity damper. |
 | Capillary jump | [[WIKI-X-039]], [[WIKI-X-040]] | Use oriented affine interface stress and face acceleration, not a regular pressure field. |
 | PPE residual | [[WIKI-T-152]], [[WIKI-E-059]] | Production projection accuracy is the high-order residual contract, not fixed DC iteration count. |
 | Pressure representative | [[WIKI-T-154]], [[WIKI-T-158]], [[WIKI-E-060]], [[WIKI-E-062]] | Raw interface-band pressure is diagnostic; read Hodge representatives and face cochains, never masked-band substitutes. |
