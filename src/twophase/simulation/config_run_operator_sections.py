@@ -65,58 +65,15 @@ _CLOSED_INTERFACE_METRICS = ("pressure_adjoint",)
 _CLOSED_INTERFACE_CONSTRAINTS = ("component_volume",)
 
 
-def parse_run_operator_settings(
+def _parse_surface_tension_settings(
     *,
     layout: dict,
-    interface_transport: dict,
-    momentum: dict,
-    convection: dict,
-    viscosity: dict,
     pressure_term: dict,
     surface_tension: dict,
     interface_curvature: dict,
     projection: dict,
+    poisson_settings: dict,
 ) -> dict:
-    poisson_settings = parse_run_poisson_settings(
-        layout=layout,
-        projection=projection,
-    )
-
-    advection_scheme = validate_choice(
-        _ADVECTION_SCHEME_ALIASES.get(
-            str(interface_transport["spatial"]).strip().lower(),
-            interface_transport["spatial"],
-        ),
-        _ADVECTION_SCHEMES,
-        layout["paths"]["interface_spatial"],
-    )
-    parse_time_integrator(
-        interface_transport,
-        _INTERFACE_TIME_SCHEMES,
-        layout["paths"]["interface_time"],
-        default="tvd_rk3",
-        aliases={"explicit": "tvd_rk3", "rk3": "tvd_rk3"},
-    )
-    validate_choice(
-        momentum.get("form", "primitive_velocity"),
-        _MOMENTUM_FORMS,
-        layout["paths"]["momentum_form"],
-    )
-    convection_scheme = validate_choice(
-        _CONVECTION_SCHEME_ALIASES.get(
-            str(convection["spatial"]).strip().lower(),
-            convection["spatial"],
-        ),
-        _CONVECTION_SCHEMES,
-        layout["paths"]["convection_spatial"],
-    )
-    convection_time_scheme = parse_time_integrator(
-        convection,
-        _CONVECTION_TIME_SCHEMES,
-        layout["paths"]["convection_time"],
-        default="imex_bdf2",
-        aliases=CONVECTION_TIME_SCHEME_ALIASES,
-    )
     raw_p_grad = pressure_term.get("gradient", pressure_term.get("spatial", "fccd_flux"))
     pressure_gradient_scheme = canonicalize_momentum_gradient_scheme(
         raw_p_grad,
@@ -244,11 +201,18 @@ def parse_run_operator_settings(
         poisson_settings["capillary_range_projection"] = "none"
     else:
         closed_interface_contract = _default_closed_interface_contract()
-    uccd6_sigma = float(convection.get("uccd6_sigma", 1.0e-3))
-    if uccd6_sigma <= 0.0:
-        raise ValueError(
-            f"{layout['paths']['convection_uccd6_sigma']} must be > 0, got {uccd6_sigma}"
-        )
+    return {
+        "pressure_gradient_scheme": pressure_gradient_scheme,
+        "surface_tension_scheme": surface_tension_scheme,
+        "capillary_force_source": capillary_force_source,
+        "curvature_method": curvature_method,
+        **closed_interface_contract,
+        "surface_tension_gradient_scheme": surface_tension_gradient_scheme,
+        "momentum_gradient_scheme": momentum_gradient_scheme,
+    }
+
+
+def _parse_viscous_settings(*, layout: dict, viscosity: dict) -> dict:
     viscous_spatial_scheme = validate_choice(
         _VISCOUS_SPATIAL_ALIASES.get(
             str(viscosity["spatial"]).strip().lower(),
@@ -329,12 +293,27 @@ def parse_run_operator_settings(
             f"{layout['paths']['viscosity_time']}.solver.corrections.relaxation "
             "must be > 0"
         )
+    return {
+        "viscous_spatial_scheme": viscous_spatial_scheme,
+        "viscous_time_scheme": viscous_time_scheme,
+        "viscous_solver": viscous_solver,
+        "viscous_solver_tolerance": viscous_solver_tolerance,
+        "viscous_solver_max_iterations": viscous_solver_max_iterations,
+        "viscous_solver_restart": viscous_solver_restart,
+        "viscous_dc_max_iterations": viscous_dc_max_iterations,
+        "viscous_dc_relaxation": viscous_dc_relaxation,
+        "viscous_dc_low_operator": viscous_dc_low_operator,
+        "cn_mode": cn_mode,
+    }
+
+
+def _parse_predictor_assembly(*, momentum: dict, viscosity: dict) -> str:
     predictor_cfg = momentum.get("predictor", {}) or {}
     raw_predictor_assembly = predictor_cfg.get(
         "assembly",
         viscosity.get("predictor_assembly", "balanced_buoyancy"),
     )
-    predictor_assembly = validate_choice(
+    return validate_choice(
         _PREDICTOR_ASSEMBLY_ALIASES.get(
             str(raw_predictor_assembly).strip().lower(),
             str(raw_predictor_assembly).strip().lower(),
@@ -342,6 +321,14 @@ def parse_run_operator_settings(
         _PREDICTOR_ASSEMBLY_MODES,
         "numerics.momentum.predictor.assembly",
     )
+
+
+def _validate_coupled_time_schemes(
+    *,
+    layout: dict,
+    convection_time_scheme: str,
+    viscous_time_scheme: str,
+) -> None:
     if convection_time_scheme == "imex_bdf2" and viscous_time_scheme != "implicit_bdf2":
         raise ValueError(
             f"{layout['paths']['convection_time']}='imex_bdf2' requires "
@@ -352,6 +339,83 @@ def parse_run_operator_settings(
             f"{layout['paths']['viscosity_time']}='implicit_bdf2' requires "
             f"{layout['paths']['convection_time']}='imex_bdf2'"
         )
+
+
+def parse_run_operator_settings(
+    *,
+    layout: dict,
+    interface_transport: dict,
+    momentum: dict,
+    convection: dict,
+    viscosity: dict,
+    pressure_term: dict,
+    surface_tension: dict,
+    interface_curvature: dict,
+    projection: dict,
+) -> dict:
+    poisson_settings = parse_run_poisson_settings(
+        layout=layout,
+        projection=projection,
+    )
+
+    advection_scheme = validate_choice(
+        _ADVECTION_SCHEME_ALIASES.get(
+            str(interface_transport["spatial"]).strip().lower(),
+            interface_transport["spatial"],
+        ),
+        _ADVECTION_SCHEMES,
+        layout["paths"]["interface_spatial"],
+    )
+    parse_time_integrator(
+        interface_transport,
+        _INTERFACE_TIME_SCHEMES,
+        layout["paths"]["interface_time"],
+        default="tvd_rk3",
+        aliases={"explicit": "tvd_rk3", "rk3": "tvd_rk3"},
+    )
+    validate_choice(
+        momentum.get("form", "primitive_velocity"),
+        _MOMENTUM_FORMS,
+        layout["paths"]["momentum_form"],
+    )
+    convection_scheme = validate_choice(
+        _CONVECTION_SCHEME_ALIASES.get(
+            str(convection["spatial"]).strip().lower(),
+            convection["spatial"],
+        ),
+        _CONVECTION_SCHEMES,
+        layout["paths"]["convection_spatial"],
+    )
+    convection_time_scheme = parse_time_integrator(
+        convection,
+        _CONVECTION_TIME_SCHEMES,
+        layout["paths"]["convection_time"],
+        default="imex_bdf2",
+        aliases=CONVECTION_TIME_SCHEME_ALIASES,
+    )
+    surface_settings = _parse_surface_tension_settings(
+        layout=layout,
+        pressure_term=pressure_term,
+        surface_tension=surface_tension,
+        interface_curvature=interface_curvature,
+        projection=projection,
+        poisson_settings=poisson_settings,
+    )
+    uccd6_sigma = float(convection.get("uccd6_sigma", 1.0e-3))
+    if uccd6_sigma <= 0.0:
+        raise ValueError(
+            f"{layout['paths']['convection_uccd6_sigma']} must be > 0, got {uccd6_sigma}"
+        )
+    viscous_settings = _parse_viscous_settings(layout=layout, viscosity=viscosity)
+    predictor_assembly = _parse_predictor_assembly(
+        momentum=momentum,
+        viscosity=viscosity,
+    )
+    _validate_coupled_time_schemes(
+        layout=layout,
+        convection_time_scheme=convection_time_scheme,
+        viscous_time_scheme=viscous_settings["viscous_time_scheme"],
+    )
     return {
         "poisson_coefficient": poisson_settings["poisson_coefficient"],
         "poisson_interface_coupling": poisson_settings["poisson_interface_coupling"],
@@ -373,27 +437,42 @@ def parse_run_operator_settings(
         "ppe_dc_max_iterations": poisson_settings["ppe_dc_max_iterations"],
         "ppe_dc_tolerance": poisson_settings["ppe_dc_tolerance"],
         "ppe_dc_relaxation": poisson_settings["ppe_dc_relaxation"],
-        "pressure_gradient_scheme": pressure_gradient_scheme,
-        "surface_tension_scheme": surface_tension_scheme,
-        "capillary_force_source": capillary_force_source,
-        "curvature_method": curvature_method,
+        "pressure_gradient_scheme": surface_settings["pressure_gradient_scheme"],
+        "surface_tension_scheme": surface_settings["surface_tension_scheme"],
+        "capillary_force_source": surface_settings["capillary_force_source"],
+        "curvature_method": surface_settings["curvature_method"],
         "capillary_reaction_projection": poisson_settings["capillary_reaction_projection"],
         "pressure_force_contract": poisson_settings["pressure_force_contract"],
         "scalar_operator_pairing": poisson_settings["scalar_operator_pairing"],
-        **closed_interface_contract,
-        "surface_tension_gradient_scheme": surface_tension_gradient_scheme,
-        "momentum_gradient_scheme": momentum_gradient_scheme,
+        "capillary_closed_interface_endpoint": (
+            surface_settings["capillary_closed_interface_endpoint"]
+        ),
+        "capillary_closed_interface_metric": (
+            surface_settings["capillary_closed_interface_metric"]
+        ),
+        "capillary_closed_interface_constraints": (
+            surface_settings["capillary_closed_interface_constraints"]
+        ),
+        "capillary_closed_interface_fail_close": (
+            surface_settings["capillary_closed_interface_fail_close"]
+        ),
+        "surface_tension_gradient_scheme": (
+            surface_settings["surface_tension_gradient_scheme"]
+        ),
+        "momentum_gradient_scheme": surface_settings["momentum_gradient_scheme"],
         "uccd6_sigma": uccd6_sigma,
-        "viscous_spatial_scheme": viscous_spatial_scheme,
-        "viscous_time_scheme": viscous_time_scheme,
-        "viscous_solver": viscous_solver,
-        "viscous_solver_tolerance": viscous_solver_tolerance,
-        "viscous_solver_max_iterations": viscous_solver_max_iterations,
-        "viscous_solver_restart": viscous_solver_restart,
-        "viscous_dc_max_iterations": viscous_dc_max_iterations,
-        "viscous_dc_relaxation": viscous_dc_relaxation,
-        "viscous_dc_low_operator": viscous_dc_low_operator,
-        "cn_mode": cn_mode,
+        "viscous_spatial_scheme": viscous_settings["viscous_spatial_scheme"],
+        "viscous_time_scheme": viscous_settings["viscous_time_scheme"],
+        "viscous_solver": viscous_settings["viscous_solver"],
+        "viscous_solver_tolerance": viscous_settings["viscous_solver_tolerance"],
+        "viscous_solver_max_iterations": (
+            viscous_settings["viscous_solver_max_iterations"]
+        ),
+        "viscous_solver_restart": viscous_settings["viscous_solver_restart"],
+        "viscous_dc_max_iterations": viscous_settings["viscous_dc_max_iterations"],
+        "viscous_dc_relaxation": viscous_settings["viscous_dc_relaxation"],
+        "viscous_dc_low_operator": viscous_settings["viscous_dc_low_operator"],
+        "cn_mode": viscous_settings["cn_mode"],
         "cn_buoyancy_predictor_assembly_mode": predictor_assembly,
     }
 
