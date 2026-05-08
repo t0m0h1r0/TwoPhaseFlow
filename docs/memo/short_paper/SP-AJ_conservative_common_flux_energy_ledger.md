@@ -114,6 +114,278 @@ The scheme is theorem-grade only if each arrow has a work identity or an
 explicitly bounded defect.  A run that merely survives does not certify the
 mechanics.
 
+## 3.1 Algebraic Formulation
+
+Let `C` be the set of cells and `F` the set of oriented faces.  Use
+
+```text
+V_c       diagonal cell-volume matrix,
+D        finite-volume face-to-cell divergence, D : R^F -> R^C,
+P_f      cell-to-face interpolation/restriction used by the transport flux,
+M_f(q)   diagonal transported face-mass metric,
+```
+
+where `D` already includes the oriented face areas and cell volumes used by the
+production finite-volume update.  The cell inner product is
+
+```text
+<a,b>_C = a^T V_c b,
+```
+
+and the face velocity inner product is
+
+```text
+<u,w>_{M_f} = u^T M_f(q) w.
+```
+
+The conservative state space is
+
+```text
+Q_h = { q in R^C : 0 <= q_i <= 1 },
+M_h(q)_i = V_i (rho_g + Delta rho q_i),
+P_h(q) = { p : p_i = M_h(q)_i u_i }.
+```
+
+For staggered storage, `p` may be represented on faces as `p_f=M_f(q)u_f`.
+The formulation only requires that the same positive metric `M_f(q)` be used
+by momentum forces and pressure projection.
+
+### 3.1.1 Flux Ledger
+
+A common-flux ledger for one physical step is
+
+```text
+L_h = { alpha_rs, beta_r, F_q^r, F_V^r, U_up^r }_{r=0}^{s-1}.
+```
+
+Here `F_q^r` is the liquid-fraction flux, `F_V^r` is the geometric volume flux,
+and `U_up^r` maps the conservative state at stage `r` to the upwind velocity
+used by momentum transport.  The mass and momentum fluxes are not independent
+fields:
+
+```text
+F_m^r = rho_g F_V^r + Delta rho F_q^r,
+F_p^r = F_m^r U_up^r.
+```
+
+The stage update is admissible only if
+
+```text
+q^{r+1} = sum_s alpha_rs q^s - dt beta_r D F_q^r,
+m^{r+1} = sum_s alpha_rs m^s - dt beta_r D F_m^r,
+p^{r+1} = sum_s alpha_rs p^s - dt beta_r D F_p^r,
+m^{r+1} = M_h(q^{r+1}).
+```
+
+The last equality is the consistency gate.  If the transported mass and the
+mass induced by the transported phase disagree beyond tolerance, the stage is
+not a conservative common-flux stage.
+
+### 3.1.2 Transport Energy Defect
+
+Define
+
+```text
+K_c(m,p) = sum_i |p_i|^2 / (2 m_i).
+```
+
+For each accepted transport stage the ledger reports
+
+```text
+eps_T^r = K_c(m^{r+1},p^{r+1})
+        - sum_s alpha_rs K_c(m^s,p^s).
+```
+
+The pure-transport gate is
+
+```text
+eps_T^r <= tau_T^r.
+```
+
+For exact conservative upwind transport `tau_T^r` is the declared numerical
+diffusion/roundoff allowance.  A positive unbounded `eps_T^r` means the flux
+transport itself has injected kinetic energy.
+
+### 3.1.3 Reinitialization/Remap Operator
+
+The representation map is
+
+```text
+R_h(q^T,m^T,p^T) = (q^R,m^R,p^R).
+```
+
+It is admissible only when
+
+```text
+m^R = M_h(q^R),
+1^T V_c q^R = 1^T V_c q^T + eps_V,
+1^T p^R     = 1^T p^T     + eps_P,
+K_c(m^R,p^R) - K_c(m^T,p^T) = eps_R,
+```
+
+with named tolerances and with `eps_R` included in the step energy ledger.
+When these identities cannot be certified, `R_h` must fail closed.
+
+### 3.1.4 Variational Force Operators
+
+Let `T_q(q) : R^F -> R^C` be the differential of the production phase
+transport with respect to face velocity:
+
+```text
+delta q = T_q(q) w.
+```
+
+For the current conservative face transport,
+
+```text
+T_q(q) w = -D( (P_f q) w )
+```
+
+up to the same limiter/upwind linearization selected by the ledger.  Let
+`g_S(q)` be the cell covector satisfying
+
+```text
+dS_h(q)[delta q] = <g_S(q), delta q>_C.
+```
+
+The capillary acceleration cochain is the mass-Riesz representative
+
+```text
+a_sigma(q) = -sigma M_f(q)^{-1} T_q(q)^T V_c g_S(q).
+```
+
+Equivalently,
+
+```text
+<a_sigma,w>_{M_f} + sigma dS_h(q)[T_q(q)w] = 0
+```
+
+for all admissible face velocities `w`.  This is the force definition; sampled
+curvature is only a possible diagnostic representative of this covector.
+
+Gravity is the variation of
+
+```text
+Phi_h(m) = 1^T (m * g y),
+```
+
+so the face acceleration `a_g` is obtained by the same mass projection from the
+cell potential gradient.  Viscosity is a linear or nonlinear operator `A_mu(q)`
+that must satisfy
+
+```text
+<u, A_mu(q)u>_{M_f} <= 0.
+```
+
+The force predictor in velocity form is
+
+```text
+u^* = u^R + dt (a_sigma + a_g + a_mu),
+p^* = M_f(q^R) u^*.
+```
+
+In cell-momentum form the same equation is read after the face/cell transfer
+operators have been fixed; the metric and transfer must be recorded in the
+ledger.
+
+### 3.1.5 Reaction-Space Decomposition
+
+Let `G = M_f^{-1} D^T W_c` be the pressure-gradient acceleration operator, with
+`W_c` the cell pressure weight used by the PPE.  Let `B` collect component
+volume-reaction accelerations, for example
+
+```text
+B_l = M_f^{-1} T_q(q)^T V_c g_{V_l}(q),
+dV_l(q)[delta q] = <g_{V_l}(q), delta q>_C.
+```
+
+Define
+
+```text
+X = range([G B]).
+```
+
+The admissible capillary drive is decomposed by the `M_f`-orthogonal projection
+
+```text
+a_sigma = Pi_X^{M_f} a_sigma + H_X^{M_f} a_sigma.
+```
+
+`Pi_X^{M_f} a_sigma` is pressure/component reaction.  `H_X^{M_f} a_sigma` is
+the non-reaction drive.  This decomposition is diagnostic/constraint
+bookkeeping; it is not permission to replace the production force by a
+pre-projected cochain before the variational force has been constructed.
+
+### 3.1.6 Pressure Projection KKT System
+
+Given `u^*`, the pressure projection is
+
+```text
+min_u  1/2 (u-u^*)^T M_f (u-u^*)
+such that D u = 0 and C_b u = b_b.
+```
+
+With boundary constraint matrix `C_b`, the KKT system is
+
+```text
+M_f(u^{n+1}-u^*) + D^T pi + C_b^T lambda = 0,
+D u^{n+1} = 0,
+C_b u^{n+1} = b_b.
+```
+
+For homogeneous boundary notation this reduces to
+
+```text
+D M_f^{-1} D^T pi = D u^*.
+```
+
+The new conservative momentum is
+
+```text
+p^{n+1} = M_f(q^R) u^{n+1},
+q^{n+1} = q^R,
+m^{n+1} = M_h(q^{n+1}).
+```
+
+The pressure step reports
+
+```text
+eps_Pi = K_f(M_f,u^{n+1}) - K_f(M_f,u^*) <= 0 + tau_Pi.
+```
+
+### 3.1.7 Whole-Step Acceptance Inequality
+
+The accepted step satisfies
+
+```text
+E_h^{n+1} - E_h^n
+  <= sum_r eps_T^r
+   + eps_R
+   + eps_sigma
+   + eps_g
+   + eps_mu
+   + eps_Pi
+   + tau_round,
+```
+
+where the ideal signs are
+
+```text
+eps_sigma = 0      for reversible capillary work,
+eps_g     = 0      for conservative gravitational work,
+eps_mu    <= 0     for viscosity,
+eps_Pi    <= 0     for projection.
+```
+
+The high-frequency interface-band monitor is a certificate field:
+
+```text
+H_k = ||Pi_high Chi_Gamma u||_{M_f}^2 / ||Chi_Gamma u||_{M_f}^2.
+```
+
+It never modifies `u`.  It only identifies a violation when `H_k` grows without
+an admissible positive energy entry in the ledger.
+
 ## 4. Common-Flux Transport
 
 Let the interface transport produce a stage flux `F_q`.  The mass flux must be

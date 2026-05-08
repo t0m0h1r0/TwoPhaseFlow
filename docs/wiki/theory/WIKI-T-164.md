@@ -63,6 +63,73 @@ Primitive velocity is not a sufficient primary state for water-air rising
 bubbles because reinitialization or phase transport can change mass without a
 matching momentum remap.
 
+## Algebraic Contract
+
+Use cells `C`, oriented faces `F`, cell-volume matrix `V_c`, finite-volume
+divergence `D : R^F -> R^C`, and transported face-mass metric `M_f(q)`.  The
+inner products are
+
+```text
+<a,b>_C = a^T V_c b,
+<u,w>_M = u^T M_f(q) w.
+```
+
+A step ledger contains stage fluxes
+
+```text
+L_h = {F_q^r, F_V^r, U_up^r, alpha_rs, beta_r}.
+```
+
+The only admissible mass and momentum fluxes are
+
+```text
+F_m^r = rho_g F_V^r + (rho_l-rho_g) F_q^r,
+F_p^r = F_m^r U_up^r.
+```
+
+Thus each stage must satisfy
+
+```text
+q^{r+1} = sum_s alpha_rs q^s - dt beta_r D F_q^r,
+m^{r+1} = sum_s alpha_rs m^s - dt beta_r D F_m^r,
+p^{r+1} = sum_s alpha_rs p^s - dt beta_r D F_p^r,
+m^{r+1} = V_c (rho_g + (rho_l-rho_g) q^{r+1}).
+```
+
+The capillary acceleration is not a curvature sample.  It is the Riesz
+representative
+
+```text
+a_sigma(q) = -sigma M_f(q)^{-1} T_q(q)^T V_c g_S(q),
+dS_h(q)[delta q] = <g_S(q),delta q>_C,
+T_q(q)w = -D((P_f q)w)
+```
+
+up to the same transport linearization used in the ledger.  Pressure projection
+is the KKT system
+
+```text
+M_f(u^{n+1}-u*) + D^T pi + C_b^T lambda = 0,
+D u^{n+1} = 0,
+C_b u^{n+1} = b_b.
+```
+
+The whole step is accepted only if
+
+```text
+E_h^{n+1} - E_h^n
+  <= sum_r eps_T^r + eps_R + eps_sigma + eps_g
+   + eps_mu + eps_Pi + tau_round,
+```
+
+with viscosity and projection non-positive up to tolerance.  The high-k monitor
+
+```text
+H_k = ||Pi_high Chi_Gamma u||_{M_f}^2 / ||Chi_Gamma u||_{M_f}^2
+```
+
+is a witness, not a filter.
+
 ## Required Step Contract
 
 An admissible step is:
