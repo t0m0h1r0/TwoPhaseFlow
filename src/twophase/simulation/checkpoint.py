@@ -22,6 +22,14 @@ from typing import Any
 
 import numpy as np
 
+from .snapshot_payload import (
+    SNAPSHOT_FIELDS,
+    numbered_component_series,
+    snapshot_grid_coord,
+    stack_snapshot_components,
+    stack_snapshot_fields,
+)
+
 SCHEMA_VERSION = 2
 SUPPORTED_SCHEMA_VERSIONS = (1, 2)
 MAGIC = "twophase.ch14.restart"
@@ -219,12 +227,6 @@ def _build_manifest(
     dt_effective: float | None,
     terminal_clamped: bool,
 ) -> dict[str, Any]:
-    payload_hash = hashlib.sha256()
-    for key in sorted(arrays):
-        payload_hash.update(key.encode("utf-8"))
-        payload_hash.update(str(arrays[key].shape).encode("ascii"))
-        payload_hash.update(str(arrays[key].dtype).encode("ascii"))
-        payload_hash.update(np.ascontiguousarray(arrays[key]).tobytes())
     return {
         "magic": MAGIC,
         "schema_version": SCHEMA_VERSION,
@@ -240,7 +242,7 @@ def _build_manifest(
         "config_path": str(config_path),
         "config_hash_excluding_restart_allowed_paths": config_fingerprint(config_path),
         "code_fingerprint": code_fingerprint(_repo_root(config_path)),
-        "payload_hash": payload_hash.hexdigest(),
+        "payload_hash": _payload_hash(arrays),
     }
 
 
@@ -301,14 +303,19 @@ def _validate_manifest(
             raise CheckpointError(f"checkpoint array {key} shape mismatch")
     if "grid_hash" in manifest and manifest["grid_hash"] != _grid_payload_hash(arrays):
         raise CheckpointError("checkpoint grid hash mismatch")
+    if manifest.get("payload_hash") != _payload_hash(arrays):
+        raise CheckpointError("checkpoint payload hash mismatch")
+
+
+def _payload_hash(arrays: dict[str, np.ndarray]) -> str:
+    """Hash the complete checkpoint array payload."""
     payload_hash = hashlib.sha256()
     for key in sorted(arrays):
         payload_hash.update(key.encode("utf-8"))
         payload_hash.update(str(arrays[key].shape).encode("ascii"))
         payload_hash.update(str(arrays[key].dtype).encode("ascii"))
         payload_hash.update(np.ascontiguousarray(arrays[key]).tobytes())
-    if manifest.get("payload_hash") != payload_hash.hexdigest():
-        raise CheckpointError("checkpoint payload hash mismatch")
+    return payload_hash.hexdigest()
 
 
 def config_fingerprint(config_path: str | pathlib.Path) -> str:
@@ -435,38 +442,9 @@ def _capture_results(
             arrays[f"debug/{key}"] = np.asarray([entry[key] for entry in debug_history])
     if snapshots:
         arrays["snapshots/times"] = np.asarray([snap["t"] for snap in snapshots], dtype=float)
-        for field in (
-            "psi",
-            "u",
-            "v",
-            "p",
-            "rho",
-            "psi_before_transport",
-            "psi_after_transport_before_reinit",
-            "psi_after_reinit",
-        ):
-            if all(field in snap for snap in snapshots):
-                arrays[f"snapshots/{field}"] = np.stack(
-                    [np.asarray(snap[field]) for snap in snapshots], axis=0
-                )
-        if "pressure_accel_faces" in snapshots[0]:
-            for axis, _ in enumerate(snapshots[0]["pressure_accel_faces"]):
-                arrays[f"snapshots/pressure_accel_faces/{axis}"] = np.stack(
-                    [
-                        np.asarray(snap["pressure_accel_faces"][axis])
-                        for snap in snapshots
-                    ],
-                    axis=0,
-                )
-        if all("grid_coords" in snap for snap in snapshots):
-            for axis, _coord in enumerate(snapshots[0]["grid_coords"]):
-                arrays[f"snapshots/grid_coords/{axis}"] = np.stack(
-                    [
-                        np.asarray(snap["grid_coords"][axis])
-                        for snap in snapshots
-                    ],
-                    axis=0,
-                )
+        stack_snapshot_fields(arrays, "snapshots", snapshots, SNAPSHOT_FIELDS)
+        stack_snapshot_components(arrays, "snapshots", snapshots, "pressure_accel_faces")
+        stack_snapshot_components(arrays, "snapshots", snapshots, "grid_coords")
 
 
 def _restore_results(arrays: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
@@ -480,29 +458,15 @@ def _restore_results(arrays: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
 def _restore_snapshots(arrays: dict[str, np.ndarray]) -> list[dict[str, Any]]:
     if "snapshots/times" not in arrays:
         return []
-    grid_coords = []
-    axis = 0
-    while f"snapshots/grid_coords/{axis}" in arrays:
-        grid_coords.append(arrays[f"snapshots/grid_coords/{axis}"])
-        axis += 1
-    pressure_accel_faces = []
-    axis = 0
-    while f"snapshots/pressure_accel_faces/{axis}" in arrays:
-        pressure_accel_faces.append(arrays[f"snapshots/pressure_accel_faces/{axis}"])
-        axis += 1
+    grid_coords = numbered_component_series(arrays, "snapshots/grid_coords")
+    pressure_accel_faces = numbered_component_series(
+        arrays,
+        "snapshots/pressure_accel_faces",
+    )
     snapshots = []
     for idx, time in enumerate(arrays["snapshots/times"]):
         snap: dict[str, Any] = {"t": float(time)}
-        for field in (
-            "psi",
-            "u",
-            "v",
-            "p",
-            "rho",
-            "psi_before_transport",
-            "psi_after_transport_before_reinit",
-            "psi_after_reinit",
-        ):
+        for field in SNAPSHOT_FIELDS:
             key = f"snapshots/{field}"
             if key in arrays:
                 snap[field] = arrays[key][idx]
@@ -512,19 +476,11 @@ def _restore_snapshots(arrays: dict[str, np.ndarray]) -> list[dict[str, Any]]:
             ]
         if grid_coords:
             snap["grid_coords"] = [
-                _snapshot_grid_coord(coord, idx, len(arrays["snapshots/times"]))
+                snapshot_grid_coord(coord, idx, len(arrays["snapshots/times"]))
                 for coord in grid_coords
             ]
         snapshots.append(snap)
     return snapshots
-
-
-def _snapshot_grid_coord(coord_series: np.ndarray, idx: int, count: int) -> np.ndarray:
-    """Return per-snapshot coordinates, accepting legacy single-grid files."""
-    coord_series = np.asarray(coord_series)
-    if coord_series.ndim >= 2 and coord_series.shape[0] == count:
-        return np.asarray(coord_series[idx]).copy()
-    return coord_series.copy()
 
 
 def _restore_debug_history(arrays: dict[str, np.ndarray]) -> list[dict[str, Any]]:
