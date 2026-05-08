@@ -71,9 +71,12 @@ def _add_snapshot_series(flat: dict, snaps) -> None:
                 ],
                 axis=0,
             )
-    if "grid_coords" in snaps[0]:
-        for axis, coord in enumerate(snaps[0]["grid_coords"]):
-            flat[f"fields/grid_coords/{axis}"] = np.asarray(coord)
+    if all("grid_coords" in snap for snap in snaps):
+        for axis, _coord in enumerate(snaps[0]["grid_coords"]):
+            flat[f"fields/grid_coords/{axis}"] = np.stack(
+                [np.asarray(snap["grid_coords"][axis]) for snap in snaps],
+                axis=0,
+            )
 
 
 def _snapshots_from_field_series(results: dict) -> list[dict]:
@@ -115,9 +118,20 @@ def _snapshots_from_field_series(results: dict) -> list[dict]:
         if pressure_accel_faces:
             snap["pressure_accel_faces"] = pressure_accel_faces
         if grid_coords:
-            snap["grid_coords"] = [coord.copy() for coord in grid_coords]
+            snap["grid_coords"] = [
+                _grid_coords_for_snapshot(coord, index, len(results["fields/times"]))
+                for coord in grid_coords
+            ]
         snaps.append(snap)
     return snaps
+
+
+def _grid_coords_for_snapshot(coord_series, index: int, count: int) -> np.ndarray:
+    """Return per-snapshot grid coordinates with legacy single-grid fallback."""
+    coord_series = np.asarray(coord_series)
+    if coord_series.ndim >= 2 and coord_series.shape[0] == count:
+        return np.asarray(coord_series[index]).copy()
+    return coord_series.copy()
 
 
 def _run_single(cfg, label: str, outdir: pathlib.Path) -> dict:

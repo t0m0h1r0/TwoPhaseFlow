@@ -217,6 +217,49 @@ def test_checkpoint_roundtrip_restores_solver_runtime_state(tmp_path):
     assert state["debug_history"] == [{"kappa_max": 1.0}]
 
 
+def test_checkpoint_preserves_per_snapshot_nonuniform_grid_coords(tmp_path):
+    config = tmp_path / "cfg.yaml"
+    _write_config(config)
+    path = tmp_path / "checkpoint_final.npz"
+    solver = _solver()
+
+    save_checkpoint(
+        path,
+        solver=solver,
+        psi=np.ones((3, 3)),
+        u=np.zeros((3, 3)),
+        v=np.zeros((3, 3)),
+        p=np.zeros((3, 3)),
+        t=0.25,
+        step=2,
+        config_path=config,
+        snapshots=[
+            {
+                "t": 0.125,
+                "psi": np.ones((3, 3)),
+                "grid_coords": [
+                    np.array([0.0, 0.4, 1.0]),
+                    np.array([0.0, 0.5, 1.0]),
+                ],
+            },
+            {
+                "t": 0.25,
+                "psi": np.ones((3, 3)),
+                "grid_coords": [
+                    np.array([0.0, 0.6, 1.0]),
+                    np.array([0.0, 0.7, 1.0]),
+                ],
+            },
+        ],
+    )
+
+    state = load_checkpoint(path, solver=_solver(), config_path=config)
+
+    assert state["snapshots"][0]["grid_coords"][0].tolist() == [0.0, 0.4, 1.0]
+    assert state["snapshots"][1]["grid_coords"][0].tolist() == [0.0, 0.6, 1.0]
+    assert state["snapshots"][1]["grid_coords"][1].tolist() == [0.0, 0.7, 1.0]
+
+
 def test_checkpoint_skips_partial_endpoint_snapshot_fields(tmp_path):
     config = tmp_path / "cfg.yaml"
     _write_config(config)

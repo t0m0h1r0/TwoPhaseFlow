@@ -349,9 +349,15 @@ def _capture_results(
                     ],
                     axis=0,
                 )
-        if "grid_coords" in snapshots[0]:
-            for axis, coord in enumerate(snapshots[0]["grid_coords"]):
-                arrays[f"snapshots/grid_coords/{axis}"] = np.asarray(coord)
+        if all("grid_coords" in snap for snap in snapshots):
+            for axis, _coord in enumerate(snapshots[0]["grid_coords"]):
+                arrays[f"snapshots/grid_coords/{axis}"] = np.stack(
+                    [
+                        np.asarray(snap["grid_coords"][axis])
+                        for snap in snapshots
+                    ],
+                    axis=0,
+                )
 
 
 def _restore_results(arrays: dict[str, np.ndarray]) -> dict[str, np.ndarray]:
@@ -396,9 +402,20 @@ def _restore_snapshots(arrays: dict[str, np.ndarray]) -> list[dict[str, Any]]:
                 np.asarray(component[idx]) for component in pressure_accel_faces
             ]
         if grid_coords:
-            snap["grid_coords"] = [coord.copy() for coord in grid_coords]
+            snap["grid_coords"] = [
+                _snapshot_grid_coord(coord, idx, len(arrays["snapshots/times"]))
+                for coord in grid_coords
+            ]
         snapshots.append(snap)
     return snapshots
+
+
+def _snapshot_grid_coord(coord_series: np.ndarray, idx: int, count: int) -> np.ndarray:
+    """Return per-snapshot coordinates, accepting legacy single-grid files."""
+    coord_series = np.asarray(coord_series)
+    if coord_series.ndim >= 2 and coord_series.shape[0] == count:
+        return np.asarray(coord_series[idx]).copy()
+    return coord_series.copy()
 
 
 def _restore_debug_history(arrays: dict[str, np.ndarray]) -> list[dict[str, Any]]:

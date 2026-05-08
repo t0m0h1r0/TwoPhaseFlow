@@ -214,7 +214,7 @@ def test_snapshot_fields_are_saved_as_npz_series():
             "psi_before_transport": np.full((2, 2), -2.0),
             "psi_after_transport_before_reinit": np.full((2, 2), 0.75),
             "psi_after_reinit": np.full((2, 2), 1.5),
-            "grid_coords": [np.array([0.0, 1.0]), np.array([0.0, 1.0])],
+            "grid_coords": [np.array([0.0, 2.0]), np.array([0.0, 3.0])],
         },
     ]
 
@@ -234,7 +234,9 @@ def test_snapshot_fields_are_saved_as_npz_series():
     assert np.all(flat["fields/psi_after_transport_before_reinit"][1] == 0.75)
     assert flat["fields/pressure_accel_faces/0"].shape == (2, 1, 2)
     assert flat["fields/pressure_accel_faces/1"].shape == (2, 2, 1)
-    assert flat["fields/grid_coords/0"].tolist() == [0.0, 1.0]
+    assert flat["fields/grid_coords/0"].shape == (2, 2)
+    assert flat["fields/grid_coords/0"][0].tolist() == [0.0, 1.0]
+    assert flat["fields/grid_coords/0"][1].tolist() == [0.0, 2.0]
 
 
 def test_partial_endpoint_snapshot_fields_are_not_stacked():
@@ -272,8 +274,8 @@ def test_snapshot_fields_reconstruct_plot_snapshots():
         "fields/psi_before_transport": np.full((2, 2, 2), -1.0),
         "fields/psi_after_transport_before_reinit": np.full((2, 2, 2), 0.25),
         "fields/psi_after_reinit": np.full((2, 2, 2), 0.5),
-        "fields/grid_coords/0": np.array([0.0, 1.0]),
-        "fields/grid_coords/1": np.array([0.0, 1.0]),
+        "fields/grid_coords/0": np.array([[0.0, 1.0], [0.0, 2.0]]),
+        "fields/grid_coords/1": np.array([[0.0, 1.0], [0.0, 3.0]]),
     }
 
     snaps = runner._snapshots_from_field_series(results)
@@ -288,6 +290,8 @@ def test_snapshot_fields_reconstruct_plot_snapshots():
     assert np.all(snaps[0]["pressure_accel_faces"][0] == 7.0)
     assert np.all(snaps[1]["pressure_accel_faces"][1] == 8.0)
     assert len(snaps[0]["grid_coords"]) == 2
+    assert snaps[0]["grid_coords"][0].tolist() == [0.0, 1.0]
+    assert snaps[1]["grid_coords"][0].tolist() == [0.0, 2.0]
 
 
 def test_run_single_respects_save_npz_false(tmp_path, monkeypatch):
