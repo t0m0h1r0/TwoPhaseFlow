@@ -12,6 +12,7 @@ non-trivial ψ advection after the stack swap.
 from __future__ import annotations
 
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -2358,3 +2359,47 @@ def test_retired_iim_reprojector_direct_import_does_not_register_route():
                 reconstruct_base=object(),
             ),
         )
+
+
+def test_runtime_bootstrap_does_not_construct_retired_iim_corrector(monkeypatch):
+    from twophase.simulation import ns_runtime_bootstrap as bootstrap
+
+    captured = {}
+
+    def fake_build_components(**kwargs):
+        captured["reproj_iim"] = kwargs["reproj_iim"]
+        return SimpleNamespace()
+
+    monkeypatch.setattr(
+        bootstrap,
+        "build_ns_runtime_components",
+        fake_build_components,
+    )
+    artifacts = bootstrap.build_ns_runtime_bootstrap(
+        backend=object(),
+        grid=object(),
+        adv=object(),
+        eps=1.0,
+        interface_runtime=SimpleNamespace(
+            phi_primary_clip_factor=12.0,
+            phi_primary_heaviside_eps_scale=1.0,
+            interface_tracking_enabled=True,
+            phi_primary_transport=True,
+            phi_primary_redist_every=4,
+            reinit_every=1,
+            reinit_trigger_mode="fixed",
+            reinit_threshold=0.0,
+            reproject_mode="legacy",
+        ),
+        scheme_options=SimpleNamespace(
+            cn_viscous=False,
+            Re=1.0,
+            viscous_spatial_scheme="conservative_stress",
+            surface_tension_scheme="pressure_jump",
+            debug_diagnostics=False,
+        ),
+        build_reinitializer=lambda: object(),
+    )
+
+    assert artifacts.reproj_iim is None
+    assert captured["reproj_iim"] is None
