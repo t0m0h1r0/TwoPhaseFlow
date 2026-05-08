@@ -1,0 +1,118 @@
+{
+  "run_dir": "experiment/ch14/results/_tmp_ch14_rising_bubble_si10mm_n32x64_rollback_20260508c_t0p02",
+  "threshold_events": [
+    {
+      "event": "ppe_rhs_gt_1e8",
+      "index": 2445,
+      "time": 0.017973713704236702,
+      "kinetic_energy": 0.00028498648162991947,
+      "dt_limit": 7.222033993137279e-06,
+      "ppe_rhs_max": 110207391.5034601,
+      "capillary_face_linf": 9348.724850876772,
+      "capillary_jump_linf": 2049.6410828168973,
+      "div_u_max": 2.1619783510118395e-05,
+      "advective_rate": 3400.685956627867,
+      "reinit_linf_delta": 0.0013627051542450808
+    },
+    {
+      "event": "ke_gt_1e3",
+      "index": 2449,
+      "time": 0.01800260005293763,
+      "kinetic_energy": 0.0017642863794270322,
+      "dt_limit": 7.221317625025765e-06,
+      "ppe_rhs_max": 375003937.6094224,
+      "capillary_face_linf": 26081.595030490535,
+      "capillary_jump_linf": 1927.9854568316769,
+      "div_u_max": 1.766050272067332e-05,
+      "advective_rate": 4403.475973679346,
+      "reinit_linf_delta": 0.004306429078377638
+    },
+    {
+      "event": "ke_gt_1e2",
+      "index": 2451,
+      "time": 0.01801704219646321,
+      "kinetic_energy": 0.014733848132743714,
+      "dt_limit": 7.220974424671203e-06,
+      "ppe_rhs_max": 962078589.035734,
+      "capillary_face_linf": 67157.40208164408,
+      "capillary_jump_linf": 1766.1921885573636,
+      "div_u_max": 5.397380954264008e-05,
+      "advective_rate": 6614.04323427835,
+      "reinit_linf_delta": 0.010177181099622179
+    },
+    {
+      "event": "ke_gt_1",
+      "index": 2454,
+      "time": 0.018030835407558458,
+      "kinetic_energy": 3.0615158797436037,
+      "dt_limit": 1.8976779577847737e-06,
+      "ppe_rhs_max": 38566972347.34512,
+      "capillary_face_linf": 3439543.749032128,
+      "capillary_jump_linf": 3291.8721299828053,
+      "div_u_max": 0.0008154668494171347,
+      "advective_rate": 52695.98015288828,
+      "reinit_linf_delta": 0.03393254211227581
+    },
+    {
+      "event": "div_gt_1e3",
+      "index": 2455,
+      "time": 0.018031748731785046,
+      "kinetic_energy": 9.710819836849062,
+      "dt_limit": 9.133242265883348e-07,
+      "ppe_rhs_max": 161835825622.78613,
+      "capillary_face_linf": 13663333.20976798,
+      "capillary_jump_linf": 3064.1930634791547,
+      "div_u_max": 0.0017116270046244608,
+      "advective_rate": 109490.14280891651,
+      "reinit_linf_delta": 0.03463034784254759
+    },
+    {
+      "event": "dt_lt_1e7",
+      "index": 2460,
+      "time": 0.018032888628460097,
+      "kinetic_energy": 1675.8307564969691,
+      "dt_limit": 6.459491076313168e-08,
+      "ppe_rhs_max": 34372103201380.887,
+      "capillary_face_linf": 2576628767.361473,
+      "capillary_jump_linf": 3545.6674726945193,
+      "div_u_max": 0.0232246111263521,
+      "advective_rate": 1548109.5773426814,
+      "reinit_linf_delta": 0.035288266190693696
+    }
+  ],
+  "checkpoint_energy_audit": [
+    {
+      "checkpoint": "t0p01_stable",
+      "time": 0.009995254329104782,
+      "energy_current": 5.931409786727783e-05,
+      "energy_bdf2_base_ratio": 1.0121141976660801,
+      "energy_ext2_velocity_ratio": 1.1259408621895137,
+      "speed_linf": 0.3035406598458187,
+      "velocity_history_delta_linf": 0.057174855258844706,
+      "conv_prev_linf": 183.7072054760478,
+      "previous_pressure_accel_linf": 3276.85227426981,
+      "projected_face_linf": 0.30368484852125377,
+      "dt_limit": 7.36138847188952e-06,
+      "ppe_rhs_max": 2160.3735550706797,
+      "div_u_max": 9.526873967047322e-06,
+      "reinit_linf_delta": 0.0002364121264889496
+    },
+    {
+      "checkpoint": "t0p018_preblowup",
+      "time": 0.018032998749868804,
+      "energy_current": 883870.8994627862,
+      "energy_bdf2_base_ratio": 2.4751539310823296,
+      "energy_ext2_velocity_ratio": 7.411112350661504,
+      "speed_linf": 15593.717577199073,
+      "velocity_history_delta_linf": 26675.365368107472,
+      "conv_prev_linf": 11306880654473.334,
+      "previous_pressure_accel_linf": 1681166451615.4417,
+      "projected_face_linf": 15664.739447452286,
+      "dt_limit": 2.3857774608339815e-09,
+      "ppe_rhs_max": 2.4563902788830004e+16,
+      "div_u_max": 0.29747178172692657,
+      "reinit_linf_delta": 0.03503986839964779
+    }
+  ],
+  "interpretation": "Volume/reinit deltas remain small while PPE RHS, capillary face acceleration, advective rate, and velocity-history energy ratios grow rapidly.  This supports a production feedback mechanism in acceleration/history variables, consistent with the common mass-momentum transport RCA."
+}
