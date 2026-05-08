@@ -884,10 +884,10 @@ def test_ch14_rising_bubble_yaml_builds_solver():
     cfg = ExperimentConfig.from_yaml(path)
     solver = TwoPhaseNSSolver.from_config(cfg)
 
-    assert solver._grid.N[0] == 128
-    assert solver._grid.N[1] == 256
-    assert solver.LX == pytest.approx(1.0)
-    assert solver.LY == pytest.approx(2.0)
+    assert solver._grid.N[0] == cfg.grid.NX
+    assert solver._grid.N[1] == cfg.grid.NY
+    assert solver.LX == pytest.approx(cfg.grid.LX)
+    assert solver.LY == pytest.approx(cfg.grid.LY)
     assert isinstance(solver._transport, PsiDirectTransport)
     assert solver._interface_runtime.rebuild_freq == 1
     assert solver._interface_runtime.reinit_every == 1

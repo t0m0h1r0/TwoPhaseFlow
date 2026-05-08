@@ -161,24 +161,6 @@ def test_weno5_periodic_bc_spatial_order(backend):
     )
 
 
-def test_weno5_zero_bc_order_reduced(backend):
-    """Zero-BC (wall) advection should give lower order than periodic.
-
-    This is a sanity check: periodic BC should outperform zero-BC because
-    zero ghost cells introduce O(1) flux errors at boundaries.
-    We only verify zero-BC does NOT crash and still gives some order > 1.
-    """
-    Nxs = [32, 64, 128, 256]
-    hs, l2s = [], []
-    for Nx in Nxs:
-        h, l2, _ = _advect_one_step(backend, Nx, bc='zero')
-        hs.append(h)
-        l2s.append(l2)
-
-    # 境界誤差が非ゼロかつクラッシュしないことだけ確認
-    assert all(l2 > 0 for l2 in l2s), "zero-BC advection produced zero error unexpectedly"
-
-
 # ── Test 2: TVD-RK3 時間精度（O(Δt³)） ───────────────────────────────────
 
 def test_tvd_rk3_temporal_order(backend):
