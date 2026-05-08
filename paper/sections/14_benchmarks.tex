@@ -42,7 +42,11 @@ Rayleigh--Taylor では，浮力が安定化ではなく不安定成長を作る
   \item interface-fitted 非一様格子 $\alpha=2$，毎 step rebuild，
   \item FCCD 保存形界面輸送 + TVD--RK3，
   \item UCCD6 対流 + IMEX--BDF2，CCD 粘性 + implicit--BDF2 + defect correction，
-  \item P2 reduced-ALE discrete-gradient 曲率仕事，
+  \item pressure-jump 毛管力：
+        開界面では face-native Young--Laplace jump と
+        component Hodge augmented projection，
+        閉界面では variational Riesz cochain と
+        pressure-component Hodge reaction，
   \item Ridge--Eikonal 再初期化を毎 step 適用，
   \item 向き付き pressure-jump
         $j_{gl}=p_g-p_l=-\sigma\kappa_{lg}$ を用いる
@@ -97,6 +101,14 @@ YAML では $y_0=0.5$，$A_0=0.01$，$m=2$，$L_x=1$，$\theta_0=0$ とする．
   \label{eq:flat_capillary_dispersion}
 \end{equation}
 を第一基準に置く~\cite{Prosperetti1981}．
+この設定では $k=4\pi$ であり，
+\[
+  \omega_\sigma
+  =\sqrt{\frac{\sigma k^3}{\rho_l+\rho_g}}
+  =0.377764048,\qquad
+  T_\sigma=\frac{2\pi}{\omega_\sigma}=16.632565583
+\]
+を 1 周期の基準時刻とする．
 本ケースでは重力を切るため，初期加速度は曲率と圧力ジャンプだけで決まる．
 向き付き規約
 \[
@@ -107,30 +119,96 @@ YAML では $y_0=0.5$，$A_0=0.01$，$m=2$，$L_x=1$，$\theta_0=0$ とする．
 に従えば，山の初期加速度は復元向きでなければならない．
 
 \begin{itemize}[noitemsep,leftmargin=2em]
-  \item グリッド：$[0,1]^2$，$128^2$，$x$ 周期，$y$ 壁面，
+  \item グリッド：$[0,1]^2$，$32^2$，$x$ 周期，$y$ 壁面，
         interface/wall fitted 非一様格子
   \item 物性：$\rho_l=1000$，$\rho_g=1.2$，
         $\mu_l=10^{-3}$，$\mu_g=1.8\times10^{-5}$，
         $\sigma=0.072$，$g=0$
-  \item 時間：$T=25.0$，理論 CFL multiplier $1.0$
+  \item 時間：$T=T_\sigma=16.632565583$，理論 CFL multiplier $1.0$
   \item 出力：\texttt{interface\_amplitude}，
         \texttt{volume\_conservation}，\texttt{kinetic\_energy}，
-        $\psi$/速度/圧力 snapshot
+        $0,\frac14T_\sigma,\frac12T_\sigma,\frac34T_\sigma,T_\sigma$
+        近傍の $\psi$/速度/圧力 snapshot
 \end{itemize}
 
 \subsubsection{結果と判定}
 
-毛管波では，\texttt{interface\_amplitude} が
-式~\eqref{eq:flat_capillary_dispersion} で決まる初期復元向きに振動し，
-圧力ジャンプが正しい復元向きに働くことを確認した．
-運動エネルギーは界面変形エネルギーとの交換として増減し，
-体積保存はベンチマーク全区間で許容範囲内に留まる．
+N=32 の 1 周期 run は $2145$ steps で
+$t=T_\sigma$ に到達し，すべての保存診断と snapshot field は有限値を保った．
+CFL は全区間で毛管制限が支配し，
+$dt$ は $6.56\times10^{-3}$--$7.80\times10^{-3}$ の範囲に留まった．
+\texttt{interface\_amplitude} は初期離散値
+$1.0469\times10^{-2}$ から最小
+$8.7934\times10^{-4}$ へ減少し，再び増加して
+終端で $1.0288\times10^{-2}$ へ戻る．
+この診断は非負の最大振幅であり，符号付き Fourier 係数ではないため，
+最小値は界面がほぼ平坦化する時刻を表す．
+運動エネルギーは
+$1.74\times10^{-9}$ から最大 $3.20\times10^{-4}$ まで増加し，
+終端では $8.96\times10^{-5}$ に戻る．
+体積ドリフトは最大 $8.97\times10^{-15}$，
+終端 $8.14\times10^{-15}$ であり，非一様格子上でも保存誤差は丸め誤差程度である．
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.32\linewidth]{figures/ch14_capillary_interface_amplitude.pdf}
+\includegraphics[width=0.32\linewidth]{figures/ch14_capillary_kinetic_energy.pdf}
+\includegraphics[width=0.32\linewidth]{figures/ch14_capillary_volume_drift.pdf}
+\caption{N=32，1 周期毛管波の時系列診断．左から，非負界面振幅，
+運動エネルギー，体積ドリフトを示す．}
+\label{fig:ch14_capillary_histories}
+\end{figure}
+
+2 次元場としては，\autoref{fig:ch14_capillary_psi_snapshots} に
+界面形状の 1 周期推移を示し，
+\autoref{fig:ch14_capillary_velocity_pressure_snapshots} に速度場と
+圧力 Hodge 代表を示す．
+速度 snapshot の最大速度は $3.86\times10^{-3}$ であり，
+終端では $2.71\times10^{-3}$ であった．
+さらに終端 snapshot では壁面法線速度と $x$ 周期端の速度 mismatch は
+いずれも $0$ であった．
 圧力 snapshot は界面近傍の Hodge 代表として読み，
 diffuse interface を滑らかに塗りつぶした絶対圧分布としては解釈しない．
 
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.19\linewidth]{figures/ch14_capillary_psi_t0.pdf}
+\includegraphics[width=0.19\linewidth]{figures/ch14_capillary_psi_tq1.pdf}
+\includegraphics[width=0.19\linewidth]{figures/ch14_capillary_psi_tq2.pdf}
+\includegraphics[width=0.19\linewidth]{figures/ch14_capillary_psi_tq3.pdf}
+\includegraphics[width=0.19\linewidth]{figures/ch14_capillary_psi_t1.pdf}
+\caption{N=32，1 周期毛管波の $\psi$ snapshot．左から
+$t\approx0,\frac14T_\sigma,\frac12T_\sigma,
+\frac34T_\sigma,T_\sigma$ を示す．色軸は全時刻で共通である．}
+\label{fig:ch14_capillary_psi_snapshots}
+\end{figure}
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.19\linewidth]{figures/ch14_capillary_velocity_t0.pdf}
+\includegraphics[width=0.19\linewidth]{figures/ch14_capillary_velocity_tq1.pdf}
+\includegraphics[width=0.19\linewidth]{figures/ch14_capillary_velocity_tq2.pdf}
+\includegraphics[width=0.19\linewidth]{figures/ch14_capillary_velocity_tq3.pdf}
+\includegraphics[width=0.19\linewidth]{figures/ch14_capillary_velocity_t1.pdf}
+\par\smallskip
+\includegraphics[width=0.19\linewidth]{figures/ch14_capillary_pressure_t0.pdf}
+\includegraphics[width=0.19\linewidth]{figures/ch14_capillary_pressure_tq1.pdf}
+\includegraphics[width=0.19\linewidth]{figures/ch14_capillary_pressure_tq2.pdf}
+\includegraphics[width=0.19\linewidth]{figures/ch14_capillary_pressure_tq3.pdf}
+\includegraphics[width=0.19\linewidth]{figures/ch14_capillary_pressure_t1.pdf}
+\caption{N=32，1 周期毛管波の 2 次元速度場と圧力 Hodge 代表．
+上段は速度場，下段は圧力代表であり，左から
+$t\approx0,\frac14T_\sigma,\frac12T_\sigma,
+\frac34T_\sigma,T_\sigma$ を示す．
+上段は背景スカラー場を描かず，矢印の長さと色で速度ベクトルを表す．
+速度矢印の色軸と矢印スケール，
+および圧力色軸はそれぞれ全時刻で共通である．}
+\label{fig:ch14_capillary_velocity_pressure_snapshots}
+\end{figure}
+
 このケースの判定は，
 「平坦界面の毛管剛性が正しい向きで PPE/corrector に伝わり，
-FCCD 界面輸送と IMEX--BDF2 運動量更新が長時間で有界な振動を保つ」
+FCCD 界面輸送と IMEX--BDF2 運動量更新が 1 周期で有界な復元振動を保つ」
 である．
 この結果により，後続の液滴・気泡・Rayleigh--Taylor で用いる
 同じ $j_{gl}$ contract を，界面曲率の符号に対して分岐させずに使える．

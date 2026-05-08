@@ -967,12 +967,15 @@ def _negative_face_divergence_adjoint(*, xp, fccd, nodal_covector, axis: int):
         adjoint = xp.roll(weighted, -1, axis=0) - weighted
         return xp.moveaxis(adjoint, 0, axis)
 
+    # Wall ``face_divergence`` has zero boundary rows, so boundary nodal
+    # covectors must not contribute to the exact ``(-D_f)^T`` face cochain.
+    weighted = xp.zeros_like(covector)
     if weights["uniform"]:
-        weighted = covector * weights["inv_H"]
+        weighted[1:n_faces] = covector[1:n_faces] * weights["inv_H"]
     else:
         inv_width = fccd._broadcast_axis0(weights["inv_H_node"], covector.ndim)
-        weighted = covector * inv_width
-    adjoint = weighted[:-1] - weighted[1:]
+        weighted[1:n_faces] = covector[1:n_faces] * inv_width
+    adjoint = weighted[1:] - weighted[:-1]
     return xp.moveaxis(adjoint, 0, axis)
 
 
