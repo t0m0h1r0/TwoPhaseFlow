@@ -378,7 +378,6 @@ class RidgeEikonalReinitializer(IReinitializer):
             1.0 / 3.0,
             1.0 / 2.0,
             2.0 / 3.0,
-            1.0,
             1.5,
             2.0,
             3.0,
@@ -388,17 +387,18 @@ class RidgeEikonalReinitializer(IReinitializer):
             12.0,
             16.0,
         ]
-        samples: list[tuple[float, float]] = []
+        samples: list[tuple[float, float]] = [(1.0, residual_one)]
         for scale in scales:
-            value, _ = residual(scale)
+            value, psi_candidate = residual(scale)
             if abs(value) <= tol:
-                return psi_at(scale)
+                return psi_candidate
             samples.append((scale, value))
+        samples.sort(key=lambda item: item[0])
 
         bracket = None
         for left, right in zip(samples[:-1], samples[1:]):
             if left[1] * right[1] < 0.0:
-                bracket = (left[0], right[0])
+                bracket = (left[0], left[1], right[0])
                 break
         if bracket is None:
             raise ValueError(
@@ -406,18 +406,18 @@ class RidgeEikonalReinitializer(IReinitializer):
                 "moving the sharp interface"
             )
 
-        left, right = bracket
+        left, value_left, right = bracket
         psi_mid = psi_one
         for _ in range(48):
             mid = 0.5 * (left + right)
             value_mid, psi_mid = residual(mid)
             if abs(value_mid) <= tol:
                 return psi_mid
-            value_left, _ = residual(left)
             if value_left * value_mid <= 0.0:
                 right = mid
             else:
                 left = mid
+                value_left = value_mid
         return psi_mid
 
     @staticmethod

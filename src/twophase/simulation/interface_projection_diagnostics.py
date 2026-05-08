@@ -458,6 +458,7 @@ def capillary_external_component_saddle_projection(
     )
     snapshots = _snapshot_solver_graph(ppe_solver)
     try:
+        _set_solver_graph_static_operator_cache(ppe_solver, True)
         _invalidate_solver_graph_cache(ppe_solver)
         _set_zero_jump_solver_context(ppe_solver, zero_jump_kwargs)
         raw_range, raw_hodge = _external_hodge_split(
@@ -1083,6 +1084,24 @@ def _restore_solver_graph(snapshots: list[tuple[Any, dict[str, Any]]]) -> None:
     for obj, state in snapshots:
         obj.__dict__.clear()
         obj.__dict__.update(state)
+
+
+def _set_solver_graph_static_operator_cache(root, enabled: bool) -> None:
+    seen: set[int] = set()
+    stack = [root]
+    while stack:
+        obj = stack.pop()
+        obj_id = id(obj)
+        if obj_id in seen:
+            continue
+        seen.add(obj_id)
+        setter = getattr(obj, "set_static_operator_cache", None)
+        if callable(setter):
+            setter(enabled)
+        for child_name in ("base_solver", "operator"):
+            child = getattr(obj, child_name, None)
+            if child is not None:
+                stack.append(child)
 
 
 def _invalidate_solver_graph_cache(root) -> None:
