@@ -13,6 +13,8 @@ sources:
     description: "Theory-first remedy matrix and YAML contract"
   - path: artifacts/A/ch14_common_flux_transport_impl_CHK-RA-CH14-COMMON-FLUX-IMPL-001.md
     description: "Existing isolated common-flux transport foundation"
+  - path: artifacts/A/ch14_common_flux_implementation_ux_CHK-RA-CH14-COMMON-FLUX-UX-001.md
+    description: "Implementation dependency order and YAML UX contract"
 depends_on:
   - "[[WIKI-T-088]]"
   - "[[WIKI-T-101]]"
@@ -228,30 +230,58 @@ The operator name does not certify the step.  The energy ledger certifies it.
 
 ## YAML Contract
 
-The intended production surface is:
+The intended production surface uses `numerics.momentum.form` as canonical.
+`run.momentum_form` may remain a compatibility alias only when it agrees.
 
 ```yaml
-run:
-  momentum_form: conservative_common_flux
-
 numerics:
-  conservative_transport:
-    strict: true
-    energy_certificate: strict
-    high_k_monitor: fail_close
+  momentum:
+    form: conservative_common_flux
+    conservative_common_flux:
+      mode: strict
+      state: cell_qmp
+      transport:
+        ledger: required
+        phase_stage_projection: forbidden
+        energy_gate: fail_close
+      remap:
+        policy: conservative_qmp_or_fail
+        allow_q_only: false
+      certificates:
+        energy: strict
+        high_k_interface: fail_close
   pressure:
     projection_metric: transported_face_mass
     history_storage: face_impulse_cochain
-  capillary:
-    force_form: surface_energy_adjoint
-    reaction_projection: diagnostic_or_constraint
-  reinitialization:
-    remap: conservative_qmp_or_fail
+  interface:
+    transport:
+      ledger: required
+      clipping: forbidden
 ```
 
 Invalid mixtures should fail at config validation, especially
 `conservative_common_flux` with q-only reinitialization, primitive-velocity
 restart state, scalar pressure-history storage, or silent filters.
+
+## Implementation Reading
+
+Implementation should proceed by dependency gates:
+
+```text
+G0 config validation remains fail-closed
+G1 ConservativeState(q,m,p,u,M_f)
+G2 interface stage requests TransportLedger and transports q,m,p together
+G3 ConservativeQMPRemapper for reinit/grid rebuild, or fail-close
+G4 force predictor treats u as p/m and writes impulses back to p
+G5 pressure projection consumes explicit transported M_f(q)
+G6 EnergyLedger plus high-k witness
+G7 checkpoint schema stores pre-step q,m,p and face-history cochains
+```
+
+The current `psi,u,v` grid rebuild path is not admissible for this route because
+it remaps velocity rather than conservative momentum.  Until conservative
+remap exists, strict conservative runs with reinit or interface-fitted grid
+rebuild must fail closed.
 
 ## Negative Knowledge
 

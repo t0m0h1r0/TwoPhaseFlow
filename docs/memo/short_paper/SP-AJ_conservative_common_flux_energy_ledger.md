@@ -593,41 +593,195 @@ benchmark-specific branches.
 They can delay, hide, or localize the failure.  They do not prove why the
 interface-band high-frequency mode cannot receive unaccounted energy.
 
-## 12. YAML Contract
+## 12. Implementation Contract
+
+The implementation must be a strict parallel route, not a set of opportunistic
+patches to the primitive-velocity path.  The current repository boundary is:
+
+```text
+TransportLedger                         exists
+ConservativeCommonFluxTransport          exists for isolated q,m,p transport
+momentum.form: conservative_common_flux  parses
+full NS runtime route                     intentionally fail-closes
+```
+
+The implementation dependency order is:
+
+```text
+G0 config contract and fail-close validation
+G1 ConservativeState(q,m,p,u,M_f) container
+G2 _advance_interface_stage requests a ledger and transports q,m,p together
+G3 ConservativeQMPRemapper for reinit and grid rebuild, or fail-close
+G4 force predictor treats u as p/m view and writes impulses back to momentum
+G5 pressure projection consumes explicit transported face mass M_f(q)
+G6 EnergyLedger and high-k witness diagnostics
+G7 checkpoint schema stores pre-step q,m,p and face-history cochains
+```
+
+### 12.1 State Container
+
+Add a conservative state object near the step-state layer:
+
+```text
+ConservativeState:
+  q
+  density
+  momentum_components
+  velocity_components
+  face_mass_components or face_metric
+  grid_hash
+```
+
+Construction is deterministic:
+
+```text
+density = rho_g + (rho_l-rho_g) q,
+momentum_components = density * velocity_components,
+velocity_components = momentum_components / density.
+```
+
+For the pressure complex, the face metric is computed at the same face locus as
+projection:
+
+```text
+rho_f = rho_g + (rho_l-rho_g) P_f q,
+M_f   = face_measure * rho_f.
+```
+
+No pressure or force operator may recompute a different density metric for the
+same step.
+
+### 12.2 Interface Stage
+
+For the conservative route, the interface stage is also the mass/momentum
+transport stage:
+
+```text
+q_T, ledger = advance_with_face_velocity(
+    q^n, projected_face_velocity, dt,
+    clip_bounds=None,
+    return_ledger=True)
+
+(m_T,p_T,u_T), cert_T =
+    ConservativeCommonFluxTransport.advance(m^n,p^n,ledger).
+```
+
+The step state then receives `q_T`, `m_T`, `p_T`, `u_T`, the ledger, and the
+certificate.  Hidden clipping and phase mass correction are forbidden because
+they are unremapped impulses.
+
+### 12.3 Reinit And Grid Rebuild
+
+The existing `psi,u,v` grid rebuild/remap is not valid for this route.  A
+conservative remap must have the signature
+
+```text
+ConservativeQMPRemapper.remap(state, old_grid, new_grid, projection_info)
+  -> state_R, certificate_R.
+```
+
+The certificate must include volume, mass, momentum, and kinetic-energy defects.
+Until this exists, conservative runs with active reinit or scheduled
+interface-fitted grid rebuilds must fail closed.
+
+### 12.4 Pressure And Checkpoint
+
+The pressure projection service must receive `M_f(q)` explicitly and store
+pressure history as face impulse/cochain components.  Checkpoints for this
+route need a new conservative schema:
+
+```text
+state/psi
+state/density
+state/momentum_components/*
+state/u, state/v as derived convenience views
+solver/p_prev_accel_face_components/*
+solver/projected_face_components/*
+solver/conservative_energy_ledger/*
+manifest.momentum_form = conservative_common_flux
+manifest.conservative_state_schema = qmp_v1
+manifest.state_phase = pre_step
+```
+
+Primitive checkpoints must not restart a conservative route.
+
+## 13. YAML Contract
 
 The YAML surface should expose the mathematical contract, not a bag of
 independent switches.  The intended production shape is:
 
 ```yaml
-run:
-  momentum_form: conservative_common_flux
-
 numerics:
-  conservative_transport:
-    strict: true
-    energy_certificate: strict
-    high_k_monitor: fail_close
-  pressure:
-    projection_metric: transported_face_mass
-    history_storage: face_impulse_cochain
-  capillary:
-    force_form: surface_energy_adjoint
-    reaction_projection: diagnostic_or_constraint
+  momentum:
+    form: conservative_common_flux
+    conservative_common_flux:
+      mode: strict
+      state: cell_qmp
+      transport:
+        ledger: required
+        phase_stage_projection: forbidden
+        energy_gate: fail_close
+      remap:
+        policy: conservative_qmp_or_fail
+        allow_q_only: false
+      certificates:
+        energy: strict
+        high_k_interface: fail_close
+      tolerances:
+        mass_consistency_rel: 1.0e-12
+        momentum_consistency_rel: 1.0e-10
+        transport_energy_abs: 1.0e-10
+        remap_energy_abs: 1.0e-10
+        projection_energy_abs: 1.0e-10
+        high_k_growth_rel: 1.0e-2
+
+  interface:
+    transport:
+      variable: psi
+      spatial: fccd
+      time_integrator: tvd_rk3
+      ledger: required
+      clipping: forbidden
+
+  projection:
+    metric: transported_face_mass
+    pressure_history: face_impulse_cochain
+    face_flux_projection: true
+    canonical_face_state: true
+    face_native_predictor_state: true
+
+interface:
   reinitialization:
-    remap: conservative_qmp_or_fail
+    algorithm: ridge_eikonal
+    remap:
+      policy: conservative_qmp_or_fail
+      defect_ledger: required
+
+output:
+  checkpoints:
+    state: pre_step_qmp
+    include_energy_ledger: true
+    include_face_history: true
 ```
 
 Config validation must reject invalid mixtures:
 
 ```text
-conservative_common_flux requires q,m,p restart state,
+conservative_common_flux requires q,m,p state,
 conservative_common_flux requires a common flux ledger,
 conservative_common_flux requires transported-face-mass projection,
 conservative_common_flux forbids q-only production reinit,
 conservative_common_flux forbids silent velocity/pressure filtering.
 ```
 
-## 13. Production Certificate
+`run.momentum_form` may remain a compatibility alias, but the canonical setting
+should be `numerics.momentum.form`.  If both are present, they must agree.
+
+Diagnostic transport-only probes may be allowed under
+`mode: diagnostic_transport_only`, but production benchmark YAMLs must use
+`mode: strict`.
+
+## 14. Production Certificate
 
 Each accepted step must emit a ledger such as:
 
@@ -646,7 +800,7 @@ The high-k monitor is not a filter.  It is a fail-close witness.  If a
 near-Nyquist interface mode grows, the ledger must identify the substep that
 fed it or reject the step as non-certified.
 
-## 14. Conclusion
+## 15. Conclusion
 
 The remedy for the SI rising-bubble blow-up is not to suppress the final
 velocity ring.  The remedy is to remove the algebraic freedom that lets the
