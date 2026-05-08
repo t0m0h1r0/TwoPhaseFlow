@@ -104,7 +104,6 @@ def n64_oscillating_droplet(
         raw["diagnostics"] = [
             "volume_conservation",
             "kinetic_energy",
-            "deformation",
             "signed_deformation",
             "pressure_contrast",
         ]

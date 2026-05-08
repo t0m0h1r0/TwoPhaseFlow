@@ -297,9 +297,13 @@ def test_external_component_saddle_projection_removes_reaction_row():
         def invalidate_cache(self):
             self.invalidated = True
 
+        def set_static_operator_cache(self, enabled):
+            cache_events.append(bool(enabled))
+
         def solve(self, rhs, rho, dt=0.0, p_init=None):
             return xp.asarray(rhs)
 
+    cache_events = []
     solver = MeanRangeSolver()
     projection = capillary_external_component_saddle_projection(
         xp=xp,
@@ -318,6 +322,7 @@ def test_external_component_saddle_projection_removes_reaction_row():
     assert projection["contract_active_metric"] == pytest.approx(1.0)
     assert projection["contract_pressure_adjoint_residual"] == pytest.approx(0.0)
     assert projection["contract_saddle_constraint_linf"] == pytest.approx(0.0)
+    assert cache_events == [True]
     assert not hasattr(solver, "invalidated")
 
 
