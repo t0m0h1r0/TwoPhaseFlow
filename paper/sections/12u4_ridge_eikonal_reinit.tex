@@ -15,6 +15,10 @@ Hamilton--Jacobi PDE $\partial_\tau \phi + \mathrm{sgn}(\phi)(|\nabla\phi|-1) = 
 \textbf{単体精度}を確認する．
 本実験の再初期化は Godunov 型の擬似時間 sweep であり，
 single-shot FMM 型の距離再構成とは区別する．
+Level Set 再初期化の基礎は Osher--Sethian~\cite{OsherSethian1988}，
+Sussman 型再初期化~\cite{Sussman1994,Sussman1999}，
+Hamilton--Jacobi/Godunov 離散化~\cite{JiangPeng2000,RouyTourin1992}，
+および FMM/FSM 系~\cite{Sethian1996,Zhao2005} に置く．
 
 \paragraph{検証対象 primitive の同定．}
 本 U4 の実体は level-set 再初期化 primitive の

@@ -1,12 +1,13 @@
-# Wiki Index — 361 entries
+# Wiki Index — 363 entries
 
 ## Active Retrieval Gate
 
 Start with [WIKI-X-041](cross-domain/WIKI-X-041.md) for the curated active
-contract map, then [WIKI-X-040](cross-domain/WIKI-X-040.md) for recent
-research findings.  Older cards remain listed for provenance, but cards marked
-SUPERSEDED or REFERENCE must not be used as current algorithm policy without
-their curation notes.
+contract map, [WIKI-P-018](paper/WIKI-P-018.md) for the recent Chapters 1-13
+paper-theory contract digest, then [WIKI-X-040](cross-domain/WIKI-X-040.md) for
+recent research findings.  Older cards remain listed for provenance, but cards
+marked SUPERSEDED or REFERENCE must not be used as current algorithm policy
+without their curation notes.
 
 ## Theory (163)
 
@@ -297,7 +298,7 @@ their curation notes.
 | [WIKI-E-061](experiment/WIKI-E-061.md) | N64 Non-DC Trial Matrix Separates Contracts from Probes |
 | [WIKI-E-062](experiment/WIKI-E-062.md) | Static Droplet Pressure Images Must Use Hodge Representatives |
 
-## Paper (16)
+## Paper (18)
 
 | REF-ID | Title |
 |--------|-------|
@@ -317,6 +318,8 @@ their curation notes.
 | [WIKI-P-014](paper/WIKI-P-014.md) | Verification Grammar: U-Series Certificates, V-Series Identity Tests, and Type-A/B/D |
 | [WIKI-P-015](paper/WIKI-P-015.md) | Chapters 1-13 Use Failure-Mode to Contract Traceability |
 | [WIKI-P-016](paper/WIKI-P-016.md) | Appendices Are Proof Layers for Main-Text Contracts |
+| [WIKI-P-017](paper/WIKI-P-017.md) | Paper Build Hygiene: Zero-Warning Float Placement |
+| [WIKI-P-018](paper/WIKI-P-018.md) | Chapters 1-13 Recent Paper-Theory Contract Digest |
 
 ## Meta (31)
 
