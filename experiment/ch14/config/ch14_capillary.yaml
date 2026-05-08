@@ -1,4 +1,7 @@
-# N=128 water-air capillary-flow probe for WIKI-X-020..022 and WIKI-X-029..032.
+# N=32 water-air capillary-flow one-period benchmark for §14.
+# The mode-2 capillary wave has k=4π.  With water-air density and
+# sigma=0.072, the inviscid small-amplitude dispersion relation gives
+# omega=sqrt(sigma*k^3/(rho_l+rho_g))=0.377764048 and T≈16.632565583.
 # Production numerical stack: FCCD PPE + face-native Young-Laplace jump + UCCD6.
 # - FCCD: conservative interface transport and pressure gradient use the `fccd`
 #   scheme; flux-locus form is the default option for these terms.
@@ -16,7 +19,7 @@ experiment:
   type: capillary_wave
 
 grid:
-  cells: [128, 128]
+  cells: [32, 32]
   domain:
     size: [1.0, 1.0]
     boundary:
@@ -72,7 +75,7 @@ physics:
 
 run:
   time:
-    final: 25.0
+    final: 16.632565583
     # Multiplier on theory CFL constants; 1.0 uses the theory budget.
     cfl: 1.0
     print_every: 200
@@ -116,6 +119,8 @@ numerics:
         discretization: fccd
         coefficient: phase_separated
         interface_coupling: affine_jump
+        pressure_force_contract: variational_adjoint
+        scalar_operator_pairing: variational_operator
         capillary_range_projection: component_hodge_augmented
       solver:
         kind: defect_correction
@@ -131,7 +136,7 @@ output:
   dir: results/ch14_capillary
   save_npz: true
   snapshots:
-    interval: 0.5
+    times: [0.0, 4.158141396, 8.316282792, 12.474424188, 16.632565583]
   figures:
     - type: time_series
       title: "Water-air capillary wave: interface amplitude"
@@ -168,10 +173,28 @@ output:
 
     - type: snapshot_series
       field: velocity
+      shared_scale: true
+      show_field: false
+      color_quantity: speed
+      color_scale: max
+      colorbar_label: "$|u|$"
+      vector_cmap: viridis
+      background_color: "#eeeeee"
+      normalize_arrows: false
+      quiver_length_fraction: 0.14
+      quiver_min_speed_fraction: 0.02
+      quiver_width: 0.0055
+      quiver_outline_width_factor: 2.1
+      arrow_color: null
+      arrow_outline_color: "#ffffff"
+      arrow_alpha: 1.0
+      arrow_outline_alpha: 0.9
       file_prefix: velocity_t
 
     - type: snapshot_series
       field: pressure_hodge
+      shared_scale: true
+      symmetric_scale: true
       file_prefix: pressure_t
 
 diagnostics: [volume_conservation, kinetic_energy, interface_amplitude]
