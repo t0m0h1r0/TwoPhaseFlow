@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Callable
 
-from ..ppe.iim.stencil_corrector import IIMStencilCorrector
 from .ns_option_canonicalizer import canonicalize_viscous_time_scheme
 from .ns_runtime_components import (
     NSRuntimeComponentOptions,
@@ -16,7 +15,7 @@ from .ns_runtime_components import (
 
 @dataclass(frozen=True)
 class NSRuntimeBootstrapArtifacts:
-    reproj_iim: object
+    reproj_iim: object | None
     reinit: object
     cn_viscous: bool
     reynolds_number: float
@@ -38,7 +37,7 @@ def build_ns_runtime_bootstrap(
     build_reinitializer: Callable[[], object],
 ) -> NSRuntimeBootstrapArtifacts:
     """Build runtime artifacts after geometry/runtime normalization."""
-    reproj_iim = IIMStencilCorrector(grid, mode="hermite")
+    reproj_iim = None
     reinit = build_reinitializer()
     viscous_time_scheme = canonicalize_viscous_time_scheme(
         getattr(

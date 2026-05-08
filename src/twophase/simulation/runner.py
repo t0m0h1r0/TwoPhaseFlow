@@ -11,6 +11,8 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from .snapshot_payload import PROJECTION_SNAPSHOT_FIELDS
+
 if TYPE_CHECKING:
     from .config_io import ExperimentConfig
 
@@ -243,37 +245,7 @@ def run_simulation(
             dbg_history.append(merged_diag)
 
         while snap_idx < len(snap_times) and t >= snap_times[snap_idx]:
-            _to_h = lambda a: np.asarray(_bk.to_host(a))
-            psi_h, u_h, v_h, p_h = _to_h(psi), _to_h(u), _to_h(v), _to_h(p)
-            snap_entry = {
-                "t": float(t),
-                "psi": psi_h.copy(),
-                "u": u_h.copy(),
-                "v": v_h.copy(),
-                "p": p_h.copy(),
-                "rho": (ph.rho_l * psi_h + ph.rho_g * (1.0 - psi_h)).copy(),
-            }
-            if solver._p_prev_accel_face_components is not None:
-                snap_entry["pressure_accel_faces"] = [
-                    _to_h(component).copy()
-                    for component in solver._p_prev_accel_face_components
-                ]
-            projection_fields = getattr(
-                solver,
-                "_last_interface_projection_fields",
-                None,
-            )
-            if projection_fields:
-                for field in (
-                    "psi_before_transport",
-                    "psi_after_transport_before_reinit",
-                    "psi_after_reinit",
-                ):
-                    if field in projection_fields:
-                        snap_entry[field] = _to_h(projection_fields[field]).copy()
-            if solver._alpha_grid > 1.0:
-                snap_entry["grid_coords"] = [c.copy() for c in solver._grid.coords]
-            snaps.append(snap_entry)
+            snaps.append(_capture_runtime_snapshot(solver, ph, t, psi, u, v, p))
             snap_idx += 1
 
         if step % cfg.run.print_every == 0 or step <= 2:
@@ -409,17 +381,49 @@ def _checkpoint_pressure(solver, p, psi):
     return solver._backend.xp.zeros_like(psi)
 
 
+def _capture_runtime_snapshot(solver, ph, t: float, psi, u, v, p) -> dict:
+    """Capture host arrays consumed by snapshot figures and restart artifacts."""
+    backend = solver._backend
+
+    def to_host_array(value):
+        return np.asarray(backend.to_host(value))
+
+    psi_h = to_host_array(psi)
+    u_h = to_host_array(u)
+    v_h = to_host_array(v)
+    p_h = to_host_array(p)
+    snap_entry = {
+        "t": float(t),
+        "psi": psi_h.copy(),
+        "u": u_h.copy(),
+        "v": v_h.copy(),
+        "p": p_h.copy(),
+        "rho": (ph.rho_l * psi_h + ph.rho_g * (1.0 - psi_h)).copy(),
+    }
+    if solver._p_prev_accel_face_components is not None:
+        snap_entry["pressure_accel_faces"] = [
+            to_host_array(component).copy()
+            for component in solver._p_prev_accel_face_components
+        ]
+    projection_fields = getattr(solver, "_last_interface_projection_fields", None)
+    if projection_fields:
+        for field in PROJECTION_SNAPSHOT_FIELDS:
+            if field in projection_fields:
+                snap_entry[field] = to_host_array(projection_fields[field]).copy()
+    if solver._alpha_grid > 1.0:
+        snap_entry["grid_coords"] = [c.copy() for c in solver._grid.coords]
+    return snap_entry
+
+
 def _snapshot_needs_projection_fields(cfg: "ExperimentConfig") -> bool:
     """Return whether configured snapshot figures consume reinit intermediates."""
-    projection_fields = {
-        "psi_before_transport",
-        "psi_after_transport_before_reinit",
-        "psi_after_reinit",
-    }
     for figure in getattr(cfg.output, "figures", []) or []:
         if not isinstance(figure, dict):
             continue
-        if figure.get("type") == "snapshot_series" and figure.get("field") in projection_fields:
+        if (
+            figure.get("type") == "snapshot_series"
+            and figure.get("field") in PROJECTION_SNAPSHOT_FIELDS
+        ):
             return True
     return False
 

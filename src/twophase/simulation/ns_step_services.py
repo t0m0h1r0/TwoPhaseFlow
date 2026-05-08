@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 import numpy as np
 
 from ..core.array_checks import all_arrays_exact_zero
-from ..core.boundary import boundary_axes, is_all_periodic
+from ..core.boundary import is_all_periodic
 from ..ns_terms.context import NSComputeContext
 from .ns_predictor_assembly import (
     select_buoyancy_predictor_state_assembly,
@@ -28,6 +30,11 @@ from .interface_projection_diagnostics import (
     capillary_pressure_adjoint_face_weights,
     zero_capillary_face_diagnostics,
 )
+from .face_boundary import (
+    zero_wall_normal_face_components,
+    zero_wall_velocity_face_components,
+)
+from .ns_predictor_face_state import FaceNativePredictorAssembly
 from .ns_step_state import NSStepState
 
 IMEX_BDF2_PROJECTION_FACTOR = 2.0 / 3.0
@@ -39,6 +46,15 @@ _JUMP_CURVATURE_METHODS = {
     "transport_variational_p2_discrete_gradient",
     "transport_variational_p2_ale_discrete_gradient",
 }
+
+
+@dataclass
+class PressureJumpStageContext:
+    """Operation-local pressure-jump artifacts shared inside one PPE stage."""
+
+    transport_temporaries: dict
+    trace_projection_diagnostics: dict | None = None
+    corrected_capillary_components: list | None = None
 
 
 def _backend_is_gpu(backend) -> bool:
@@ -333,45 +349,6 @@ def build_pressure_robust_buoyancy_residual_accel_faces(
     ]
 
 
-def _zero_wall_normal_face_components(face_components: list, *, xp, bc_type: str = "wall") -> list:
-    """Zero wall-normal face fluxes at domain boundaries."""
-    bounded = []
-    ndim = face_components[0].ndim
-    axes = boundary_axes(bc_type, ndim)
-    for axis, face in enumerate(face_components):
-        bounded_face = xp.array(face, copy=True)
-        if axes[axis] != "wall":
-            bounded.append(bounded_face)
-            continue
-        lower = [slice(None)] * ndim
-        upper = [slice(None)] * ndim
-        lower[axis] = 0
-        upper[axis] = -1
-        bounded_face[tuple(lower)] = 0.0
-        bounded_face[tuple(upper)] = 0.0
-        bounded.append(bounded_face)
-    return bounded
-
-
-def _zero_wall_velocity_face_components(face_components: list, *, xp, bc_type: str = "wall") -> list:
-    """Apply no-slip wall boundaries to carried face-velocity state."""
-    bounded = []
-    axes = boundary_axes(bc_type, face_components[0].ndim)
-    for face in face_components:
-        bounded_face = xp.array(face, copy=True)
-        for axis in range(bounded_face.ndim):
-            if axes[axis] != "wall":
-                continue
-            lower = [slice(None)] * bounded_face.ndim
-            upper = [slice(None)] * bounded_face.ndim
-            lower[axis] = 0
-            upper[axis] = -1
-            bounded_face[tuple(lower)] = 0.0
-            bounded_face[tuple(upper)] = 0.0
-        bounded.append(bounded_face)
-    return bounded
-
-
 def materialise_ns_step_fields(state: NSStepState) -> NSStepState:
     """Build density and viscosity fields for the current step."""
     state.rho = state.rho_g + (state.rho_l - state.rho_g) * state.psi
@@ -543,7 +520,7 @@ def compute_ns_predictor_stage(
         conv_step_v = conv_step_v - dpn_dy / state.rho
 
     predictor_kwargs = {}
-    face_residual_buoyancy_state = None
+    face_state_assembly = None
     can_use_face_state = (
         face_native_predictor_state
         and state.face_velocity_components is not None
@@ -552,135 +529,25 @@ def compute_ns_predictor_stage(
         and hasattr(div_op, "reconstruct_nodes")
     )
     if can_use_face_state and cn_buoyancy_predictor_assembly_mode != "none":
-
-        def face_consistent_velocity_transform(velocity_components: list) -> None:
-            if len(velocity_components) < 2:
-                return
-            delta_faces = div_op.face_fluxes(
-                [
-                    velocity_components[0] - state.u,
-                    velocity_components[1] - state.v,
-                ]
-            )
-            predictor_faces = [
-                xp.asarray(face_velocity) + delta_face
-                for face_velocity, delta_face in zip(
-                    state.face_velocity_components,
-                    delta_faces,
-                )
-            ]
-            if not is_all_periodic(bc_type, 2) and state.bc_hook is None:
-                if face_no_slip_boundary_state:
-                    predictor_faces = _zero_wall_velocity_face_components(
-                        predictor_faces,
-                        xp=xp,
-                        bc_type=bc_type,
-                    )
-                else:
-                    predictor_faces = _zero_wall_normal_face_components(
-                        predictor_faces,
-                        xp=xp,
-                        bc_type=bc_type,
-                    )
-            mapped_components = div_op.reconstruct_nodes(predictor_faces)
-            velocity_components[0][...] = mapped_components[0]
-            velocity_components[1][...] = mapped_components[1]
-
-        def fullband_interface_mask():
-            if state.psi is None:
-                return None
-            psi_arr = xp.asarray(state.psi)
-            band = (psi_arr > 1.0e-6) & (psi_arr < 1.0 - 1.0e-6)
-            for dilation_axis in range(psi_arr.ndim):
-                base_band = xp.copy(band)
-                lower = [slice(None)] * psi_arr.ndim
-                upper = [slice(None)] * psi_arr.ndim
-                lower[dilation_axis] = slice(1, None)
-                upper[dilation_axis] = slice(None, -1)
-                band[tuple(lower)] = band[tuple(lower)] | base_band[tuple(upper)]
-                band[tuple(upper)] = band[tuple(upper)] | base_band[tuple(lower)]
-            return band
-
-        def fullband_state_transform(velocity_components: list) -> None:
-            if len(velocity_components) < 2:
-                return
-            raw_components = [
-                xp.array(velocity_components[0], copy=True),
-                xp.array(velocity_components[1], copy=True),
-            ]
-            face_consistent_velocity_transform(velocity_components)
-            band = fullband_interface_mask()
-            if band is None:
-                return
-            velocity_components[0][...] = xp.where(
-                band,
-                velocity_components[0],
-                raw_components[0],
-            )
-            velocity_components[1][...] = xp.where(
-                band,
-                velocity_components[1],
-                raw_components[1],
-            )
-
-        def fullband_component_transform(axis: int):
-            def _transform(velocity_components: list) -> None:
-                if len(velocity_components) < 2:
-                    return
-                raw_components = [
-                    xp.array(velocity_components[0], copy=True),
-                    xp.array(velocity_components[1], copy=True),
-                ]
-                face_consistent_velocity_transform(velocity_components)
-                band = fullband_interface_mask()
-                if band is None:
-                    mapped_axis = xp.array(velocity_components[axis], copy=True)
-                else:
-                    mapped_axis = xp.where(
-                        band,
-                        velocity_components[axis],
-                        raw_components[axis],
-                    )
-                velocity_components[0][...] = raw_components[0]
-                velocity_components[1][...] = raw_components[1]
-                velocity_components[axis][...] = mapped_axis
-
-            return _transform
-
-        def residual_face_buoyancy_force_builder(
-            buoyancy_force_components: list,
-            rho_field,
-            xp_mod,
-        ) -> list:
-            nonlocal face_residual_buoyancy_state
-            residual_accel_faces = build_pressure_robust_buoyancy_residual_accel_faces(
-                buoyancy_force_components=buoyancy_force_components,
-                rho=rho_field,
-                rho_ref=state.rho_ref,
-                g_acc=state.g_acc,
-                div_op=div_op,
-                xp=xp_mod,
-                coords=coords,
-                Y=Y,
-                pressure_coefficient_scheme=ppe_coefficient_scheme,
-            )
-            if residual_accel_faces is None:
-                face_residual_buoyancy_state = None
-                return buoyancy_force_components
-            residual_accel_nodes = div_op.reconstruct_nodes(residual_accel_faces)
-            face_residual_buoyancy_state = (
-                residual_accel_faces,
-                residual_accel_nodes,
-            )
-            return [
-                rho_field * residual_node
-                for residual_node in residual_accel_nodes
-            ]
-
+        face_state_assembly = FaceNativePredictorAssembly(
+            xp=xp,
+            state=state,
+            div_op=div_op,
+            bc_type=bc_type,
+            face_no_slip_boundary_state=face_no_slip_boundary_state,
+            residual_accel_builder=(
+                build_pressure_robust_buoyancy_residual_accel_faces
+            ),
+            coords=coords,
+            Y=Y,
+            ppe_coefficient_scheme=ppe_coefficient_scheme,
+        )
         selection = select_buoyancy_predictor_state_assembly(
             mode=cn_buoyancy_predictor_assembly_mode,
-            fullband_state_transform=fullband_state_transform,
-            residual_buoyancy_force_builder=residual_face_buoyancy_force_builder,
+            fullband_state_transform=face_state_assembly.fullband_state_transform,
+            residual_buoyancy_force_builder=(
+                face_state_assembly.residual_face_buoyancy_force_builder
+            ),
         )
         if selection.predictor_state_assembly is not None:
             predictor_kwargs["predictor_state_assembly"] = selection.predictor_state_assembly
@@ -694,7 +561,7 @@ def compute_ns_predictor_stage(
             )
             if transverse_axis is not None:
                 predictor_kwargs["intermediate_velocity_operator_transform"] = (
-                    fullband_component_transform(transverse_axis)
+                    face_state_assembly.fullband_component_transform(transverse_axis)
                 )
 
     if scheme_runtime.convection_time_scheme == "imex_bdf2" and bdf2_history_ready:
@@ -738,8 +605,13 @@ def compute_ns_predictor_stage(
             predictor_delta_faces = div_op.face_fluxes(
                 [state.u_star - state.u, state.v_star - state.v]
             )
-            if face_residual_buoyancy_state is not None:
-                residual_faces, residual_nodes = face_residual_buoyancy_state
+            if (
+                face_state_assembly is not None
+                and face_state_assembly.face_residual_buoyancy_state is not None
+            ):
+                residual_faces, residual_nodes = (
+                    face_state_assembly.face_residual_buoyancy_state
+                )
                 residual_node_faces = div_op.face_fluxes(residual_nodes)
                 predictor_delta_faces = [
                     delta_face + state.dt * (residual_face - residual_node_face)
@@ -781,13 +653,13 @@ def compute_ns_predictor_stage(
             )
         if not is_all_periodic(bc_type, 2) and state.bc_hook is None:
             if face_no_slip_boundary_state:
-                state.predictor_face_components = _zero_wall_velocity_face_components(
+                state.predictor_face_components = zero_wall_velocity_face_components(
                     state.predictor_face_components,
                     xp=xp,
                     bc_type=bc_type,
                 )
             else:
-                state.predictor_face_components = _zero_wall_normal_face_components(
+                state.predictor_face_components = zero_wall_normal_face_components(
                     state.predictor_face_components,
                     xp=xp,
                     bc_type=bc_type,
@@ -802,6 +674,217 @@ def compute_ns_predictor_stage(
         next_velocity_bdf2_ready,
         next_velocity_prev,
     )
+
+
+def _pressure_stage_predictor_rhs(
+    state: NSStepState,
+    *,
+    xp,
+    div_op,
+    projection_dt: float,
+    face_native_predictor_state: bool,
+    bc_type: str,
+    face_no_slip_boundary_state: bool,
+):
+    """Return the PPE RHS contribution from the predictor velocity."""
+    predictor_faces = None
+    if face_native_predictor_state and state.predictor_face_components is not None:
+        predictor_faces = state.predictor_face_components
+    if predictor_faces is None or not hasattr(div_op, "divergence_from_faces"):
+        return div_op.divergence([state.u_star, state.v_star]) / projection_dt
+    if not is_all_periodic(bc_type, 2) and state.bc_hook is None:
+        if face_no_slip_boundary_state:
+            predictor_faces = zero_wall_velocity_face_components(
+                predictor_faces,
+                xp=xp,
+                bc_type=bc_type,
+            )
+        else:
+            predictor_faces = zero_wall_normal_face_components(
+                predictor_faces,
+                xp=xp,
+                bc_type=bc_type,
+            )
+    return div_op.divergence_from_faces(predictor_faces) / projection_dt
+
+
+def _pressure_jump_grid(ppe_solver, div_op):
+    """Return the grid used by the active pressure-jump operator."""
+    jump_grid = getattr(ppe_solver, "grid", None)
+    if jump_grid is None:
+        jump_grid = getattr(getattr(ppe_solver, "operator", None), "grid", None)
+    if jump_grid is None:
+        jump_grid = getattr(getattr(div_op, "_fccd", None), "grid", None)
+    return jump_grid
+
+
+def _install_pressure_jump_context(
+    state: NSStepState,
+    *,
+    xp,
+    div_op,
+    ppe_solver,
+    ppe_runtime,
+    curvature_method: str,
+    closed_interface_source: bool,
+    physical_jump_sigma: float,
+    rhs,
+) -> tuple[object, PressureJumpStageContext]:
+    """Install the PPE jump context and add closed-interface RHS if needed."""
+    if closed_interface_source and not hasattr(ppe_solver, "set_interface_jump_context"):
+        raise RuntimeError("closed_interface_riesz requires a jump-aware PPE solver")
+    if not hasattr(ppe_solver, "set_interface_jump_context"):
+        return rhs, PressureJumpStageContext(transport_temporaries={})
+
+    jump_sigma = 0.0 if closed_interface_source else physical_jump_sigma
+    interface_psi = _capillary_interface_psi(
+        xp=xp,
+        state=state,
+        curvature_method=curvature_method,
+    )
+    interface_psi_previous = _capillary_interface_psi_previous(
+        state=state,
+        curvature_method=curvature_method,
+    )
+    jump_grid = _pressure_jump_grid(ppe_solver, div_op)
+    transport_temporaries = _capillary_transport_variational_temporaries(
+        xp=xp,
+        state=state,
+        curvature_method=curvature_method,
+        grid=jump_grid,
+        sigma=physical_jump_sigma,
+    )
+
+    trace_projection_diagnostics = None
+    corrected_capillary_components = None
+    if closed_interface_source:
+        if not hasattr(div_op, "divergence_from_faces"):
+            raise RuntimeError("closed_interface_riesz requires face divergence")
+        fccd = getattr(div_op, "_fccd", None)
+        if fccd is None:
+            raise RuntimeError("closed_interface_riesz requires the active FCCD operator")
+        if jump_grid is None:
+            raise RuntimeError("closed_interface_riesz requires a pressure-jump grid")
+        pressure_flux_kwargs_for_projection = _pressure_face_flux_kwargs(
+            xp=xp,
+            state=state,
+            ppe_runtime=ppe_runtime,
+            interface_sigma=jump_sigma,
+            curvature_method=curvature_method,
+            interface_psi=interface_psi,
+            interface_psi_previous=interface_psi_previous,
+            transport_variational_temporaries=transport_temporaries,
+        )
+        capillary_face_weights = capillary_pressure_adjoint_face_weights(
+            xp=xp,
+            div_op=div_op,
+            rho=state.rho,
+            pressure_flux_kwargs=pressure_flux_kwargs_for_projection,
+        )
+        cochain = closed_interface_riesz_cochain(
+            xp=xp,
+            grid=jump_grid,
+            psi=_closed_interface_trace_psi(state=state),
+            fccd=fccd,
+            sigma=physical_jump_sigma,
+            rho=state.rho,
+            face_weight_components=capillary_face_weights,
+        )
+        trace_projection_diagnostics = capillary_external_component_saddle_projection(
+            xp=xp,
+            div_op=div_op,
+            ppe_solver=ppe_solver,
+            rho=state.rho,
+            pressure_flux_kwargs=pressure_flux_kwargs_for_projection,
+            raw_components=cochain.surface_acceleration,
+            component_reaction_components=[cochain.volume_reaction_acceleration],
+            face_weight_components=capillary_face_weights,
+        )
+        corrected_capillary_components = (
+            trace_projection_diagnostics["corrected_jump_components"]
+        )
+        rhs = rhs + div_op.divergence_from_faces(corrected_capillary_components)
+
+    state.transport_variational_nodal_covector = transport_temporaries.get(
+        "transport_variational_nodal_covector"
+    )
+    state.transport_variational_psi = transport_temporaries.get(
+        "transport_variational_psi"
+    )
+    ppe_solver.set_interface_jump_context(
+        psi=interface_psi,
+        kappa=state.kappa,
+        sigma=jump_sigma,
+        psi_previous=interface_psi_previous,
+        **transport_temporaries,
+        face_curvature_method=(
+            curvature_method
+            if curvature_method in _JUMP_CURVATURE_METHODS
+            else "nodal_cut_face"
+        ),
+    )
+    return rhs, PressureJumpStageContext(
+        transport_temporaries=transport_temporaries,
+        trace_projection_diagnostics=trace_projection_diagnostics,
+        corrected_capillary_components=corrected_capillary_components,
+    )
+
+
+def _capillary_pressure_flux_evaluation_kwargs(
+    *,
+    xp,
+    div_op,
+    ppe_solver,
+    ppe_runtime,
+    rho,
+    pressure_flux_kwargs: dict,
+    closed_interface_source: bool,
+    jump_context: PressureJumpStageContext,
+) -> tuple[dict | None, dict]:
+    """Select capillary face cochain used when evaluating pressure faces."""
+    if closed_interface_source:
+        if jump_context.corrected_capillary_components is None:
+            raise RuntimeError("closed_interface_riesz did not produce a face cochain")
+        range_projection = jump_context.trace_projection_diagnostics
+        pressure_flux_eval_kwargs = dict(pressure_flux_kwargs)
+        pressure_flux_eval_kwargs["capillary_jump_components"] = (
+            jump_context.corrected_capillary_components
+        )
+        return range_projection, pressure_flux_eval_kwargs
+
+    capillary_projection_mode = getattr(
+        ppe_runtime,
+        "capillary_range_projection",
+        "none",
+    )
+    if capillary_projection_mode == "range_projected":
+        range_projection = capillary_jump_range_projection(
+            xp=xp,
+            div_op=div_op,
+            ppe_solver=ppe_solver,
+            rho=rho,
+            pressure_flux_kwargs=pressure_flux_kwargs,
+        )
+        pressure_flux_eval_kwargs = dict(pressure_flux_kwargs)
+        pressure_flux_eval_kwargs["capillary_jump_components"] = (
+            range_projection["range_projection_components"]
+        )
+        return range_projection, pressure_flux_eval_kwargs
+    if capillary_projection_mode == "component_hodge_augmented":
+        range_projection = capillary_component_hodge_augmented_projection(
+            xp=xp,
+            div_op=div_op,
+            ppe_solver=ppe_solver,
+            rho=rho,
+            pressure_flux_kwargs=pressure_flux_kwargs,
+        )
+        pressure_flux_eval_kwargs = dict(pressure_flux_kwargs)
+        pressure_flux_eval_kwargs["capillary_jump_components"] = (
+            range_projection["corrected_jump_components"]
+        )
+        return range_projection, pressure_flux_eval_kwargs
+    return None, pressure_flux_kwargs
+
 
 def solve_ns_pressure_stage(
     state: NSStepState,
@@ -831,145 +914,33 @@ def solve_ns_pressure_stage(
     """
     xp = backend.xp
     projection_dt = state.projection_dt if state.projection_dt is not None else state.dt
-    predictor_faces = None
-    if face_native_predictor_state and state.predictor_face_components is not None:
-        predictor_faces = state.predictor_face_components
-    if predictor_faces is not None and hasattr(div_op, "divergence_from_faces"):
-        if not is_all_periodic(bc_type, 2) and state.bc_hook is None:
-            if face_no_slip_boundary_state:
-                predictor_faces = _zero_wall_velocity_face_components(
-                    predictor_faces,
-                    xp=xp,
-                    bc_type=bc_type,
-                )
-            else:
-                predictor_faces = _zero_wall_normal_face_components(
-                    predictor_faces,
-                    xp=xp,
-                    bc_type=bc_type,
-                )
-        predictor_rhs = div_op.divergence_from_faces(predictor_faces) / projection_dt
-    else:
-        predictor_rhs = div_op.divergence([state.u_star, state.v_star]) / projection_dt
+    predictor_rhs = _pressure_stage_predictor_rhs(
+        state,
+        xp=xp,
+        div_op=div_op,
+        projection_dt=projection_dt,
+        face_native_predictor_state=face_native_predictor_state,
+        bc_type=bc_type,
+        face_no_slip_boundary_state=face_no_slip_boundary_state,
+    )
     rhs = predictor_rhs + div_op.divergence([state.f_x / state.rho, state.f_y / state.rho])
     if state.debug_scalars is not None:
         state.debug_scalars.append(xp.max(xp.abs(rhs)))
-    transport_variational_temporaries = {}
     closed_interface_source = capillary_force_source == "closed_interface_riesz"
     physical_jump_sigma = (
         state.sigma if surface_tension_scheme == "pressure_jump" else 0.0
     )
-    trace_projection = None
-    trace_projection_diagnostics = None
-    corrected_capillary_components = None
-    if closed_interface_source and not hasattr(ppe_solver, "set_interface_jump_context"):
-        raise RuntimeError(
-            "closed_interface_riesz requires a jump-aware PPE solver"
-        )
-    if hasattr(ppe_solver, "set_interface_jump_context"):
-        jump_sigma = 0.0 if closed_interface_source else physical_jump_sigma
-        interface_psi = _capillary_interface_psi(
-            xp=xp,
-            state=state,
-            curvature_method=curvature_method,
-        )
-        interface_psi_previous = _capillary_interface_psi_previous(
-            state=state,
-            curvature_method=curvature_method,
-        )
-        jump_grid = getattr(ppe_solver, "grid", None)
-        if jump_grid is None:
-            jump_grid = getattr(getattr(ppe_solver, "operator", None), "grid", None)
-        if jump_grid is None:
-            jump_grid = getattr(getattr(div_op, "_fccd", None), "grid", None)
-        transport_variational_temporaries = (
-            _capillary_transport_variational_temporaries(
-                xp=xp,
-                state=state,
-                curvature_method=curvature_method,
-                grid=jump_grid,
-                sigma=physical_jump_sigma,
-            )
-        )
-        if closed_interface_source:
-            if not hasattr(div_op, "divergence_from_faces"):
-                raise RuntimeError(
-                    "closed_interface_riesz requires face divergence"
-                )
-            fccd = getattr(div_op, "_fccd", None)
-            if fccd is None:
-                raise RuntimeError(
-                    "closed_interface_riesz requires the active FCCD operator"
-                )
-            if jump_grid is None:
-                raise RuntimeError(
-                    "closed_interface_riesz requires a pressure-jump grid"
-                )
-            pressure_flux_kwargs_for_projection = _pressure_face_flux_kwargs(
-                xp=xp,
-                state=state,
-                ppe_runtime=ppe_runtime,
-                interface_sigma=jump_sigma,
-                curvature_method=curvature_method,
-                interface_psi=interface_psi,
-                interface_psi_previous=interface_psi_previous,
-                transport_variational_temporaries=(
-                    transport_variational_temporaries
-                ),
-            )
-            capillary_face_weights = capillary_pressure_adjoint_face_weights(
-                xp=xp,
-                div_op=div_op,
-                rho=state.rho,
-                pressure_flux_kwargs=pressure_flux_kwargs_for_projection,
-            )
-            cochain = closed_interface_riesz_cochain(
-                xp=xp,
-                grid=jump_grid,
-                psi=_closed_interface_trace_psi(state=state),
-                fccd=fccd,
-                sigma=physical_jump_sigma,
-                rho=state.rho,
-                face_weight_components=capillary_face_weights,
-            )
-            trace_projection_diagnostics = capillary_external_component_saddle_projection(
-                xp=xp,
-                div_op=div_op,
-                ppe_solver=ppe_solver,
-                rho=state.rho,
-                pressure_flux_kwargs=pressure_flux_kwargs_for_projection,
-                raw_components=cochain.surface_acceleration,
-                component_reaction_components=[
-                    cochain.volume_reaction_acceleration
-                ],
-                face_weight_components=capillary_face_weights,
-            )
-            corrected_capillary_components = (
-                trace_projection_diagnostics["corrected_jump_components"]
-            )
-            rhs = rhs + div_op.divergence_from_faces(
-                corrected_capillary_components
-            )
-        state.transport_variational_nodal_covector = (
-            transport_variational_temporaries.get(
-                "transport_variational_nodal_covector"
-            )
-        )
-        state.transport_variational_psi = transport_variational_temporaries.get(
-            "transport_variational_psi"
-        )
-        ppe_solver.set_interface_jump_context(
-            psi=interface_psi,
-            kappa=state.kappa,
-            sigma=jump_sigma,
-            psi_previous=interface_psi_previous,
-            **transport_variational_temporaries,
-            face_curvature_method=(
-                curvature_method
-                if curvature_method in _JUMP_CURVATURE_METHODS
-                else "nodal_cut_face"
-            ),
-        )
+    rhs, jump_context = _install_pressure_jump_context(
+        state,
+        xp=xp,
+        div_op=div_op,
+        ppe_solver=ppe_solver,
+        ppe_runtime=ppe_runtime,
+        curvature_method=curvature_method,
+        closed_interface_source=closed_interface_source,
+        physical_jump_sigma=physical_jump_sigma,
+        rhs=rhs,
+    )
 
     uses_affine_face_history = (
         face_native_predictor_state
@@ -1037,51 +1008,20 @@ def solve_ns_pressure_stage(
             curvature_method=curvature_method,
             interface_psi=interface_psi,
             interface_psi_previous=interface_psi_previous,
-            transport_variational_temporaries=(
-                transport_variational_temporaries
-            ),
+            transport_variational_temporaries=jump_context.transport_temporaries,
         )
-        range_projection = None
-        pressure_flux_eval_kwargs = pressure_flux_kwargs
-        capillary_projection_mode = (
-            "none"
-            if closed_interface_source
-            else getattr(ppe_runtime, "capillary_range_projection", "none")
-        )
-        if closed_interface_source:
-            if corrected_capillary_components is None:
-                raise RuntimeError(
-                    "closed_interface_riesz did not produce a face cochain"
-                )
-            range_projection = trace_projection_diagnostics
-            pressure_flux_eval_kwargs = dict(pressure_flux_kwargs)
-            pressure_flux_eval_kwargs["capillary_jump_components"] = (
-                corrected_capillary_components
-            )
-        elif capillary_projection_mode == "range_projected":
-            range_projection = capillary_jump_range_projection(
+        range_projection, pressure_flux_eval_kwargs = (
+            _capillary_pressure_flux_evaluation_kwargs(
                 xp=xp,
                 div_op=div_op,
                 ppe_solver=ppe_solver,
+                ppe_runtime=ppe_runtime,
                 rho=state.rho,
                 pressure_flux_kwargs=pressure_flux_kwargs,
+                closed_interface_source=closed_interface_source,
+                jump_context=jump_context,
             )
-            pressure_flux_eval_kwargs = dict(pressure_flux_kwargs)
-            pressure_flux_eval_kwargs["capillary_jump_components"] = (
-                range_projection["range_projection_components"]
-            )
-        elif capillary_projection_mode == "component_hodge_augmented":
-            range_projection = capillary_component_hodge_augmented_projection(
-                xp=xp,
-                div_op=div_op,
-                ppe_solver=ppe_solver,
-                rho=state.rho,
-                pressure_flux_kwargs=pressure_flux_kwargs,
-            )
-            pressure_flux_eval_kwargs = dict(pressure_flux_kwargs)
-            pressure_flux_eval_kwargs["capillary_jump_components"] = (
-                range_projection["corrected_jump_components"]
-            )
+        )
         full_pressure_faces = div_op.pressure_fluxes(
             state.pressure_increment,
             state.rho,
@@ -1269,7 +1209,7 @@ def correct_ns_velocity_stage(
                 and state.bc_hook is None
                 and face_no_slip_boundary_state
             ):
-                state.projected_face_components = _zero_wall_velocity_face_components(
+                state.projected_face_components = zero_wall_velocity_face_components(
                     state.projected_face_components,
                     xp=xp,
                     bc_type=bc_type,
