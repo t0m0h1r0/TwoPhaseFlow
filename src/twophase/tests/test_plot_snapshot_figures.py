@@ -245,6 +245,40 @@ def test_velocity_snapshot_can_suppress_subthreshold_arrows():
     plt.close(fig)
 
 
+def test_velocity_snapshot_can_hide_field_and_color_arrows():
+    cfg = SimpleNamespace(
+        grid=SimpleNamespace(LX=1.0, LY=1.0, NX=1, NY=1),
+    )
+    snap = {
+        "t": 0.0,
+        "psi": np.ones((2, 2)),
+        "u": np.array([[1.0, 0.0], [0.0, 0.0]]),
+        "v": np.array([[0.0, 0.0], [2.0, 0.0]]),
+    }
+
+    fig = velocity_snapshot(
+        {
+            "t_idx": 0,
+            "show_field": False,
+            "contour": False,
+            "quiver_stride": 1,
+            "speed_vmax": 2.0,
+        },
+        {"snapshots": [snap]},
+        cfg,
+    )
+
+    ax = fig.axes[0]
+    quivers = [artist for artist in ax.collections if hasattr(artist, "U")]
+    meshes = [artist for artist in ax.collections if not hasattr(artist, "U")]
+    assert len(quivers) == 2
+    assert quivers[-1].get_array() is not None
+    assert quivers[-1].norm.vmax == pytest.approx(2.0)
+    assert len(meshes) == 0
+    assert len(fig.axes) == 2
+    plt.close(fig)
+
+
 def test_snapshot_series_velocity_uses_shared_speed_and_raw_quiver_scale():
     cfg = SimpleNamespace(
         grid=SimpleNamespace(LX=1.0, LY=1.0, NX=1, NY=1),

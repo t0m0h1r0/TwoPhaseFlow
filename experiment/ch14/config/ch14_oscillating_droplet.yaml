@@ -168,25 +168,21 @@ output:
     - type: snapshot_series
       field: velocity
       shared_scale: true
-      color_quantity: radial
-      velocity_center: phase_centroid
-      color_scale: robust
-      color_vmax_percentile: 99.5
-      color_vmax_margin: 1.05
-      symmetric_scale: true
-      colorbar_label: "$u_r$"
-      cmap: RdBu_r
-      background_color: "#d9d9d9"
-      field_alpha: 0.88
+      show_field: false
+      color_quantity: speed
+      color_scale: max
+      colorbar_label: "$|u|$"
+      vector_cmap: viridis
+      background_color: "#eeeeee"
       normalize_arrows: false
-      quiver_length_fraction: 0.10
+      quiver_length_fraction: 0.14
       quiver_min_speed_fraction: 0.02
-      quiver_width: 0.004
-      quiver_outline_width_factor: 2.4
-      arrow_color: "#111827"
+      quiver_width: 0.0055
+      quiver_outline_width_factor: 2.1
+      arrow_color: null
       arrow_outline_color: "#ffffff"
-      arrow_alpha: 0.95
-      arrow_outline_alpha: 0.8
+      arrow_alpha: 1.0
+      arrow_outline_alpha: 0.9
       file_prefix: velocity_t
 
     - type: snapshot_series

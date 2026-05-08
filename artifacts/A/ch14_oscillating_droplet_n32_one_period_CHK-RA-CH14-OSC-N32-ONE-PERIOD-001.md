@@ -82,19 +82,24 @@ The paper version imports the run PDFs into `paper/figures/` under stable names:
 - `ch14_osc_droplet_psi_tq2.pdf`
 - `ch14_osc_droplet_psi_tq3.pdf`
 - `ch14_osc_droplet_psi_t1.pdf`
+- `ch14_osc_droplet_velocity_t0.pdf`
 - `ch14_osc_droplet_velocity_tq1.pdf`
 - `ch14_osc_droplet_velocity_tq2.pdf`
+- `ch14_osc_droplet_velocity_tq3.pdf`
 - `ch14_osc_droplet_velocity_t1.pdf`
+- `ch14_osc_droplet_pressure_t0.pdf`
 - `ch14_osc_droplet_pressure_tq1.pdf`
 - `ch14_osc_droplet_pressure_tq2.pdf`
+- `ch14_osc_droplet_pressure_tq3.pdf`
 - `ch14_osc_droplet_pressure_t1.pdf`
 
 `paper/sections/14_benchmarks.tex` now includes these as a time-history figure,
 a five-time $\psi$ snapshot figure, and a velocity/pressure two-dimensional
-field figure.  The snapshot-series regeneration uses shared numerical axes:
-the $\psi$ color axis is fixed to `[0, 1]`, the velocity panels share one
-signed radial-velocity color axis and one raw-arrow quiver scale, and the
-pressure-Hodge panels share one symmetric pressure color axis.  The velocity
-paper panels use a quiet gray background, red/blue signed $u_r$ shading about
-the liquid-phase centroid, and haloed black arrows for the full velocity vector
-so the in/out oscillation mode is visible without per-time rescaling.
+field figure.  The $\psi$, velocity, and pressure rows now all use the same
+five snapshot times.  The snapshot-series regeneration uses shared numerical
+axes: the $\psi$ color axis is fixed to `[0, 1]`, the velocity panels share one
+arrow-color speed axis and one raw-arrow quiver scale, and the pressure-Hodge
+panels share one symmetric pressure color axis.  The velocity paper panels use
+a quiet gray background without scalar field coloring; the full velocity vector
+is shown by larger haloed arrows whose length and color both encode speed
+without per-time rescaling.
