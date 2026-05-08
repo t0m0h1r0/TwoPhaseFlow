@@ -13,7 +13,7 @@ Content commit: `118fae90` (`paper(refs): enrich ch1-13 citation grounding`)
 The target was not to change the paper's mathematical claims, but to attach existing claims to the relevant literature:
 
 - Compact/filtered finite differences: Lele 1992, Chu--Fan 1998, Gaitonde--Visbal 2000, Visbal--Gaitonde 2002.
-- Balanced--Force and capillary pressure-jump treatment: Brackbill--Kothe--Zemach 1992, Fedkiw--Aslam--Merriman--Osher 1999, Kang--Fedkiw--Liu 2000, Francois et al. 2006, Popinet 2009, Denner--van Wachem 2015, LeVeque--Li 1994, Li et al. 2022.
+- Balanced--Force and capillary pressure-jump treatment: Brackbill--Kothe--Zemach 1992, Fedkiw--Aslam--Merriman--Osher 1999, Kang--Fedkiw--Liu 2000, Francois et al. 2006, Popinet 2009, Denner--van Wachem 2015, LeVeque--Li 1994, Li 2003.
 - Projection/PPE and pressure boundary accuracy: Chorin 1968, van Kan 1986, Brown--Cortez--Minion 2001, Guermond et al. 2006, Pyo--Shen 2007.
 - Nonuniform grid metric/GCL: Vinokur 1983, Thomas--Lombard 1979, Verstappen--Veldman 2003.
 - Reinitialization and Eikonal primitives: Osher--Sethian 1988, Sussman et al. 1994/1999, Jiang--Peng 2000, Rouy--Tourin 1992, Sethian 1996, Zhao 2005.
