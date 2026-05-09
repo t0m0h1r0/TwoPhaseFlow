@@ -44,6 +44,13 @@ The physical force source remains experiment-specific: closed droplet and
 bubble interfaces use the closed-interface Riesz pressure-jump route, while
 graph/open-interface benchmarks keep their validated curvature-jump route.
 
+`ch14_capillary.yaml` and `ch14_oscillating_droplet.yaml` are SI water-air
+cases at about 20 C.  The capillary wave uses a 20 mm x 20 mm tank with
+mode 2, so the wavelength is 10 mm; the oscillating droplet uses the same
+20 mm square tank with a 10 mm-class ellipse (`a=5.5 mm`, `b=4.5 mm`).
+Their final times and snapshot times are derived from the inviscid
+water-air capillary/Rayleigh-Lamb periods, not from the old unit-box scale.
+
 The five production configs emit periodic snapshots with `psi`, `velocity`,
 and pressure-family figures. The runner stores raw fields in `data.npz` under
 `fields/psi`, `fields/velocity`, and `fields/pressure` (plus compatibility
@@ -260,10 +267,9 @@ grid:
             apply_to: [lower, upper]
 ```
 
-The capillary-wave YAML keeps `x` uniform and periodic, while `y` is
-nonuniform because it contains both the interface-normal resolution and the
-upper/lower wall resolution. It does not use a fake interface-fitting axis with
-`alpha: 1.0`.
+The capillary-wave YAML keeps `x` periodic and interface-fitted, while `y` is
+also nonuniform because it contains both the interface-normal resolution and the
+upper/lower wall resolution.
 
 The distribution is located under `grid` because it changes the mesh. It may
 use interface information as an input, but it is not itself interface physics.

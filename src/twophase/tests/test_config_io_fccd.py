@@ -319,6 +319,20 @@ def test_ch14_capillary_yaml_loads_execution_stack():
     assert len(objects) == 1
     assert objects[0]["type"] == "capillary_wave"
     assert objects[0]["mode"] == 2
+    assert objects[0]["mean"] == pytest.approx(0.01)
+    assert objects[0]["amplitude"] == pytest.approx(0.0002)
+    assert objects[0]["length"] == pytest.approx(0.02)
+    assert cfg.grid.LX == pytest.approx(0.02)
+    assert cfg.grid.LY == pytest.approx(0.02)
+    assert cfg.physics.rho_l == pytest.approx(998.2)
+    assert cfg.physics.rho_g == pytest.approx(1.204)
+    assert cfg.physics.mu_l == pytest.approx(1.002e-3)
+    assert cfg.physics.mu_g == pytest.approx(1.825e-5)
+    assert cfg.physics.sigma == pytest.approx(0.0728)
+    assert cfg.run.T_final == pytest.approx(0.046742820855)
+    assert cfg.run.snap_times == pytest.approx(
+        (0.0, 0.011685705214, 0.023371410427, 0.035057115641, 0.046742820855)
+    )
     assert "interface_amplitude" in cfg.diagnostics
     assert "deformation" not in cfg.diagnostics
     assert cfg.run.advection_scheme == "fccd_flux"
@@ -402,6 +416,22 @@ def test_ch14_oscillating_droplet_yaml_uses_signed_deformation_only():
     )
     cfg = ExperimentConfig.from_yaml(path)
 
+    objects = cfg.initial_condition["objects"]
+    assert len(objects) == 1
+    assert objects[0]["type"] == "ellipse"
+    assert objects[0]["center"] == pytest.approx((0.01, 0.01))
+    assert objects[0]["semi_axes"] == pytest.approx((0.0055, 0.0045))
+    assert cfg.grid.LX == pytest.approx(0.02)
+    assert cfg.grid.LY == pytest.approx(0.02)
+    assert cfg.physics.rho_l == pytest.approx(998.2)
+    assert cfg.physics.rho_g == pytest.approx(1.204)
+    assert cfg.physics.mu_l == pytest.approx(1.002e-3)
+    assert cfg.physics.mu_g == pytest.approx(1.825e-5)
+    assert cfg.physics.sigma == pytest.approx(0.0728)
+    assert cfg.run.T_final == pytest.approx(0.105460663082)
+    assert cfg.run.snap_times == pytest.approx(
+        (0.0, 0.026365165771, 0.052730331541, 0.079095497312, 0.105460663082)
+    )
     assert "signed_deformation" in cfg.diagnostics
     assert "deformation" not in cfg.diagnostics
 
