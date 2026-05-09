@@ -113,6 +113,20 @@ ch14_rayleigh_taylor.yaml      PASS rebuild=1 reinit=1
 ch14_rising_bubble.yaml        PASS rebuild=0 reinit=0
 ```
 
+Capillary-wave one-period production run:
+
+```text
+command: make cycle EXP=experiment/run.py ARGS="--config ch14_capillary"
+T_final: 16.632565583
+steps: 2145
+status: PASS
+KE: 1.743931e-09 -> 1.313187e-03, max 1.409062e-03
+volume drift: final 3.680555e-04, max 5.506125e-04
+interface amplitude: 1.046912e-02 -> 4.807324e-03,
+                     min 1.013410e-03, max 1.179988e-02
+pre_blowup_checkpoint_written: false
+```
+
 ## Negative Knowledge
 
 - Do not fix this by setting `grid.distribution.schedule: 0` everywhere.
