@@ -118,6 +118,12 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             scalar_operator_pairing=str(
                 getattr(run, "scalar_operator_pairing", "legacy")
             ),
+            pressure_history_mode=str(
+                getattr(run, "pressure_history_mode", "face_acceleration")
+            ),
+            pressure_history_extrapolation=str(
+                getattr(run, "pressure_history_extrapolation", "constant")
+            ),
             ppe_iteration_method=str(getattr(run, "ppe_iteration_method", "gmres")),
             ppe_tolerance=float(getattr(run, "ppe_tolerance", 1.0e-8)),
             ppe_max_iterations=int(getattr(run, "ppe_max_iterations", 500)),
@@ -163,6 +169,15 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             cn_buoyancy_predictor_assembly_mode=str(
                 getattr(run, "cn_buoyancy_predictor_assembly_mode", "none")
             ),
+            gravity_formulation=str(
+                getattr(run, "gravity_formulation", "body_acceleration")
+            ),
+            gravity_transport_adjoint=str(
+                getattr(run, "gravity_transport_adjoint", "legacy")
+            ),
+            gravity_metric=str(getattr(run, "gravity_metric", "legacy")),
+            gravity_hodge_gate=str(getattr(run, "gravity_hodge_gate", "off")),
+            gravity_work_gate=str(getattr(run, "gravity_work_gate", "off")),
             pressure_gradient_scheme=str(
                 getattr(run, "pressure_gradient_scheme", "fccd_flux")
             ),
@@ -184,6 +199,36 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             preserve_projected_faces=bool(
                 getattr(run, "preserve_projected_faces", False)
             ),
+            boundary_hodge_mode=str(getattr(run, "boundary_hodge_mode", "off")),
+            boundary_hodge_state_space=str(
+                getattr(run, "boundary_hodge_state_space", "full_face")
+            ),
+            boundary_hodge_wall_trace=str(
+                getattr(run, "boundary_hodge_wall_trace", "reconstruct_nodes")
+            ),
+            boundary_hodge_wall_retraction=str(
+                getattr(run, "boundary_hodge_wall_retraction", "metric_projection")
+            ),
+            boundary_hodge_metric=str(
+                getattr(run, "boundary_hodge_metric", "transported_face_mass")
+            ),
+            boundary_hodge_pressure_pairing=str(
+                getattr(
+                    run,
+                    "boundary_hodge_pressure_pairing",
+                    "active_variational_adjoint",
+                )
+            ),
+            boundary_hodge_solver=str(
+                getattr(run, "boundary_hodge_solver", "matrix_free_cg")
+            ),
+            boundary_hodge_tolerance=float(
+                getattr(run, "boundary_hodge_tolerance", 1.0e-10)
+            ),
+            boundary_hodge_max_iterations=int(
+                getattr(run, "boundary_hodge_max_iterations", 80)
+            ),
+            boundary_hodge_gate=str(getattr(run, "boundary_hodge_gate", "diagnostic")),
             projection_consistent_buoyancy=bool(
                 getattr(run, "projection_consistent_buoyancy", False)
             ),

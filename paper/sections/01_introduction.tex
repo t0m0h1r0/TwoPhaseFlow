@@ -92,11 +92,17 @@ HFE により界面近傍の片側データを構成し，
   \item 最後に，$s_f$ から圧力反力と成分体積反力で表せる静的反力を除き，
         残り $h_{\sigma,f}$ を非圧縮・体積保存の許容毛管駆動として得る
         （式~\eqref{eq:capillary_component_saddle}--\eqref{eq:capillary_corrected_cochain_and_drive}）．
+  \item 壁付き計算では，圧力射影後に壁面を修復するのではなく，
+        最初から no-slip 壁トレースを満たす面速度空間
+        $F_w=\ker C_w$ を状態空間とし，圧力反力・毛管反力・診断量を
+        その空間と active 面計量で定義する
+        （式~\eqref{eq:wall_constrained_face_space}--\eqref{eq:restricted_pressure_operator}）．
 \end{enumerate}
 したがって本稿の毛管閉包は，真円・楕円などの形状名や
 曲率上限，人工減衰，時間刻み縮小によって選ぶ近似ではない．
 同じ面空間上で「表面エネルギーの仕事」「圧力の仕事」
-「成分体積制約の仕事」を同時に釣り合わせる離散変分原理から導く．
+「成分体積制約の仕事」「壁 no-slip 制約の仕事」を同時に釣り合わせる
+離散変分原理から導く．
 
 本稿で検証済みと主張する範囲は後続の検証章で確定する．
 単相 NS，一流体 Balanced--Force 経路，高密度比静止液滴，

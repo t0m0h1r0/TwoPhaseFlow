@@ -75,6 +75,8 @@ class SolverPPEOptions:
     capillary_reaction_projection: str = "none"
     pressure_force_contract: str = "raw_compact_gradient"
     scalar_operator_pairing: str = "legacy"
+    pressure_history_mode: str = "face_acceleration"
+    pressure_history_extrapolation: str = "constant"
     ppe_iteration_method: str = "gmres"
     ppe_tolerance: float = 1.0e-8
     ppe_max_iterations: int = 500
@@ -117,12 +119,27 @@ class SolverSchemeOptions:
     viscous_dc_low_operator: str = "component"
     cn_mode: str = "picard"
     cn_buoyancy_predictor_assembly_mode: str = "none"
+    gravity_formulation: str = "body_acceleration"
+    gravity_transport_adjoint: str = "legacy"
+    gravity_metric: str = "legacy"
+    gravity_hodge_gate: str = "off"
+    gravity_work_gate: str = "off"
     uccd6_sigma: float = 1.0e-3
     face_flux_projection: bool = False
     canonical_face_state: bool = False
     face_native_predictor_state: bool = False
     face_no_slip_boundary_state: bool = False
     preserve_projected_faces: bool = False
+    boundary_hodge_mode: str = "off"
+    boundary_hodge_state_space: str = "full_face"
+    boundary_hodge_wall_trace: str = "reconstruct_nodes"
+    boundary_hodge_wall_retraction: str = "metric_projection"
+    boundary_hodge_metric: str = "transported_face_mass"
+    boundary_hodge_pressure_pairing: str = "active_variational_adjoint"
+    boundary_hodge_solver: str = "matrix_free_cg"
+    boundary_hodge_tolerance: float = 1.0e-10
+    boundary_hodge_max_iterations: int = 80
+    boundary_hodge_gate: str = "diagnostic"
     projection_consistent_buoyancy: bool = False
     debug_diagnostics: bool = False
 

@@ -91,7 +91,7 @@ FCCD/面随伴面フラックスと同じ評価位置の補正段階で抑制す
 \end{tikzpicture}
 \caption{NS 方程式の各項と対応する離散演算子の概要}
 \label{fig:ns_operator_map}
-\PaperCaptionNote{速度主変数経路の対流項は IMEX-BDF2 の EXT2 外挿で評価し，領域内部は UCCD6（BF 面整合を要する一流体対照では FCCD Option B/C）で扱う．保存形共通フラックス経路では，CLS $\psi$ の FCCD 面フラックス台帳から密度と運動量も同時に更新する．粘性項は陰的 BDF2 の全応力 Helmholtz 系を欠陥補正（DC）で閉じる．二相標準圧力項は分相 PPE + HFE + DC + 勾配演算子 $\mathcal{G}_\Gamma$ による投影法~\cite{Chorin1968,vanKan1986}で扱い，圧力場には DCCD 後置フィルタを適用しない．一括 smoothed-Heaviside PPE と CSF 体積力は一流体対照経路であり，圧力ジャンプ型二相閉包の代替ではない．重力は釣合い浮力分解の面残差として予測段階に入れる．分相圧力ジャンプ IPC では，既知圧力履歴を履歴圧力面加速度として持ち越し，表面エネルギー仮想仕事から作る毛管補正量を PPE と補正段へ渡す．圧力で表せる範囲への射影は毛管平衡判定と静的平衡診断に用い，標準毛管力を置換しない．射影後の面速度を CLS フラックスへ直接渡す．}
+\PaperCaptionNote{速度主変数経路の対流項は IMEX-BDF2 の EXT2 外挿で評価し，領域内部は UCCD6（BF 面整合を要する一流体対照では FCCD Option B/C）で扱う．保存形共通フラックス経路では，CLS $\psi$ の FCCD 面フラックス台帳から密度と運動量も同時に更新する．粘性項は陰的 BDF2 の全応力 Helmholtz 系を欠陥補正（DC）で閉じる．二相標準圧力項は分相 PPE + HFE + DC + 勾配演算子 $\mathcal{G}_\Gamma$ による投影法~\cite{Chorin1968,vanKan1986}で扱い，圧力場には DCCD 後置フィルタを適用しない．一括 smoothed-Heaviside PPE と CSF 体積力は一流体対照経路であり，圧力ジャンプ型二相閉包の代替ではない．重力は釣合い浮力分解の面残差として予測段階に入れる．分相圧力ジャンプ IPC では，既知圧力履歴を履歴圧力面加速度として持ち越し，表面エネルギー仮想仕事から作る毛管補正量を PPE と補正段へ渡す．圧力で表せる範囲への射影は毛管平衡判定と静的平衡診断に用い，標準毛管力を置換しない．壁付き計算では $F_w=\ker C_w$ を face-state 空間とし，post-pressure 壁修復は標準経路にしない．射影後の admissible 面速度を CLS フラックスへ直接渡す．}
 \end{figure}
 
 本章の標準経路では，DCCD を章全体の安定化調整パラメータとして扱わない．
@@ -587,14 +587,83 @@ $\widehat c_{\sigma,f}=s_f-B_h\mu$ である．
         CCD 勾配（$J_n \neq J_f$）を使うと時間発展に伴って残差発散が蓄積し，
         非一様格子上の投影整合性を失う．
         ジャンプ補正付き面勾配では
-        $\mathcal{G}_\Gamma^\text{adj}=\mathcal{G}^\text{adj}-(B^\text{adj})^{\mathrm{range}}$ を使い，
+        $\mathcal{G}_\Gamma^\text{adj}=\mathcal{G}^\text{adj}-\widehat c_{\sigma,f}$ を使い，
         PPE 右辺に入れた $D^{\mathrm{nu}}\widehat c_f$ と同じ界面面データを補正側でも参照する．
 \end{itemize}
 非一様格子 + 壁面境界条件では，PPE 側の発散，補正段階側の勾配，
 ジャンプ補正面項，HFE 延長点，浮力・表面張力の面評価を
 同じ界面面幾何データ上で定義することを演算子整合条件とする．
 このうち一つだけを CCD 節点計量へ戻す混在は Balanced--Force の面釣合いを破る．
+さらに壁付き保存形経路では，補正後の face state が
+式~\eqref{eq:wall_constrained_face_space} の $F_w$ に属することを
+次ステップへ渡す前の状態契約とする．
 \end{tcolorbox}
+
+\subsection{壁付き face-state 契約と診断量の解釈}
+\label{sec:wall_face_state_algorithm_contract}
+
+壁付き計算では，速度更新の最後に nodal wall velocity をゼロへ上書きするだけでは
+保存形共通フラックスの状態にはならない．
+本アルゴリズムの主状態は，輸送にも圧力仕事にも使う face state であり，
+これは
+\[
+  f^{n+1}\in F_w=\ker C_w,\qquad D_ff^{n+1}=0,
+  \qquad u^{n+1}=R_hf^{n+1},\qquad m^{n+1}=\rho^{n+1}u^{n+1}
+\]
+を同時に満たす必要がある．したがって，post-pressure wall-only projection，
+節点壁速度の後置 clamp，または full-space KKT を未検証のまま
+production solve として用いる経路は本稿の標準経路から外す．
+採用するのは，式~\eqref{eq:wall_metric_retraction} の $P_w^{(M)}$ と
+式~\eqref{eq:restricted_pressure_operator} の $G_w=P_w^{(A)}G_A$ を使い，
+制約付き pressure complex が Green 恒等式・rank gate・製造解 gate を通るかを
+診断する state-space 契約である．
+実装上は，この契約を次の順で検査する．
+\[
+\begin{gathered}
+  C_w=B_h^wR_h,\quad
+  P_w^{(M)}=
+  I-M^{-1}C_w^T(C_wM^{-1}C_w^T)^+C_w,\\
+  G_w=P_w^{(A)}G_A,\quad
+  K_w=D_fP_w^{(A)}G_A,\quad
+  f^{n+1}=P_w^{(f)}f^\dagger-P_w^{(A)}G_Ap .
+\end{gathered}
+\]
+まず $P_w^{(M)}$ の冪等性，$M$-自己随伴性，$C_wP_w^{(M)}=0$ を確認する．
+次に $G_w$ が $F_w$ 上の制限 Green 恒等式を満たすか，
+$\operatorname{rank}K_w=\operatorname{rank}(D_f|_{F_w})$ が成り立つか，
+製造した $f^{n+1}\in F_w,\ D_ff^{n+1}=0$ を回収できるかを確認する．
+周期軸を含む境界では，この検査を
+式~\eqref{eq:periodic_wall_quotient_complex} の
+$D_{\mathrm{per}}=R_QD_hE_F$ と
+式~\eqref{eq:periodic_wall_quotient_rank_gate} の rank 条件で行う．
+すなわち，periodic image 行を full nodal array の独立行として数えず，
+接線 face の image 面を source 面へ同期し，圧力 control volume を
+source 行へ畳み込んでから Green 恒等式を測る．
+これらの gate を通らない境界トポロジでは，
+節点 clamp，壁面だけの後置投影，dense KKT，または圧力 gauge の暗黙変更で
+計算を進めず，fail-close として扱う．
+
+同じ理由で，デバッグ量は active operator に結び付けて解釈する．
+圧力ジャンプ型経路で作用する毛管量は
+切断面 Young--Laplace face cochain または
+式~\eqref{eq:capillary_surface_energy_riesz_cochain} の Riesz cochain であり，
+節点 $\psi$ 直接曲率の最大値ではない．
+PPE 右辺のノルムは，closed-interface 源，履歴圧力面加速度，
+および該当する補正項を全て加えた後の
+solver 直前 RHS として記録する．
+また pressure-jump 経路では CSF 体積力配列が存在しないため，
+節点圧力勾配と節点 CSF 力との差を balanced-force residual と呼んでも
+active 毛管 cochain の残差にはならない．
+本稿で物理判断へ用いる残差は，
+$F_w$ と active pressure metric $M_A=Q_f/\alpha_f$ 上で定義した
+圧力仕事・毛管仕事の Hodge 残差である．
+壁付き診断では，式~\eqref{eq:constrained_capillary_reaction_space} の
+$s_{w,f}$，$B_{w,h}$，$\mathcal{R}^{V}_{w,h}$ を用い，
+式~\eqref{eq:constrained_capillary_hodge_residual} の
+$h_{\sigma,w}$ を記録する．
+この残差が大きい場合に意味するのは，
+物理的な非平衡毛管駆動，または制約付き pressure complex の rank/gauge 不整合であり，
+曲率上限，人工減衰，DCCD/UCCD 後置フィルタ，CFL 縮小で消すべき数値ノイズとはみなさない．
 
 \subsection{保存形再開状態と再開同値性}
 \label{sec:conservative_restart_contract}
@@ -621,3 +690,17 @@ $m,\bm{p}_m$ を再開時に作り直すなら，
 ステップ前の $q,m,\bm{p}_m$ と面履歴面共鎖を保存することを受理条件とする．
 この条件により，ゼロスタート計算と再開データからの計算を
 同じ離散写像の反復として比較できる．
+
+Checkpoint や snapshot は観測作用素であり，
+離散時間発展写像 $\Phi_{\Delta t}$ の一部ではない．
+したがって保存時刻に合わせるために $\Delta t$ を短縮してはならない．
+これは可視化・再開の都合で BDF2/IMEX 履歴長や
+pressure-history 座標を変えることに相当し，
+同じ初期値からの「出力あり」と「出力なし」が別の離散軌道を
+生成してしまうからである．
+時刻列 checkpoint は，要求時刻を跨いだ実ステップの直前に
+実際に用いられた pre-step 状態を保存するか，
+可変ステップ BDF2 と履歴係数を明示的に定式化した場合に限り
+厳密時刻状態を保存する．
+本実装では前者を採用し，manifest の実時刻と
+ファイル名の要求時刻を区別する．

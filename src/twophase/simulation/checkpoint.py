@@ -359,6 +359,12 @@ def _capture_solver_state(arrays: dict[str, np.ndarray], solver) -> None:
     _put_optional(
         arrays, "solver/p_base_prev_dev", getattr(solver, "_p_base_prev_dev", None), solver
     )
+    _put_optional(
+        arrays,
+        "solver/p_base_prev2_dev",
+        getattr(solver, "_p_base_prev2_dev", None),
+        solver,
+    )
     _put_list(
         arrays,
         "solver/p_prev_accel_face_components",
@@ -422,6 +428,7 @@ def _restore_solver_state(solver, arrays: dict[str, np.ndarray]) -> None:
         else np.asarray(solver._backend.to_host(solver._p_prev_dev))
     )
     solver._p_base_prev_dev = _optional_device(arrays, "solver/p_base_prev_dev", xp)
+    solver._p_base_prev2_dev = _optional_device(arrays, "solver/p_base_prev2_dev", xp)
     solver._p_prev_accel_face_components = _list_device(
         arrays, "solver/p_prev_accel_face_components", xp
     )

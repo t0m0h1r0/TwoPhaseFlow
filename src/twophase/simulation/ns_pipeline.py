@@ -161,6 +161,8 @@ class TwoPhaseNSSolver:
         capillary_reaction_projection: str = "none",
         pressure_force_contract: str = "raw_compact_gradient",
         scalar_operator_pairing: str = "legacy",
+        pressure_history_mode: str = "face_acceleration",
+        pressure_history_extrapolation: str = "constant",
         ppe_iteration_method: str = "gmres",
         ppe_tolerance: float = 1.0e-8,
         ppe_max_iterations: int = 500,
@@ -191,12 +193,27 @@ class TwoPhaseNSSolver:
         viscous_dc_low_operator: str = "component",
         cn_mode: str = "picard",
         cn_buoyancy_predictor_assembly_mode: str = "none",
+        gravity_formulation: str = "body_acceleration",
+        gravity_transport_adjoint: str = "legacy",
+        gravity_metric: str = "legacy",
+        gravity_hodge_gate: str = "off",
+        gravity_work_gate: str = "off",
         uccd6_sigma: float = 1.0e-3,
         face_flux_projection: bool = False,
         canonical_face_state: bool = False,
         face_native_predictor_state: bool = False,
         face_no_slip_boundary_state: bool = False,
         preserve_projected_faces: bool = False,
+        boundary_hodge_mode: str = "off",
+        boundary_hodge_state_space: str = "full_face",
+        boundary_hodge_wall_trace: str = "reconstruct_nodes",
+        boundary_hodge_wall_retraction: str = "metric_projection",
+        boundary_hodge_metric: str = "transported_face_mass",
+        boundary_hodge_pressure_pairing: str = "active_variational_adjoint",
+        boundary_hodge_solver: str = "matrix_free_cg",
+        boundary_hodge_tolerance: float = 1.0e-10,
+        boundary_hodge_max_iterations: int = 80,
+        boundary_hodge_gate: str = "diagnostic",
         projection_consistent_buoyancy: bool = False,
         debug_diagnostics: bool = False,
     ) -> None:
@@ -267,6 +284,8 @@ class TwoPhaseNSSolver:
                 capillary_reaction_projection=capillary_reaction_projection,
                 pressure_force_contract=pressure_force_contract,
                 scalar_operator_pairing=scalar_operator_pairing,
+                pressure_history_mode=pressure_history_mode,
+                pressure_history_extrapolation=pressure_history_extrapolation,
                 ppe_iteration_method=ppe_iteration_method,
                 ppe_tolerance=ppe_tolerance,
                 ppe_max_iterations=ppe_max_iterations,
@@ -308,12 +327,27 @@ class TwoPhaseNSSolver:
                 viscous_dc_low_operator=viscous_dc_low_operator,
                 cn_mode=cn_mode,
                 cn_buoyancy_predictor_assembly_mode=cn_buoyancy_predictor_assembly_mode,
+                gravity_formulation=gravity_formulation,
+                gravity_transport_adjoint=gravity_transport_adjoint,
+                gravity_metric=gravity_metric,
+                gravity_hodge_gate=gravity_hodge_gate,
+                gravity_work_gate=gravity_work_gate,
                 uccd6_sigma=uccd6_sigma,
                 face_flux_projection=face_flux_projection,
                 canonical_face_state=canonical_face_state,
                 face_native_predictor_state=face_native_predictor_state,
                 face_no_slip_boundary_state=face_no_slip_boundary_state,
                 preserve_projected_faces=preserve_projected_faces,
+                boundary_hodge_mode=boundary_hodge_mode,
+                boundary_hodge_state_space=boundary_hodge_state_space,
+                boundary_hodge_wall_trace=boundary_hodge_wall_trace,
+                boundary_hodge_wall_retraction=boundary_hodge_wall_retraction,
+                boundary_hodge_metric=boundary_hodge_metric,
+                boundary_hodge_pressure_pairing=boundary_hodge_pressure_pairing,
+                boundary_hodge_solver=boundary_hodge_solver,
+                boundary_hodge_tolerance=boundary_hodge_tolerance,
+                boundary_hodge_max_iterations=boundary_hodge_max_iterations,
+                boundary_hodge_gate=boundary_hodge_gate,
                 projection_consistent_buoyancy=projection_consistent_buoyancy,
                 debug_diagnostics=debug_diagnostics,
             ),
@@ -735,6 +769,10 @@ class TwoPhaseNSSolver:
             state.previous_base_pressure = self._backend.xp.asarray(
                 self._p_base_prev_dev
             )
+        if getattr(self, "_p_base_prev2_dev", None) is not None:
+            state.previous_previous_base_pressure = self._backend.xp.asarray(
+                self._p_base_prev2_dev
+            )
         if self._p_prev_accel_face_components is not None:
             state.previous_pressure_accel_face_components = [
                 self._backend.xp.asarray(component)
@@ -1139,6 +1177,10 @@ class TwoPhaseNSSolver:
             coords=(self.X, self.Y),
             ppe_coefficient_scheme=self._ppe_coefficient_scheme,
             conservative_momentum_transport=self._conservative_common_flux_enabled(),
+            ppe_runtime=self._ppe_runtime,
+            curvature_method=self._curvature_method,
+            capillary_force_source=self._capillary_force_source,
+            grid=self._grid,
         )
         return state
 
@@ -1162,6 +1204,7 @@ class TwoPhaseNSSolver:
             curvature_method=self._curvature_method,
             capillary_force_source=self._capillary_force_source,
         )
+        self._p_base_prev2_dev = self._p_base_prev_dev
         self._p_base_prev_dev = state.pressure_base
         self._p_prev_accel_face_components = state.pressure_accel_face_components
         return state
@@ -1180,6 +1223,13 @@ class TwoPhaseNSSolver:
             face_native_predictor_state=self._face_native_predictor_state,
             face_no_slip_boundary_state=self._face_no_slip_boundary_state,
             preserve_projected_faces=self._preserve_projected_faces,
+            boundary_hodge_mode=self._boundary_hodge_mode,
+            boundary_hodge_wall_trace=self._boundary_hodge_wall_trace,
+            boundary_hodge_metric=self._boundary_hodge_metric,
+            boundary_hodge_solver=self._boundary_hodge_solver,
+            boundary_hodge_tolerance=self._boundary_hodge_tolerance,
+            boundary_hodge_max_iterations=self._boundary_hodge_max_iterations,
+            boundary_hodge_gate=self._boundary_hodge_gate,
             fccd_div_op=self._fccd_div_op,
             div_op=self._div_op,
             ppe_runtime=self._ppe_runtime,

@@ -15,6 +15,8 @@ sources:
     description: "Existing isolated common-flux transport foundation"
   - path: artifacts/A/ch14_common_flux_implementation_ux_CHK-RA-CH14-COMMON-FLUX-UX-001.md
     description: "Implementation dependency order and YAML UX contract"
+  - path: docs/wiki/theory/WIKI-T-165.md
+    description: "Refinement of gravity/buoyancy as a variational Hodge force covector"
 depends_on:
   - "[[WIKI-T-088]]"
   - "[[WIKI-T-101]]"
@@ -24,6 +26,7 @@ depends_on:
   - "[[WIKI-T-159]]"
   - "[[WIKI-T-162]]"
   - "[[WIKI-T-163]]"
+  - "[[WIKI-T-165]]"
   - "[[WIKI-X-041]]"
   - "[[WIKI-X-048]]"
 consumers:
@@ -107,8 +110,19 @@ dS_h(q)[delta q] = <g_S(q),delta q>_C,
 T_q(q)w = -D((P_f q)w)
 ```
 
-up to the same transport linearization used in the ledger.  Pressure projection
-is the KKT system
+up to the same transport linearization used in the ledger.
+
+Gravity is the analogous mass-transport pullback, refined in [[WIKI-T-165]]:
+
+```text
+r_g(q) = -T_m(q)^T d Phi_g/dm,
+a_g(q) = M_f(q)^{-1} r_g(q).
+```
+
+Thus the legacy nodal body-force form is not a production definition unless it
+is proven equal to this covector in the transported face-mass metric.
+
+Pressure projection is the KKT system
 
 ```text
 M_f(u^{n+1}-u*) + D^T pi + C_b^T lambda = 0,
@@ -320,6 +334,14 @@ The current `psi,u,v` grid rebuild path is not admissible for this route because
 it remaps velocity rather than conservative momentum.  Until conservative
 remap exists, strict conservative runs with reinit or interface-fitted grid
 rebuild must fail closed.
+
+**Passive checkpoint corollary (2026-05-09).**  A checkpoint/snapshot schedule is
+not a force, constraint, or time integrator.  It must not change `dt` merely to
+hit an output time.  The admissible rollback checkpoint is the actual pre-step
+state immediately before crossing the requested checkpoint label; exact-time
+rollback requires a variable-step/dense-output theorem and must otherwise
+remain fail-closed.  Treat any output path that perturbs the discrete trajectory
+as a production bug, not as harmless I/O.
 
 ## Negative Knowledge
 

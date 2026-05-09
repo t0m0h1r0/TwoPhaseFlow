@@ -174,8 +174,6 @@ def run_simulation(
             dt_candidate = float(resume_dt_candidate)
             resume_dt_candidate = None
         dt = min(dt_candidate, T - t)
-        if next_time_checkpoint is not None:
-            dt = min(dt, max(0.0, next_time_checkpoint - t))
         if dt < 1e-12:
             break
         terminal_clamped = bool(dt < dt_candidate - max(1.0e-15, 1.0e-12 * dt_candidate))
@@ -261,36 +259,24 @@ def run_simulation(
         while snap_idx < len(snap_times) and t >= snap_times[snap_idx]:
             snaps.append(_capture_runtime_snapshot(solver, ph, t, psi, u, v, p))
             snap_idx += 1
+        # Time checkpoints are observational.  They must not clamp ``dt`` or
+        # alter the discrete flow map; store the restartable input state that
+        # was actually used for the step crossing the requested checkpoint.
         while (
             checkpoint_interval is not None
             and checkpoint_path is not None
             and next_time_checkpoint is not None
             and _time_reached(t, next_time_checkpoint)
         ):
-            current_results = _merge_time_series(
-                previous_results,
-                {**diag.to_arrays()},
-            )
-            frame = capture_checkpoint_frame(
-                solver=solver,
-                psi=psi,
-                u=u,
-                v=v,
-                p=_checkpoint_pressure(solver, p, psi),
-                t=t,
-                step=step,
-                config_path=config_path,
-                results=current_results,
-                snapshots=snaps,
-                debug_history=dbg_history,
-                state_phase="pre_step",
-                dt_candidate=None,
-                dt_effective=None,
-                terminal_clamped=False,
-            )
             time_path = _time_checkpoint_path(checkpoint_path, next_time_checkpoint)
-            write_checkpoint_frame(time_path, frame)
-            print(f"  [checkpoint] saved {time_path.name} at t={t:.8g}")
+            if last_pre_step_frame is not None:
+                write_checkpoint_frame(time_path, last_pre_step_frame)
+                frame_time = float(last_pre_step_frame["manifest"]["time"])
+                print(
+                    f"  [checkpoint] saved {time_path.name} "
+                    f"from pre-step t={frame_time:.8g} "
+                    f"(target {next_time_checkpoint:.8g})"
+                )
             next_time_checkpoint = _next_time_checkpoint(
                 next_time_checkpoint,
                 checkpoint_interval,

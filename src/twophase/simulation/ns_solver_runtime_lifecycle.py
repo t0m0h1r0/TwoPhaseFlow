@@ -28,6 +28,40 @@ def initialise_ns_solver_from_options(solver, options) -> None:
     solver._preserve_projected_faces = bool(
         getattr(options.schemes, "preserve_projected_faces", False)
     )
+    solver._boundary_hodge_mode = str(
+        getattr(options.schemes, "boundary_hodge_mode", "off")
+    )
+    solver._boundary_hodge_state_space = str(
+        getattr(options.schemes, "boundary_hodge_state_space", "full_face")
+    )
+    solver._boundary_hodge_wall_trace = str(
+        getattr(options.schemes, "boundary_hodge_wall_trace", "reconstruct_nodes")
+    )
+    solver._boundary_hodge_wall_retraction = str(
+        getattr(options.schemes, "boundary_hodge_wall_retraction", "metric_projection")
+    )
+    solver._boundary_hodge_metric = str(
+        getattr(options.schemes, "boundary_hodge_metric", "transported_face_mass")
+    )
+    solver._boundary_hodge_pressure_pairing = str(
+        getattr(
+            options.schemes,
+            "boundary_hodge_pressure_pairing",
+            "active_variational_adjoint",
+        )
+    )
+    solver._boundary_hodge_solver = str(
+        getattr(options.schemes, "boundary_hodge_solver", "matrix_free_cg")
+    )
+    solver._boundary_hodge_tolerance = float(
+        getattr(options.schemes, "boundary_hodge_tolerance", 1.0e-10)
+    )
+    solver._boundary_hodge_max_iterations = int(
+        getattr(options.schemes, "boundary_hodge_max_iterations", 80)
+    )
+    solver._boundary_hodge_gate = str(
+        getattr(options.schemes, "boundary_hodge_gate", "diagnostic")
+    )
     solver._projection_consistent_buoyancy = bool(
         getattr(options.schemes, "projection_consistent_buoyancy", False)
     )
@@ -35,6 +69,7 @@ def initialise_ns_solver_from_options(solver, options) -> None:
     solver._conservative_density = None
     solver._conservative_momentum_components = None
     solver._p_prev_accel_face_components = None
+    solver._p_base_prev2_dev = None
     solver._record_interface_projection_fields = False
     solver._last_interface_projection_fields = None
     solver._initialise_geometry(options.grid)

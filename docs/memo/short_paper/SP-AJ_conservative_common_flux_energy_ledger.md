@@ -3,7 +3,7 @@
 **Status**: ACTIVE / implementation target after ch14 rising-bubble blow-up RCA
 **Date**: 2026-05-09
 **Scope**: ch14 SI water-air rising bubble, conservative momentum form, common-flux transport, pressure metric, reinitialization/remap, energy certificates
-**Companion papers**: SP-AF, SP-AI, SP-Z, SP-X
+**Companion papers**: SP-AF, SP-AI, SP-AK, SP-Z, SP-X
 
 ## Abstract
 
@@ -616,6 +616,18 @@ work balance
 Delta K_g + Delta Phi_g = eps_g.
 ```
 
+SP-AK refines this statement into the production force definition:
+
+```text
+r_g = -T_m(q)^T d Phi_g/dm,
+a_g = M_f(q)^{-1} r_g.
+```
+
+Here `T_m` is the same common-flux mass-transport differential as the
+conservative state update.  A nodal body acceleration or hydrostatic split is
+only a representative after it satisfies this transport-adjoint identity in the
+active face-mass metric.
+
 At density ratio `O(10^3)`, a mismatch between phase transport and mass
 transport can appear as a large artificial gravitational work term.  This is
 why the gravity operator must consume the conservative state rather than a
@@ -819,6 +831,16 @@ manifest.state_phase = pre_step
 ```
 
 Primitive checkpoints must not restart a conservative route.
+
+**Passive observation rule.**  Checkpoints and snapshots are observation
+operators, not part of the discrete evolution map.  A requested checkpoint time
+must therefore not clamp `dt`: doing so changes the IMEX/BDF/history sequence
+and makes "run with checkpoint output" a different numerical experiment from
+"run without checkpoint output."  Periodic time checkpoints store the actual
+pre-step frame used by the step that crosses the requested time, with the
+manifest time recording the physical state time and the file name recording the
+requested rollback label.  Exact-time checkpoint states require a separately
+validated variable-step integrator/dense-output construction.
 
 ## 13. YAML Contract
 

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from .config_models import RunCfg
-from .config_sections import opt_float
+from .config_sections import opt_float, validate_choice
 from .config_run_tracking_sections import (
     parse_tracking_enabled,
     parse_tracking_method,
@@ -20,6 +20,17 @@ LEGACY_THEORY_CFL_ALIASES = {"auto", "theory", "theoretical"}
 THEORY_CFL_ADVECTIVE = 0.10
 THEORY_CFL_CAPILLARY = 0.05
 THEORY_CFL_VISCOUS = 1.0
+_BOUNDARY_HODGE_MODES = ("off", "wall_trace_projection")
+_BOUNDARY_HODGE_STATE_SPACES = ("full_face", "constrained_face")
+_BOUNDARY_HODGE_WALL_TRACES = ("reconstruct_nodes",)
+_BOUNDARY_HODGE_WALL_RETRACTIONS = ("metric_projection",)
+_BOUNDARY_HODGE_METRICS = ("transported_face_mass",)
+_BOUNDARY_HODGE_PRESSURE_PAIRINGS = (
+    "active_variational_adjoint",
+    "restricted_variational_adjoint",
+)
+_BOUNDARY_HODGE_SOLVERS = ("matrix_free_cg",)
+_BOUNDARY_HODGE_GATES = ("off", "diagnostic", "fail_close")
 
 
 @dataclass(frozen=True)
@@ -76,6 +87,101 @@ def resolve_cfl_policy(raw: Any) -> tuple[float, str, float, float, float]:
     )
 
 
+def _parse_boundary_hodge(projection: dict[str, Any]) -> dict[str, Any]:
+    raw = projection.get("boundary_hodge", {}) or {}
+    if isinstance(raw, str):
+        raw = {"mode": raw}
+    if not isinstance(raw, dict):
+        raise ValueError("numerics.projection.boundary_hodge must be a mapping or mode string.")
+    mode_raw = raw.get("mode", "off")
+    if mode_raw is True:
+        mode_value = "wall_trace_projection"
+    elif mode_raw is False:
+        mode_value = "off"
+    else:
+        mode_value = mode_raw
+    mode = validate_choice(
+        str(mode_value).strip().lower(),
+        _BOUNDARY_HODGE_MODES,
+        "numerics.projection.boundary_hodge.mode",
+    )
+    state_space = validate_choice(
+        str(raw.get("state_space", "full_face")).strip().lower(),
+        _BOUNDARY_HODGE_STATE_SPACES,
+        "numerics.projection.boundary_hodge.state_space",
+    )
+    wall_trace = validate_choice(
+        str(raw.get("wall_trace", "reconstruct_nodes")).strip().lower(),
+        _BOUNDARY_HODGE_WALL_TRACES,
+        "numerics.projection.boundary_hodge.wall_trace",
+    )
+    wall_retraction = validate_choice(
+        str(raw.get("wall_retraction", "metric_projection")).strip().lower(),
+        _BOUNDARY_HODGE_WALL_RETRACTIONS,
+        "numerics.projection.boundary_hodge.wall_retraction",
+    )
+    metric = validate_choice(
+        str(raw.get("metric", "transported_face_mass")).strip().lower(),
+        _BOUNDARY_HODGE_METRICS,
+        "numerics.projection.boundary_hodge.metric",
+    )
+    pressure_default = (
+        "restricted_variational_adjoint"
+        if state_space == "constrained_face"
+        else "active_variational_adjoint"
+    )
+    pressure_pairing = validate_choice(
+        str(raw.get("pressure_pairing", pressure_default)).strip().lower(),
+        _BOUNDARY_HODGE_PRESSURE_PAIRINGS,
+        "numerics.projection.boundary_hodge.pressure_pairing",
+    )
+    if state_space == "constrained_face" and pressure_pairing != "restricted_variational_adjoint":
+        raise ValueError(
+            "numerics.projection.boundary_hodge.state_space='constrained_face' "
+            "requires pressure_pairing='restricted_variational_adjoint'."
+        )
+    if mode == "wall_trace_projection" and state_space == "constrained_face":
+        raise ValueError(
+            "boundary_hodge.mode='wall_trace_projection' is a post-pressure "
+            "diagnostic and must not be combined with state_space='constrained_face'."
+        )
+    solver = validate_choice(
+        str(raw.get("solver", "matrix_free_cg")).strip().lower(),
+        _BOUNDARY_HODGE_SOLVERS,
+        "numerics.projection.boundary_hodge.solver",
+    )
+    if mode == "wall_trace_projection" and solver != "matrix_free_cg":
+        raise ValueError(
+            "numerics.projection.boundary_hodge.solver must be "
+            "'matrix_free_cg' for mode='wall_trace_projection'."
+        )
+    gate = validate_choice(
+        str(raw.get("gate", "diagnostic")).strip().lower(),
+        _BOUNDARY_HODGE_GATES,
+        "numerics.projection.boundary_hodge.gate",
+    )
+    tolerance = float(raw.get("tolerance", 1.0e-10))
+    if tolerance <= 0.0:
+        raise ValueError("numerics.projection.boundary_hodge.tolerance must be > 0.")
+    max_iterations = int(raw.get("max_iterations", 80))
+    if max_iterations <= 0:
+        raise ValueError(
+            "numerics.projection.boundary_hodge.max_iterations must be positive."
+        )
+    return {
+        "mode": mode,
+        "state_space": state_space,
+        "wall_trace": wall_trace,
+        "wall_retraction": wall_retraction,
+        "metric": metric,
+        "pressure_pairing": pressure_pairing,
+        "solver": solver,
+        "tolerance": tolerance,
+        "max_iterations": max_iterations,
+        "gate": gate,
+    }
+
+
 def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
     """Build `RunCfg` from normalized run-section fragments."""
     snap_raw = options.snapshots.get("times", [])
@@ -87,6 +193,7 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
     if cfl_raw is not None and dt_fixed_raw is not None:
         raise ValueError("run.time: 'cfl' and 'dt' are mutually exclusive.")
     cfl_number, cfl_policy, cfl_adv, cfl_cap, cfl_visc = resolve_cfl_policy(cfl_raw)
+    boundary_hodge = _parse_boundary_hodge(options.projection)
 
     tracking_redist = tracking_redistance(options.tracking)
     reinit_schedule = options.reinit_schedule
@@ -122,7 +229,7 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
             "'diffuse_mass' or 'sharp_phase_volume', "
             f"got {reinit_volume_constraint!r}"
         )
-    return RunCfg(
+    cfg = RunCfg(
         T_final=opt_float(options.time_cfg["final"]),
         max_steps=int(options.time_cfg["max_steps"]) if "max_steps" in options.time_cfg else None,
         cfl=cfl_number,
@@ -179,6 +286,10 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
         capillary_reaction_projection=options.operator_settings["capillary_reaction_projection"],
         pressure_force_contract=options.operator_settings["pressure_force_contract"],
         scalar_operator_pairing=options.operator_settings["scalar_operator_pairing"],
+        pressure_history_mode=options.operator_settings["pressure_history_mode"],
+        pressure_history_extrapolation=options.operator_settings[
+            "pressure_history_extrapolation"
+        ],
         capillary_closed_interface_endpoint=options.operator_settings[
             "capillary_closed_interface_endpoint"
         ],
@@ -210,6 +321,13 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
         cn_buoyancy_predictor_assembly_mode=options.operator_settings[
             "cn_buoyancy_predictor_assembly_mode"
         ],
+        gravity_formulation=options.operator_settings["gravity_formulation"],
+        gravity_transport_adjoint=options.operator_settings[
+            "gravity_transport_adjoint"
+        ],
+        gravity_metric=options.operator_settings["gravity_metric"],
+        gravity_hodge_gate=options.operator_settings["gravity_hodge_gate"],
+        gravity_work_gate=options.operator_settings["gravity_work_gate"],
         pressure_gradient_scheme=options.operator_settings["pressure_gradient_scheme"],
         surface_tension_gradient_scheme=options.operator_settings["surface_tension_gradient_scheme"],
         momentum_gradient_scheme=options.operator_settings["momentum_gradient_scheme"],
@@ -225,6 +343,16 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
         preserve_projected_faces=bool(
             options.projection.get("preserve_projected_faces", False)
         ),
+        boundary_hodge_mode=boundary_hodge["mode"],
+        boundary_hodge_state_space=boundary_hodge["state_space"],
+        boundary_hodge_wall_trace=boundary_hodge["wall_trace"],
+        boundary_hodge_wall_retraction=boundary_hodge["wall_retraction"],
+        boundary_hodge_metric=boundary_hodge["metric"],
+        boundary_hodge_pressure_pairing=boundary_hodge["pressure_pairing"],
+        boundary_hodge_solver=boundary_hodge["solver"],
+        boundary_hodge_tolerance=boundary_hodge["tolerance"],
+        boundary_hodge_max_iterations=boundary_hodge["max_iterations"],
+        boundary_hodge_gate=boundary_hodge["gate"],
         projection_consistent_buoyancy=bool(
             options.projection.get("projection_consistent_buoyancy", False)
         ),
@@ -241,3 +369,37 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
         ppe_dc_relaxation=options.operator_settings["ppe_dc_relaxation"],
         debug_diagnostics=bool(options.debug.get("step_diagnostics", False)),
     )
+    if cfg.gravity_formulation == "variational_potential":
+        required_projection_flags = {
+            "face_flux_projection": cfg.face_flux_projection,
+            "canonical_face_state": cfg.canonical_face_state,
+            "face_native_predictor_state": cfg.face_native_predictor_state,
+            "preserve_projected_faces": cfg.preserve_projected_faces,
+        }
+        missing = [name for name, enabled in required_projection_flags.items() if not enabled]
+        if missing:
+            raise ValueError(
+                "numerics.momentum.terms.gravity.formulation='variational_potential' "
+                "requires projection flags "
+                f"{', '.join(missing)} to be true."
+            )
+        if cfg.projection_consistent_buoyancy:
+            raise ValueError(
+                "variational_potential gravity must not be combined with "
+                "projection_consistent_buoyancy; both represent buoyancy in "
+                "the pressure Hodge space."
+            )
+    if cfg.boundary_hodge_mode != "off":
+        required_projection_flags = {
+            "face_flux_projection": cfg.face_flux_projection,
+            "canonical_face_state": cfg.canonical_face_state,
+            "face_native_predictor_state": cfg.face_native_predictor_state,
+            "preserve_projected_faces": cfg.preserve_projected_faces,
+        }
+        missing = [name for name, enabled in required_projection_flags.items() if not enabled]
+        if missing:
+            raise ValueError(
+                "numerics.projection.boundary_hodge requires projection flags "
+                f"{', '.join(missing)} to be true."
+            )
+    return cfg

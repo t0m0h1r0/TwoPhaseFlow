@@ -30,10 +30,12 @@ from .interface_projection_diagnostics import (
     capillary_pressure_adjoint_face_weights,
     zero_capillary_face_diagnostics,
 )
+from .gravity_covector import build_variational_gravity_faces
 from .face_boundary import (
     zero_wall_normal_face_components,
     zero_wall_velocity_face_components,
 )
+from .boundary_hodge import project_wall_trace, wall_trace_from_faces
 from .ns_predictor_face_state import FaceNativePredictorAssembly
 from .ns_step_state import NSStepState
 
@@ -71,6 +73,19 @@ def _apply_solver_interface_jump(ppe_solver, base_pressure):
     if callable(applier):
         return applier(base_pressure)
     return base_pressure
+
+
+def _scalar_from_backend(backend, xp, value) -> float:
+    return float(np.asarray(backend.to_host(xp.asarray(value))))
+
+
+def _face_linf(backend, xp, components: list) -> float:
+    if not components:
+        return 0.0
+    return max(
+        _scalar_from_backend(backend, xp, xp.max(xp.abs(component)))
+        for component in components
+    )
 
 
 def _capillary_interface_psi(*, xp, state: NSStepState, curvature_method: str):
@@ -237,6 +252,87 @@ def _pressure_face_flux_kwargs(
             )
         )
     return kwargs
+
+
+def _pressure_history_mode(ppe_runtime) -> str:
+    """Return the active pressure-history representation."""
+    return str(
+        getattr(ppe_runtime, "pressure_history_mode", "face_acceleration")
+    ).strip().lower()
+
+
+def _pressure_coordinate_history_base(*, xp, state: NSStepState, ppe_runtime):
+    """Extrapolate scalar pressure coordinates for pressure-adjoint history."""
+    previous = state.previous_base_pressure
+    if previous is None:
+        return None
+    previous = xp.asarray(previous)
+    extrapolation = str(
+        getattr(ppe_runtime, "pressure_history_extrapolation", "constant")
+    ).strip().lower()
+    if (
+        extrapolation == "bdf2"
+        and state.previous_previous_base_pressure is not None
+    ):
+        return 2.0 * previous - xp.asarray(state.previous_previous_base_pressure)
+    return previous
+
+
+def _pressure_coordinate_history_faces(
+    *,
+    xp,
+    state: NSStepState,
+    div_op,
+    ppe_runtime,
+    curvature_method: str,
+    capillary_force_source: str,
+    grid,
+) -> tuple[object | None, list | None]:
+    """Build pressure-history faces by reapplying current-metric ``G_var``.
+
+    A3 mapping:
+      Equation: ``r_p^E=-D_f^T W_p lambda^E`` and
+      ``a_p^E=M_f^{-1}r_p^E``.
+      Discretization: the stored scalar coordinate ``lambda`` is extrapolated,
+      then converted to face reaction by the active pressure-adjoint flux
+      operator using the current density/interface metric.
+      Code: no old face-acceleration array is reused.
+    """
+    base = _pressure_coordinate_history_base(
+        xp=xp,
+        state=state,
+        ppe_runtime=ppe_runtime,
+    )
+    if base is None:
+        return None, None
+    closed_interface_source = capillary_force_source == "closed_interface_riesz"
+    interface_psi = _capillary_interface_psi(
+        xp=xp,
+        state=state,
+        curvature_method=curvature_method,
+    )
+    interface_psi_previous = _capillary_interface_psi_previous(
+        state=state,
+        curvature_method=curvature_method,
+    )
+    transport_temporaries = _capillary_transport_variational_temporaries(
+        xp=xp,
+        state=state,
+        curvature_method=curvature_method,
+        grid=grid,
+        sigma=state.sigma,
+    )
+    kwargs = _pressure_face_flux_kwargs(
+        xp=xp,
+        state=state,
+        ppe_runtime=ppe_runtime,
+        interface_sigma=0.0 if closed_interface_source else state.sigma,
+        curvature_method=curvature_method,
+        interface_psi=interface_psi,
+        interface_psi_previous=interface_psi_previous,
+        transport_variational_temporaries=transport_temporaries,
+    )
+    return base, div_op.pressure_fluxes(base, state.rho, **kwargs)
 
 
 def _closed_interface_trace_projection_diagnostics(projection) -> dict:
@@ -448,6 +544,10 @@ def compute_ns_predictor_stage(
     coords=None,
     ppe_coefficient_scheme: str = "phase_separated",
     conservative_momentum_transport: bool = False,
+    ppe_runtime=None,
+    curvature_method: str = "psi_direct_filtered",
+    capillary_force_source: str = "curvature_jump",
+    grid=None,
 ) -> tuple[NSStepState, bool, tuple | None, bool, tuple | None]:
     """Advance the momentum predictor stage."""
     xp = backend.xp
@@ -463,8 +563,76 @@ def compute_ns_predictor_stage(
         )
         conv_u, conv_v = conv_term.compute(conv_ctx)
 
-    buoy_v = xp.zeros_like(state.v)
-    if state.g_acc != 0.0 and not projection_consistent_buoyancy:
+    gravity_formulation = str(
+        getattr(scheme_runtime, "gravity_formulation", "body_acceleration")
+    ).strip().lower()
+    variational_gravity = (
+        gravity_formulation == "variational_potential" and state.g_acc != 0.0
+    )
+    if gravity_formulation == "none":
+        buoy_v = xp.zeros_like(state.v)
+    elif variational_gravity:
+        if projection_consistent_buoyancy:
+            raise RuntimeError(
+                "variational_potential gravity is mutually exclusive with "
+                "projection_consistent_buoyancy."
+            )
+        if cn_buoyancy_predictor_assembly_mode != "none":
+            raise RuntimeError(
+                "variational_potential gravity requires predictor assembly 'none'; "
+                "legacy balanced buoyancy would double-count the same potential."
+            )
+        if div_op is None or not hasattr(div_op, "_fccd") or Y is None:
+            raise RuntimeError(
+                "variational_potential gravity requires FCCD face transport and "
+                "the vertical coordinate field."
+            )
+        gravity_faces = build_variational_gravity_faces(
+            xp=xp,
+            fccd=div_op._fccd,
+            rho=state.rho,
+            vertical_coordinate=Y,
+            g_acc=state.g_acc,
+            gravity_axis=1,
+        )
+        gravity_accel_faces = gravity_faces.acceleration_components
+        if not is_all_periodic(bc_type, 2) and state.bc_hook is None:
+            if face_no_slip_boundary_state:
+                gravity_accel_faces = zero_wall_velocity_face_components(
+                    gravity_accel_faces,
+                    xp=xp,
+                    bc_type=bc_type,
+                )
+            else:
+                gravity_accel_faces = zero_wall_normal_face_components(
+                    gravity_accel_faces,
+                    xp=xp,
+                    bc_type=bc_type,
+                )
+        state.gravity_covector_face_components = gravity_faces.covector_components
+        state.gravity_accel_face_components = gravity_accel_faces
+        state.gravity_face_density_components = gravity_faces.face_density_components
+        state.gravity_force_diagnostics = {
+            "formulation": "variational_potential",
+            "transport_adjoint": getattr(
+                scheme_runtime,
+                "gravity_transport_adjoint",
+                "common_flux",
+            ),
+            "metric": getattr(
+                scheme_runtime,
+                "gravity_metric",
+                "transported_face_mass",
+            ),
+        }
+        buoy_v = xp.zeros_like(state.v)
+    else:
+        buoy_v = xp.zeros_like(state.v)
+    if (
+        gravity_formulation == "body_acceleration"
+        and state.g_acc != 0.0
+        and not projection_consistent_buoyancy
+    ):
         buoy_v = -(state.rho - state.rho_ref) / state.rho * state.g_acc
     buoyancy_components = [xp.zeros_like(state.u), state.rho * buoy_v]
 
@@ -509,12 +677,40 @@ def compute_ns_predictor_stage(
     previous_pressure_accel_nodes = None
     can_use_pressure_history_faces = (
         face_native_predictor_state
-        and state.previous_pressure_accel_face_components is not None
         and div_op is not None
         and hasattr(div_op, "face_fluxes")
         and hasattr(div_op, "reconstruct_nodes")
     )
-    if can_use_pressure_history_faces:
+    if (
+        can_use_pressure_history_faces
+        and hasattr(div_op, "pressure_fluxes")
+        and _pressure_history_mode(ppe_runtime) == "pressure_coordinate"
+    ):
+        (
+            state.pressure_extrapolated_base,
+            previous_pressure_accel_faces,
+        ) = _pressure_coordinate_history_faces(
+            xp=xp,
+            state=state,
+            div_op=div_op,
+            ppe_runtime=ppe_runtime,
+            curvature_method=curvature_method,
+            capillary_force_source=capillary_force_source,
+            grid=grid,
+        )
+        if previous_pressure_accel_faces is not None:
+            state.pressure_history_face_components = [
+                xp.asarray(component) for component in previous_pressure_accel_faces
+            ]
+            previous_pressure_accel_nodes = div_op.reconstruct_nodes(
+                previous_pressure_accel_faces
+            )
+            conv_step_u = conv_step_u - previous_pressure_accel_nodes[0]
+            conv_step_v = conv_step_v - previous_pressure_accel_nodes[1]
+    elif (
+        can_use_pressure_history_faces
+        and state.previous_pressure_accel_face_components is not None
+    ):
         previous_pressure_accel_faces = [
             xp.asarray(component)
             for component in state.previous_pressure_accel_face_components
@@ -653,6 +849,19 @@ def compute_ns_predictor_stage(
                         pressure_node_faces,
                     )
                 ]
+            if state.gravity_accel_face_components is not None:
+                gravity_dt = (
+                    state.projection_dt
+                    if state.projection_dt is not None
+                    else state.dt
+                )
+                predictor_delta_faces = [
+                    delta_face + gravity_dt * gravity_face
+                    for delta_face, gravity_face in zip(
+                        predictor_delta_faces,
+                        state.gravity_accel_face_components,
+                    )
+                ]
             state.predictor_face_components = [
                 xp.asarray(face_velocity) + delta_face
                 for face_velocity, delta_face in zip(
@@ -661,9 +870,48 @@ def compute_ns_predictor_stage(
                 )
             ]
         else:
-            state.predictor_face_components = div_op.face_fluxes(
-                [state.u_star, state.v_star]
+            predictor_delta_faces = div_op.face_fluxes(
+                [state.u_star - state.u, state.v_star - state.v]
             )
+            if (
+                previous_pressure_accel_faces is not None
+                and previous_pressure_accel_nodes is not None
+            ):
+                pressure_node_faces = div_op.face_fluxes(previous_pressure_accel_nodes)
+                pressure_history_dt = (
+                    state.projection_dt
+                    if state.projection_dt is not None
+                    else state.dt
+                )
+                predictor_delta_faces = [
+                    delta_face
+                    - pressure_history_dt * (pressure_face - node_face)
+                    for delta_face, pressure_face, node_face in zip(
+                        predictor_delta_faces,
+                        previous_pressure_accel_faces,
+                        pressure_node_faces,
+                    )
+                ]
+            if state.gravity_accel_face_components is not None:
+                gravity_dt = (
+                    state.projection_dt
+                    if state.projection_dt is not None
+                    else state.dt
+                )
+                predictor_delta_faces = [
+                    delta_face + gravity_dt * gravity_face
+                    for delta_face, gravity_face in zip(
+                        predictor_delta_faces,
+                        state.gravity_accel_face_components,
+                    )
+                ]
+            state.predictor_face_components = [
+                base_face + delta_face
+                for base_face, delta_face in zip(
+                    div_op.face_fluxes([state.u, state.v]),
+                    predictor_delta_faces,
+                )
+            ]
         if not is_all_periodic(bc_type, 2) and state.bc_hook is None:
             if face_no_slip_boundary_state:
                 state.predictor_face_components = zero_wall_velocity_face_components(
@@ -937,8 +1185,6 @@ def solve_ns_pressure_stage(
         face_no_slip_boundary_state=face_no_slip_boundary_state,
     )
     rhs = predictor_rhs + div_op.divergence([state.f_x / state.rho, state.f_y / state.rho])
-    if state.debug_scalars is not None:
-        state.debug_scalars.append(xp.max(xp.abs(rhs)))
     closed_interface_source = capillary_force_source == "closed_interface_riesz"
     physical_jump_sigma = (
         state.sigma if surface_tension_scheme == "pressure_jump" else 0.0
@@ -962,9 +1208,14 @@ def solve_ns_pressure_stage(
         and hasattr(div_op, "pressure_fluxes")
         and hasattr(div_op, "reconstruct_nodes")
     )
+    pressure_coordinate_history = (
+        uses_affine_face_history
+        and _pressure_history_mode(ppe_runtime) == "pressure_coordinate"
+    )
     previous_pressure_accel_faces = None
     if (
         uses_affine_face_history
+        and not pressure_coordinate_history
         and state.previous_pressure_accel_face_components is not None
     ):
         if not hasattr(div_op, "divergence_from_faces"):
@@ -976,6 +1227,9 @@ def solve_ns_pressure_stage(
             for component in state.previous_pressure_accel_face_components
         ]
         rhs = rhs + div_op.divergence_from_faces(previous_pressure_accel_faces)
+
+    if state.debug_scalars is not None:
+        state.debug_scalars.append(xp.max(xp.abs(rhs)))
 
     state.pressure_increment = ppe_solver.solve(
         rhs,
@@ -993,11 +1247,15 @@ def solve_ns_pressure_stage(
         previous_base = p_prev_dev
     if previous_base is None:
         previous_base = xp.zeros_like(base_increment)
-    state.pressure_base = (
-        xp.asarray(base_increment)
-        if uses_affine_face_history
-        else xp.asarray(previous_base) + xp.asarray(base_increment)
-    )
+    if pressure_coordinate_history:
+        history_base = state.pressure_extrapolated_base
+        if history_base is None:
+            history_base = xp.zeros_like(base_increment)
+        state.pressure_base = xp.asarray(history_base) + xp.asarray(base_increment)
+    elif uses_affine_face_history:
+        state.pressure_base = xp.asarray(base_increment)
+    else:
+        state.pressure_base = xp.asarray(previous_base) + xp.asarray(base_increment)
     state.pressure = _apply_solver_interface_jump(ppe_solver, state.pressure_base)
     state.pressure_accel_face_components = None
     state.pressure_correction_face_components = None
@@ -1035,25 +1293,43 @@ def solve_ns_pressure_stage(
                 jump_context=jump_context,
             )
         )
-        full_pressure_faces = div_op.pressure_fluxes(
-            state.pressure_increment,
+        correction_pressure = (
+            xp.asarray(base_increment)
+            if pressure_coordinate_history
+            else xp.asarray(state.pressure_increment)
+        )
+        correction_pressure_faces = div_op.pressure_fluxes(
+            correction_pressure,
             state.rho,
             **pressure_flux_eval_kwargs,
         )
-        if previous_pressure_accel_faces is None:
+        if pressure_coordinate_history:
             state.pressure_correction_face_components = [
-                xp.asarray(component) for component in full_pressure_faces
+                xp.asarray(component) for component in correction_pressure_faces
+            ]
+            state.pressure_accel_face_components = [
+                xp.asarray(component)
+                for component in div_op.pressure_fluxes(
+                    state.pressure_base,
+                    state.rho,
+                    **pressure_flux_eval_kwargs,
+                )
+            ]
+        elif previous_pressure_accel_faces is None:
+            state.pressure_correction_face_components = [
+                xp.asarray(component) for component in correction_pressure_faces
             ]
         else:
             state.pressure_correction_face_components = [
                 xp.asarray(full_face) - previous_face
                 for full_face, previous_face in zip(
-                    full_pressure_faces, previous_pressure_accel_faces
+                    correction_pressure_faces, previous_pressure_accel_faces
                 )
             ]
-        state.pressure_accel_face_components = [
-            xp.asarray(component) for component in full_pressure_faces
-        ]
+        if not pressure_coordinate_history:
+            state.pressure_accel_face_components = [
+                xp.asarray(component) for component in correction_pressure_faces
+            ]
         if state.debug_scalars is not None:
             if range_projection is None:
                 range_projection = capillary_jump_range_projection(
@@ -1079,6 +1355,130 @@ def solve_ns_pressure_stage(
     state.p_corrector = state.pressure_increment
     return state, next_p_prev_dev, next_p_prev
 
+
+def _apply_boundary_hodge_projection(
+    state: NSStepState,
+    *,
+    xp,
+    proj_op,
+    bc_type: str,
+    boundary_hodge_mode: str,
+    boundary_hodge_wall_trace: str,
+    boundary_hodge_metric: str,
+    boundary_hodge_solver: str,
+    boundary_hodge_tolerance: float,
+    boundary_hodge_max_iterations: int,
+) -> None:
+    """Apply the configured boundary Hodge projection in-place."""
+    mode = str(boundary_hodge_mode).strip().lower()
+    if mode == "off" or state.projected_face_components is None:
+        return
+    if mode != "wall_trace_projection":
+        raise ValueError(f"unsupported boundary_hodge mode {boundary_hodge_mode!r}")
+    if str(boundary_hodge_wall_trace).strip().lower() != "reconstruct_nodes":
+        raise ValueError("boundary_hodge.wall_trace must be 'reconstruct_nodes'")
+    if str(boundary_hodge_metric).strip().lower() != "transported_face_mass":
+        raise ValueError("boundary_hodge.metric must be 'transported_face_mass'")
+    fccd = getattr(proj_op, "_fccd", None)
+    grid = getattr(fccd, "grid", None)
+    if grid is None:
+        grid = getattr(proj_op, "_grid", None)
+    if grid is None:
+        raise RuntimeError("boundary_hodge requires a face operator with grid metadata.")
+    if str(boundary_hodge_solver).strip().lower() != "matrix_free_cg":
+        raise ValueError("boundary_hodge.solver must be 'matrix_free_cg'")
+    projection = project_wall_trace(
+        xp=xp,
+        grid=grid,
+        fccd=fccd,
+        face_components=state.projected_face_components,
+        rho=state.rho,
+        bc_type=bc_type,
+        tolerance=boundary_hodge_tolerance,
+        max_iterations=boundary_hodge_max_iterations,
+    )
+    state.projected_face_components = projection.face_components
+    state.boundary_hodge_diagnostics = dict(projection.diagnostics)
+
+
+def _record_boundary_hodge_post_diagnostics(
+    state: NSStepState,
+    *,
+    backend,
+    xp,
+    proj_op,
+    div_op,
+    bc_type: str,
+    boundary_hodge_mode: str,
+    boundary_hodge_tolerance: float,
+    boundary_hodge_gate: str,
+) -> None:
+    """Record post-BC consistency diagnostics and optionally fail close."""
+    if (
+        str(boundary_hodge_mode).strip().lower() == "off"
+        or state.projected_face_components is None
+    ):
+        return
+    diagnostics = dict(state.boundary_hodge_diagnostics or {})
+    grid = getattr(getattr(proj_op, "_fccd", None), "grid", None)
+    if grid is None:
+        grid = getattr(proj_op, "_grid", None)
+    if grid is not None:
+        wall_trace = wall_trace_from_faces(
+            xp,
+            grid,
+            state.projected_face_components,
+            bc_type,
+        )
+        diagnostics["boundary_hodge_wall_post_linf"] = _scalar_from_backend(
+            backend,
+            xp,
+            xp.max(xp.abs(wall_trace)) if getattr(wall_trace, "size", 0) else xp.asarray(0.0),
+        )
+    if hasattr(div_op, "divergence_from_faces"):
+        div_field = div_op.divergence_from_faces(state.projected_face_components)
+        diagnostics["boundary_hodge_div_linf"] = _scalar_from_backend(
+            backend,
+            xp,
+            xp.max(xp.abs(div_field)),
+        )
+    if hasattr(proj_op, "reconstruct_nodes"):
+        reconstructed = proj_op.reconstruct_nodes(state.projected_face_components)
+        diagnostics["boundary_hodge_reconstruct_delta_linf"] = _face_linf(
+            backend,
+            xp,
+            [reconstructed[0] - state.u, reconstructed[1] - state.v],
+        )
+    state.boundary_hodge_diagnostics = diagnostics
+    gate = str(boundary_hodge_gate).strip().lower()
+    if gate != "fail_close":
+        return
+    wall_linf = diagnostics.get(
+        "boundary_hodge_wall_post_linf",
+        diagnostics.get("boundary_hodge_wall_linf", 0.0),
+    )
+    residual = diagnostics.get("boundary_hodge_cg_residual", 0.0)
+    converged = diagnostics.get("boundary_hodge_cg_converged", 1.0)
+    reconstruction_delta = diagnostics.get("boundary_hodge_reconstruct_delta_linf", 0.0)
+    tolerance = max(float(boundary_hodge_tolerance), 1.0e-14)
+    div_linf = diagnostics.get("boundary_hodge_div_linf", 0.0)
+    div_tolerance = max(1.0e-6, 1000.0 * tolerance)
+    if converged < 0.5 or wall_linf > 10.0 * tolerance or residual > 10.0 * tolerance:
+        raise RuntimeError(
+            "boundary_hodge fail-close: wall trace projection did not converge "
+            f"(wall_linf={wall_linf:.6e}, residual={residual:.6e})."
+        )
+    if div_linf > div_tolerance:
+        raise RuntimeError(
+            "boundary_hodge fail-close: constrained face state is not divergence-free "
+            f"(div_linf={div_linf:.6e}, tolerance={div_tolerance:.6e})."
+        )
+    if reconstruction_delta > 10.0 * tolerance:
+        raise RuntimeError(
+            "boundary_hodge fail-close: reconstructed face state differs from "
+            f"post-BC nodal state by {reconstruction_delta:.6e}."
+        )
+
 def correct_ns_velocity_stage(
     state: NSStepState,
     *,
@@ -1096,6 +1496,13 @@ def correct_ns_velocity_stage(
     apply_velocity_bc,
     curvature_method: str = "psi_direct_filtered",
     capillary_force_source: str = "curvature_jump",
+    boundary_hodge_mode: str = "off",
+    boundary_hodge_wall_trace: str = "reconstruct_nodes",
+    boundary_hodge_metric: str = "transported_face_mass",
+    boundary_hodge_solver: str = "matrix_free_cg",
+    boundary_hodge_tolerance: float = 1.0e-10,
+    boundary_hodge_max_iterations: int = 80,
+    boundary_hodge_gate: str = "diagnostic",
 ) -> NSStepState:
     """Apply pressure correction and optional face-flux projection."""
     xp = backend.xp
@@ -1227,6 +1634,18 @@ def correct_ns_velocity_stage(
                     xp=xp,
                     bc_type=bc_type,
                 )
+            _apply_boundary_hodge_projection(
+                state,
+                xp=xp,
+                proj_op=proj_op,
+                bc_type=bc_type,
+                boundary_hodge_mode=boundary_hodge_mode,
+                boundary_hodge_wall_trace=boundary_hodge_wall_trace,
+                boundary_hodge_metric=boundary_hodge_metric,
+                boundary_hodge_solver=boundary_hodge_solver,
+                boundary_hodge_tolerance=boundary_hodge_tolerance,
+                boundary_hodge_max_iterations=boundary_hodge_max_iterations,
+            )
             state.u, state.v = proj_op.reconstruct_nodes(state.projected_face_components)
         elif keep_face_state and hasattr(proj_op, "project_faces"):
             state.projected_face_components = proj_op.project_faces(
@@ -1236,6 +1655,18 @@ def correct_ns_velocity_stage(
                 projection_dt,
                 [state.f_x / state.rho, state.f_y / state.rho],
                 **project_kwargs,
+            )
+            _apply_boundary_hodge_projection(
+                state,
+                xp=xp,
+                proj_op=proj_op,
+                bc_type=bc_type,
+                boundary_hodge_mode=boundary_hodge_mode,
+                boundary_hodge_wall_trace=boundary_hodge_wall_trace,
+                boundary_hodge_metric=boundary_hodge_metric,
+                boundary_hodge_solver=boundary_hodge_solver,
+                boundary_hodge_tolerance=boundary_hodge_tolerance,
+                boundary_hodge_max_iterations=boundary_hodge_max_iterations,
             )
             state.u, state.v = proj_op.reconstruct_nodes(state.projected_face_components)
         else:
@@ -1253,6 +1684,18 @@ def correct_ns_velocity_stage(
         state.u = state.u_star - projection_dt / state.rho * dp_dx + projection_dt * state.f_x / state.rho
         state.v = state.v_star - projection_dt / state.rho * dp_dy + projection_dt * state.f_y / state.rho
     apply_velocity_bc(state.u, state.v, state.bc_hook, bc_type)
+    if face_flux_projection and state.projected_face_components is not None:
+        _record_boundary_hodge_post_diagnostics(
+            state,
+            backend=backend,
+            xp=xp,
+            proj_op=proj_op,
+            div_op=div_op,
+            bc_type=bc_type,
+            boundary_hodge_mode=boundary_hodge_mode,
+            boundary_hodge_tolerance=boundary_hodge_tolerance,
+            boundary_hodge_gate=boundary_hodge_gate,
+        )
     return state
 
 def record_ns_step_diagnostics(
@@ -1285,3 +1728,4 @@ def record_ns_step_diagnostics(
     )
     step_diag.record_ppe_stats(state.interface_projection_diagnostics or {})
     step_diag.record_ppe_stats(state.capillary_face_diagnostics or {})
+    step_diag.record_ppe_stats(state.boundary_hodge_diagnostics or {})

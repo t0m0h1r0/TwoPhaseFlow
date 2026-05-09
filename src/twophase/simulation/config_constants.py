@@ -108,6 +108,25 @@ _SCALAR_OPERATOR_PAIRING_ALIASES = {
     "variational": "variational_operator",
     "l_var": "variational_operator",
 }
+_PRESSURE_HISTORY_MODES = ("face_acceleration", "pressure_coordinate")
+_PRESSURE_HISTORY_MODE_ALIASES = {
+    "legacy": "face_acceleration",
+    "acceleration": "face_acceleration",
+    "acceleration_faces": "face_acceleration",
+    "face_accel": "face_acceleration",
+    "scalar": "pressure_coordinate",
+    "coordinate": "pressure_coordinate",
+    "pressure": "pressure_coordinate",
+}
+_PRESSURE_HISTORY_EXTRAPOLATIONS = ("constant", "bdf2")
+_PRESSURE_HISTORY_EXTRAPOLATION_ALIASES = {
+    "none": "constant",
+    "hold": "constant",
+    "first_order": "constant",
+    "linear": "bdf2",
+    "linear_bdf2": "bdf2",
+    "extrapolated": "bdf2",
+}
 _SURFACE_TENSION_SCHEMES = ("csf", "pressure_jump", "none")
 _SURFACE_TENSION_ALIASES = {
     "gfm_jump": "pressure_jump",
