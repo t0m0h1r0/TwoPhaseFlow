@@ -916,6 +916,37 @@ def test_ch14_rising_bubble_yaml_builds_solver():
     assert isinstance(solver._ppe_solver.base_solver, PPESolverFDDirect)
 
 
+def test_ch14_canonical_yamls_build_shared_common_flux_contract():
+    config_dir = (
+        Path(__file__).resolve().parents[3]
+        / "experiment/ch14/config"
+    )
+    gravity_configs = {
+        "ch14_rising_bubble.yaml",
+        "ch14_rayleigh_taylor.yaml",
+    }
+
+    for path in sorted(p for p in config_dir.glob("ch14_*.yaml") if not p.name.startswith("_")):
+        cfg = ExperimentConfig.from_yaml(path)
+        solver = TwoPhaseNSSolver.from_config(cfg)
+        assert solver._momentum_form == "conservative_common_flux", path.name
+        assert solver._cn_buoyancy_predictor_assembly_mode == "none", path.name
+        assert solver._preserve_projected_faces is True, path.name
+        assert solver._boundary_hodge_mode == "off", path.name
+        assert solver._boundary_hodge_state_space == "constrained_face", path.name
+        assert solver._boundary_hodge_pressure_pairing == (
+            "restricted_variational_adjoint"
+        ), path.name
+        if path.name in gravity_configs:
+            assert solver._scheme_runtime.gravity_formulation == (
+                "variational_potential"
+            ), path.name
+        else:
+            assert solver._scheme_runtime.gravity_formulation == (
+                "body_acceleration"
+            ), path.name
+
+
 def test_phase_separated_fccd_ppe_cuts_cross_phase_faces():
     """SP-M Phase 1: FCCD PPE does not couple pressure across phase jumps."""
     solver = TwoPhaseNSSolver(

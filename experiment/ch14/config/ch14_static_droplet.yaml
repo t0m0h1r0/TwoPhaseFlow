@@ -64,6 +64,7 @@ physics:
   gravity: 0.0
 
 run:
+  momentum_form: conservative_common_flux
   time:
     final: 40.0
     # Multiplier on theory CFL constants; 1.0 uses the §7 CFL budget.
@@ -81,8 +82,9 @@ numerics:
       spatial: fccd
       time_integrator: tvd_rk3
   momentum:
+    form: conservative_common_flux
     predictor:
-      assembly: balanced_buoyancy
+      assembly: none
     terms:
       convection:
         spatial: uccd6
@@ -111,6 +113,29 @@ numerics:
     face_flux_projection: true
     canonical_face_state: true
     face_native_predictor_state: true
+    preserve_projected_faces: true
+    boundary_hodge:
+      # SP-AN state-space contract shared by ch14 production YAMLs.  The
+      # production restricted solve remains off; diagnostics still parse the
+      # same wall/quotient face space if this periodic case is later changed
+      # to a wall-bounded domain.
+      mode: off
+      state_space: constrained_face
+      wall_trace: reconstruct_nodes
+      wall_retraction: metric_projection
+      metric: transported_face_mass
+      pressure_pairing: restricted_variational_adjoint
+      solver: matrix_free_cg
+      tolerance: 1.0e-10
+      max_iterations: 80
+      gate: diagnostic
+    pressure_history:
+      form: pressure_coordinate
+      extrapolation: bdf2
+      reaction: variational_adjoint
+      metric: transported_face_mass
+      range_gate: fail_close
+      work_gate: fail_close
     poisson:
       operator:
         discretization: fccd
@@ -170,10 +195,28 @@ output:
 
     - type: snapshot_series
       field: velocity
+      shared_scale: true
+      show_field: false
+      color_quantity: speed
+      color_scale: max
+      colorbar_label: "$|u|$"
+      vector_cmap: viridis
+      background_color: "#eeeeee"
+      normalize_arrows: false
+      quiver_length_fraction: 0.14
+      quiver_min_speed_fraction: 0.02
+      quiver_width: 0.0055
+      quiver_outline_width_factor: 2.1
+      arrow_color: null
+      arrow_outline_color: "#ffffff"
+      arrow_alpha: 1.0
+      arrow_outline_alpha: 0.9
       file_prefix: velocity_t
 
     - type: snapshot_series
       field: pressure_hodge
+      shared_scale: true
+      symmetric_scale: true
       file_prefix: pressure_t
 
 diagnostics: [volume_conservation, kinetic_energy, deformation]
