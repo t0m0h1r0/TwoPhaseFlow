@@ -125,7 +125,7 @@ $\mathcal{O}(H^4)$ 誤差が 2 重に蓄積する．
 
 運動量の自然形は $\bnabla\cdot(\bu\otimes\bu)$（保存形）である．
 非保存形 $(\bu\cdot\bnabla)\bu$ は $\bnabla\cdot\bu\neq 0$
-の離散的残差によりスプリアス運動量源を生む．
+の離散的残差により非物理運動量源を生む．
 FCCD 面フラックスで保存形を評価する：
 \begin{equation}
   F^{(k,j),\text{cons}}_{f_{i-1/2}}
@@ -156,7 +156,7 @@ FCCD 面フラックスで保存形を評価する：
 は面値と面勾配の点積，両者とも $\mathcal{J}_f$ から得られる．
 
 \smallskip\noindent\textbf{離散エネルギー保存の面ジェット版（要約）}：
-発散フリー速度場 $D_h\bu=0$ で，
+発散ゼロ速度場 $D_h\bu=0$ で，
 $\langle\psi,\mathcal{L}^\text{sk}\psi\rangle = \tfrac{1}{2}\langle\psi,\mathcal{L}^\text{cons}\psi\rangle
 + \tfrac{1}{2}\langle\psi,\mathcal{L}^\text{nc}\psi\rangle$ より
 保存形と非保存形の対称化により $\langle\psi,\mathcal{L}^\text{sk}\psi\rangle=0$
@@ -242,25 +242,25 @@ $\widehat c_{\sigma,f}$ を標準の面補正へ渡すことで成立する．
 この構成では，FCCD は界面面フラックス台帳を作る役割を担い，
 UCCD6 は保存形運動量移流の後に再び
 $\bu\cdot\bnabla\bu$ を評価する役割を持たない．
-保存形運動量式と質量式を組み合わせたときに primitive 形式が得られるのであって，
-保存形移流と primitive 移流を足し合わせるのではないからである．
+保存形運動量式と質量式を組み合わせたときに速度主変数形式が得られるのであって，
+保存形移流と速度主変数移流を足し合わせるのではないからである．
 
 有界性が必要な場合も，端点の
-$q\leftarrow\operatorname{clip}_{[0,1]}q$ を単独で行うと，
+$q\leftarrow\Pi_{[0,1]}q$ を単独で行うと，
 密度と運動量が同じ写像を受けたことを証明できない．
 許される補正は，記録される面フラックス自体を
 \[
   F_q=F_{\mathrm{low}}+\alpha(F_{\mathrm{high}}-F_{\mathrm{low}}),
   \qquad 0\le\alpha\le1
 \]
-へ置き換える flux-corrected transport 型の制限である．
+へ置き換える流束補正型の制限である．
 このとき $F_m$ と $F_{\bm{p}}$ は制限後の $F_q$ から作るため，
 共通フラックスの同一性は保たれる．
-ただしこの証明は，低次 donor フラックス
+ただしこの証明は，低次供与フラックス
 $F_{\mathrm{low}}$ が現在の CFL と境界条件のもとで
 $0\le q\le1$ を保つことを前提とする．
-この前提が破れた場合は，端点 clipping で続行するのではなく，
-時間刻み棄却または fail-close とする．
+この前提が破れた場合は，端点切り詰めで続行するのではなく，
+時間刻みを棄却し，その更新を受理しない．
 \end{tcolorbox}
 
 % -------------------------------------------------------------------------------

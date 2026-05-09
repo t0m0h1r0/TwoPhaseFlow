@@ -59,17 +59,17 @@ TVD-RK3 の各段階で $q$ の面フラックスを作り，
 同じ段階台帳から $m$ と $\bm{p}_m$ を更新する：
 \[
   (q,m,\bm{p}_m)^n
-  \xrightarrow{\mathrm{TVD\text{-}RK3\ common\ flux}}
+  \xrightarrow{\mathrm{TVD\text{-}RK3\ flux}}
   (q,m,\bm{p}_m)^T .
 \]
 その後の NS 予測子は，輸送済みの
 $\bu^T=\bm{p}_m^T/m^T$ に対して粘性，重力残差，圧力履歴，
 毛管補正などの非移流項を作用させる．
-この経路では primitive 対流の AB2/EXT2 履歴を使わず，
+この経路では速度主変数対流の AB2/EXT2 履歴を使わず，
 速度履歴は BDF2 の時間導関数に必要な代表値としてのみ用いる．
 そうしないと，保存形の
 $\partial_t\bm{p}_m+\bnabla\cdot(\bm{p}_m\otimes\bu)$ と，
-primitive の $\bu\cdot\bnabla\bu$ が同じ非線形仕事を二重に与える．
+速度主変数形式の $\bu\cdot\bnabla\bu$ が同じ非線形仕事を二重に与える．
 \end{tcolorbox}
 
 \noindent\textbf{時間積分の 3 形式：}
@@ -827,7 +827,7 @@ $L^2$ エネルギーノルムは予測子段階の安定性
 本稿の上昇気泡系では重力下で水--空気密度比 $\rho_l/\rho_g = 10^3$
 の浮力が支配項となる．素朴に $-\rho g \hat{z}$ を予測子右辺へ
 加えると，静止状態でも有限の予測子発散が生じ，PPE 段階で
-スプリアスな圧力勾配と寄生流が誘起される．本稿では Brackbill--Kothe--Zemach
+非物理的な圧力勾配と寄生流が誘起される．本稿では Brackbill--Kothe--Zemach
 （1992）\cite{Brackbill1992} の現代的解釈に沿って
 \textbf{Balanced--Force 浮力分解}を採用する．
 
