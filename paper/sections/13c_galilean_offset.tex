@@ -1,14 +1,14 @@
 % paper/sections/13c_galilean_offset.tex
 %
-% V4: 固定壁系の uniform-offset 残差
+% V4: 固定壁系の一様オフセット残差
 % ═══════════════════════════════════════════════════════════════════════════════
-\subsection{固定壁系の uniform-offset 残差}
+\subsection{固定壁系の一様オフセット残差}
 \label{sec:galilean_offset}
 
 \paragraph{検証対象．}
 厳密な Galilean 不変性そのものではなく，固定 Eulerian 格子・壁境界・参照点固定 PPE の下で，
-一様速度 offset を加えた run から $\bU$ を差し引いた摂動場が，
-静止 run の摂動場とどの residual scale で一致するかを診断する．
+一様速度オフセットを加えた計算から $\bU$ を差し引いた摂動場が，
+静止計算の摂動場とどの残差スケールで一致するかを診断する．
 固定 no-slip 壁では Galilean 変換後の moving-wall 問題とは同一でないため，
 ゼロ残差ではなく $O(\|\bU\|)$ 残差を合格基準とする縮約テストである．
 固定 Eulerian 評価と moving/ALE 評価の差は，保存形移流・固定格子誤差の標準例
@@ -28,7 +28,7 @@ $N = 64$, $n_{\mathrm{step}} = 50$, $\Delta t = 3.125\times 10^{-3}$．
 表~\ref{tab:V4_galilean} に各指標を示す（$\|\bU\| = 0.1$）．
 
 \begin{table}[!ht]
-\caption{V4：固定壁系 uniform-offset 残差}
+\caption{V4：固定壁系一様オフセット残差}
 \label{tab:V4_galilean}
 \PaperCaptionNote{$\|\bU\|$ で正規化した残差は $O(1)$ scale に収まる．本縮約テストでは，固定壁と参照点固定 PPE のため厳密ゼロ残差は達成不能（後段「誤差源の分解」参照）．}
 \centering\small
@@ -47,43 +47,43 @@ $\|\Delta u\|_\infty^{\mathrm{end}}$   & $2.07\times 10^{-1}$ & $2.07$ \\
 \includegraphics[width=0.7\linewidth]{figures/ch13_v4_galilean_offset.pdf}
 \caption{V4：固定壁系の uniform-offset 残差}
 \label{fig:V4_galilean_offset}
-\PaperCaptionNote{一様速度 offset 差 $\|\Delta u\|_\infty(t)$ 履歴（offset を差し引いた後）．}
+\PaperCaptionNote{一様速度オフセット差 $\|\Delta u\|_\infty(t)$ 履歴（オフセットを差し引いた後）．}
 \end{figure}
 
 \FloatBarrier
 
 \paragraph{誤差源の分解（量的）．}
-本実験は full-domain norm で評価するため，offset run の壁上では no-slip により
+本実験は全領域ノルムで評価するため，オフセット計算の壁上では no-slip により
 $u=0$ が再課され，$\bU$ を差し引いた摂動場に少なくとも $-\bU$ が残る．
 従って厳密ゼロ残差はこの縮約境界条件では達成不能であり，
-$\|\Delta u\|_\infty/\|\bU\|$ が $O(1)$ scale に留まることを判定する．
+$\|\Delta u\|_\infty/\|\bU\|$ が $O(1)$ スケールに留まることを判定する．
 観測値はいずれも $\|\bU\|$ 正規化値 $\le 2.63$（$O(1)$ scale）であり，
 本縮約テストの受入条件 $\|\Delta u\|_\infty^{\max}/\|\bU\| = O(1)$
 （運用上 $< 3$ を上限値として設定; 本実験は固定 no-slip 壁の参照系不整合と
-PPE gauge 固定の合成効果に由来する $O(1)$ 残差を測る）を満たす．
+PPE ゲージ固定の合成効果に由来する $O(1)$ 残差を測る）を満たす．
 支配要因は以下である：
 \begin{enumerate}\setlength{\itemsep}{0pt}
-  \item \textbf{固定壁の参照系不整合}：周期 BC または moving-wall BC なら Galilean
-        変換と境界条件は可換だが，本実験は offset 速度を与えた後に固定壁で再び
+  \item \textbf{固定壁の参照系不整合}：周期 BC または移動壁 BC なら Galilean
+        変換と境界条件は可換だが，本実験はオフセット速度を与えた後に固定壁で再び
         速度を 0 にするため，壁近傍に $O(\|\bU\|)$ の差が残る．
-  \item \textbf{PPE 参照点ゲージ}：Neumann PPE は中心点 pin で gauge を固定するため，
-        離散 pinned-row 処理と壁境界の組合せが velocity correction に
-        $O(\|\bU\|)$ の residual として現れる．
+  \item \textbf{PPE 参照点ゲージ}：Neumann PPE は中心点固定でゲージを定めるため，
+        離散固定行処理と壁境界の組合せが速度補正に
+        $O(\|\bU\|)$ の残差として現れる．
 \end{enumerate}
 観測値 $\sim 0.2$ は $\|\bU\|=0.1$ の $O(1)$ 倍に収まり，
-固定壁 offset residual として合格である．
+固定壁オフセット残差として合格である．
 
 \paragraph{判定と制約条件．}
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item Galilean 不変性は連続方程式レベルでは厳密だが，
         固定 Eulerian 格子 + 固定 no-slip 壁 + 参照点ゲージ固定 PPE では
         $O(\|\bU\|)$ 残差が原理的に避けられない．
-  \item \textbf{Type-A criterion 合格 (\checkmark)}：
-        本 V4 は zero-residual invariance proof ではなく fixed-wall offset diagnostic であり，
+  \item \textbf{Type-A 判定基準合格 (\checkmark)}：
+        本 V4 はゼロ残差の不変性証明ではなく固定壁オフセット診断であり，
         正規化残差 $\|\Delta u\|_\infty^{\max}/\|\bU\| = O(1)$（運用上 $< 3$）を合格基準とする
         （§\ref{sec:verification} Type 分類および表~\ref{tab:V_verdict_types} 参照）．
   \item 本検証は「固定 Eulerian 格子 + 参照点固定 PPE の制約下で
-        uniform-offset 残差が設計通り $O(\|\bU\|)$ に収まる」ことを示す；
+        一様オフセット残差が設計通り $O(\|\bU\|)$ に収まる」ことを示す；
         この $O(\|\bU\|)$ 残差はソルバの不変性違反ではなく
         参照点ゲージ固定 PPE と固定 Eulerian の合成境界制約に由来する．
         完全な不変性検証 (連続方程式レベルのゼロ残差) には ALE 化が必要．

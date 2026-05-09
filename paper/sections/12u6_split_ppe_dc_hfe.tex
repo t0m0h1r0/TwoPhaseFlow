@@ -1,33 +1,33 @@
 % paper/sections/12u6_split_ppe_dc_hfe.tex
 %
-% U6: DC/HFE primitives for phase-separated PPE — Tier IV
+% U6: DC/HFE numerical elements for phase-separated PPE — Tier IV
 % ═══════════════════════════════════════════════════════════════════════════════
-\subsubsection{U6：分相 PPE+HFE へ渡す DC/HFE primitive [Tier IV]}
+\subsubsection{U6：分相 PPE+HFE へ渡す DC/HFE 数値要素 [Tier IV]}
 \label{sec:U6_split_ppe_dc_hfe}
 \label{sec:varrho_ppe_limitation}%   forward-pointer alias from §9 / §15
 
 \paragraph{検証対象．}
 第~\ref{sec:ppe_solve}章および第~\ref{sec:algorithm}章の標準圧力経路は，
-\textbf{pressure-jump 分相 PPE + HFE + DC}である．
+\textbf{圧力ジャンプ型分相 PPE + HFE + DC}である．
 変密度一括 smoothed-Heaviside PPE は低密度比の対照・経路選択診断に限り，
-高密度比の保証対象 primitive ではない．したがって本 U6 は，一括 PPE 高密度比 sweep を
-成果サブテストとして数えず，分相 PPE+HFE に渡す二つの前提 primitive：
+高密度比の保証対象ではない．したがって本 U6 は，一括 PPE 高密度比掃引を
+成果サブテストとして数えず，分相 PPE+HFE に渡す二つの前提要素：
 (i) defect--correction（DC；§\ref{sec:dc_pure_fccd_convergence}）の
-$\omega$--緩和 guard と，
+$\omega$--緩和受理条件と，
 (ii) Hermite Field Extension（HFE；§\ref{sec:hfe}）による界面越し場延長の
 \textbf{単体精度}を確認する．
 この経路は，投影法・変密度圧力補正文献
 ~\cite{Guermond2006,GuermondQuartapelle1998,PyoShen2007}，
 界面ジャンプ/GFM 文献~\cite{Fedkiw1999,Kang2000,LeVequeLi1994}，
 および Aslam の Extension PDE~\cite{Aslam2004} を組み合わせた
-本稿固有の primitive 分解である．
+本稿固有の要素分解である．
 
 \paragraph{設定．}
 \begin{description}\setlength{\itemsep}{0pt}
-  \item[U6-a] DC $\omega$--緩和 guard．$N=64$ 円界面 $R=0.25$，
+  \item[U6-a] DC $\omega$--緩和受理条件．$N=64$ 円界面 $R=0.25$，
         $\rho_l \in \{1, 100, 1000\}$，relaxation $\omega \in \{0.2,0.3,0.5,0.7,0.9\}$，
-        $k_{\mathrm{DC}} \in \{2,3\}$．低密度比では clean であること，高密度比では一括 PPE を
-        保証対象 primitive と見なせないことを route guard として記録する
+        $k_{\mathrm{DC}} \in \{2,3\}$．低密度比では合格すること，高密度比では一括 PPE を
+        保証対象と見なせないことを受理条件として記録する
         （DC の基本発想は~\cite{Stetter1978,Kelley2003}）．
   \item[U6-b] HFE 単独：1D MMS（外挿ステンシル単体精度），
         2D MMS（$\rho^{-1}\bnabla p$ の界面跨ぎ精度の \textbf{max} と \textbf{med}）．
@@ -36,9 +36,9 @@ $\omega$--緩和 guard と，
 \paragraph{結果．}
 
 \begin{table}[!ht]
-\caption{U6-a：DC \texorpdfstring{$\omega$}{omega}--緩和 guard}
+\caption{U6-a：DC \texorpdfstring{$\omega$}{omega}--緩和受理条件}
 \label{tab:U6_dc_omega}
-\PaperCaptionNote{$N=64$，円界面 $R=0.25$．$\rho_l = 1$ は低密度比対照として clean．$\rho_l \ge 100$ では一括 PPE 係数ジャンプが残るため DC 残差が route guard にかかり，高密度比保証対象 primitive から除外される．$\omega$ 増大で残差は改善するが，$\rho_l = 1000$, $\omega = 0.9$, $k=3$ の例外的な許容床到達は経路受理条件ではなく，分相 PPE+HFE へ切り替える判断を変えない．括弧内は \emph{converged} を示す．}
+\PaperCaptionNote{$N=64$，円界面 $R=0.25$．$\rho_l = 1$ は低密度比対照として合格する．$\rho_l \ge 100$ では一括 PPE 係数ジャンプが残るため DC 残差が受理条件を満たさず，高密度比保証対象から除外される．$\omega$ 増大で残差は改善するが，$\rho_l = 1000$, $\omega = 0.9$, $k=3$ の例外的な許容床到達は経路受理条件ではなく，分相 PPE+HFE へ切り替える判断を変えない．括弧内は \emph{converged} を示す．}
 \centering\small
 \begin{tabular}{r c c c c c}
 \toprule
@@ -87,10 +87,10 @@ $256$ & $0.0039$ & $4.22\times 10^{-13}$ & $5.80\times 10^{-14}$ & $4.55\times 1
 
 \paragraph{判定と次章への接続．}
 \begin{itemize}\setlength{\itemsep}{0pt}
-  \item U6-a DC $\omega$--緩和 guard：$\rho_l = 1$ は低密度比対照として clean．
+  \item U6-a DC $\omega$--緩和受理条件：$\rho_l = 1$ は低密度比対照として合格する．
         $\rho_l \ge 100$ では一括 PPE の係数ジャンプが残り，$\omega$ 増大で残差が改善しても
         高密度比の受理経路にはしない．例外的な $\rho_l = 1000$, $\omega=0.9$,
-        $k_{\mathrm{DC}}=3$ の許容床到達は route guard を解除する根拠ではなく，
+        $k_{\mathrm{DC}}=3$ の許容床到達は受理条件を解除する根拠ではなく，
         §\ref{sec:split_ppe_framework} の分相 PPE+HFE 経路選択を支持する負対照である．\checkmark
   \item U6-b HFE：1D stencil は設計 6 次を完全達成．2D circular band も
         完全テンソル混合微分を用いることで低次化が消える．
@@ -99,7 +99,7 @@ $256$ & $0.0039$ & $4.22\times 10^{-13}$ & $5.80\times 10^{-14}$ & $4.55\times 1
         $\Ord{h^6}$ 設計と一致する．\checkmark
 \end{itemize}
 検証対応：
-DC 反復収束は分相 PPE+HFE 経路へ入る前の緩和 guard として測定する．
+DC 反復収束は分相 PPE+HFE 経路へ入る前の緩和受理条件として測定する．
 高密度比・二相結合系の統合検証は，一括 PPE ではなく V6/V7/V9 の
 FCCD, HFE, 圧力ジャンプ付き分相 PPE/DC, 毛管成分の圧力勾配射影,
 射影後面速度閉包，アフィン圧力履歴面加速度を含む

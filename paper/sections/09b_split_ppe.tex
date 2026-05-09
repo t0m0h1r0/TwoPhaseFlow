@@ -673,7 +673,7 @@ $j_{gl}=p_g-p_l$ であり，符号を持たない $\sigma\kappa_{lg}$ 場では
 平坦 Rayleigh--Taylor 界面の全てに同じ式を用いる．
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{毛管補正量の変分構成・許容 face-state 空間・平衡判定}
+\subsubsection{毛管補正量の変分構成・許容面速度状態空間・平衡判定}
 \label{sec:split_ppe_capillary_range_projection}
 % ─────────────────────────────────────────────────────────────────────────────
 
@@ -814,7 +814,7 @@ Lagrange--d'Alembert 型の制約反力として読む根拠である．
   M_f=Q_f\rho_f,\qquad P_w^{(f)}=P_w^{(M_f)}
 \]
 を使う．ここで $Q_f$ は非一様格子の face control measure である．
-一方，圧力仕事と毛管 Hodge 診断には active pressure metric
+一方，圧力仕事と毛管 Hodge 診断には作用中の圧力計量
 \begin{equation}
   M_A = Q_f/\alpha_f,\qquad P_w^{(A)}=P_w^{(M_A)}
   \label{eq:pressure_metric_roles}
@@ -823,7 +823,7 @@ Lagrange--d'Alembert 型の制約反力として読む根拠である．
 前者は輸送される速度状態の壁制約，後者は
 式~\eqref{eq:pressure_reaction_green_identity} の圧力仕事を測る面計量である．
 
-したがって壁付きの圧力反力代表は full face 空間の後置補正ではなく，
+したがって壁付きの圧力反力代表は全自由度面空間の後置補正ではなく，
 制約空間 $F_w$ 上の随伴として
 \begin{equation}
   G_w p = P_w^{(A)}G_Ap,\qquad
@@ -831,7 +831,7 @@ Lagrange--d'Alembert 型の制約反力として読む根拠である．
   K_wp\equiv D_fP_w^{(A)}G_Ap = D_fP_w^{(f)} f^\dagger
   \label{eq:restricted_pressure_operator}
 \end{equation}
-を満たす候補として検証する．ここで $f^\dagger$ は予測 face state であり，
+を満たす候補として検証する．ここで $f^\dagger$ は予測面速度状態であり，
 補正後の状態は
 \begin{equation}
   f^{n+1}
@@ -844,15 +844,15 @@ Lagrange--d'Alembert 型の制約反力として読む根拠である．
 \end{equation}
 である．この式は「まず壁を満たす状態空間に入り，その空間内で圧力反力を選ぶ」
 という順序を明示している．
-本稿の標準計算では，この制約付き pressure complex が
+本稿の標準計算では，この制約付き圧力複体が
 \[
   \langle G_wp,\eta_f\rangle_{M_A}
   +
   \langle p,D_f\eta_f\rangle_{W_p}=0
   \quad(\eta_f\in F_w)
 \]
-を満たすことを診断 gate とし，未検証のまま
-旧来の full-space 圧力射影 + wall-only 修復を production fix として使わない．
+を満たすことを診断条件とし，未検証のまま
+全自由度圧力射影と壁面だけの修復を標準補正として使わない．
 さらに，圧力ポテンシャルで $F_w$ 内の非圧縮補正を本当に張れるためには
 \begin{equation}
   \operatorname{rank}K_w
@@ -863,14 +863,14 @@ Lagrange--d'Alembert 型の制約反力として読む根拠である．
 \end{equation}
 が必要である．圧力の定数ゲージや周期方向の商空間は
 $K_w$ の核として処理し，この rank 条件を満たさない場合は
-壁反力と圧力反力を同じ complex として閉じられない．
-周期軸を含む場合は，この条件を full nodal array ではなく
+壁反力と圧力反力を同じ複体として閉じられない．
+周期軸を含む場合は，この条件を全節点配列ではなく
 周期商空間で読む．周期軸 $a$ では終端節点面は物理境界ではなく
 $q_{N_a}\sim q_0$ という同値類である．
-節点商空間への制限を $R_Q$，同値類代表から full array への展開を $E_Q$，
-face-state 商空間への展開を $E_F$ と書く．
+節点商空間への制限を $R_Q$，同値類代表から全配列への展開を $E_Q$，
+面速度状態商空間への展開を $E_F$ と書く．
 周期軸に法線を持つ face 成分はすでに $N_a$ 個の循環 face だけを持つが，
-周期軸に接する face 成分は終端 image 面を持つため，
+周期軸に接する face 成分は終端写像面を持つため，
 \[
   (E_F f)^{(b)}_{N_a,\ldots}=(E_F f)^{(b)}_{0,\ldots}
   \qquad (b\ne a)
@@ -883,9 +883,9 @@ face-state 商空間への展開を $E_F$ と書く．
   K_w=D_{\mathrm{per}}G_w
   \label{eq:periodic_wall_quotient_complex}
 \end{equation}
-である．圧力内積の control volume も image 行を捨てるのではなく，
+である．圧力内積の control volume も写像行を捨てるのではなく，
 source 行へ畳み込んでから $R_Q$ で制限する．
-したがって mixed periodic-wall の rank gate は
+したがって混合周期壁の階数条件は
 \begin{equation}
   \operatorname{rank}K_w
   =
