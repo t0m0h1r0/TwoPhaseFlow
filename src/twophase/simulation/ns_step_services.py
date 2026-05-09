@@ -30,6 +30,7 @@ from .interface_projection_diagnostics import (
     capillary_pressure_adjoint_face_weights,
     zero_capillary_face_diagnostics,
 )
+from .gravity_covector import build_variational_gravity_faces
 from .face_boundary import (
     zero_wall_normal_face_components,
     zero_wall_velocity_face_components,
@@ -548,8 +549,76 @@ def compute_ns_predictor_stage(
         )
         conv_u, conv_v = conv_term.compute(conv_ctx)
 
-    buoy_v = xp.zeros_like(state.v)
-    if state.g_acc != 0.0 and not projection_consistent_buoyancy:
+    gravity_formulation = str(
+        getattr(scheme_runtime, "gravity_formulation", "body_acceleration")
+    ).strip().lower()
+    variational_gravity = (
+        gravity_formulation == "variational_potential" and state.g_acc != 0.0
+    )
+    if gravity_formulation == "none":
+        buoy_v = xp.zeros_like(state.v)
+    elif variational_gravity:
+        if projection_consistent_buoyancy:
+            raise RuntimeError(
+                "variational_potential gravity is mutually exclusive with "
+                "projection_consistent_buoyancy."
+            )
+        if cn_buoyancy_predictor_assembly_mode != "none":
+            raise RuntimeError(
+                "variational_potential gravity requires predictor assembly 'none'; "
+                "legacy balanced buoyancy would double-count the same potential."
+            )
+        if div_op is None or not hasattr(div_op, "_fccd") or Y is None:
+            raise RuntimeError(
+                "variational_potential gravity requires FCCD face transport and "
+                "the vertical coordinate field."
+            )
+        gravity_faces = build_variational_gravity_faces(
+            xp=xp,
+            fccd=div_op._fccd,
+            rho=state.rho,
+            vertical_coordinate=Y,
+            g_acc=state.g_acc,
+            gravity_axis=1,
+        )
+        gravity_accel_faces = gravity_faces.acceleration_components
+        if not is_all_periodic(bc_type, 2) and state.bc_hook is None:
+            if face_no_slip_boundary_state:
+                gravity_accel_faces = zero_wall_velocity_face_components(
+                    gravity_accel_faces,
+                    xp=xp,
+                    bc_type=bc_type,
+                )
+            else:
+                gravity_accel_faces = zero_wall_normal_face_components(
+                    gravity_accel_faces,
+                    xp=xp,
+                    bc_type=bc_type,
+                )
+        state.gravity_covector_face_components = gravity_faces.covector_components
+        state.gravity_accel_face_components = gravity_accel_faces
+        state.gravity_face_density_components = gravity_faces.face_density_components
+        state.gravity_force_diagnostics = {
+            "formulation": "variational_potential",
+            "transport_adjoint": getattr(
+                scheme_runtime,
+                "gravity_transport_adjoint",
+                "common_flux",
+            ),
+            "metric": getattr(
+                scheme_runtime,
+                "gravity_metric",
+                "transported_face_mass",
+            ),
+        }
+        buoy_v = xp.zeros_like(state.v)
+    else:
+        buoy_v = xp.zeros_like(state.v)
+    if (
+        gravity_formulation == "body_acceleration"
+        and state.g_acc != 0.0
+        and not projection_consistent_buoyancy
+    ):
         buoy_v = -(state.rho - state.rho_ref) / state.rho * state.g_acc
     buoyancy_components = [xp.zeros_like(state.u), state.rho * buoy_v]
 
@@ -766,6 +835,19 @@ def compute_ns_predictor_stage(
                         pressure_node_faces,
                     )
                 ]
+            if state.gravity_accel_face_components is not None:
+                gravity_dt = (
+                    state.projection_dt
+                    if state.projection_dt is not None
+                    else state.dt
+                )
+                predictor_delta_faces = [
+                    delta_face + gravity_dt * gravity_face
+                    for delta_face, gravity_face in zip(
+                        predictor_delta_faces,
+                        state.gravity_accel_face_components,
+                    )
+                ]
             state.predictor_face_components = [
                 xp.asarray(face_velocity) + delta_face
                 for face_velocity, delta_face in zip(
@@ -774,9 +856,48 @@ def compute_ns_predictor_stage(
                 )
             ]
         else:
-            state.predictor_face_components = div_op.face_fluxes(
-                [state.u_star, state.v_star]
+            predictor_delta_faces = div_op.face_fluxes(
+                [state.u_star - state.u, state.v_star - state.v]
             )
+            if (
+                previous_pressure_accel_faces is not None
+                and previous_pressure_accel_nodes is not None
+            ):
+                pressure_node_faces = div_op.face_fluxes(previous_pressure_accel_nodes)
+                pressure_history_dt = (
+                    state.projection_dt
+                    if state.projection_dt is not None
+                    else state.dt
+                )
+                predictor_delta_faces = [
+                    delta_face
+                    - pressure_history_dt * (pressure_face - node_face)
+                    for delta_face, pressure_face, node_face in zip(
+                        predictor_delta_faces,
+                        previous_pressure_accel_faces,
+                        pressure_node_faces,
+                    )
+                ]
+            if state.gravity_accel_face_components is not None:
+                gravity_dt = (
+                    state.projection_dt
+                    if state.projection_dt is not None
+                    else state.dt
+                )
+                predictor_delta_faces = [
+                    delta_face + gravity_dt * gravity_face
+                    for delta_face, gravity_face in zip(
+                        predictor_delta_faces,
+                        state.gravity_accel_face_components,
+                    )
+                ]
+            state.predictor_face_components = [
+                base_face + delta_face
+                for base_face, delta_face in zip(
+                    div_op.face_fluxes([state.u, state.v]),
+                    predictor_delta_faces,
+                )
+            ]
         if not is_all_periodic(bc_type, 2) and state.bc_hook is None:
             if face_no_slip_boundary_state:
                 state.predictor_face_components = zero_wall_velocity_face_components(

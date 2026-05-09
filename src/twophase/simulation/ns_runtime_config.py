@@ -77,6 +77,11 @@ class NSSchemeRuntimeState:
     surface_tension_gradient_scheme: str
     capillary_force_source: str
     curvature_method: str
+    gravity_formulation: str
+    gravity_transport_adjoint: str
+    gravity_metric: str
+    gravity_hodge_gate: str
+    gravity_work_gate: str
     advection_scheme: str
     convection_scheme: str
 
@@ -408,6 +413,51 @@ def normalise_ns_scheme_runtime(options) -> NSSchemeRuntimeState:
             "capillary_force_source='closed_interface_riesz' requires "
             "surface_tension_scheme='pressure_jump'."
         )
+    gravity_formulation = str(
+        getattr(options, "gravity_formulation", "body_acceleration")
+    ).strip().lower()
+    if gravity_formulation not in {
+        "none",
+        "body_acceleration",
+        "variational_potential",
+    }:
+        raise ValueError(
+            "Unsupported gravity_formulation="
+            f"'{getattr(options, 'gravity_formulation', None)}'. "
+            "Use none|body_acceleration|variational_potential."
+        )
+    gravity_transport_adjoint = str(
+        getattr(options, "gravity_transport_adjoint", "legacy")
+    ).strip().lower()
+    gravity_metric = str(getattr(options, "gravity_metric", "legacy")).strip().lower()
+    gravity_hodge_gate = str(
+        getattr(options, "gravity_hodge_gate", "off")
+    ).strip().lower()
+    gravity_work_gate = str(getattr(options, "gravity_work_gate", "off")).strip().lower()
+    if gravity_transport_adjoint not in {"legacy", "common_flux"}:
+        raise ValueError("gravity_transport_adjoint must be legacy|common_flux.")
+    if gravity_metric not in {"legacy", "transported_face_mass"}:
+        raise ValueError("gravity_metric must be legacy|transported_face_mass.")
+    if gravity_hodge_gate not in {"off", "diagnostic", "fail_close"}:
+        raise ValueError("gravity_hodge_gate must be off|diagnostic|fail_close.")
+    if gravity_work_gate not in {"off", "diagnostic", "fail_close"}:
+        raise ValueError("gravity_work_gate must be off|diagnostic|fail_close.")
+    if gravity_formulation == "variational_potential":
+        if momentum_form != "conservative_common_flux":
+            raise ValueError(
+                "gravity_formulation='variational_potential' requires "
+                "momentum_form='conservative_common_flux'."
+            )
+        if gravity_transport_adjoint != "common_flux":
+            raise ValueError(
+                "gravity_formulation='variational_potential' requires "
+                "gravity_transport_adjoint='common_flux'."
+            )
+        if gravity_metric != "transported_face_mass":
+            raise ValueError(
+                "gravity_formulation='variational_potential' requires "
+                "gravity_metric='transported_face_mass'."
+            )
 
     return NSSchemeRuntimeState(
         momentum_form=momentum_form,
@@ -427,6 +477,11 @@ def normalise_ns_scheme_runtime(options) -> NSSchemeRuntimeState:
         curvature_method=str(
             getattr(options, "curvature_method", "psi_direct_filtered")
         ).strip().lower(),
+        gravity_formulation=gravity_formulation,
+        gravity_transport_adjoint=gravity_transport_adjoint,
+        gravity_metric=gravity_metric,
+        gravity_hodge_gate=gravity_hodge_gate,
+        gravity_work_gate=gravity_work_gate,
         advection_scheme=str(options.advection_scheme),
         convection_scheme=str(options.convection_scheme),
     )

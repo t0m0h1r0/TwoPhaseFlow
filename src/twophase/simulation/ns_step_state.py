@@ -77,6 +77,10 @@ class NSStepState:
     capillary_face_diagnostics: dict[str, float] | None = None
     face_velocity_components: list[Any] | None = None
     projected_face_components: list[Any] | None = None
+    gravity_covector_face_components: list[Any] | None = None
+    gravity_accel_face_components: list[Any] | None = None
+    gravity_face_density_components: list[Any] | None = None
+    gravity_force_diagnostics: dict[str, Any] | None = None
     projection_dt: float | None = None
     conservative_density: Any = None
     conservative_momentum_components: list[Any] | None = None

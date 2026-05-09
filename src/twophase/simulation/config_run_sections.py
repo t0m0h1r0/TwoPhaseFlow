@@ -50,6 +50,7 @@ def parse_run(
         viscosity=context.layout["viscosity"],
         pressure_term=context.layout["pressure_term"],
         surface_tension=context.layout["surface_tension"],
+        gravity=context.layout["gravity"],
         interface_curvature=context.interface_curvature,
         projection=context.projection,
     )

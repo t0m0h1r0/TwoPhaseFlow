@@ -122,7 +122,7 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
             "'diffuse_mass' or 'sharp_phase_volume', "
             f"got {reinit_volume_constraint!r}"
         )
-    return RunCfg(
+    cfg = RunCfg(
         T_final=opt_float(options.time_cfg["final"]),
         max_steps=int(options.time_cfg["max_steps"]) if "max_steps" in options.time_cfg else None,
         cfl=cfl_number,
@@ -214,6 +214,13 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
         cn_buoyancy_predictor_assembly_mode=options.operator_settings[
             "cn_buoyancy_predictor_assembly_mode"
         ],
+        gravity_formulation=options.operator_settings["gravity_formulation"],
+        gravity_transport_adjoint=options.operator_settings[
+            "gravity_transport_adjoint"
+        ],
+        gravity_metric=options.operator_settings["gravity_metric"],
+        gravity_hodge_gate=options.operator_settings["gravity_hodge_gate"],
+        gravity_work_gate=options.operator_settings["gravity_work_gate"],
         pressure_gradient_scheme=options.operator_settings["pressure_gradient_scheme"],
         surface_tension_gradient_scheme=options.operator_settings["surface_tension_gradient_scheme"],
         momentum_gradient_scheme=options.operator_settings["momentum_gradient_scheme"],
@@ -245,3 +252,24 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
         ppe_dc_relaxation=options.operator_settings["ppe_dc_relaxation"],
         debug_diagnostics=bool(options.debug.get("step_diagnostics", False)),
     )
+    if cfg.gravity_formulation == "variational_potential":
+        required_projection_flags = {
+            "face_flux_projection": cfg.face_flux_projection,
+            "canonical_face_state": cfg.canonical_face_state,
+            "face_native_predictor_state": cfg.face_native_predictor_state,
+            "preserve_projected_faces": cfg.preserve_projected_faces,
+        }
+        missing = [name for name, enabled in required_projection_flags.items() if not enabled]
+        if missing:
+            raise ValueError(
+                "numerics.momentum.terms.gravity.formulation='variational_potential' "
+                "requires projection flags "
+                f"{', '.join(missing)} to be true."
+            )
+        if cfg.projection_consistent_buoyancy:
+            raise ValueError(
+                "variational_potential gravity must not be combined with "
+                "projection_consistent_buoyancy; both represent buoyancy in "
+                "the pressure Hodge space."
+            )
+    return cfg

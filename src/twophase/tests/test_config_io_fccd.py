@@ -133,6 +133,73 @@ def test_conservative_common_flux_momentum_form_parses():
     assert cfg.run.momentum_form == "conservative_common_flux"
 
 
+def test_variational_gravity_yaml_contract_parses():
+    cfg = ExperimentConfig.from_dict(_minimal({
+        "numerics": {
+            "momentum": {
+                "form": "conservative_common_flux",
+                "predictor": {"assembly": "none"},
+                "terms": {
+                    "gravity": {
+                        "formulation": "variational_potential",
+                        "transport_adjoint": "common_flux",
+                        "metric": "transported_face_mass",
+                        "hodge_gate": "fail_close",
+                        "work_gate": "diagnostic",
+                    },
+                },
+            },
+            "projection": {
+                "face_flux_projection": True,
+                "canonical_face_state": True,
+                "face_native_predictor_state": True,
+                "preserve_projected_faces": True,
+                "poisson": {
+                    "operator": {
+                        "pressure_force_contract": "variational_adjoint",
+                        "scalar_operator_pairing": "variational_operator",
+                    },
+                },
+            },
+        },
+    }))
+
+    assert cfg.run.gravity_formulation == "variational_potential"
+    assert cfg.run.gravity_transport_adjoint == "common_flux"
+    assert cfg.run.gravity_metric == "transported_face_mass"
+    assert cfg.run.cn_buoyancy_predictor_assembly_mode == "none"
+
+
+def test_variational_gravity_rejects_legacy_balanced_predictor():
+    with pytest.raises(ValueError, match="predictor.assembly='none'"):
+        ExperimentConfig.from_dict(_minimal({
+            "numerics": {
+                "momentum": {
+                    "form": "conservative_common_flux",
+                    "terms": {
+                        "gravity": {
+                            "formulation": "variational_potential",
+                            "transport_adjoint": "common_flux",
+                            "metric": "transported_face_mass",
+                        },
+                    },
+                },
+                "projection": {
+                    "face_flux_projection": True,
+                    "canonical_face_state": True,
+                    "face_native_predictor_state": True,
+                    "preserve_projected_faces": True,
+                    "poisson": {
+                        "operator": {
+                            "pressure_force_contract": "variational_adjoint",
+                            "scalar_operator_pairing": "variational_operator",
+                        },
+                    },
+                },
+            },
+        }))
+
+
 def test_reinitialization_adaptive_schedule_parses_threshold():
     cfg = ExperimentConfig.from_dict(_minimal({
         "interface": {
@@ -269,6 +336,7 @@ def test_ch14_capillary_yaml_loads_execution_stack():
     assert cfg.run.surface_tension_gradient_scheme == "none"
     assert cfg.run.surface_tension_scheme == "pressure_jump"
     assert cfg.run.cn_buoyancy_predictor_assembly_mode == "balanced_buoyancy"
+    assert cfg.run.gravity_formulation == "body_acceleration"
     assert cfg.run.face_flux_projection is True
     assert cfg.run.canonical_face_state is True
     assert cfg.run.face_native_predictor_state is True
@@ -439,10 +507,16 @@ def test_ch14_rising_bubble_yaml_loads_execution_stack():
     assert cfg.run.convection_time_scheme == "imex_bdf2"
     assert cfg.run.viscous_time_scheme == "implicit_bdf2"
     assert cfg.run.viscous_solver == "defect_correction"
-    assert cfg.run.cn_buoyancy_predictor_assembly_mode == "balanced_buoyancy"
+    assert cfg.run.cn_buoyancy_predictor_assembly_mode == "none"
+    assert cfg.run.gravity_formulation == "variational_potential"
+    assert cfg.run.gravity_transport_adjoint == "common_flux"
+    assert cfg.run.gravity_metric == "transported_face_mass"
+    assert cfg.run.gravity_hodge_gate == "fail_close"
+    assert cfg.run.gravity_work_gate == "diagnostic"
     assert cfg.run.face_flux_projection is True
     assert cfg.run.canonical_face_state is True
     assert cfg.run.face_native_predictor_state is True
+    assert cfg.run.preserve_projected_faces is True
     assert cfg.run.pressure_scheme == "fccd_matrixfree"
     assert cfg.run.ppe_interface_coupling_scheme == "affine_jump"
     assert cfg.run.capillary_force_source == "closed_interface_riesz"

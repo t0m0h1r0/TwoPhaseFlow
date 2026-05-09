@@ -93,13 +93,19 @@ numerics:
   momentum:
     form: conservative_common_flux
     predictor:
-      assembly: balanced_buoyancy
+      assembly: none
     terms:
       convection:
         spatial: uccd6
         time_integrator: imex_bdf2
       pressure:
         gradient: fccd
+      gravity:
+        formulation: variational_potential
+        transport_adjoint: common_flux
+        metric: transported_face_mass
+        hodge_gate: fail_close
+        work_gate: diagnostic
       viscosity:
         spatial: ccd
         time_integrator: implicit_bdf2
@@ -122,6 +128,7 @@ numerics:
     face_flux_projection: true
     canonical_face_state: true
     face_native_predictor_state: true
+    preserve_projected_faces: true
     pressure_history:
       form: pressure_coordinate
       extrapolation: bdf2

@@ -169,6 +169,15 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             cn_buoyancy_predictor_assembly_mode=str(
                 getattr(run, "cn_buoyancy_predictor_assembly_mode", "none")
             ),
+            gravity_formulation=str(
+                getattr(run, "gravity_formulation", "body_acceleration")
+            ),
+            gravity_transport_adjoint=str(
+                getattr(run, "gravity_transport_adjoint", "legacy")
+            ),
+            gravity_metric=str(getattr(run, "gravity_metric", "legacy")),
+            gravity_hodge_gate=str(getattr(run, "gravity_hodge_gate", "off")),
+            gravity_work_gate=str(getattr(run, "gravity_work_gate", "off")),
             pressure_gradient_scheme=str(
                 getattr(run, "pressure_gradient_scheme", "fccd_flux")
             ),

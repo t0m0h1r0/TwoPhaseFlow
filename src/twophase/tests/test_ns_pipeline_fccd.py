@@ -898,10 +898,14 @@ def test_ch14_rising_bubble_yaml_builds_solver():
     assert solver._convection_time_scheme == "imex_bdf2"
     assert solver._viscous_time_scheme == "implicit_bdf2"
     assert solver._viscous_solver == "defect_correction"
-    assert solver._cn_buoyancy_predictor_assembly_mode == "balanced_buoyancy"
+    assert solver._cn_buoyancy_predictor_assembly_mode == "none"
+    assert solver._scheme_runtime.gravity_formulation == "variational_potential"
+    assert solver._scheme_runtime.gravity_transport_adjoint == "common_flux"
+    assert solver._scheme_runtime.gravity_metric == "transported_face_mass"
     assert solver._face_flux_projection is True
     assert solver._canonical_face_state is True
     assert solver._face_native_predictor_state is True
+    assert solver._preserve_projected_faces is True
     assert isinstance(solver._ppe_solver, PPESolverDefectCorrection)
     assert isinstance(solver._ppe_solver.operator, PPESolverFCCDMatrixFree)
     assert isinstance(solver._ppe_solver.base_solver, PPESolverFDDirect)

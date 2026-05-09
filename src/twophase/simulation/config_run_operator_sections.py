@@ -60,6 +60,22 @@ _PREDICTOR_ASSEMBLY_ALIASES = {
     "buoyancy_split": "balanced_buoyancy",
     "buoyancy_faceresidual_stagesplit_transversefullband": "balanced_buoyancy",
 }
+_GRAVITY_FORMULATIONS = (
+    "none",
+    "body_acceleration",
+    "variational_potential",
+)
+_GRAVITY_FORMULATION_ALIASES = {
+    "off": "none",
+    "disabled": "none",
+    "legacy": "body_acceleration",
+    "body_force": "body_acceleration",
+    "potential": "variational_potential",
+    "variational": "variational_potential",
+}
+_GRAVITY_TRANSPORT_ADJOINTS = ("legacy", "common_flux")
+_GRAVITY_METRICS = ("legacy", "transported_face_mass")
+_GRAVITY_GATES = ("off", "diagnostic", "fail_close")
 _CLOSED_INTERFACE_ENDPOINTS = ("conservative_psi",)
 _CLOSED_INTERFACE_METRICS = ("pressure_adjoint",)
 _CLOSED_INTERFACE_CONSTRAINTS = ("component_volume",)
@@ -323,6 +339,70 @@ def _parse_predictor_assembly(*, momentum: dict, viscosity: dict) -> str:
     )
 
 
+def _parse_gravity_settings(*, layout: dict, gravity: dict | None) -> dict:
+    if gravity is None:
+        gravity = {}
+    if not isinstance(gravity, dict):
+        raise ValueError("numerics.momentum.terms.gravity must be a mapping.")
+    raw_formulation = str(
+        gravity.get("formulation", "body_acceleration")
+    ).strip().lower()
+    formulation = validate_choice(
+        _GRAVITY_FORMULATION_ALIASES.get(raw_formulation, raw_formulation),
+        _GRAVITY_FORMULATIONS,
+        layout["paths"]["gravity_formulation"],
+    )
+    raw_adjoint = str(
+        gravity.get(
+            "transport_adjoint",
+            "common_flux" if formulation == "variational_potential" else "legacy",
+        )
+    ).strip().lower()
+    raw_metric = str(
+        gravity.get(
+            "metric",
+            "transported_face_mass"
+            if formulation == "variational_potential"
+            else "legacy",
+        )
+    ).strip().lower()
+    hodge_gate = validate_choice(
+        str(
+            gravity.get(
+                "hodge_gate",
+                "fail_close" if formulation == "variational_potential" else "off",
+            )
+        ).strip().lower(),
+        _GRAVITY_GATES,
+        layout["paths"]["gravity_hodge_gate"],
+    )
+    work_gate = validate_choice(
+        str(
+            gravity.get(
+                "work_gate",
+                "diagnostic" if formulation == "variational_potential" else "off",
+            )
+        ).strip().lower(),
+        _GRAVITY_GATES,
+        layout["paths"]["gravity_work_gate"],
+    )
+    return {
+        "gravity_formulation": formulation,
+        "gravity_transport_adjoint": validate_choice(
+            raw_adjoint,
+            _GRAVITY_TRANSPORT_ADJOINTS,
+            layout["paths"]["gravity_transport_adjoint"],
+        ),
+        "gravity_metric": validate_choice(
+            raw_metric,
+            _GRAVITY_METRICS,
+            layout["paths"]["gravity_metric"],
+        ),
+        "gravity_hodge_gate": hodge_gate,
+        "gravity_work_gate": work_gate,
+    }
+
+
 def _validate_coupled_time_schemes(
     *,
     layout: dict,
@@ -350,6 +430,7 @@ def parse_run_operator_settings(
     viscosity: dict,
     pressure_term: dict,
     surface_tension: dict,
+    gravity: dict | None,
     interface_curvature: dict,
     projection: dict,
 ) -> dict:
@@ -411,11 +492,36 @@ def parse_run_operator_settings(
         momentum=momentum,
         viscosity=viscosity,
     )
+    gravity_settings = _parse_gravity_settings(layout=layout, gravity=gravity)
     _validate_coupled_time_schemes(
         layout=layout,
         convection_time_scheme=convection_time_scheme,
         viscous_time_scheme=viscous_settings["viscous_time_scheme"],
     )
+    if gravity_settings["gravity_formulation"] == "variational_potential":
+        if momentum_form != "conservative_common_flux":
+            raise ValueError(
+                f"{layout['paths']['gravity_formulation']}='variational_potential' "
+                "requires numerics.momentum.form='conservative_common_flux'."
+            )
+        if predictor_assembly != "none":
+            raise ValueError(
+                f"{layout['paths']['gravity_formulation']}='variational_potential' "
+                "requires numerics.momentum.predictor.assembly='none' because "
+                "legacy balanced buoyancy would double-count gravity."
+            )
+        if poisson_settings["pressure_force_contract"] != "variational_adjoint":
+            raise ValueError(
+                f"{layout['paths']['gravity_formulation']}='variational_potential' "
+                "requires poisson.operator.pressure_force_contract="
+                "'variational_adjoint'."
+            )
+        if poisson_settings["scalar_operator_pairing"] != "variational_operator":
+            raise ValueError(
+                f"{layout['paths']['gravity_formulation']}='variational_potential' "
+                "requires poisson.operator.scalar_operator_pairing="
+                "'variational_operator'."
+            )
     return {
         "poisson_coefficient": poisson_settings["poisson_coefficient"],
         "poisson_interface_coupling": poisson_settings["poisson_interface_coupling"],
@@ -479,6 +585,7 @@ def parse_run_operator_settings(
         "viscous_dc_low_operator": viscous_settings["viscous_dc_low_operator"],
         "cn_mode": viscous_settings["cn_mode"],
         "cn_buoyancy_predictor_assembly_mode": predictor_assembly,
+        **gravity_settings,
     }
 
 

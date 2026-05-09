@@ -119,6 +119,11 @@ class SolverSchemeOptions:
     viscous_dc_low_operator: str = "component"
     cn_mode: str = "picard"
     cn_buoyancy_predictor_assembly_mode: str = "none"
+    gravity_formulation: str = "body_acceleration"
+    gravity_transport_adjoint: str = "legacy"
+    gravity_metric: str = "legacy"
+    gravity_hodge_gate: str = "off"
+    gravity_work_gate: str = "off"
     uccd6_sigma: float = 1.0e-3
     face_flux_projection: bool = False
     canonical_face_state: bool = False
