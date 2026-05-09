@@ -250,8 +250,8 @@ $\rho(\psi),\mu(\psi)$ の点値補間と，$\rho^{-1}$ 係数・$\mu$ 係数の
 その時間発展は第~\ref{sec:levelset}章の CLS 法で計算される．
 
 \paragraph{保存形で読むべき変数．}
-式~\eqref{eq:NS_onefluid} は primitive velocity 形式で書いた一流体方程式であるが，
-密度が $\psi$ に依存する二相計算では，数値実装上の主たる保存変数を
+式~\eqref{eq:NS_onefluid} は速度 $\bu$ を主変数とする一流体方程式であるが，
+密度が $\psi$ に依存する二相計算では，離散保存則の主たる変数を
 \begin{equation}
   q\equiv \psi,\qquad
   \rho(q)=\rho_g+(\rho_l-\rho_g)q,\qquad
@@ -259,7 +259,7 @@ $\rho(\psi),\mu(\psi)$ の点値補間と，$\rho^{-1}$ 係数・$\mu$ 係数の
   \label{eq:conservative_qmp_state}
 \end{equation}
 として読む方が安全である．
-添字 $m$ は momentum を表し，圧力 $p$ と区別するために付ける．
+添字 $m$ は運動量を表し，圧力 $p$ と区別するために付ける．
 非相変化・非圧縮のもとでは
 \begin{align}
   \partial_t q + \bnabla\cdot(q\bu) &= 0,
@@ -272,7 +272,7 @@ $\rho(\psi),\mu(\psi)$ の点値補間と，$\rho^{-1}$ 係数・$\mu$ 係数の
   +\rho(\psi)\bm{g}+\bm{f}_\sigma .
   \label{eq:momentum_conservative_form}
 \end{align}
-式~\eqref{eq:NS_onefluid} の primitive 形式は，
+式~\eqref{eq:NS_onefluid} の速度主変数形式は，
 式~\eqref{eq:mass_from_phase_conservative_form} と
 式~\eqref{eq:momentum_conservative_form} を同じ速度・同じ発散演算子で割り合わせたときに
 初めて得られる等価形である．
@@ -281,7 +281,7 @@ $\rho(\psi),\mu(\psi)$ の点値補間と，$\rho^{-1}$ 係数・$\mu$ 係数の
 質量移流と運動量移流の差が数値的な仕事として残る．
 第~\ref{sec:cls_advection}章以降で用いる保存形共通フラックスは，
 この連続等価性を離散レベルで保つための要請であり，
-経験的な damping や CFL 調整ではない．
+経験的な人工減衰や時間刻み調整ではない．
 
 \begin{tcolorbox}[mybox, title={点値補間と面係数：$\rho^{-1}$ には調和平均，$\mu$ には算術平均}]
 \begin{center}

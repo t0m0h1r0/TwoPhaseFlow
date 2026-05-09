@@ -115,7 +115,7 @@ $|\phi|\le W=5\varepsilon$ の帯のみ
 界面局在重み $w_i=4\psi_i^{\text{old}}(1-\psi_i^{\text{old}})$ を用いる：
 \begin{equation}
   \psi_i^{\text{new}}
-  = \operatorname{clip}_{[0,1]}\!\left[
+  = \Pi_{[0,1]}\!\left[
       \psi_i^{\text{old}}
       + \frac{M_\text{target}-\sum_j\psi_j^{\text{old}}V_j}
              {\sum_j w_j V_j}\,w_i
@@ -125,7 +125,7 @@ $|\phi|\le W=5\varepsilon$ の帯のみ
 $\psi(1-\psi)$ プロファイルは界面帯（$\psi\approx 0.5$）で最大値 0.25，
 領域内部（$\psi\in\{0,1\}$）で零．
 したがって補正は\textbf{界面局在}し，領域内部の質量保存を乱さない．
-ただし clip 後の総量は線形補正前の設計値からずれうるため，
+ただし値域制限後の総量は線形補正前の設計値からずれうるため，
 補正後残差を監視し，必要なら同じ補正を反復する．
 
 \medskip
