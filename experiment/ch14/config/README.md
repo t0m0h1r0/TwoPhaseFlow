@@ -48,11 +48,13 @@ graph/open-interface benchmarks keep their validated curvature-jump route.
 cases at about 20 C.  The capillary wave uses a 20 mm x 20 mm tank with
 mode 2, so the wavelength is 10 mm; the oscillating droplet uses the same
 20 mm square tank with a 10 mm-class ellipse (`a=5.5 mm`, `b=4.5 mm`).
-Their final times and snapshot times are derived from the inviscid
-water-air capillary/Rayleigh-Lamb periods, not from the old unit-box scale.
-The capillary-wave period uses the rigid-wall two-layer finite-depth
-dispersion relation because the 10 mm interface sits midway between the
-upper and lower walls of the 20 mm tank.
+Their final times and snapshot times are no longer inherited from the old
+unit-box scale.  The capillary-wave theory reference uses the rigid-wall
+two-layer finite-depth dispersion relation because the 10 mm interface sits
+midway between the upper and lower walls of the 20 mm tank; the paper-facing
+snapshot window then follows the signed mode-2 production response over one
+observed cycle.  The oscillating-droplet window follows the Rayleigh-Lamb
+water-air period.
 
 The five production configs emit periodic snapshots with `psi`, `velocity`,
 and pressure-family figures. The runner stores raw fields in `data.npz` under

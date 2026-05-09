@@ -69,7 +69,18 @@ omega = sqrt(sigma k^3 / (rho_l coth(k h_l) + rho_g coth(k h_g)))
 T = 2 pi / omega = 0.046742983863 s
 ```
 
-Snapshot times are `0, T/4, T/2, 3T/4, T`.
+The continuum reference period is retained as a theory reference, but the
+paper-facing production window uses the signed mode-2 response so that the
+2-D snapshots show one actual cycle of the computed benchmark:
+
+```text
+t = 0,
+    0.008899695230   first signed-amplitude zero crossing,
+    0.017677817828   lower signed-amplitude extremum,
+    0.026630729902   second signed-amplitude zero crossing,
+    0.035379718894   return to the upper signed-amplitude extremum.
+```
+
 The paper-facing capillary-wave history uses `signed_interface_amplitude`,
 the signed projection of the reconstructed interface onto the configured
 cosine mode.  The older `interface_amplitude` is intentionally retained as a
