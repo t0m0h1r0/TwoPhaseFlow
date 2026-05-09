@@ -1,0 +1,11 @@
+{
+  "branch": "codex/ra-ch12-13-exp-audit-main-20260509",
+  "branch_slug": "codex-ra-ch12-13-exp-audit-main-20260509",
+  "session_id": "CHK-RA-CH12-13-EXPMAIN-001",
+  "worktree_path": "/Users/tomohiro/Downloads/TwoPhaseFlow/.claude/worktrees/codex-ra-ch12-13-exp-audit-main-20260509",
+  "holder_agent": "ResearchArchitect",
+  "acquired_at": "2026-05-09T04:33:55Z",
+  "expires_at": "2026-05-10T04:33:55Z",
+  "meta_version": "8.0.0-candidate",
+  "id_prefix": "RA-CH12-13-EXPMAIN"
+}
