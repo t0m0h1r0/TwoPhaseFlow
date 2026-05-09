@@ -74,6 +74,7 @@ physics:
   gravity: 0.0
 
 run:
+  momentum_form: conservative_common_flux
   time:
     final: 16.632565583
     # Multiplier on theory CFL constants; 1.0 uses the theory budget.
@@ -91,8 +92,9 @@ numerics:
       spatial: fccd
       time_integrator: tvd_rk3
   momentum:
+    form: conservative_common_flux
     predictor:
-      assembly: balanced_buoyancy
+      assembly: none
     terms:
       convection:
         spatial: uccd6
@@ -114,6 +116,28 @@ numerics:
     face_flux_projection: true
     canonical_face_state: true
     face_native_predictor_state: true
+    preserve_projected_faces: true
+    boundary_hodge:
+      # SP-AN state-space contract shared by ch14 production YAMLs.  The
+      # production restricted solve remains off; for x-periodic/y-wall runs
+      # this records the quotient-compatible wall face space explicitly.
+      mode: off
+      state_space: constrained_face
+      wall_trace: reconstruct_nodes
+      wall_retraction: metric_projection
+      metric: transported_face_mass
+      pressure_pairing: restricted_variational_adjoint
+      solver: matrix_free_cg
+      tolerance: 1.0e-10
+      max_iterations: 80
+      gate: diagnostic
+    pressure_history:
+      form: pressure_coordinate
+      extrapolation: bdf2
+      reaction: variational_adjoint
+      metric: transported_face_mass
+      range_gate: fail_close
+      work_gate: fail_close
     poisson:
       operator:
         discretization: fccd

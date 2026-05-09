@@ -36,25 +36,36 @@ read-only dry run is needed. Numerical state is stored as NumPy `.npy` binary
 members inside the `.npz`, preserving array dtype bytes losslessly; JSON is used
 only for non-numerical metadata such as the manifest and debug key names.
 
+The five production configs share the chapter-14 execution contract introduced
+for the rising-bubble route: conservative common-flux momentum transport,
+`predictor.assembly: none`, projected-face preservation, pressure-coordinate
+BDF2 history, and an explicit fail-closed boundary-Hodge state-space contract.
+The physical force source remains experiment-specific: closed droplet and
+bubble interfaces use the closed-interface Riesz pressure-jump route, while
+graph/open-interface benchmarks keep their validated curvature-jump route.
+
 The five production configs emit periodic snapshots with `psi`, `velocity`,
-and Hodge-reconstructed pressure figures. The runner stores raw fields in
-`data.npz` under `fields/psi`, `fields/velocity`, and `fields/pressure`
-(plus compatibility fields `fields/u`, `fields/v`, and `fields/p`), and stores
-the affine face pressure cochain under `fields/pressure_accel_faces/<axis>`.
+and pressure-family figures. The runner stores raw fields in `data.npz` under
+`fields/psi`, `fields/velocity`, and `fields/pressure` (plus compatibility
+fields `fields/u`, `fields/v`, and `fields/p`), and stores the affine face
+pressure cochain under `fields/pressure_accel_faces/<axis>`.
 
 For affine pressure-jump runs, `fields/pressure` is the stored scalar
 representative associated with the face pressure cochain.  The sharp-interface
 pressure is single-valued only inside each phase and has a jump on the
 interface.  Production pressure figures should therefore use `snapshot_series`
-field `pressure_hodge`, which reconstructs a phase-wise Hodge representative
-from the stored affine face pressure cochain.  This is fail-closed: if old data
-do not contain that cochain, plotting must stop and the data must be regenerated.
-The same fail-closed rule applies when the same-phase exact-gradient residual
-is not small: then the saved face cochain is not a scalar pressure field on the
-current phase graph, and the plot must be treated as a cochain diagnostic rather
-than as physical pressure.  `pressure_hodge` therefore rejects residuals above
-`max_relative_residual` (default `1e-2`) instead of forcing a misleading scalar
-image.
+field `pressure_hodge` when the saved face cochain is same-phase integrable,
+which reconstructs a phase-wise Hodge representative from that cochain.  This
+is fail-closed: if old data do not contain that cochain, plotting must stop and
+the data must be regenerated.  The same fail-closed rule applies when the
+same-phase exact-gradient residual is not small: then the saved face cochain is
+not a scalar pressure field on the current phase graph, and the plot must be
+treated as a cochain diagnostic rather than as physical pressure.
+`pressure_hodge` therefore rejects residuals above `max_relative_residual`
+(default `1e-2`) instead of forcing a misleading scalar image.  Runs whose
+stored affine cochain is not guaranteed integrable, such as the current
+rising-bubble pressure output, should plot the stored scalar `pressure` field
+instead of forcing a Hodge representative.
 Do not mask the fitted interface band as "undefined"; that hides the pressure
 representative instead of testing the discrete pressure-work contract.
 

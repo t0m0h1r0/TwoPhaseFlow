@@ -335,11 +335,18 @@ def test_ch14_capillary_yaml_loads_execution_stack():
     assert cfg.run.pressure_gradient_scheme == "fccd_flux"
     assert cfg.run.surface_tension_gradient_scheme == "none"
     assert cfg.run.surface_tension_scheme == "pressure_jump"
-    assert cfg.run.cn_buoyancy_predictor_assembly_mode == "balanced_buoyancy"
+    assert cfg.run.momentum_form == "conservative_common_flux"
+    assert cfg.run.cn_buoyancy_predictor_assembly_mode == "none"
     assert cfg.run.gravity_formulation == "body_acceleration"
     assert cfg.run.face_flux_projection is True
     assert cfg.run.canonical_face_state is True
     assert cfg.run.face_native_predictor_state is True
+    assert cfg.run.preserve_projected_faces is True
+    assert cfg.run.boundary_hodge_mode == "off"
+    assert cfg.run.boundary_hodge_state_space == "constrained_face"
+    assert cfg.run.boundary_hodge_pressure_pairing == "restricted_variational_adjoint"
+    assert cfg.run.pressure_history_mode == "pressure_coordinate"
+    assert cfg.run.pressure_history_extrapolation == "bdf2"
     assert cfg.run.reinit_method == "ridge_eikonal"
     assert cfg.run.reproject_mode == "variable_density_only"
     assert cfg.run.ppe_solver == "fccd_iterative"
@@ -447,6 +454,8 @@ def test_ch14_canonical_yamls_share_base_numerical_stack():
         assert cfg.run.reinit_every == expected_reinit, path.name
         assert cfg.run.convection_scheme == "uccd6", path.name
         assert cfg.run.convection_time_scheme == "imex_bdf2", path.name
+        assert cfg.run.momentum_form == "conservative_common_flux", path.name
+        assert cfg.run.cn_buoyancy_predictor_assembly_mode == "none", path.name
         assert cfg.run.viscous_time_scheme == "implicit_bdf2", path.name
         assert cfg.run.viscous_solver == "defect_correction", path.name
         assert cfg.run.viscous_dc_max_iterations == 12, path.name
@@ -455,6 +464,15 @@ def test_ch14_canonical_yamls_share_base_numerical_stack():
         assert cfg.run.face_flux_projection is True, path.name
         assert cfg.run.canonical_face_state is True, path.name
         assert cfg.run.face_native_predictor_state is True, path.name
+        assert cfg.run.preserve_projected_faces is True, path.name
+        assert cfg.run.boundary_hodge_mode == "off", path.name
+        assert cfg.run.boundary_hodge_state_space == "constrained_face", path.name
+        assert (
+            cfg.run.boundary_hodge_pressure_pairing
+            == "restricted_variational_adjoint"
+        ), path.name
+        assert cfg.run.pressure_history_mode == "pressure_coordinate", path.name
+        assert cfg.run.pressure_history_extrapolation == "bdf2", path.name
         assert cfg.run.pressure_scheme == "fccd_matrixfree", path.name
         assert cfg.run.ppe_coefficient_scheme == "phase_separated", path.name
         assert cfg.run.ppe_interface_coupling_scheme == "affine_jump", path.name
@@ -479,6 +497,25 @@ def test_ch14_canonical_yamls_share_base_numerical_stack():
             ), path.name
         assert cfg.run.ppe_defect_correction is True, path.name
         assert cfg.run.ppe_dc_max_iterations == 12, path.name
+
+
+def test_ch14_rayleigh_taylor_yaml_uses_periodic_wall_common_flux_route():
+    path = (
+        Path(__file__).resolve().parents[3]
+        / "experiment/ch14/config/ch14_rayleigh_taylor.yaml"
+    )
+    cfg = ExperimentConfig.from_yaml(path)
+
+    assert cfg.grid.bc_type == "periodic_wall"
+    assert cfg.run.momentum_form == "conservative_common_flux"
+    assert cfg.run.cn_buoyancy_predictor_assembly_mode == "none"
+    assert cfg.run.gravity_formulation == "variational_potential"
+    assert cfg.run.gravity_transport_adjoint == "common_flux"
+    assert cfg.run.gravity_metric == "transported_face_mass"
+    assert cfg.run.gravity_hodge_gate == "fail_close"
+    assert cfg.run.gravity_work_gate == "diagnostic"
+    assert cfg.run.pressure_force_contract == "variational_adjoint"
+    assert cfg.run.scalar_operator_pairing == "variational_operator"
 
 
 def test_ch14_rising_bubble_yaml_loads_execution_stack():
