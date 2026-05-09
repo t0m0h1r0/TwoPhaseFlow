@@ -532,7 +532,7 @@ def test_ch14_rising_bubble_yaml_loads_execution_stack():
     assert cfg.grid.bc_type == "periodic_wall"
     assert cfg.grid.grid_rebuild_freq == 0
     assert cfg.physics.g_acc == pytest.approx(9.81)
-    assert cfg.run.T_final == pytest.approx(0.03)
+    assert cfg.run.T_final == pytest.approx(0.05)
     assert cfg.run.snap_interval == pytest.approx(0.005)
     assert cfg.run.snap_times == pytest.approx(
         (0.0, 0.005, 0.01, 0.015, 0.02, 0.025, 0.03)

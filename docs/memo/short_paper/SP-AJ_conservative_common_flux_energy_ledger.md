@@ -226,6 +226,44 @@ K_c(m^R,p^R) - K_c(m^T,p^T) = eps_R,
 with named tolerances and with `eps_R` included in the step energy ledger.
 When these identities cannot be certified, `R_h` must fail closed.
 
+For a tensor-product fitted-grid rebuild from grid `G^-` to `G^+`, the
+implemented `R_h` is the metric-conservative projection
+
+```text
+q^+   = C_{[0,1]} I_{-+} q^- + delta_q,
+p_a^+ = I_{-+} p_a^- + delta_{p_a},        a in {x,y},
+m^+   = V^+ (rho_g + Delta rho q^+),
+u_a^+ = p_a^+ / m^+.
+```
+
+Here `I_{-+}` is the tensor-grid interpolation map already used by the
+interface-fitted grid, while `delta_q` and `delta_{p_a}` are chosen by
+
+```text
+1^T V^+ q^+   = 1^T V^- q^-,
+1^T V^+ p_a^+ = 1^T V^- p_a^-.
+```
+
+The momentum correction is the `L2(V^+)` least-change solution of the affine
+integral constraint.  The subsequent divergence reprojector is a separate
+pressure/boundary reaction on the rebuilt grid; after it acts, the
+conservative state is resynchronized by `p^+ = m^+ u^+`.
+
+For Ridge--Eikonal/profile reinitialization on a fixed grid, the admissible
+lift is the vertical velocity-preserving bundle retraction
+
+```text
+q^R = R_q(q^T),
+m^R = V (rho_g + Delta rho q^R),
+u^R = u^T,
+p^R = m^R u^R.
+```
+
+This does not interpret reinitialization as physical transport.  It records the
+reinitialization kinetic-energy defect separately and keeps capillary work
+attached to the labelled transport endpoint `q^T`, not to the post-reinit
+geometry endpoint `q^R`.
+
 ### 3.1.4 Variational Force Operators
 
 Let `T_q(q) : R^F -> R^C` be the differential of the production phase
@@ -534,9 +572,10 @@ conservative density and momentum in the checkpoint is therefore required for
 time-reversal/restart equivalence.
 
 Under these identities the implementation pass is theoretically admissible for
-the tested reinit-free/static-grid route.  It does not yet certify q-only
-reinitialization, dynamic grid remap, curvature near-singular diagnostics, or
-long-time high-k behavior; those remain fail-close or diagnostic targets.
+common-flux transport, dynamic interface-fitted remap, and fixed-grid
+Ridge--Eikonal/profile reinitialization because `R_h` now acts on `(q,m,p)`,
+not on `q` or primitive velocity alone.  Curvature near-singular diagnostics
+and long-time high-k behavior remain diagnostic targets.
 
 ## 5. Reinitialization Is a Remap, Not a Postprocess
 
