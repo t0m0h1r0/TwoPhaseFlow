@@ -15,12 +15,19 @@ contains the Chapter 1--11 review merge, the Chapter 12--13 experiment refresh,
 and the later Chapter 14 pressure/face-state updates.  Therefore local `main`,
 not stale `origin/main`, is the correct audit base.
 
+Scope correction after user review: V11 is not required as a Chapter 12--13
+rerun.  Its positive route is the Chapter 14 rising-bubble YAML, so it belongs
+to Chapter 14 preflight/admissibility work when that chapter is being advanced.
+This artifact keeps the V11 evidence as rationale for Chapter 13 text cleanup,
+but removes V11 from the required Chapter 12--13 execution set.
+
 ## Verdict
 
 Additional/update/rerun work is required, but not a blanket rerun.
 
 The previous Chapter 12--13 experiment refresh already handled the first
-Chapter 1--11 common-flux propagation by adding U10/V11 and rerunning
+Chapter 1--11 common-flux propagation by adding U10 and a V11 admissibility
+script, and by rerunning
 V3/V6/V7/V9/V10.  The current local-main state adds a stricter Chapter 9
 pressure/face-state contract after that refresh:
 
@@ -47,11 +54,9 @@ consume the canonical Chapter 14 rising-bubble route or exercise the changed
    files such as `ns_step_services.py`, `ns_pipeline.py`, `checkpoint.py`,
    `runner.py`, config parsers, `gravity_covector.py`, and `boundary_hodge.py`.
 3. `experiment/ch13/exp_V11_common_flux_admissibility.py` builds its positive
-   gate from `experiment/ch14/config/ch14_rising_bubble.yaml`.  That YAML
-   changed after the V11 figure was generated: x-periodic/y-wall topology,
-   `variational_potential` gravity, `pressure_history: pressure_coordinate`,
-   `preserve_projected_faces`, and explicit constrained `boundary_hodge`
-   contract were added.
+   gate from `experiment/ch14/config/ch14_rising_bubble.yaml`.  Because that
+   route is Chapter 14-specific, the changed YAML is evidence for deferring V11
+   to Chapter 14 preflight, not for requiring a Chapter 13 rerun in this task.
 4. `paper/sections/12*.tex` and `paper/sections/13*.tex` still contain no
    `U10`, `V11`, `common-flux ledger`, or `conservative common-flux
    admissibility` text.  The scripts and paper-facing PDFs exist, but the
@@ -109,36 +114,10 @@ state-space theory update.  It should reuse the existing boundary-Hodge helper
 APIs and small manufactured probes.  It must not enable a production restricted
 PPE solver unless the rank/manufactured gates pass.
 
-### R3 - Update and rerun V11 on the latest canonical route
-
-Update `experiment/ch13/exp_V11_common_flux_admissibility.py` so the positive
-gate explicitly asserts the latest canonical route:
-
-- x-periodic/y-wall domain after grid override;
-- `momentum_form == conservative_common_flux`;
-- `gravity_formulation == variational_potential`;
-- `gravity_transport_adjoint == common_flux`;
-- `pressure_history_mode == pressure_coordinate`;
-- `pressure_history_extrapolation == bdf2`;
-- `preserve_projected_faces == True`;
-- `boundary_hodge_state_space == constrained_face` and
-  `boundary_hodge_mode == off` as a declared not-yet-enabled production solve;
-- checkpoint roundtrip restores conservative density/momentum and the new
-  pressure-history state (`p_base_prev2` when present).
-
-Then rerun:
-
-```text
-make cycle EXP=experiment/ch13/exp_V11_common_flux_admissibility.py
-```
-
-V11 should remain an admissibility gate, not a duplicate of the Chapter 14
-rising-bubble benchmark.
-
-### R4 - Rerun only V6/V7/V9 for shared pressure/face-state runtime drift
+### R3 - Rerun only V6/V7/V9 for shared pressure/face-state runtime drift
 
 These experiments exercise the changed `TwoPhaseNSSolver` pressure-jump and
-face-projection path.  Rerun them after R2/R3 code/script updates:
+face-projection path.  Rerun them after R2 code/script updates:
 
 ```text
 make cycle EXP=experiment/ch13/exp_V6_density_ratio_convergence.py
@@ -151,20 +130,18 @@ When updating text, describe V6/V7/V9 as the existing pressure-jump/HFE
 integration set and keep constrained face-state evidence separate unless the
 new U11 gate has actually passed.
 
-### R5 - Update Chapter 13 paper integration
+### R4 - Update Chapter 13 paper integration
 
 Required update:
 
-- add V11 to `13_verification.tex` and `13f_error_budget.tex`;
-- update V-series overview and accuracy-summary tables from V1--V10 to include
-  V11;
-- state that V6/V7/V9 cover the current pressure-jump/HFE integration route,
-  while V11 covers conservative common-flux admissibility;
+- keep V-series overview and accuracy-summary tables as V1--V10 for Chapter 13;
+- state that V6/V7/V9 cover the current pressure-jump/HFE integration route;
 - add a short note that constrained face-state/periodic-wall rank evidence is
   component evidence in U11 and full physical periodic-wall rising-bubble
-  response remains Chapter 14.
+  response, including any V11-style canonical-route preflight, remains Chapter
+  14.
 
-### R6 - Validation
+### R5 - Validation
 
 After implementation/reruns:
 
@@ -178,8 +155,7 @@ For script additions:
 
 ```text
 /Users/tomohiro/Downloads/TwoPhaseFlow/.venv/bin/python3 -m py_compile \
-  experiment/ch12/exp_U11_constrained_face_state_space.py \
-  experiment/ch13/exp_V11_common_flux_admissibility.py
+  experiment/ch12/exp_U11_constrained_face_state_space.py
 ```
 
 Remote-first execution remains the project default.  Use local fallback only if
@@ -196,6 +172,8 @@ the remote wrapper is unavailable and record the fallback reason.
 - No V10 rerun: post-`6a236e74` changes do not touch
   `FCCDLevelSetAdvection`, `Reinitializer`, or the passive CLS advection logic
   used by V10.
+- No V11 Chapter 13 rerun: its positive route is the Chapter 14 rising-bubble
+  route, so any update belongs to Chapter 14 preflight/admissibility work.
 - No Chapter 13 full physical periodic-wall benchmark: the N=32 x 64
   periodic-wall rising-bubble response is Chapter 14 evidence.  Chapter 12--13
   should add the theorem/admissibility evidence, not duplicate the benchmark.
