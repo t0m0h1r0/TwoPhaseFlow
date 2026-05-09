@@ -9,7 +9,8 @@
 \paragraph{本章の位置付け．}
 \autoref{sec:numerical_integrity}（§12）で個別コンポーネント
 （CCD/DCCD/UCCD6/FCCD 演算子族 U1，PPE BC U2，非一様空間 U3，Godunov Eikonal U4，
-Heaviside--$\delta$ U5，分相 PPE+DC+HFE U6，BF 静止液滴 U7，時間積分 U8，DCCD 圧力禁止 U9）が
+Heaviside--$\delta$ U5，分相 PPE+DC+HFE U6，BF 静止液滴 U7，時間積分 U8，DCCD 圧力禁止 U9，
+保存形共通フラックス台帳 U10，制約 face-state 空間 U11）が
 \textbf{単体で}設計仕様（slope, 境界整合，演算子トレース性）を満たすことを確認した．
 本章は，これらコンポーネントを\textbf{統合}した完全 Navier--Stokes / 二相流ソルバが
 \textbf{物理整合性を保つ領域}と\textbf{設計収束次数が崩れる領域}を，10 個の独立した統合検証実験
@@ -17,6 +18,14 @@ V1--V10 で評価する
 （古典 Level Set 系の検証文化と benchmark の代表的整理は~\cite{OsherFedkiw2003,Sethian1999,Hysing2009,AlandVoigt2012}）．
 本章の V 系列は integration verification 専用であり，
 前章の U 系列（単体 component verification）とは実験目的と判定基準を分ける．
+
+\paragraph{U10/U11 と本章 V 系列の切り分け．}
+U10 と U11 は，保存形共通フラックス台帳と制約 face-state 空間の component gate である．
+したがって本章の統合検証番号は V1--V10 のままとし，
+Chapter 14 の canonical rising-bubble YAML に依存する V11 相当の admissibility/preflight は
+本章の物理 benchmark へ数えない．
+本章で読むのは，既存の V6/V7/V9 が担う壁付き pressure-jump/HFE 結合系の有限時間挙動であり，
+periodic-wall の有限振幅 rising-bubble 応答は第~\ref{sec:benchmarks}章へ送る．
 
 \paragraph{判定区分と Type 分類．}
 本章は判定マーク 3 種と補助分類（Type-A/Type-B/Type-D，および演算子群条件付き診断）を
@@ -83,6 +92,8 @@ PPE + DC + 毛管成分の圧力勾配射影 + 射影後面速度閉包 + アフ
 は含まない受動移流経路）．
 以下では (iii) だけを \textbf{圧力ジャンプ・毛管射影結合系} と呼び，
 V6/V7/V9 の実測値は毛管成分の圧力勾配射影を有効化した同一結合系で読む．
+U11 の $F_w$ / $P_w$ / quotient rank gate はこの状態空間の単体根拠であり，
+V6/V7/V9 の数値を置き換える新しい統合 benchmark ではない．
 
 \paragraph{圧力出力の取り扱い．}
 PPE 経路により出力 $p$ の物理的意味が異なるため，本章は二種の圧力指標を併用する．

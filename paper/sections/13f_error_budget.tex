@@ -16,6 +16,9 @@
 （観測収束次数の Richardson 外挿運用は~\cite{Roy2003}）．
 本節は，最終スキームについて，
 どの誤差源がどの検証問題で支配的になるかを整理する精度バジェットである．
+U10/U11 は第~\ref{sec:numerical_integrity}章の component gate として扱い，
+本節の V 系列へ V11 を追加しない．保存形共通フラックスの有限振幅物理応答と
+periodic-wall rising-bubble 応答は，第~\ref{sec:benchmarks}章の benchmark/preflight で扱う．
 
 \paragraph{判定基準（§\ref{sec:verification} Type 分類との整合）．}
 本節は §\ref{sec:verification}「判定区分と Type 分類」に基づき
@@ -107,6 +110,12 @@ V10-b-shape & 単一渦 reversal 形状軸 & grid-scale folded filament の Eule
         affine-jump 経路の物理仕事は面 cochain
         $A_f(G_fp-B_f(j))$ で定義されるため，
         diffuse band の raw 節点圧力は Hodge 代表または相内代表に写してから読む．
+        壁付き face-state 空間については U11 が
+        $C_wP_w=0$，metric self-adjointness，制限 Green identity，および
+        wall/periodic-wall quotient rank gate を丸め誤差まで確認したため，
+        V6/V7/V9 の pressure-jump/HFE 統合診断はこの component gate の上で読む．
+        ただし U11 は小型代数 gate であり，periodic-wall の有限振幅物理応答を
+        第13章に追加するものではない．
   \item \textbf{曲率推定誤差}．V5 では CSF $\kappa_{lg}$ + CCD 勾配の
         $u_\infty^{\mathrm{end}}$ 絶対値が全表ケースで $2\times10^{-2}$ 以下に保たれ，
         参照として FD 値を全条件で下回る．
