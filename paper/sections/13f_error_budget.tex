@@ -16,6 +16,9 @@
 （観測収束次数の Richardson 外挿運用は~\cite{Roy2003}）．
 本節は，最終スキームについて，
 どの誤差源がどの検証問題で支配的になるかを整理する精度バジェットである．
+U10/U11 は第~\ref{sec:numerical_integrity}章の component gate として扱い，
+本節の V 系列へ V11 を追加しない．保存形共通フラックスの有限振幅物理応答と
+periodic-wall rising-bubble 応答は，第~\ref{sec:benchmarks}章の benchmark/preflight で扱う．
 
 \paragraph{判定基準（§\ref{sec:verification} Type 分類との整合）．}
 本節は §\ref{sec:verification}「判定区分と Type 分類」に基づき
@@ -61,10 +64,10 @@ V2 & Kovasznay 空間残差 & wall one-sided residual $O(h^4)$ & slope($\|R\|_\i
 V3 & 静止液滴 long-term & BF 平衡 + 本番構成静止判定 & $|\Delta p_{\mathrm{rel}}|=0.97\%$ at $N=128$；本番構成 $N=32,T=10$: $K_{\max}=1.72\!\times\!10^{-6}$, $|\Delta V|/V_0\le2.92\!\times\!10^{-15}$, $D=0$ & \checkmark \\
 V4 & uniform-offset 残差 & $O(\|\bU\|)$ bounded residual，運用上限 $<3$ & $\|\Delta u\|_\infty^{\max}/\|\bU\|=2.63$ & \checkmark Type-A \\
 V5 & 寄生流れ 200 step & CCD $u_\infty^{\mathrm{end}}$ の $\sigma/\mathrm{Re}_c$ スケール基準 & $1.93\!\times\!10^{-2}$ at $\rho_r=1,N=32$；FD 比 $1/5.44$ 補助 & \checkmark Type-A \\
-V6 & 密度比 sweep & ブローアップなし；CLS 体積 drift round-off floor；capillary face balance & 全 8 ケース安定；$u_\infty^{\mathrm{end}}\le3.3\!\times\!10^{-10}$；$|\Delta V_\psi|/V_{\psi,0}\le2.4\!\times\!10^{-16}$ & \checkmark \\
+V6 & 密度比 sweep & ブローアップなし；CLS 体積 drift round-off floor；capillary face balance & 全 8 ケース安定；$u_\infty^{\mathrm{end}}\le1.3\!\times\!10^{-9}$；$|\Delta V_\psi|/V_{\psi,0}\le1.2\!\times\!10^{-16}$ & \checkmark \\
 V7 & IMEX-BDF2 二相時間 & 毛管圧力ジャンプ/射影の界面帯制約下の結合系実効 slope & slope($\|e\|_\infty,\Delta t$) $=\mathbf{1.59}$ & $\triangle$ Type-D \\
 V8 & 非一様 NS 静止 & 非一様 BF 静止 default criterion & $|\Delta p_{\mathrm{rel}}|=2.86\%$ at $\alpha=2,N=96$ & \checkmark \\
-V9 & nominal/local $\varepsilon$ switch & 圧力ジャンプ・毛管射影結合系同時使用下の有界性診断 & B/C=$1.00$ at $N=32$；$u_\infty^{\max}\le4.3\!\times\!10^{-10}$；$|\Delta V|/V_0\le3.81\!\times\!10^{-16}$ & \checkmark 結合系診断 \\
+V9 & nominal/local $\varepsilon$ switch & 圧力ジャンプ・毛管射影結合系同時使用下の有界性診断 & B/C=$1.00$ at $N=32$；$u_\infty^{\max}\le9.82\!\times\!10^{-10}$；$|\Delta V|/V_0\le4.73\!\times\!10^{-16}$ & \checkmark 結合系診断 \\
 V10-a-mass & Zalesak 質量保存軸 & Olsson--Kreiss mass correction 後 drift $<0.5\%$ & $4.70\!\times\!10^{-4}\%$ at $N=128$ & \checkmark Type-B \\
 V10-a-shape & Zalesak 形状軸 & fixed-grid 位相/threshold 誤差 + slot/h$=6.4$ under-resolution と整合 & centroid err $4.911\!\times\!10^{-3}$；shape $L^1=8.307\!\times\!10^{-3}$ & $\triangle$ Type-D \\
 V10-b-mass & 単一渦 reversal 質量保存軸 & Olsson--Kreiss mass correction 後 drift $<0.5\%$ & $0.0428\%$ at $N=128,T=8$ & \checkmark Type-B \\
@@ -107,6 +110,12 @@ V10-b-shape & 単一渦 reversal 形状軸 & grid-scale folded filament の Eule
         affine-jump 経路の物理仕事は面 cochain
         $A_f(G_fp-B_f(j))$ で定義されるため，
         diffuse band の raw 節点圧力は Hodge 代表または相内代表に写してから読む．
+        壁付き face-state 空間については U11 が
+        $C_wP_w=0$，metric self-adjointness，制限 Green identity，および
+        wall/periodic-wall quotient rank gate を丸め誤差まで確認したため，
+        V6/V7/V9 の pressure-jump/HFE 統合診断はこの component gate の上で読む．
+        ただし U11 は小型代数 gate であり，periodic-wall の有限振幅物理応答を
+        第13章に追加するものではない．
   \item \textbf{曲率推定誤差}．V5 では CSF $\kappa_{lg}$ + CCD 勾配の
         $u_\infty^{\mathrm{end}}$ 絶対値が全表ケースで $2\times10^{-2}$ 以下に保たれ，
         参照として FD 値を全条件で下回る．
@@ -130,7 +139,7 @@ V10-b-shape & 単一渦 reversal 形状軸 & grid-scale folded filament の Eule
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item \checkmark \textbf{合格（design criterion）}:
         V3 (BF 平衡，$|\Delta p_{\mathrm{rel}}|=0.97\%$ at $N=128$；本番構成静止判定で $K_{\max}\le1.72\!\times\!10^{-6}$, $|\Delta V|/V_0\le2.92\!\times\!10^{-15}$, $D=0$)，
-        V6 (密度比ロバスト, $\rho_r=833$ までブローアップなし; $u_\infty^{\mathrm{end}}\le3.3\!\times\!10^{-10}$; $|\Delta V_\psi|/V_{\psi,0} \le 2.4\!\times\!10^{-16}$)，
+        V6 (密度比ロバスト, $\rho_r=833$ までブローアップなし; $u_\infty^{\mathrm{end}}\le1.3\!\times\!10^{-9}$; $|\Delta V_\psi|/V_{\psi,0} \le 1.2\!\times\!10^{-16}$)，
         V8 (非一様静止, $\alpha=2,N=96$ で $|\Delta p_{\mathrm{rel}}|=2.86\%$).
   \item \checkmark \textbf{Type-A criterion 合格}:
         V1-a (TGV 空間 FVM PPE $O(h^2)$ trend, finest local slope $2.00$；補助: $E_{\mathrm{rel}}=1.583\!\times\!10^{-7}$ at $N=64$)，
@@ -151,7 +160,7 @@ V10-b-shape & 単一渦 reversal 形状軸 & grid-scale folded filament の Eule
         — grid-scale folded filament の Eulerian 固定格子原理的下限~\cite{EnrightFedkiwFerzigerMitchell2002}).
   \item $\times$ \textbf{要改善 / 推奨せず}: 該当なし.
   \item \checkmark \textbf{演算子群条件付き診断}: V9
-        (nominal/local $\varepsilon$ switch は $N=32$ で B/C=$1.00$，$u_\infty^{\max}\le4.3\!\times\!10^{-10}$；
+        (nominal/local $\varepsilon$ switch は $N=32$ で B/C=$1.00$，$u_\infty^{\max}\le9.82\!\times\!10^{-10}$，$|\Delta V|/V_0\le4.73\!\times\!10^{-16}$；
         HFE curvature + pressure-jump PPE + 毛管成分の圧力勾配射影 + 射影後面速度閉包 + アフィン圧力履歴面加速度と同時使用しても有限時間静止液滴を破綻させないが，
         local mode の改善効果はこの縮約 probe では主張しない).
 \end{itemize}
