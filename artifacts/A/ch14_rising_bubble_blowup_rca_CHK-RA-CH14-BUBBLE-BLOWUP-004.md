@@ -276,4 +276,3 @@ Required compatibility:
 
 DCCD/FCCD/UCCD should be used as structure-preserving building blocks, not as a
 post-hoc projector that hides an energy-inconsistent convective pump.
-

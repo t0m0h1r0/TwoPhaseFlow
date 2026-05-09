@@ -169,4 +169,3 @@ E^{n+1} - E^n
 
 on the same manufactured controls.  This tests the full update rather than an
 instantaneous RHS power surrogate.
-

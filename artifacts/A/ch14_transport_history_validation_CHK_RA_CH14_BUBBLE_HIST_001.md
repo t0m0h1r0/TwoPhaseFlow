@@ -194,4 +194,3 @@ the exact same controls:
 
 The candidate is promising only if it closes all four gates without damping,
 clipping, fallback, or benchmark-specific logic.
-

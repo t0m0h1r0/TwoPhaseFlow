@@ -287,4 +287,3 @@ equation may be recovered only after the conservative momentum update, or via a
 skew split that is algebraically equivalent in the `rho dV` metric.  Any
 explicit history term must satisfy a G-stability/energy estimate in the
 time-varying mass matrix, or fail-close for two-phase high-density-ratio runs.
-
