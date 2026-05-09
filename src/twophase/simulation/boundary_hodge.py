@@ -209,6 +209,34 @@ def _face_mass_components(xp, fccd, rho, grid) -> list:
     ]
 
 
+def _resolve_face_mass_components(
+    xp,
+    fccd,
+    rho,
+    grid,
+    face_mass_components: list | None,
+) -> list:
+    if face_mass_components is None:
+        return _face_mass_components(xp, fccd, rho, grid)
+    if len(face_mass_components) != grid.ndim:
+        raise ValueError(
+            "boundary Hodge face_mass_components length "
+            f"{len(face_mass_components)} != grid.ndim {grid.ndim}"
+        )
+    resolved = []
+    for axis, component in enumerate(face_mass_components):
+        arr = xp.asarray(component)
+        expected_shape = list(grid.shape)
+        expected_shape[axis] = grid.N[axis]
+        if tuple(arr.shape) != tuple(expected_shape):
+            raise ValueError(
+                "boundary Hodge face_mass_components shape "
+                f"{tuple(arr.shape)} != expected {tuple(expected_shape)} for axis {axis}"
+            )
+        resolved.append(arr)
+    return resolved
+
+
 def _apply_inverse_face_mass(xp, covectors: list, face_mass_components: list) -> list:
     corrections = []
     for covector, mass in zip(covectors, face_mass_components):
@@ -230,18 +258,22 @@ def face_mass_inner_product(
     rho,
     left_components: list,
     right_components: list,
+    face_mass_components: list | None = None,
 ):
     """Return the transported face-mass inner product used by ``P_w``.
 
     Symbol mapping:
-      ``M_f`` -> diagonal transported face mass ``Q_f rho_f``.
-      ``<a,b>_{M_f}`` -> sum_f Q_f rho_f a_f b_f.
+      ``M_f`` -> diagonal face metric.  The default is the transported
+      velocity mass ``Q_f rho_f``; callers that test pressure-space adjoints may
+      pass the active pressure metric ``Q_f / alpha_f`` explicitly.
+      ``<a,b>_{M_f}`` -> sum_f M_f a_f b_f.
     """
-    face_mass_components = _face_mass_components(
+    face_mass_components = _resolve_face_mass_components(
         xp,
         fccd,
         rho,
         grid,
+        face_mass_components,
     )
     total = xp.asarray(0.0, dtype=left_components[0].dtype)
     for left, right, mass in zip(
@@ -291,10 +323,16 @@ def project_wall_trace(
     face_components: list,
     rho,
     bc_type: str,
+    face_mass_components: list | None = None,
     tolerance: float = 1.0e-10,
     max_iterations: int = 80,
 ) -> BoundaryHodgeProjection:
-    """Project face velocity onto the no-slip wall trace in face-mass metric."""
+    """Project face velocity onto the no-slip wall trace in face-mass metric.
+
+    The default metric is the transported velocity mass ``Q_f rho_f``.  The
+    metric is explicit so pressure-space diagnostics can use the active
+    ``Q_f / alpha_f`` metric required by the pressure Green identity.
+    """
     if is_all_periodic(bc_type, grid.ndim):
         return BoundaryHodgeProjection(
             face_components=face_components,
@@ -323,7 +361,13 @@ def project_wall_trace(
                 "boundary_hodge_correction_linf": 0.0,
             },
         )
-    face_mass_components = _face_mass_components(xp, fccd, rho, grid)
+    face_mass_components = _resolve_face_mass_components(
+        xp,
+        fccd,
+        rho,
+        grid,
+        face_mass_components,
+    )
 
     def schur(trace_covector):
         face_covectors = wall_trace_adjoint(
@@ -380,6 +424,7 @@ def restricted_pressure_fluxes(
     rho,
     bc_type: str,
     pressure_flux_kwargs: dict | None = None,
+    face_mass_components: list | None = None,
     tolerance: float = 1.0e-10,
     max_iterations: int = 80,
 ) -> BoundaryHodgeProjection:
@@ -392,6 +437,8 @@ def restricted_pressure_fluxes(
 
     ``P_w``
         ``project_wall_trace`` with the transported face-mass metric.
+        Callers may provide active pressure metric components when checking the
+        exact pressure adjoint in affine/phase-separated coefficient paths.
 
     It does not solve the restricted pressure equation.  It is the GPU-first
     matrix-free building block and diagnostic for the future
@@ -406,6 +453,7 @@ def restricted_pressure_fluxes(
         face_components=pressure_faces,
         rho=rho,
         bc_type=bc_type,
+        face_mass_components=face_mass_components,
         tolerance=tolerance,
         max_iterations=max_iterations,
     )

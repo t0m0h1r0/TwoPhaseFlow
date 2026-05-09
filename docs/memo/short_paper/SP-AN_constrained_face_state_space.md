@@ -406,6 +406,38 @@ not a reason to add a fallback or a wall damper; it is a gate that says periodic
 identifications, pressure gauge variables, and wall trace rows must be rebuilt
 in one quotient space before production use.
 
+## 9.5 Diagnostic and Metric Contract
+
+The rising-bubble debug fields must not be treated as theorem statements unless
+they are tied to the active operator.  In the pressure-jump configuration, the
+production capillary drive is the affine face jump built from cut-face
+`face_implicit` curvature.  The legacy nodal/direct-psi `kappa_max` diagnostic
+can therefore spike without implying that the active Young-Laplace cochain has
+the same magnitude.  CHK-RA-CH14-BUBBLE-DIAG-RCA-001 recomputed the active
+`T=0.02` face curvature and found `O(1e3)`, not the reported legacy
+`O(1e5)` spike.
+
+The same rule applies to pressure sources.  The reported PPE RHS must be the
+RHS sent to the solver after all closed-interface and face-pressure-history
+source terms are assembled.  Recording a partial source is a software
+diagnostic error, not a fluid-mechanics fact.  The implementation now records
+`ppe_rhs_max` immediately before the PPE solve.
+
+Finally, the metric in `P_w` has two valid roles:
+
+```text
+velocity publication / no-slip state:
+  M_f = Q_f rho_f
+
+pressure adjoint diagnostics in affine coefficient paths:
+  M_A = Q_f / alpha_f
+```
+
+Both are face-space metrics, but they answer different inner-product questions.
+The helper operators therefore accept explicit face metric components and fail
+closed on shape mismatch.  This is an API preparation for constrained
+pressure-adjoint diagnostics; it is not yet a production `D_h P_w G_A` solve.
+
 ## 10. Verification Ladder
 
 The next efficient proof ladder is:

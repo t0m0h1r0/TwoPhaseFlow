@@ -4,6 +4,7 @@ import os
 import sys
 
 import numpy as np
+import pytest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", ".."))
 
@@ -43,6 +44,19 @@ def _rho(grid):
     x = np.asarray(grid.coords[0])[:, None]
     y = np.asarray(grid.coords[1])[None, :]
     return 2.0 + 0.1 * np.sin(2.0 * np.pi * x) * np.cos(np.pi * y / grid.L[1])
+
+
+def _custom_face_metric(grid):
+    metrics = []
+    for axis in range(grid.ndim):
+        shape = list(grid.shape)
+        shape[axis] = grid.N[axis]
+        coords = np.indices(tuple(shape), dtype=float)
+        metric = 1.0 + 0.2 * (axis + 1)
+        for component_axis in range(grid.ndim):
+            metric = metric + 0.03 * (component_axis + 1) * coords[component_axis]
+        metrics.append(metric)
+    return metrics
 
 
 def _vec(faces):
@@ -186,7 +200,10 @@ def test_wall_retraction_is_idempotent_and_metric_self_adjoint():
         tolerance=1.0e-12,
         max_iterations=160,
     )
-    assert np.linalg.norm(_vec(projection_aa.face_components) - _vec(projection_a.face_components)) < 1.0e-10
+    repeat_error = np.linalg.norm(
+        _vec(projection_aa.face_components) - _vec(projection_a.face_components)
+    )
+    assert repeat_error < 1.0e-10
 
     projection_b = project_wall_trace(
         xp=backend.xp,
@@ -215,6 +232,99 @@ def test_wall_retraction_is_idempotent_and_metric_self_adjoint():
         right_components=projection_b.face_components,
     )
     assert abs(float(left) - float(right)) < 1.0e-9
+
+
+def test_wall_retraction_accepts_explicit_active_face_metric():
+    backend, grid, fccd = _grid(nx=7, ny=6)
+    rng = np.random.default_rng(130)
+    rho = _rho(grid)
+    active_metric = _custom_face_metric(grid)
+    faces_a = _random_faces(rng, grid)
+    faces_b = _random_faces(rng, grid)
+
+    projection_a = project_wall_trace(
+        xp=backend.xp,
+        grid=grid,
+        fccd=fccd,
+        face_components=faces_a,
+        rho=rho,
+        bc_type="wall",
+        face_mass_components=active_metric,
+        tolerance=1.0e-12,
+        max_iterations=180,
+    )
+    projection_aa = project_wall_trace(
+        xp=backend.xp,
+        grid=grid,
+        fccd=fccd,
+        face_components=projection_a.face_components,
+        rho=rho,
+        bc_type="wall",
+        face_mass_components=active_metric,
+        tolerance=1.0e-12,
+        max_iterations=180,
+    )
+    projection_b = project_wall_trace(
+        xp=backend.xp,
+        grid=grid,
+        fccd=fccd,
+        face_components=faces_b,
+        rho=rho,
+        bc_type="wall",
+        face_mass_components=active_metric,
+        tolerance=1.0e-12,
+        max_iterations=180,
+    )
+
+    trace = wall_trace_from_faces(
+        backend.xp,
+        grid,
+        projection_a.face_components,
+        "wall",
+    )
+    assert float(np.max(np.abs(trace))) < 1.0e-10
+    repeat_error = np.linalg.norm(
+        _vec(projection_aa.face_components) - _vec(projection_a.face_components)
+    )
+    assert repeat_error < 1.0e-10
+
+    left = face_mass_inner_product(
+        xp=backend.xp,
+        grid=grid,
+        fccd=fccd,
+        rho=rho,
+        left_components=projection_a.face_components,
+        right_components=faces_b,
+        face_mass_components=active_metric,
+    )
+    right = face_mass_inner_product(
+        xp=backend.xp,
+        grid=grid,
+        fccd=fccd,
+        rho=rho,
+        left_components=faces_a,
+        right_components=projection_b.face_components,
+        face_mass_components=active_metric,
+    )
+    assert abs(float(left) - float(right)) < 1.0e-9
+
+
+def test_wall_retraction_rejects_mis_shaped_explicit_face_metric():
+    backend, grid, fccd = _grid(nx=7, ny=6)
+    rng = np.random.default_rng(131)
+    active_metric = _custom_face_metric(grid)
+    active_metric[0] = active_metric[0][:-1]
+
+    with pytest.raises(ValueError, match="face_mass_components shape"):
+        project_wall_trace(
+            xp=backend.xp,
+            grid=grid,
+            fccd=fccd,
+            face_components=_random_faces(rng, grid),
+            rho=_rho(grid),
+            bc_type="wall",
+            face_mass_components=active_metric,
+        )
 
 
 def test_restricted_pressure_fluxes_project_pressure_reaction_into_wall_space():

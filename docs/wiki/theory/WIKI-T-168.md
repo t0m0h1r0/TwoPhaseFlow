@@ -119,6 +119,40 @@ rank(D_h | F_w)   = 30,
 restricted Green relative residual = 1.037769e-01.
 ```
 
+## Diagnostic Contract Refinement
+
+CHK-RA-CH14-BUBBLE-DIAG-RCA-001 separated production physics from legacy debug
+quantities in the rising-bubble run.  The pressure-jump path applies active
+cut-face `face_implicit` curvature through the affine jump operator.  The late
+`debug_diagnostics/kappa_max=O(1e5)` spike was a legacy nodal/direct-psi
+diagnostic, not the active Young-Laplace face curvature.  Recomputing the
+active face curvature at `T=0.02` gave:
+
+```text
+axis 0 max |kappa_f| = 1.135732e+03
+axis 1 max |kappa_f| = 1.167086e+03
+```
+
+Likewise, `ppe_rhs_max` must be recorded after closed-interface and
+face-pressure-history source assembly, immediately before the PPE solve.  The
+implementation now records that final RHS.  A short `T=0.005` rerun matched the
+previous physical prefix to roundoff while changing only the intended
+`ppe_rhs_max` diagnostic.
+
+For affine/phase-separated pressure operators, the pressure Green identity is
+not a statement in an arbitrary full face space.  It must be tested in the
+admissible wall state space and in the active pressure metric:
+
+```text
+F_w = ker C_w,
+M_A = Q_f / alpha_f.
+```
+
+`boundary_hodge.py` therefore accepts explicit face metric components for
+`P_w`, `face_mass_inner_product`, and `restricted_pressure_fluxes`, while the
+default remains the velocity transported mass `Q_f rho_f`.  Explicit metrics are
+shape checked and fail closed.
+
 ## Negative Knowledge
 
 Do not use as production fixes:

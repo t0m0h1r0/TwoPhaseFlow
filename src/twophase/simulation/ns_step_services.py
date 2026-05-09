@@ -1185,8 +1185,6 @@ def solve_ns_pressure_stage(
         face_no_slip_boundary_state=face_no_slip_boundary_state,
     )
     rhs = predictor_rhs + div_op.divergence([state.f_x / state.rho, state.f_y / state.rho])
-    if state.debug_scalars is not None:
-        state.debug_scalars.append(xp.max(xp.abs(rhs)))
     closed_interface_source = capillary_force_source == "closed_interface_riesz"
     physical_jump_sigma = (
         state.sigma if surface_tension_scheme == "pressure_jump" else 0.0
@@ -1229,6 +1227,9 @@ def solve_ns_pressure_stage(
             for component in state.previous_pressure_accel_face_components
         ]
         rhs = rhs + div_op.divergence_from_faces(previous_pressure_accel_faces)
+
+    if state.debug_scalars is not None:
+        state.debug_scalars.append(xp.max(xp.abs(rhs)))
 
     state.pressure_increment = ppe_solver.solve(
         rhs,
