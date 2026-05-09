@@ -1,9 +1,9 @@
 # SP-AL: Boundary-Constrained Face Hodge Projection
 
-**Status**: ACTIVE theory candidate  
-**Date**: 2026-05-09  
+**Status**: ACTIVE theory candidate
+**Date**: 2026-05-09
 **Scope**: SI water-air rising bubble, wall-bounded conservative common-flux
-two-phase flow, face-native pressure projection, no-slip walls  
+two-phase flow, face-native pressure projection, no-slip walls
 **Companion papers**: SP-AJ, SP-AK, SP-AI, SP-W, SP-X
 
 ## 1. Executive Claim

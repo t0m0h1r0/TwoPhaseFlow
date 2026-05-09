@@ -1,9 +1,9 @@
 # SP-AN: Constrained Face-State Space Reformulation
 
-**Status**: ACTIVE theory candidate  
-**Date**: 2026-05-09  
+**Status**: ACTIVE theory candidate
+**Date**: 2026-05-09
 **Scope**: wall-bounded conservative common-flux two-phase flow after the
-boundary-Hodge KKT rank probe  
+boundary-Hodge KKT rank probe
 **Companion papers**: SP-AJ, SP-AK, SP-AL, SP-AM, SP-W, SP-X
 
 ## 1. Executive Claim
