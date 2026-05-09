@@ -1,0 +1,11 @@
+{
+  "branch": "codex/ra-ch12-13-exp-recheck-20260509",
+  "branch_slug": "codex-ra-ch12-13-exp-recheck-20260509",
+  "session_id": "CHK-RA-CH12-13-EXPRECHECK-001",
+  "worktree_path": "/Users/tomohiro/Downloads/TwoPhaseFlow/.claude/worktrees/codex-ra-ch12-13-exp-recheck-20260509",
+  "holder_agent": "ResearchArchitect",
+  "acquired_at": "2026-05-09T13:15:20Z",
+  "expires_at": "2026-05-10T13:15:20Z",
+  "meta_version": "8.0.0-candidate",
+  "scope": "strict Chapter 12-13 experiment recheck after Chapter 1-11 and later main updates"
+}
