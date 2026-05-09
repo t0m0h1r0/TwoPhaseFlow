@@ -947,6 +947,109 @@ def test_ch14_canonical_yamls_build_shared_common_flux_contract():
             ), path.name
 
 
+def test_conservative_common_flux_dynamic_grid_rebuild_two_steps():
+    """Common-flux transport supports fitted-grid remap of q and rho*u."""
+    solver = TwoPhaseNSSolver(
+        16, 16, 1.0, 1.0,
+        bc_type="periodic",
+        alpha_grid=2.0,
+        grid_rebuild_freq=1,
+        reinit_method="ridge_eikonal",
+        reinit_every=0,
+        phi_primary_transport=False,
+        interface_tracking_method="psi_direct",
+        momentum_form="conservative_common_flux",
+        advection_scheme="fccd_flux",
+        convection_scheme="uccd6",
+        pressure_gradient_scheme="fccd_flux",
+        surface_tension_scheme="pressure_jump",
+        ppe_solver="fccd_iterative",
+        ppe_coefficient_scheme="phase_separated",
+        ppe_interface_coupling_scheme="affine_jump",
+        pressure_force_contract="variational_adjoint",
+        scalar_operator_pairing="variational_operator",
+    )
+    x, y = solver._grid.meshgrid()
+    psi = 1.0 / (1.0 + np.exp((((x - 0.5) ** 2 + (y - 0.5) ** 2) - 0.2 ** 2) / 0.02))
+    u = np.zeros_like(psi)
+    v = np.zeros_like(psi)
+    psi, u, v = solver._rebuild_grid(psi, u, v, rho_l=10.0, rho_g=1.0)
+
+    for step_index in range(2):
+        psi, u, v, p = solver.step(
+            psi,
+            u,
+            v,
+            dt=1.0e-7,
+            rho_l=10.0,
+            rho_g=1.0,
+            sigma=1.0,
+            mu=0.05,
+            step_index=step_index,
+        )
+
+    for name, arr in (("psi", psi), ("u", u), ("v", v), ("p", p)):
+        assert np.all(np.isfinite(arr)), name
+    assert solver._conservative_density is not None
+    assert solver._conservative_momentum_components is not None
+    np.testing.assert_allclose(
+        np.asarray(solver._backend.to_host(solver._conservative_density)),
+        np.asarray(solver._backend.to_host(1.0 + 9.0 * solver._backend.xp.asarray(psi))),
+        rtol=1.0e-12,
+        atol=1.0e-12,
+    )
+
+
+def test_conservative_common_flux_reinit_retraction_keeps_density_affine():
+    """Reinitialization lifts momentum by keeping velocity on the new density."""
+    solver = TwoPhaseNSSolver(
+        16, 16, 1.0, 1.0,
+        bc_type="periodic",
+        alpha_grid=2.0,
+        grid_rebuild_freq=0,
+        reinit_method="ridge_eikonal",
+        reinit_every=1,
+        phi_primary_transport=False,
+        interface_tracking_method="psi_direct",
+        momentum_form="conservative_common_flux",
+        advection_scheme="fccd_flux",
+        convection_scheme="uccd6",
+        pressure_gradient_scheme="fccd_flux",
+        surface_tension_scheme="pressure_jump",
+        ppe_solver="fccd_iterative",
+        ppe_coefficient_scheme="phase_separated",
+        ppe_interface_coupling_scheme="affine_jump",
+        pressure_force_contract="variational_adjoint",
+        scalar_operator_pairing="variational_operator",
+    )
+    x, y = solver._grid.meshgrid()
+    psi = 1.0 / (1.0 + np.exp((((x - 0.5) ** 2 + (y - 0.5) ** 2) - 0.2 ** 2) / 0.02))
+    u = np.zeros_like(psi)
+    v = np.zeros_like(psi)
+    psi, u, v = solver._rebuild_grid(psi, u, v, rho_l=10.0, rho_g=1.0)
+
+    for step_index in range(2):
+        psi, u, v, _p = solver.step(
+            psi,
+            u,
+            v,
+            dt=1.0e-7,
+            rho_l=10.0,
+            rho_g=1.0,
+            sigma=1.0,
+            mu=0.05,
+            step_index=step_index,
+        )
+
+    assert solver._conservative_density is not None
+    np.testing.assert_allclose(
+        np.asarray(solver._backend.to_host(solver._conservative_density)),
+        np.asarray(solver._backend.to_host(1.0 + 9.0 * solver._backend.xp.asarray(psi))),
+        rtol=1.0e-12,
+        atol=1.0e-12,
+    )
+
+
 def test_phase_separated_fccd_ppe_cuts_cross_phase_faces():
     """SP-M Phase 1: FCCD PPE does not couple pressure across phase jumps."""
     solver = TwoPhaseNSSolver(

@@ -6,6 +6,7 @@ import numpy as np
 import pytest
 
 from twophase.backend import Backend
+from twophase.ccd.ccd_solver import CCDSolver
 from twophase.ccd.fccd import FCCDSolver
 from twophase.config import GridConfig
 from twophase.core.grid import Grid
@@ -13,6 +14,7 @@ from twophase.levelset.fccd_advection import FCCDLevelSetAdvection
 from twophase.simulation.conservative_transport import (
     ConservativeCommonFluxTransport,
 )
+from twophase.simulation.ns_grid_rebuild import rebuild_ns_grid
 from twophase.simulation.ns_runtime_config import normalise_ns_scheme_runtime
 from twophase.simulation.ns_solver_options import SolverSchemeOptions
 
@@ -192,6 +194,73 @@ def test_bound_preserving_limiter_keeps_phase_invariant_domain():
     assert not any(stage.post_stage_projected for stage in ledger.stages)
     assert np.min(psi_new) >= -1.0e-12
     assert np.max(psi_new) <= 1.0 + 1.0e-12
+
+
+def test_conservative_grid_rebuild_preserves_phase_and_momentum_integrals():
+    """Dynamic fitted-grid remap must act on q and rho*u, not velocity alone."""
+    backend = Backend(use_gpu=False)
+    xp = backend.xp
+    n = 16
+    grid = Grid(
+        GridConfig(ndim=2, N=(n, n), L=(1.0, 1.0), alpha_grid=2.0),
+        backend,
+    )
+    fccd = FCCDSolver(grid, backend, bc_type="wall")
+    ccd = CCDSolver(grid, backend, bc_type="wall")
+    x, y = grid.meshgrid()
+    psi = 0.5 + 0.25 * xp.tanh((0.23 - ((x - 0.5) ** 2 + (y - 0.5) ** 2)) / 0.04)
+    psi = xp.clip(psi, 0.0, 1.0)
+    rho_l = 10.0
+    rho_g = 1.0
+    density = rho_g + (rho_l - rho_g) * psi
+    u = 0.2 + 0.1 * x
+    v = -0.1 + 0.05 * y
+    momentum = (density * u, density * v)
+    dV_old = grid.cell_volumes()
+    q_target = float(xp.sum(psi * dV_old))
+    m_targets = [float(xp.sum(component * dV_old)) for component in momentum]
+
+    result = rebuild_ns_grid(
+        backend=backend,
+        grid=grid,
+        ccd=ccd,
+        eps=0.04,
+        alpha_grid=2.0,
+        psi=psi,
+        u=u,
+        v=v,
+        rho_l=rho_l,
+        rho_g=rho_g,
+        use_local_eps=False,
+        curvature_operator=type("Curv", (), {"eps": 0.04})(),
+        make_eps_field=lambda: 0.04,
+        reinitializer=type("Reinit", (), {"update_grid": lambda self, grid: None})(),
+        ppe_solver=type(
+            "PPE",
+            (),
+            {
+                "update_grid": lambda self, grid: None,
+                "invalidate_cache": lambda self: None,
+            },
+        )(),
+        fccd_div_op=type("Div", (), {"update_weights": lambda self: None})(),
+        reprojector=type(
+            "Reprojector",
+            (),
+            {"reproject": lambda self, psi, u, v, *args, **kwargs: (u, v)},
+        )(),
+        conservative_momentum_components=momentum,
+        bc_type="wall",
+    )
+
+    dV_new = grid.cell_volumes()
+    assert float(xp.sum(result.psi * dV_new)) == pytest.approx(q_target, abs=1.0e-12)
+    assert result.momentum_components is not None
+    for component, target in zip(result.momentum_components, m_targets, strict=True):
+        assert float(xp.sum(component * dV_new)) == pytest.approx(target, abs=1.0e-12)
+    np.testing.assert_allclose(result.density, rho_g + (rho_l - rho_g) * result.psi)
+    np.testing.assert_allclose(result.u, result.momentum_components[0] / result.density)
+    np.testing.assert_allclose(result.v, result.momentum_components[1] / result.density)
 
 
 def test_common_flux_rejects_density_not_affine_in_phase():

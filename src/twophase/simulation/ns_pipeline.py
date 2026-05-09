@@ -589,6 +589,49 @@ class TwoPhaseNSSolver:
             reprojector=self._reprojector,
             wall_contacts=self._wall_contacts,
         )
+        self._finalize_grid_rebuild(result)
+        return result.psi, result.u, result.v
+
+    def _rebuild_grid_conservative(
+        self,
+        state: NSStepState,
+    ) -> NSStepState:
+        """Rebuild grid while remapping conservative ``q`` and ``rho u``."""
+        result = rebuild_ns_grid(
+            backend=self._backend,
+            grid=self._grid,
+            ccd=self._ccd,
+            eps=self._eps,
+            alpha_grid=self._alpha_grid,
+            psi=state.psi,
+            u=state.u,
+            v=state.v,
+            rho_l=state.rho_l,
+            rho_g=state.rho_g,
+            use_local_eps=self._use_local_eps,
+            curvature_operator=self._curv,
+            make_eps_field=self._make_eps_field,
+            reinitializer=self._reinit,
+            ppe_solver=self._ppe_solver,
+            fccd_div_op=self._fccd_div_op,
+            reprojector=self._reprojector,
+            wall_contacts=self._wall_contacts,
+            conservative_momentum_components=state.conservative_momentum_components,
+            bc_type=self.bc_type,
+        )
+        self._finalize_grid_rebuild(result)
+        state.psi = result.psi
+        state.u = result.u
+        state.v = result.v
+        state.rho = result.density
+        state.conservative_density = result.density
+        state.conservative_momentum_components = list(result.momentum_components or ())
+        self._conservative_density = result.density
+        self._conservative_momentum_components = state.conservative_momentum_components
+        return state
+
+    def _finalize_grid_rebuild(self, result) -> None:
+        """Refresh grid-dependent solver history after any grid rebuild."""
         self.X, self.Y = result.X, result.Y
         self._p_prev = None
         self._p_prev_dev = None
@@ -599,7 +642,6 @@ class TwoPhaseNSSolver:
         self._velocity_prev = None
         self._velocity_bdf2_ready = False
         reset_ns_runtime_contexts(self)
-        return result.psi, result.u, result.v
 
     # ── initial condition / velocity builders ─────────────────────────────
 
@@ -844,16 +886,12 @@ class TwoPhaseNSSolver:
         *,
         psi_previous,
         will_rebuild: bool,
+        rebuild_old_coords,
         step_diag_enabled: bool,
         record_projection_fields: bool,
         capillary_needs_transport_endpoint: bool,
     ) -> NSStepState:
         """Transport ``q, rho, rho u`` with the same FCCD stage ledger."""
-        if will_rebuild:
-            raise NotImplementedError(
-                "conservative_common_flux requires conservative q/momentum "
-                "grid remap before dynamic grid rebuild can be enabled"
-            )
         if getattr(self, "_interface_tracking_method", "psi_direct") != "psi_direct":
             raise NotImplementedError(
                 "conservative_common_flux currently requires psi_direct transport"
@@ -871,10 +909,16 @@ class TwoPhaseNSSolver:
 
         xp = self._backend.xp
         if hasattr(self._transport, "record_reinit_projection"):
+            must_record_reinit = (
+                getattr(self._interface_runtime, "reinit_every", 0) > 0
+                or getattr(self._interface_runtime, "reinit_trigger_mode", "fixed")
+                == "adaptive"
+            )
             self._transport.record_reinit_projection = (
                 step_diag_enabled
                 or record_projection_fields
                 or capillary_needs_transport_endpoint
+                or must_record_reinit
             )
         face_velocity = self._face_velocity_for_common_flux(state)
         advanced = advance_face(
@@ -887,16 +931,16 @@ class TwoPhaseNSSolver:
             face_divergence_operator=self._div_op,
             return_ledger=True,
         )
-        state.psi, ledger = advanced
-        state.psi = xp.asarray(state.psi)
+        psi_after_retraction, ledger = advanced
+        psi_after_retraction = xp.asarray(psi_after_retraction)
         state.conservative_transport_ledger = ledger
         reinit_projection = getattr(self._transport, "last_reinit_projection", None)
-        if reinit_projection and reinit_projection.get("triggered", False):
-            raise NotImplementedError(
-                "conservative_common_flux requires conservative q/momentum "
-                "reinitialization before redistancing can be enabled"
-            )
-        state.psi_transport_endpoint = getattr(ledger, "psi_after_transport", state.psi)
+        reinit_triggered = bool(
+            reinit_projection and reinit_projection.get("triggered", False)
+        )
+        state.psi_transport_endpoint = xp.asarray(
+            getattr(ledger, "psi_after_transport", psi_after_retraction)
+        )
         if record_projection_fields and reinit_projection:
             state.interface_projection_fields = dict(reinit_projection)
         state.interface_projection_diagnostics = zero_reinit_projection_diagnostics()
@@ -922,21 +966,63 @@ class TwoPhaseNSSolver:
             rho_l=state.rho_l,
             rho_g=state.rho_g,
         )
-        state.conservative_density = result.density
-        state.rho = result.density
-        state.psi = xp.asarray(ledger.psi_after_transport)
-        state.conservative_momentum_components = list(result.momentum_components)
+        if reinit_triggered:
+            density_final = state.rho_g + (state.rho_l - state.rho_g) * psi_after_retraction
+            momentum_final = [
+                density_final * velocity for velocity in result.velocity_components
+            ]
+            reinit_kinetic = transport._kinetic_energy(
+                density_final,
+                tuple(momentum_final),
+            )
+            reinit_kinetic_delta = reinit_kinetic - result.kinetic_energy_after
+            state.psi = psi_after_retraction
+            state.conservative_density = density_final
+            state.rho = density_final
+            state.conservative_momentum_components = momentum_final
+            state.u, state.v = result.velocity_components
+        else:
+            state.psi = state.psi_transport_endpoint
+            state.conservative_density = result.density
+            state.rho = result.density
+            state.conservative_momentum_components = list(result.momentum_components)
+            reinit_kinetic_delta = xp.asarray(0.0, dtype=xp.asarray(result.density).dtype)
         state.conservative_transport_certificate = {
             "kinetic_energy_before": result.kinetic_energy_before,
             "kinetic_energy_after": result.kinetic_energy_after,
             "kinetic_energy_delta": result.kinetic_energy_delta,
+            "reinit_kinetic_delta": reinit_kinetic_delta,
             "min_density": result.min_density,
             "max_density": result.max_density,
             "status": result.certificate_status,
         }
-        state.u, state.v = result.velocity_components
-        self._conservative_density = result.density
-        self._conservative_momentum_components = list(result.momentum_components)
+        if reinit_triggered:
+            state.u = state.conservative_momentum_components[0] / state.rho
+            state.v = state.conservative_momentum_components[1] / state.rho
+        self._conservative_density = state.conservative_density
+        self._conservative_momentum_components = list(
+            state.conservative_momentum_components
+        )
+        if will_rebuild:
+            state = self._rebuild_grid_conservative(state)
+            if rebuild_old_coords is not None:
+                remapper = build_grid_remapper(
+                    self._backend,
+                    rebuild_old_coords,
+                    self._grid.coords,
+                )
+                state.psi_previous = xp.clip(
+                    xp.asarray(remapper.remap(psi_previous)),
+                    xp.asarray(0.0, dtype=state.psi.dtype),
+                    xp.asarray(1.0, dtype=state.psi.dtype),
+                )
+                if state.psi_transport_endpoint is not None:
+                    state.psi_transport_endpoint = xp.clip(
+                        xp.asarray(remapper.remap(state.psi_transport_endpoint)),
+                        xp.asarray(0.0, dtype=state.psi.dtype),
+                        xp.asarray(1.0, dtype=state.psi.dtype),
+                    )
+            state.interface_projection_fields = None
         self._projected_face_components = None
         return state
 
@@ -987,6 +1073,7 @@ class TwoPhaseNSSolver:
                 state,
                 psi_previous=psi_previous,
                 will_rebuild=will_rebuild,
+                rebuild_old_coords=rebuild_old_coords,
                 step_diag_enabled=step_diag_enabled,
                 record_projection_fields=record_projection_fields,
                 capillary_needs_transport_endpoint=capillary_needs_transport_endpoint,

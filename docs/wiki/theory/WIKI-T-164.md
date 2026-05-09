@@ -219,11 +219,11 @@ restores one algebraic identity of the conservative common-flux system:
   projected face state and pressure-history face cochains.  Primitive velocity
   alone is not a conservative restart state.
 
-This audit supports the current static-grid, reinit-free
-`conservative_common_flux` route.  It does not yet certify q-only
-reinitialization, dynamic interface-fitted remap, curvature near-singular
-diagnostics, or long-time high-k growth; those remain fail-close or diagnostic
-targets, not solved physics.
+The 2026-05-10 correction extends this audit to dynamic interface-fitted remap
+and fixed-grid Ridge--Eikonal/profile reinitialization.  The key change is that
+the representation operator `R_h` now acts on `(q,m,p)`, not on `q` or
+primitive velocity alone.  Curvature near-singular diagnostics and long-time
+high-k growth remain diagnostic targets, not solved physics.
 
 ## Reinitialization Rule
 
@@ -236,6 +236,25 @@ R_h : (q,m,p) -> (q',m',p')
 with consistent mass, component volume, momentum, and kinetic-energy defect
 accounting.  A q-only production reinit is not theorem-grade at density ratio
 833.
+
+For fitted-grid rebuilds, `R_h` remaps `q` and each conservative momentum
+component to the rebuilt tensor grid, then restores the metric integrals
+
+```text
+1^T V^+ q^+   = 1^T V^- q^-,
+1^T V^+ p_a^+ = 1^T V^- p_a^-.
+```
+
+For fixed-grid profile reinitialization, `R_h` lifts the new phase field by
+holding velocity fixed:
+
+```text
+m^R = V(rho_g + Delta rho q^R),
+p^R = m^R u^T.
+```
+
+This is a retraction defect, not a physical transport flux.  Capillary work
+must still use the labelled transport endpoint before reinitialization.
 
 ## Pressure Rule
 
