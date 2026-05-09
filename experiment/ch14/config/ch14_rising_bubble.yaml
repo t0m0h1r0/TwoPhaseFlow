@@ -28,7 +28,11 @@ grid:
   cells: [128, 256]
   domain:
     size: [0.01, 0.02]
-    boundary: wall
+    boundary:
+      x: periodic
+      y:
+        lower: wall
+        upper: wall
   distribution:
     schedule: 0
     axes:
@@ -174,7 +178,8 @@ output:
   checkpoints:
     interval: 0.005
   snapshots:
-    interval: 0.01
+    interval: 0.005
+    times: [0.0, 0.005, 0.01, 0.015, 0.02, 0.025, 0.03]
   figures:
     - type: time_series
       title: "Water-air rising bubble: centroid height"
@@ -219,6 +224,22 @@ output:
 
     - type: snapshot_series
       field: velocity
+      shared_scale: true
+      show_field: false
+      color_quantity: speed
+      color_scale: max
+      colorbar_label: "$|u|$"
+      vector_cmap: viridis
+      background_color: "#eeeeee"
+      normalize_arrows: false
+      quiver_length_fraction: 0.14
+      quiver_min_speed_fraction: 0.02
+      quiver_width: 0.0055
+      quiver_outline_width_factor: 2.1
+      arrow_color: null
+      arrow_outline_color: "#ffffff"
+      arrow_alpha: 1.0
+      arrow_outline_alpha: 0.9
       file_prefix: velocity_t
 
     # The affine jump face cochain is not always integrable as a scalar Hodge
@@ -226,6 +247,8 @@ output:
     # a gauge field rather than relabeling a nonintegrable cochain.
     - type: snapshot_series
       field: pressure
+      shared_scale: true
+      symmetric_scale: true
       file_prefix: pressure_t
 
 diagnostics: [volume_conservation, bubble_centroid, mean_rise_velocity, deformation]

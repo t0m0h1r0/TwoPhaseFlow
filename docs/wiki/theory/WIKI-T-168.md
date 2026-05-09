@@ -111,13 +111,42 @@ manufactured divergence L2 = 4.713074e-13
 manufactured wall-trace Linf = 5.532534e-31
 ```
 
-Mixed `periodic_wall` remains fail-closed until topology quotients are rebuilt:
+## Periodic-Wall Quotient Completion
+
+Mixed `periodic_wall` is now understood as a quotient-space issue.  The
+terminal nodal image on a periodic axis is not a pressure/divergence row, and
+tangential face components must copy their terminal image plane from the source
+plane before wall traces and pressure work are tested:
 
 ```text
-rank(D_h P_w G_A) = 27,
-rank(D_h | F_w)   = 30,
-restricted Green relative residual = 1.037769e-01.
+Q_per = range(E_Q)/(constants)
+F_per = range(E_F)
+D_per = R_Q D_h E_F
+C_w   = B_w R_h E_F
+G_w   = P_w G_A E_Q
+K_w   = D_per G_w
 ```
+
+The previous full-array diagnostic remains useful negative evidence:
+
+```text
+full nodal array:
+  rank(D_h P_w G_A) = 27
+  rank(D_h | F_w)   = 30
+```
+
+but it was measuring the wrong space.  After removing periodic image rows and
+folding image control volumes into source rows, the gate closes:
+
+```text
+periodic quotient:
+  rank(R_Q D_h P_w G_A) = 25
+  rank(R_Q D_h | F_w)   = 25
+  restricted Green residual = O(1e-16)
+```
+
+This completes the theory/diagnostic formulation for `periodic_wall`; it does
+not by itself enable a new production restricted PPE solve.
 
 ## Diagnostic Contract Refinement
 

@@ -832,6 +832,16 @@ manifest.state_phase = pre_step
 
 Primitive checkpoints must not restart a conservative route.
 
+**Passive observation rule.**  Checkpoints and snapshots are observation
+operators, not part of the discrete evolution map.  A requested checkpoint time
+must therefore not clamp `dt`: doing so changes the IMEX/BDF/history sequence
+and makes "run with checkpoint output" a different numerical experiment from
+"run without checkpoint output."  Periodic time checkpoints store the actual
+pre-step frame used by the step that crosses the requested time, with the
+manifest time recording the physical state time and the file name recording the
+requested rollback label.  Exact-time checkpoint states require a separately
+validated variable-step integrator/dense-output construction.
+
 ## 13. YAML Contract
 
 The YAML surface should expose the mathematical contract, not a bag of

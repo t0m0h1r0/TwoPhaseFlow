@@ -335,6 +335,14 @@ it remaps velocity rather than conservative momentum.  Until conservative
 remap exists, strict conservative runs with reinit or interface-fitted grid
 rebuild must fail closed.
 
+**Passive checkpoint corollary (2026-05-09).**  A checkpoint/snapshot schedule is
+not a force, constraint, or time integrator.  It must not change `dt` merely to
+hit an output time.  The admissible rollback checkpoint is the actual pre-step
+state immediately before crossing the requested checkpoint label; exact-time
+rollback requires a variable-step/dense-output theorem and must otherwise
+remain fail-closed.  Treat any output path that perturbs the discrete trajectory
+as a production bug, not as harmless I/O.
+
 ## Negative Knowledge
 
 Do not treat the following as solutions:

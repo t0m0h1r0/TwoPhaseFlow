@@ -76,6 +76,49 @@ def _wall_trace_count(xp, mask) -> int:
     return int(_to_float(xp, xp.sum(mask)))
 
 
+def periodic_unique_node_mask(xp, grid, bc_type: str):
+    """Return nodal quotient mask with periodic image planes removed.
+
+    A3 mapping:
+      Equation: ``Q_h = \\widetilde Q_h / (q_{N_a}\\sim q_0)`` on each
+      periodic axis.
+      Discretization: the terminal nodal plane on a periodic axis is an image
+      of the first plane and is not an independent pressure/divergence row.
+      Code: tests and diagnostics restrict nodal residuals with this mask
+      before applying rank or Green-identity gates.
+    """
+    mask = xp.ones(grid.shape, dtype=bool)
+    axes = boundary_axes(bc_type, grid.ndim)
+    for axis, kind in enumerate(axes):
+        if kind != "periodic":
+            continue
+        n_cells = grid.N[axis]
+        mask[axis_slice(grid.ndim, axis, n_cells, n_cells + 1)] = False
+    return mask
+
+
+def sync_periodic_face_images(xp, grid, face_components: list, bc_type: str) -> list:
+    """Return face components expanded from the periodic quotient space.
+
+    For a face component normal to a periodic axis, the face array already has
+    ``N_axis`` cyclic entries and no terminal image plane.  For tangential face
+    components, any terminal nodal image plane in a periodic axis is copied from
+    the corresponding source plane.  This mirrors
+    :func:`sync_periodic_image_nodes` for face-state arrays.
+    """
+    axes = boundary_axes(bc_type, grid.ndim)
+    synced = [xp.array(xp.asarray(component), copy=True) for component in face_components]
+    for component_axis, component in enumerate(synced):
+        for axis, kind in enumerate(axes):
+            if kind != "periodic" or axis == component_axis:
+                continue
+            n_cells = grid.N[axis]
+            source = axis_slice(grid.ndim, axis, 0, 1)
+            image = axis_slice(grid.ndim, axis, n_cells, n_cells + 1)
+            component[image] = component[source]
+    return synced
+
+
 def wall_trace_from_faces(xp, grid, face_components: list, bc_type: str):
     """Evaluate ``C_w f`` from face components using production reconstruction."""
     if is_all_periodic(bc_type, grid.ndim):
@@ -333,6 +376,7 @@ def project_wall_trace(
     metric is explicit so pressure-space diagnostics can use the active
     ``Q_f / alpha_f`` metric required by the pressure Green identity.
     """
+    face_components = sync_periodic_face_images(xp, grid, face_components, bc_type)
     if is_all_periodic(bc_type, grid.ndim):
         return BoundaryHodgeProjection(
             face_components=face_components,
@@ -398,6 +442,7 @@ def project_wall_trace(
     corrected = [
         face_component - corr for face_component, corr in zip(face_components, correction)
     ]
+    corrected = sync_periodic_face_images(xp, grid, corrected, bc_type)
     final_trace = wall_trace_from_faces(xp, grid, corrected, bc_type)
     final_trace_linf = _linf(xp, final_trace)
     correction_linf = max((_linf(xp, corr) for corr in correction), default=0.0)

@@ -14,12 +14,15 @@ from twophase.config import GridConfig, SimulationConfig
 from twophase.core.grid import Grid
 from twophase.simulation.boundary_hodge import (
     face_mass_inner_product,
+    periodic_unique_node_mask,
     project_wall_trace,
     restricted_pressure_fluxes,
+    sync_periodic_face_images,
     wall_trace_adjoint,
     wall_trace_from_faces,
 )
 from twophase.simulation.divergence_ops import FCCDDivergenceOperator
+from twophase.core.boundary import sync_periodic_image_nodes
 
 
 def _grid(nx=6, ny=5, *, bc_type="wall"):
@@ -110,6 +113,15 @@ def _pressure_inner(grid, pressure, divergence):
     return float(np.vdot(pressure, _nodal_volume(grid) * divergence).real)
 
 
+def _periodic_quotient_pressure_inner(grid, pressure, divergence, bc_type):
+    weighted = _nodal_volume(grid) * divergence
+    if bc_type == "periodic_wall":
+        weighted = weighted.copy()
+        weighted[0, :] += weighted[-1, :]
+    mask = np.asarray(periodic_unique_node_mask(np, grid, bc_type), dtype=bool)
+    return float(np.vdot(pressure[mask], weighted[mask]).real)
+
+
 def _pressure_kwargs():
     return {
         "pressure_gradient": "fccd",
@@ -145,6 +157,18 @@ def test_periodic_wall_trace_adjoint_uses_unique_periodic_images():
     right = sum(float(np.vdot(face, adj).real) for face, adj in zip(faces, adjoint))
 
     assert abs(left - right) < 1.0e-12
+
+
+def test_periodic_face_image_sync_keeps_tangential_faces_in_quotient_space():
+    backend, grid, _fccd = _grid(bc_type="periodic_wall")
+    rng = np.random.default_rng(111)
+    faces = _random_faces(rng, grid)
+    faces[1][-1, :] += 10.0
+
+    synced = sync_periodic_face_images(backend.xp, grid, faces, "periodic_wall")
+
+    np.testing.assert_allclose(synced[1][-1, :], synced[1][0, :])
+    assert synced[0].shape[0] == grid.N[0]
 
 
 def test_wall_trace_projection_removes_no_slip_reconstruction_trace():
@@ -405,6 +429,56 @@ def test_restricted_pressure_green_identity_on_full_wall_space():
     assert abs(lhs + rhs) / scale < 1.0e-10
 
 
+def test_restricted_pressure_green_identity_on_periodic_wall_quotient_space():
+    backend, grid, fccd = _grid(nx=7, ny=6, bc_type="periodic_wall")
+    div_op = FCCDDivergenceOperator(fccd)
+    rng = np.random.default_rng(151)
+    pressure = rng.normal(size=grid.shape)
+    sync_periodic_image_nodes(pressure, "periodic_wall")
+    rho = np.ones(grid.shape)
+    eta = project_wall_trace(
+        xp=backend.xp,
+        grid=grid,
+        fccd=fccd,
+        face_components=_random_faces(rng, grid),
+        rho=rho,
+        bc_type="periodic_wall",
+        tolerance=1.0e-12,
+        max_iterations=220,
+    ).face_components
+    restricted = restricted_pressure_fluxes(
+        xp=backend.xp,
+        grid=grid,
+        fccd=fccd,
+        div_op=div_op,
+        pressure=pressure,
+        rho=rho,
+        bc_type="periodic_wall",
+        pressure_flux_kwargs=_pressure_kwargs(),
+        tolerance=1.0e-12,
+        max_iterations=220,
+    )
+
+    lhs = float(
+        face_mass_inner_product(
+            xp=backend.xp,
+            grid=grid,
+            fccd=fccd,
+            rho=rho,
+            left_components=restricted.face_components,
+            right_components=eta,
+        )
+    )
+    rhs = _periodic_quotient_pressure_inner(
+        grid,
+        pressure,
+        np.asarray(div_op.divergence_from_faces(eta)),
+        "periodic_wall",
+    )
+    scale = abs(lhs) + abs(rhs) + 1.0e-300
+    assert abs(lhs + rhs) / scale < 1.0e-10
+
+
 def test_restricted_pressure_rank_gate_passes_full_wall_topology():
     backend, grid, fccd = _grid(nx=6, ny=5)
     div_op = FCCDDivergenceOperator(fccd)
@@ -427,6 +501,46 @@ def test_restricted_pressure_rank_gate_passes_full_wall_topology():
                 bc_type="wall",
                 tolerance=1.0e-12,
                 max_iterations=180,
+            ).face_components
+        ),
+    )
+    pressure_columns = []
+    for index in range(int(np.prod(grid.shape))):
+        pressure = np.zeros(grid.shape)
+        pressure.ravel()[index] = 1.0
+        pressure_columns.append(
+            _vec(div_op.pressure_fluxes(pressure, rho, **pressure_kwargs))
+        )
+    g_mat = np.column_stack(pressure_columns)
+
+    rank_restricted_divergence = np.linalg.matrix_rank(d_mat @ p_w, tol=1.0e-10)
+    rank_restricted_pressure = np.linalg.matrix_rank(d_mat @ p_w @ g_mat, tol=1.0e-10)
+    assert rank_restricted_pressure == rank_restricted_divergence
+
+
+def test_restricted_pressure_rank_gate_passes_periodic_wall_quotient_topology():
+    backend, grid, fccd = _grid(nx=6, ny=5, bc_type="periodic_wall")
+    div_op = FCCDDivergenceOperator(fccd)
+    rho = np.ones(grid.shape)
+    pressure_kwargs = _pressure_kwargs()
+    mask = np.asarray(periodic_unique_node_mask(np, grid, "periodic_wall"), dtype=bool)
+
+    d_mat = _assemble_face_matrix(
+        grid,
+        lambda faces: np.asarray(div_op.divergence_from_faces(faces)).ravel(),
+    )[mask.ravel(), :]
+    p_w = _assemble_face_matrix(
+        grid,
+        lambda faces: _vec(
+            project_wall_trace(
+                xp=backend.xp,
+                grid=grid,
+                fccd=fccd,
+                face_components=faces,
+                rho=rho,
+                bc_type="periodic_wall",
+                tolerance=1.0e-12,
+                max_iterations=220,
             ).face_components
         ),
     )

@@ -864,9 +864,40 @@ Lagrange--d'Alembert 型の制約反力として読む根拠である．
 が必要である．圧力の定数ゲージや周期方向の商空間は
 $K_w$ の核として処理し，この rank 条件を満たさない場合は
 壁反力と圧力反力を同じ complex として閉じられない．
-全壁トポロジでは $P_w^{(M)}$ の冪等性・自己随伴性・制限 Green 恒等式・rank 条件を
-丸め誤差まで検証できる一方，周期壁混在では商空間と壁トレース行を
-同じ圧力 gauge で作り直すまで fail-close とする．
+周期軸を含む場合は，この条件を full nodal array ではなく
+周期商空間で読む．周期軸 $a$ では終端節点面は物理境界ではなく
+$q_{N_a}\sim q_0$ という同値類である．
+節点商空間への制限を $R_Q$，同値類代表から full array への展開を $E_Q$，
+face-state 商空間への展開を $E_F$ と書く．
+周期軸に法線を持つ face 成分はすでに $N_a$ 個の循環 face だけを持つが，
+周期軸に接する face 成分は終端 image 面を持つため，
+\[
+  (E_F f)^{(b)}_{N_a,\ldots}=(E_F f)^{(b)}_{0,\ldots}
+  \qquad (b\ne a)
+\]
+で展開する．このとき混合境界の制約付き complex は
+\begin{equation}
+  D_{\mathrm{per}} = R_QD_hE_F,\qquad
+  C_w=B_wR_hE_F,\qquad
+  G_w=P_w^{(A)}G_AE_Q,\qquad
+  K_w=D_{\mathrm{per}}G_w
+  \label{eq:periodic_wall_quotient_complex}
+\end{equation}
+である．圧力内積の control volume も image 行を捨てるのではなく，
+source 行へ畳み込んでから $R_Q$ で制限する．
+したがって mixed periodic-wall の rank gate は
+\begin{equation}
+  \operatorname{rank}K_w
+  =
+  \operatorname{rank}(D_{\mathrm{per}}|_{F_w})
+  \label{eq:periodic_wall_quotient_rank_gate}
+\end{equation}
+であり，full array 上の
+$\operatorname{rank}(D_hP_wG_A)$ ではない．
+全壁トポロジでは $R_Q=E_Q=E_F=I$ であり，
+この式は式~\eqref{eq:restricted_pressure_rank_gate} に戻る．
+この商空間で測ると，左右周期・上下壁の小格子 probe は
+制限 Green 恒等式と rank 条件を丸め誤差まで満たす．
 
 体積制約の反力も同じ写像で
 \begin{equation}

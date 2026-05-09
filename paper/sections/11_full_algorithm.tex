@@ -632,6 +632,13 @@ production solve として用いる経路は本稿の標準経路から外す．
 次に $G_w$ が $F_w$ 上の制限 Green 恒等式を満たすか，
 $\operatorname{rank}K_w=\operatorname{rank}(D_f|_{F_w})$ が成り立つか，
 製造した $f^{n+1}\in F_w,\ D_ff^{n+1}=0$ を回収できるかを確認する．
+周期軸を含む境界では，この検査を
+式~\eqref{eq:periodic_wall_quotient_complex} の
+$D_{\mathrm{per}}=R_QD_hE_F$ と
+式~\eqref{eq:periodic_wall_quotient_rank_gate} の rank 条件で行う．
+すなわち，periodic image 行を full nodal array の独立行として数えず，
+接線 face の image 面を source 面へ同期し，圧力 control volume を
+source 行へ畳み込んでから Green 恒等式を測る．
 これらの gate を通らない境界トポロジでは，
 節点 clamp，壁面だけの後置投影，dense KKT，または圧力 gauge の暗黙変更で
 計算を進めず，fail-close として扱う．
@@ -683,3 +690,17 @@ $m,\bm{p}_m$ を再開時に作り直すなら，
 ステップ前の $q,m,\bm{p}_m$ と面履歴面共鎖を保存することを受理条件とする．
 この条件により，ゼロスタート計算と再開データからの計算を
 同じ離散写像の反復として比較できる．
+
+Checkpoint や snapshot は観測作用素であり，
+離散時間発展写像 $\Phi_{\Delta t}$ の一部ではない．
+したがって保存時刻に合わせるために $\Delta t$ を短縮してはならない．
+これは可視化・再開の都合で BDF2/IMEX 履歴長や
+pressure-history 座標を変えることに相当し，
+同じ初期値からの「出力あり」と「出力なし」が別の離散軌道を
+生成してしまうからである．
+時刻列 checkpoint は，要求時刻を跨いだ実ステップの直前に
+実際に用いられた pre-step 状態を保存するか，
+可変ステップ BDF2 と履歴係数を明示的に定式化した場合に限り
+厳密時刻状態を保存する．
+本実装では前者を採用し，manifest の実時刻と
+ファイル名の要求時刻を区別する．

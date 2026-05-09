@@ -62,7 +62,8 @@ def test_run_simulation_saves_restartable_pre_blowup_state(tmp_path, monkeypatch
         _p_prev_accel_face_components = None
         _step_diag = SimpleNamespace(last={})
         _backend = SimpleNamespace(xp=np, to_host=lambda arr: arr)
-        _grid = SimpleNamespace()
+        _grid = SimpleNamespace(ndim=2)
+        bc_type = "periodic"
         X = np.zeros((2, 2))
         Y = np.zeros((2, 2))
         h = 1.0
@@ -72,6 +73,9 @@ def test_run_simulation_saves_restartable_pre_blowup_state(tmp_path, monkeypatch
             return cls()
 
         def make_bc_hook(self, cfg):
+            return None
+
+        def set_wall_contacts(self, contacts):
             return None
 
         def dt_budget(self, *args, **kwargs):
@@ -211,6 +215,128 @@ def test_run_simulation_saves_restartable_pre_blowup_state(tmp_path, monkeypatch
     assert saves[-1]["path"] == tmp_path / "checkpoint_final.npz"
     assert saves[-1]["state_phase"] == "post_step"
     assert bool(results["pre_blowup_checkpoint_written"])
+
+
+def test_time_checkpoints_do_not_clamp_discrete_timestep(tmp_path, monkeypatch):
+    runner = importlib.import_module("twophase.simulation.runner")
+    checkpoint = importlib.import_module("twophase.simulation.checkpoint")
+    seen_dts = []
+    writes = []
+
+    class FakeSolver:
+        _alpha_grid = 1.0
+        _rebuild_freq = 0
+        _p_prev_accel_face_components = None
+        _step_diag = SimpleNamespace(last={})
+        _backend = SimpleNamespace(xp=np, to_host=lambda arr: arr)
+        _grid = SimpleNamespace(ndim=2)
+        bc_type = "periodic"
+        X = np.zeros((2, 2))
+        Y = np.zeros((2, 2))
+        h = 1.0
+
+        @classmethod
+        def from_config(cls, cfg):
+            return cls()
+
+        def build_ic(self, cfg):
+            return np.zeros((2, 2), dtype=float)
+
+        def build_velocity(self, cfg, psi):
+            return np.zeros_like(psi), np.zeros_like(psi)
+
+        def make_bc_hook(self, cfg):
+            return None
+
+        def set_wall_contacts(self, contacts):
+            return None
+
+        def dt_budget(self, *args, **kwargs):
+            raise AssertionError("fixed-dt test should not ask for CFL budget")
+
+        def step_request(self, request, return_host_pressure=False):
+            seen_dts.append(float(request.dt))
+            next_psi = request.psi + request.dt
+            return next_psi, request.u, request.v, np.zeros_like(request.psi)
+
+    class FakeDiagnostics:
+        def __init__(self, *args, **kwargs):
+            self.times = []
+
+        def needs_retained_geometry(self):
+            return False
+
+        def collect(self, t, *args, **kwargs):
+            self.times.append(float(t))
+
+        def last(self, key, default=0.0):
+            return 0.0
+
+        def to_arrays(self):
+            return {"times": np.asarray(self.times, dtype=float)}
+
+    def fake_capture_checkpoint_frame(**kwargs):
+        return {
+            "arrays": {},
+            "manifest": {
+                "time": float(kwargs["t"]),
+                "step": int(kwargs["step"]),
+            },
+        }
+
+    def fake_write_checkpoint_frame(path, frame):
+        writes.append(
+            (Path(path).name, frame["manifest"]["time"], frame["manifest"]["step"])
+        )
+
+    def fake_save_checkpoint(path, **kwargs):
+        return None
+
+    monkeypatch.setattr("twophase.simulation.ns_pipeline.TwoPhaseNSSolver", FakeSolver)
+    monkeypatch.setattr("twophase.tools.diagnostics.DiagnosticCollector", FakeDiagnostics)
+    monkeypatch.setattr(checkpoint, "capture_checkpoint_frame", fake_capture_checkpoint_frame)
+    monkeypatch.setattr(checkpoint, "write_checkpoint_frame", fake_write_checkpoint_frame)
+    monkeypatch.setattr(checkpoint, "save_checkpoint", fake_save_checkpoint)
+
+    config = tmp_path / "cfg.yaml"
+    config.write_text("run:\n  T_final: 0.8\n")
+    cfg = SimpleNamespace(
+        physics=SimpleNamespace(
+            rho_l=1.0,
+            rho_g=1.0,
+            sigma=0.0,
+            mu=0.0,
+            g_acc=0.0,
+            rho_ref=None,
+            mu_l=None,
+            mu_g=None,
+        ),
+        run=SimpleNamespace(
+            T_final=0.8,
+            max_steps=None,
+            dt_fixed=0.2,
+            snap_interval=None,
+            snap_times=[],
+            print_every=100,
+            debug_diagnostics=False,
+            cfl=1.0,
+            cfl_advective=None,
+            cfl_capillary=None,
+            cfl_viscous=None,
+        ),
+        output=SimpleNamespace(figures=[], checkpoint_interval=0.5),
+        diagnostics=[],
+        initial_condition={},
+    )
+
+    runner.run_simulation(
+        cfg,
+        checkpoint_path=tmp_path / "checkpoint_final.npz",
+        config_path=config,
+    )
+
+    np.testing.assert_allclose(seen_dts, [0.2, 0.2, 0.2, 0.2])
+    assert ("checkpoint_t0p5.npz", 0.4, 2) in writes
 
 
 def test_pre_step_restart_matches_uninterrupted_run(tmp_path, monkeypatch):

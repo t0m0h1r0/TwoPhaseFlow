@@ -267,6 +267,44 @@ The state space must be built from topology first:
 4. restrict pressure through D_h P_w G_A.
 ```
 
+For a periodic axis `a`, the terminal nodal plane is not a boundary:
+
+```text
+q_{N_a} ~ q_0.
+```
+
+Let `R_Q` restrict a full nodal array to its unique quotient rows and let
+`E_Q` expand a unique nodal vector by copying the source plane to the image
+plane.  The pressure space is
+
+```text
+Q_per = range(E_Q) / constants.
+```
+
+The face space has the analogous quotient.  A face component normal to the
+periodic axis already has `N_a` cyclic faces and no terminal image plane.  A
+tangential face component still carries the nodal-periodic axis as an array
+dimension, so its terminal plane must be copied from the source plane:
+
+```text
+E_F: F_per -> F_full,
+(E_F f)_{N_a,...}^{(b)} = (E_F f)_{0,...}^{(b)}  for b != a.
+```
+
+The constrained divergence and pressure complex must then be read as
+
+```text
+D_per = R_Q D_h E_F,
+C_w   = B_w R_h E_F,
+P_w   = metric retraction in F_per with C_w,
+G_w   = P_w G_A E_Q,
+K_w   = D_per G_w.
+```
+
+The pressure inner product folds image control volumes into the unique source
+row before the image row is dropped.  Without this folding, the Green identity
+is tested in a larger algebraic array space than the physical periodic domain.
+
 The previous periodic-wall rank defect is explained by constructing an
 additive KKT in the wrong quotient order.  The new acceptance gate is not
 
@@ -281,6 +319,23 @@ rank(D_h P_w G_A) = rank(D_h |_{F_w})
 ```
 
 with pressure gauge and periodic quotient removed before the rank is measured.
+After quotienting, the mixed `periodic_wall` small probe gives:
+
+```text
+full nodal array rank gate:
+  rank(D_h P_w G_A) = 27,
+  rank(D_h | F_w)   = 30
+
+periodic quotient rank gate:
+  rank(R_Q D_h P_w G_A) = 25,
+  rank(R_Q D_h | F_w)   = 25
+```
+
+The quotient Green identity also returns to roundoff once tangential face image
+planes are synchronized and periodic image control volumes are folded into the
+source rows.  Therefore the old `periodic_wall` failure was not a physical
+obstruction; it was a representation error caused by mixing full-array rows
+with quotient-space pressure and wall-trace variables.
 
 ## 8. Relation To Nodal-Primary Alternatives
 
@@ -393,18 +448,23 @@ that defines pressure work and `D_h` must define the face-state metric.  The
 runtime helper remains matrix-free and backend-native; the dense matrices above
 exist only in small validation probes.
 
-Mixed `periodic_wall` topology remains fail-closed at this stage:
+The periodic quotient correction closes the previous mixed-topology gap:
 
 ```text
-rank(D_h P_w G_A) = 27,
-rank(D_h | F_w)   = 30,
-restricted Green relative residual = 1.037769e-01.
+full-array diagnostic:
+  rank(D_h P_w G_A) = 27,
+  rank(D_h | F_w)   = 30
+
+quotient diagnostic:
+  rank(R_Q D_h P_w G_A) = 25,
+  rank(R_Q D_h | F_w)   = 25
+  restricted Green relative residual = O(1e-16)
 ```
 
-The failure is consistent with the quotient-order warning in Section 7.  It is
-not a reason to add a fallback or a wall damper; it is a gate that says periodic
-identifications, pressure gauge variables, and wall trace rows must be rebuilt
-in one quotient space before production use.
+This does not enable a new production PPE replacement by itself.  It completes
+the topology theory and diagnostic operator gates for `periodic_wall`; the
+actual production solve still requires the solver to assemble/apply the
+restricted operator `R_Q D_h P_w G_A` as its pressure complex.
 
 ## 9.5 Diagnostic and Metric Contract
 
