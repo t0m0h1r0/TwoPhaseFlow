@@ -50,6 +50,9 @@ mode 2, so the wavelength is 10 mm; the oscillating droplet uses the same
 20 mm square tank with a 10 mm-class ellipse (`a=5.5 mm`, `b=4.5 mm`).
 Their final times and snapshot times are derived from the inviscid
 water-air capillary/Rayleigh-Lamb periods, not from the old unit-box scale.
+The capillary-wave period uses the rigid-wall two-layer finite-depth
+dispersion relation because the 10 mm interface sits midway between the
+upper and lower walls of the 20 mm tank.
 
 The five production configs emit periodic snapshots with `psi`, `velocity`,
 and pressure-family figures. The runner stores raw fields in `data.npz` under
@@ -211,9 +214,10 @@ frequency:
 - `interface.reinitialization.schedule.every_steps`: full CLS profile restoration
   in pseudo-time after advection.
   Conservative common-flux reinitialization must be represented in the same
-  `q,m,p` bundle as transport.  Checked-in configs may still set this to `0`
-  for benchmark-specific reasons such as static-equilibrium gates or
-  transport-only dynamic gates.
+  `q,m,p` bundle as transport.  The current dynamic capillary-wave and
+  oscillating-droplet configs use every-step restoration; checked-in configs may
+  still set this to `0` for benchmark-specific reasons such as
+  static-equilibrium gates or transport-only dynamic gates.
 
 This follows WIKI-X-027: interface advection and reinitialization use different
 time axes and should not be placed as sibling `run` knobs or mixed in one

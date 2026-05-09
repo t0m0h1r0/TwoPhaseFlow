@@ -18,11 +18,10 @@ until conservative `q,m,p` remap existed.  After merging main
 so the targeted capillary and oscillating-droplet YAMLs restore the
 interface-following route with `grid.distribution.schedule: 1`.
 
-The oscillating-droplet smoke then exposed the companion closed-interface
-contract: closed-interface Riesz capillary work cannot be combined with
-q-only redistancing until conservative `q,m,p` reinitialization exists.  The
-oscillating-droplet YAML therefore uses
-`interface.reinitialization.schedule.every_steps: 0`.
+After the conservative common-flux remap/reinitialization representation landed
+on main, both targeted dynamic YAMLs use every-step profile restoration:
+`grid.distribution.schedule: 1` and
+`interface.reinitialization.schedule.every_steps: 1`.
 
 The same smoke reached `data.npz` and then fail-closed in plotting because the
 saved affine pressure face cochain was not same-phase integrable as a scalar
@@ -64,11 +63,18 @@ Inviscid small-amplitude reference:
 
 ```text
 k = 2 pi m / L_x = 628.318530718 1/m
-omega = sqrt(sigma k^3 / (rho_l + rho_g)) = 134.420327920 1/s
-T = 2 pi / omega = 0.046742820855 s
+h_l = h_g = 0.01 m
+omega = sqrt(sigma k^3 / (rho_l coth(k h_l) + rho_g coth(k h_g)))
+      = 134.419859151 1/s
+T = 2 pi / omega = 0.046742983863 s
 ```
 
 Snapshot times are `0, T/4, T/2, 3T/4, T`.
+The paper-facing capillary-wave history uses `signed_interface_amplitude`,
+the signed projection of the reconstructed interface onto the configured
+cosine mode.  The older `interface_amplitude` is intentionally retained as a
+non-negative envelope diagnostic, but it folds the sign and therefore has half
+the physical period; it must not be used to count capillary-wave periods.
 
 ## Oscillating Droplet
 

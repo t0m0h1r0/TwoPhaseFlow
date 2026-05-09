@@ -39,9 +39,10 @@ interface:
   reinitialization:
     algorithm: ridge_eikonal
     schedule:
-      # Closed-interface Riesz + conservative common-flux requires conservative
-      # q/momentum reinitialization before redistancing can be enabled.
-      every_steps: 0
+      # Conservative q/momentum reinitialization is represented in the current
+      # common-flux bundle, so the dynamic closed-interface route restores the
+      # CLS profile every physical step.
+      every_steps: 1
     profile:
       eps_scale: 1.4
       ridge_sigma_0: 3.0

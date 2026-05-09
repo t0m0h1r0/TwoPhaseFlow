@@ -185,6 +185,33 @@ def test_interface_amplitude_flat():
     assert amp < 0.05
 
 
+def test_signed_interface_amplitude_tracks_cosine_sign():
+    """Signed capillary-wave amplitude keeps the physical phase sign."""
+    X, Y = _make_grid()
+    amplitude = 0.05
+    interface = 0.5 + amplitude * np.cos(4.0 * np.pi * X)
+    psi = 0.5 + (Y - interface) / (2.0 * H)
+    u = v = p = np.zeros_like(psi)
+
+    diag = DiagnosticCollector(
+        [{"type": "signed_interface_amplitude", "mode": 2, "length": L}],
+        X,
+        Y,
+        H,
+    )
+    diag.collect(0.0, psi, u, v, p)
+    assert diag.last("signed_interface_amplitude") == pytest.approx(
+        amplitude, rel=5e-2
+    )
+
+    interface_flipped = 0.5 - amplitude * np.cos(4.0 * np.pi * X)
+    psi_flipped = 0.5 + (Y - interface_flipped) / (2.0 * H)
+    diag.collect(0.1, psi_flipped, u, v, p)
+    assert diag.last("signed_interface_amplitude") == pytest.approx(
+        -amplitude, rel=5e-2
+    )
+
+
 # ── Test 5: backward compatibility (dV=None) ────────────────────────────────
 
 def test_collect_dV_none_backward_compat():

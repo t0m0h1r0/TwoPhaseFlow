@@ -13,6 +13,8 @@ bubble_centroid       (xc, yc, vc) centroid of gas phase  → stores xc, yc, vc
 deformation           D = (L−B)/(L+B) from second moments of ψ > 0.5 region
 signed_deformation    signed x/y moment deformation for n=2 droplet oscillation
 interface_amplitude   max vertical deviation of ψ = 0.5 isoline from domain centre
+signed_interface_amplitude
+                      signed Fourier coefficient of a sinusoidal ψ = 0.5 interface
 laplace_pressure      |Δp_sim − σ/R| / (σ/R)  (static-droplet only)
 pressure_contrast     phase mean pressure jump <p>_liquid − <p>_gas
 symmetry_error        parity-aware reflection error under x/y mirror. Each
@@ -71,6 +73,7 @@ class DiagnosticCollector:
             "deformation",
             "signed_deformation",
             "interface_amplitude",
+            "signed_interface_amplitude",
             "laplace_pressure",
             "pressure_contrast",
             "symmetry_error",
@@ -94,10 +97,18 @@ class DiagnosticCollector:
         sigma: float = 0.0,
         R: float = 0.25,
     ) -> None:
-        # Normalise: metrics may be strings or dicts with 'type' key
-        self.metrics: list[str] = [
-            m if isinstance(m, str) else m["type"] for m in metrics
-        ]
+        # Normalise: metrics may be strings or dicts with 'type' key.
+        self.metrics: list[str] = []
+        self.metric_options: dict[str, dict] = {}
+        for metric in metrics:
+            if isinstance(metric, str):
+                name = metric
+                options = {}
+            else:
+                name = metric["type"]
+                options = {k: v for k, v in metric.items() if k != "type"}
+            self.metrics.append(name)
+            self.metric_options[name] = options
         # kinetic_energy is always needed for the divergence guard
         if "kinetic_energy" not in self.metrics:
             self.metrics.append("kinetic_energy")
@@ -156,6 +167,7 @@ class DiagnosticCollector:
                 "deformation",
                 "signed_deformation",
                 "interface_amplitude",
+                "signed_interface_amplitude",
             )
         )
 
@@ -336,6 +348,17 @@ class DiagnosticCollector:
             elif m == "interface_amplitude":
                 self._data[m].append(
                     _interface_amplitude(psi, geometry.Y, geometry.y_mid)
+                )
+
+            elif m == "signed_interface_amplitude":
+                self._data[m].append(
+                    _signed_interface_amplitude(
+                        psi,
+                        geometry.X,
+                        geometry.Y,
+                        geometry.y_mid,
+                        **self.metric_options.get(m, {}),
+                    )
                 )
 
             elif m == "symmetry_error":
@@ -541,4 +564,56 @@ def _interface_amplitude(psi, Y, y_mid) -> float:
     amplitude = xp.max(
         xp.where(has_crossing, xp.abs(y_int - y_mid), 0.0)
     )
+    return scalar_value(amplitude)
+
+
+def _signed_interface_amplitude(
+    psi,
+    X,
+    Y,
+    y_mid,
+    *,
+    mode: int = 1,
+    length: float | None = None,
+    phase: float = 0.0,
+) -> float:
+    """Return the signed cosine-mode coefficient of a graph interface."""
+    xp = _xp_of(psi)
+    psi_dev = xp.asarray(psi)
+    if psi_dev.shape[0] < 2 or psi_dev.shape[1] < 2:
+        return 0.0
+    X_dev = xp.asarray(X)
+    Y_dev = xp.asarray(Y)
+    below_left = psi_dev[:, :-1] - 0.5
+    below_right = psi_dev[:, 1:] - 0.5
+    crossings = below_left * below_right < 0.0
+    has_crossing = xp.any(crossings, axis=1)
+    first_crossing = xp.argmax(crossings, axis=1)
+    rows = xp.arange(psi_dev.shape[0])
+    psi0 = psi_dev[rows, first_crossing]
+    psi1 = psi_dev[rows, first_crossing + 1]
+    y0 = Y_dev[rows, first_crossing]
+    y1 = Y_dev[rows, first_crossing + 1]
+    denom = xp.where(has_crossing, psi1 - psi0, 1.0)
+    frac = xp.where(has_crossing, (0.5 - psi0) / denom, 0.0)
+    y_int = y0 + frac * (y1 - y0)
+    x_int = X_dev[rows, first_crossing]
+    eta = xp.where(has_crossing, y_int - y_mid, 0.0)
+
+    if length is None:
+        length_dev = xp.max(x_int) - xp.min(x_int)
+    else:
+        length_dev = xp.asarray(float(length))
+    angle = 2.0 * np.pi * int(mode) * x_int / length_dev + float(phase)
+    basis = xp.cos(angle)
+
+    dx = x_int[1:] - x_int[:-1]
+    weights = xp.zeros_like(x_int)
+    weights[0] = 0.5 * dx[0]
+    weights[-1] = 0.5 * dx[-1]
+    weights[1:-1] = 0.5 * (dx[:-1] + dx[1:])
+    weights = xp.where(has_crossing, weights, 0.0)
+    numerator = xp.sum(weights * eta * basis)
+    denominator = xp.sum(weights * basis * basis)
+    amplitude = xp.where(denominator > 0.0, numerator / denominator, 0.0)
     return scalar_value(amplitude)

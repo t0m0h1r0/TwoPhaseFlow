@@ -329,11 +329,18 @@ def test_ch14_capillary_yaml_loads_execution_stack():
     assert cfg.physics.mu_l == pytest.approx(1.002e-3)
     assert cfg.physics.mu_g == pytest.approx(1.825e-5)
     assert cfg.physics.sigma == pytest.approx(0.0728)
-    assert cfg.run.T_final == pytest.approx(0.046742820855)
+    assert cfg.run.T_final == pytest.approx(0.046742983863)
     assert cfg.run.snap_times == pytest.approx(
-        (0.0, 0.011685705214, 0.023371410427, 0.035057115641, 0.046742820855)
+        (0.0, 0.011685745966, 0.023371491932, 0.035057237897, 0.046742983863)
     )
     assert "interface_amplitude" in cfg.diagnostics
+    assert any(
+        isinstance(d, dict)
+        and d.get("type") == "signed_interface_amplitude"
+        and d.get("mode") == 2
+        and d.get("length") == pytest.approx(0.02)
+        for d in cfg.diagnostics
+    )
     assert "deformation" not in cfg.diagnostics
     assert cfg.run.advection_scheme == "fccd_flux"
     assert cfg.run.convection_scheme == "uccd6"
@@ -487,7 +494,6 @@ def test_ch14_canonical_yamls_share_base_numerical_stack():
             0
             if path.name in {
                 "ch14_static_droplet.yaml",
-                "ch14_oscillating_droplet.yaml",
                 "ch14_rising_bubble.yaml",
             }
             else 1
