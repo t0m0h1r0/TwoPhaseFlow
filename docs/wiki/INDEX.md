@@ -1,4 +1,4 @@
-# Wiki Index — 365 entries
+# Wiki Index — 366 entries
 
 ## Active Retrieval Gate
 
@@ -9,7 +9,7 @@ recent research findings.  Older cards remain listed for provenance, but cards
 marked SUPERSEDED or REFERENCE must not be used as current algorithm policy
 without their curation notes.
 
-## Theory (165)
+## Theory (166)
 
 | REF-ID | Title |
 |--------|-------|
@@ -180,6 +180,7 @@ without their curation notes.
 | [WIKI-T-165](theory/WIKI-T-165.md) | Variational Gravity Hodge Projection |
 | [WIKI-T-166](theory/WIKI-T-166.md) | Boundary-Constrained Face Hodge Projection |
 | [WIKI-T-167](theory/WIKI-T-167.md) | Discrete Boundary-Constrained Face Hodge Operator |
+| [WIKI-T-168](theory/WIKI-T-168.md) | Constrained Face-State Space Reformulation |
 
 ## Cross-Domain (48)
 

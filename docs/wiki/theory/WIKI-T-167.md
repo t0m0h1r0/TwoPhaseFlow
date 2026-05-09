@@ -2,7 +2,7 @@
 ref_id: WIKI-T-167
 title: "Discrete Boundary-Constrained Face Hodge Operator"
 domain: theory
-status: ACTIVE
+status: REFERENCE
 tags: [discretization, hodge_projection, no_slip, wall_boundary, face_state, gpu, common_flux]
 sources:
   - path: docs/memo/short_paper/SP-AM_boundary_hodge_discretization.md
@@ -28,6 +28,13 @@ compiled_at: "2026-05-09"
 ---
 
 # Discrete Boundary-Constrained Face Hodge Operator
+
+## Status Note
+
+This card is now the additive KKT reference and diagnostic contract.  For the
+active production direction, read [[WIKI-T-168]] first: define the constrained
+face-state space `F_w=ker C_w`, then build the pressure projection through
+`D_h P_w G_A`.
 
 ## Claim
 

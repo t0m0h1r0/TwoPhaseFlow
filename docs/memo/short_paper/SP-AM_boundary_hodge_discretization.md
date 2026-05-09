@@ -1,10 +1,19 @@
 # SP-AM: Discrete Boundary-Constrained Face Hodge Operator
 
-**Status**: ACTIVE discretization specification  
+**Status**: REFERENCE diagnostic/KKT discretization specification
 **Date**: 2026-05-09  
 **Scope**: implementation-ready discretization of SP-AL for wall-bounded
 conservative common-flux two-phase flow  
 **Companion papers**: SP-AL, SP-AJ, SP-AK, SP-AI, SP-W, SP-X
+
+## 0. Status Note After SP-AN
+
+SP-AM remains the reference for the additive pressure+wall KKT operator and for
+the concrete `C_w`, `C_w^T`, and rank-probe diagnostics.  After the
+`periodic_wall` rank defect and physical-`dt` conditioning probe, it is no
+longer the preferred production chart.  Use SP-AN first for production work:
+define the velocity state space as `F_w=ker C_w`, then solve the pressure
+projection through the restricted operator `D_h P_w G_A`.
 
 ## 1. Goal
 

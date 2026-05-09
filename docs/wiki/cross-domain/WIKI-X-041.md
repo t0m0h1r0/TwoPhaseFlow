@@ -33,7 +33,9 @@ sources:
   - path: docs/wiki/theory/WIKI-T-166.md
     description: "Boundary-constrained face Hodge projection for no-slip preserved face states"
   - path: docs/wiki/theory/WIKI-T-167.md
-    description: "Discrete operator/KKT contract for boundary-constrained face Hodge implementation"
+    description: "Reference additive KKT contract and rank-probe diagnostics for boundary-constrained face Hodge"
+  - path: docs/wiki/theory/WIKI-T-168.md
+    description: "Active constrained face-state space reformulation for wall-bounded common-flux flow"
   - path: docs/wiki/cross-domain/WIKI-X-048.md
     description: "Ch14 capillary Hodge trial ledger for knowledge, failures, and falsified routes"
   - path: docs/wiki/paper/WIKI-P-018.md
@@ -58,6 +60,7 @@ depends_on:
   - "[[WIKI-T-165]]"
   - "[[WIKI-T-166]]"
   - "[[WIKI-T-167]]"
+  - "[[WIKI-T-168]]"
   - "[[WIKI-X-048]]"
   - "[[WIKI-P-018]]"
   - "[[WIKI-T-156]]"
@@ -92,7 +95,7 @@ algorithm policy.
 |---|---|---|
 | Projection closure | [[WIKI-T-080]], [[WIKI-X-040]] | PPE, corrector, pressure history, and diagnostics share face-space objects. |
 | CLS transport | [[WIKI-T-156]], [[WIKI-T-088]], [[WIKI-T-101]] | Current paper contract is FCCD face-flux CLS transport with projected face velocity. |
-| Rising-bubble conservative remedy | [[WIKI-T-164]], [[WIKI-T-165]], [[WIKI-T-166]], [[WIKI-T-167]] | Treat SI water-air rising-bubble blow-up as an unaccounted energy injection into an interface-band high-k mode.  The active remedy is conservative common-flux transport of `q,m,p`, conservative reinit/remap or fail-close, transported-mass pressure projection, variational capillary/gravity work, dissipative viscosity, face-cochain pressure history, boundary-constrained face Hodge projection, and per-step energy/high-k certificates.  After the pressure-history-only check failed to remove the blow-up, read [[WIKI-T-165]] for gravity as `-T_m^T d Phi_g`; after the wall-localized face/nodal mismatch RCA, read [[WIKI-T-166]] as the active wall-boundary refinement and [[WIKI-T-167]] for the discrete operator contract: preserved face states must satisfy both `D_h f=0` and `C_w f=B_h R_h f=0` before publishing `u=R_h f` and `m=rho u`.  Do not use DCCD/UCCD as a silent velocity damper. |
+| Rising-bubble conservative remedy | [[WIKI-T-164]], [[WIKI-T-165]], [[WIKI-T-166]], [[WIKI-T-168]], [[WIKI-T-167]] | Treat SI water-air rising-bubble blow-up as an unaccounted energy injection into an interface-band high-k mode.  The active remedy is conservative common-flux transport of `q,m,p`, conservative reinit/remap or fail-close, transported-mass pressure projection, variational capillary/gravity work, dissipative viscosity, face-cochain pressure history, boundary-constrained face state space, and per-step energy/high-k certificates.  After the pressure-history-only check failed to remove the blow-up, read [[WIKI-T-165]] for gravity as `-T_m^T d Phi_g`; after the wall-localized face/nodal mismatch RCA, read [[WIKI-T-166]] for the target `D_h f=0`, `C_w f=B_h R_h f=0`, then read [[WIKI-T-168]] as the active production direction: build `F_w=ker C_w` first and solve pressure through `D_h P_w G_A`.  Use [[WIKI-T-167]] only as the additive KKT/reference rank-probe contract.  Do not use DCCD/UCCD as a silent velocity damper. |
 | Capillary jump | [[WIKI-X-039]], [[WIKI-X-040]] | Use oriented affine interface stress and face acceleration, not a regular pressure field. |
 | PPE residual | [[WIKI-T-152]], [[WIKI-E-059]] | Production projection accuracy is the high-order residual contract, not fixed DC iteration count. |
 | Pressure representative | [[WIKI-T-154]], [[WIKI-T-158]], [[WIKI-E-060]], [[WIKI-E-062]] | Raw interface-band pressure is diagnostic; read Hodge representatives and face cochains, never masked-band substitutes. |
@@ -164,6 +167,11 @@ They are retained with a bounded reading:
   place to check already-falsified zero-drive, raw-`none`, component-only,
   pressure-representative, trace-endpoint, and static-critical explanations
   before starting another remedy loop;
+- the additive boundary-Hodge KKT in [[WIKI-T-167]] is retained as a diagnostic
+  reference after the rank probe, but active production work should start from
+  the constrained face-state space in [[WIKI-T-168]]; wall-only post-projection,
+  nodal clamping, generic `D_h^T`, dense CPU KKT, and penalty/damping routes
+  remain negative knowledge;
 - pre-projection-native nonuniform density-ratio limits remain experiment
   history, not the current solver envelope.
 
