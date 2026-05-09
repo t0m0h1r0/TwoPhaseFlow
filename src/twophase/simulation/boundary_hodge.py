@@ -9,6 +9,14 @@ A3 mapping:
   ``C_w M_f^{-1} C_w^T`` is applied matrix-free.
   Code: ``project_wall_trace`` solves the wall Schur system by CG using only
   backend array operations, so the GPU path never assembles a dense matrix.
+
+  Equation: SP-AN restricted face-state pressure reaction
+  ``G_w p = P_w G_A p`` with ``P_w`` the same wall metric retraction.
+  Discretization: reuse the active ``pressure_fluxes`` map for ``G_A`` and
+  apply ``project_wall_trace`` to the resulting face reaction.
+  Code: ``restricted_pressure_fluxes`` composes these matrix-free backend
+  operators; it is a diagnostic/proof operator until the PPE solve itself is
+  changed to ``D_h P_w G_A``.
 """
 
 from __future__ import annotations
@@ -167,6 +175,38 @@ def _apply_inverse_face_mass(xp, covectors: list, face_density_components: list)
     return corrections
 
 
+def face_mass_inner_product(
+    *,
+    xp,
+    grid,
+    fccd,
+    rho,
+    left_components: list,
+    right_components: list,
+):
+    """Return the transported face-mass inner product used by ``P_w``.
+
+    Symbol mapping:
+      ``M_f`` -> diagonal transported face density used by the current
+      boundary-Hodge diagnostic metric.
+      ``<a,b>_{M_f}`` -> sum_f rho_f a_f b_f.
+    """
+    face_density_components = _face_density_components(
+        xp,
+        fccd,
+        rho,
+        grid,
+    )
+    total = xp.asarray(0.0, dtype=left_components[0].dtype)
+    for left, right, density in zip(
+        left_components,
+        right_components,
+        face_density_components,
+    ):
+        total = total + xp.vdot(left, density * right).real
+    return total
+
+
 def _cg_solve(xp, apply_operator, rhs, *, tolerance: float, max_iterations: int):
     x = xp.zeros_like(rhs)
     r = rhs - apply_operator(x)
@@ -282,3 +322,74 @@ def project_wall_trace(
         "boundary_hodge_correction_linf": correction_linf,
     }
     return BoundaryHodgeProjection(face_components=corrected, diagnostics=diagnostics)
+
+
+def restricted_pressure_fluxes(
+    *,
+    xp,
+    grid,
+    fccd,
+    div_op,
+    pressure,
+    rho,
+    bc_type: str,
+    pressure_flux_kwargs: dict | None = None,
+    tolerance: float = 1.0e-10,
+    max_iterations: int = 80,
+) -> BoundaryHodgeProjection:
+    """Apply the SP-AN restricted pressure reaction ``G_w p = P_w G_A p``.
+
+    This function deliberately composes existing production operators:
+
+    ``G_A``
+        ``div_op.pressure_fluxes(pressure, rho, **pressure_flux_kwargs)``
+
+    ``P_w``
+        ``project_wall_trace`` with the transported face-mass metric.
+
+    It does not solve the restricted pressure equation.  It is the GPU-first
+    matrix-free building block and diagnostic for the future
+    ``D_h P_w G_A`` PPE operator.
+    """
+    kwargs = {} if pressure_flux_kwargs is None else dict(pressure_flux_kwargs)
+    pressure_faces = div_op.pressure_fluxes(pressure, rho, **kwargs)
+    projection = project_wall_trace(
+        xp=xp,
+        grid=grid,
+        fccd=fccd,
+        face_components=pressure_faces,
+        rho=rho,
+        bc_type=bc_type,
+        tolerance=tolerance,
+        max_iterations=max_iterations,
+    )
+    diagnostics = dict(projection.diagnostics)
+    diagnostics.update(
+        {
+            "constrained_face_space_active": 1.0,
+            "constrained_face_space_pressure_raw_wall_linf": diagnostics.get(
+                "boundary_hodge_wall_initial_linf",
+                0.0,
+            ),
+            "constrained_face_space_pressure_wall_linf": diagnostics.get(
+                "boundary_hodge_wall_linf",
+                0.0,
+            ),
+            "constrained_face_space_pressure_cg_iterations": diagnostics.get(
+                "boundary_hodge_cg_iterations",
+                0.0,
+            ),
+            "constrained_face_space_pressure_cg_residual": diagnostics.get(
+                "boundary_hodge_cg_residual",
+                0.0,
+            ),
+            "constrained_face_space_pressure_cg_converged": diagnostics.get(
+                "boundary_hodge_cg_converged",
+                1.0,
+            ),
+        }
+    )
+    return BoundaryHodgeProjection(
+        face_components=projection.face_components,
+        diagnostics=diagnostics,
+    )

@@ -21,8 +21,14 @@ THEORY_CFL_ADVECTIVE = 0.10
 THEORY_CFL_CAPILLARY = 0.05
 THEORY_CFL_VISCOUS = 1.0
 _BOUNDARY_HODGE_MODES = ("off", "wall_trace_projection")
+_BOUNDARY_HODGE_STATE_SPACES = ("full_face", "constrained_face")
 _BOUNDARY_HODGE_WALL_TRACES = ("reconstruct_nodes",)
+_BOUNDARY_HODGE_WALL_RETRACTIONS = ("metric_projection",)
 _BOUNDARY_HODGE_METRICS = ("transported_face_mass",)
+_BOUNDARY_HODGE_PRESSURE_PAIRINGS = (
+    "active_variational_adjoint",
+    "restricted_variational_adjoint",
+)
 _BOUNDARY_HODGE_SOLVERS = ("matrix_free_cg",)
 _BOUNDARY_HODGE_GATES = ("off", "diagnostic", "fail_close")
 
@@ -99,16 +105,46 @@ def _parse_boundary_hodge(projection: dict[str, Any]) -> dict[str, Any]:
         _BOUNDARY_HODGE_MODES,
         "numerics.projection.boundary_hodge.mode",
     )
+    state_space = validate_choice(
+        str(raw.get("state_space", "full_face")).strip().lower(),
+        _BOUNDARY_HODGE_STATE_SPACES,
+        "numerics.projection.boundary_hodge.state_space",
+    )
     wall_trace = validate_choice(
         str(raw.get("wall_trace", "reconstruct_nodes")).strip().lower(),
         _BOUNDARY_HODGE_WALL_TRACES,
         "numerics.projection.boundary_hodge.wall_trace",
+    )
+    wall_retraction = validate_choice(
+        str(raw.get("wall_retraction", "metric_projection")).strip().lower(),
+        _BOUNDARY_HODGE_WALL_RETRACTIONS,
+        "numerics.projection.boundary_hodge.wall_retraction",
     )
     metric = validate_choice(
         str(raw.get("metric", "transported_face_mass")).strip().lower(),
         _BOUNDARY_HODGE_METRICS,
         "numerics.projection.boundary_hodge.metric",
     )
+    pressure_default = (
+        "restricted_variational_adjoint"
+        if state_space == "constrained_face"
+        else "active_variational_adjoint"
+    )
+    pressure_pairing = validate_choice(
+        str(raw.get("pressure_pairing", pressure_default)).strip().lower(),
+        _BOUNDARY_HODGE_PRESSURE_PAIRINGS,
+        "numerics.projection.boundary_hodge.pressure_pairing",
+    )
+    if state_space == "constrained_face" and pressure_pairing != "restricted_variational_adjoint":
+        raise ValueError(
+            "numerics.projection.boundary_hodge.state_space='constrained_face' "
+            "requires pressure_pairing='restricted_variational_adjoint'."
+        )
+    if mode == "wall_trace_projection" and state_space == "constrained_face":
+        raise ValueError(
+            "boundary_hodge.mode='wall_trace_projection' is a post-pressure "
+            "diagnostic and must not be combined with state_space='constrained_face'."
+        )
     solver = validate_choice(
         str(raw.get("solver", "matrix_free_cg")).strip().lower(),
         _BOUNDARY_HODGE_SOLVERS,
@@ -134,8 +170,11 @@ def _parse_boundary_hodge(projection: dict[str, Any]) -> dict[str, Any]:
         )
     return {
         "mode": mode,
+        "state_space": state_space,
         "wall_trace": wall_trace,
+        "wall_retraction": wall_retraction,
         "metric": metric,
+        "pressure_pairing": pressure_pairing,
         "solver": solver,
         "tolerance": tolerance,
         "max_iterations": max_iterations,
@@ -305,8 +344,11 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
             options.projection.get("preserve_projected_faces", False)
         ),
         boundary_hodge_mode=boundary_hodge["mode"],
+        boundary_hodge_state_space=boundary_hodge["state_space"],
         boundary_hodge_wall_trace=boundary_hodge["wall_trace"],
+        boundary_hodge_wall_retraction=boundary_hodge["wall_retraction"],
         boundary_hodge_metric=boundary_hodge["metric"],
+        boundary_hodge_pressure_pairing=boundary_hodge["pressure_pairing"],
         boundary_hodge_solver=boundary_hodge["solver"],
         boundary_hodge_tolerance=boundary_hodge["tolerance"],
         boundary_hodge_max_iterations=boundary_hodge["max_iterations"],

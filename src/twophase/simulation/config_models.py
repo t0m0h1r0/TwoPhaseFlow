@@ -139,8 +139,11 @@ class RunCfg:
     face_no_slip_boundary_state: bool = False
     preserve_projected_faces: bool = False
     boundary_hodge_mode: str = "off"
+    boundary_hodge_state_space: str = "full_face"
     boundary_hodge_wall_trace: str = "reconstruct_nodes"
+    boundary_hodge_wall_retraction: str = "metric_projection"
     boundary_hodge_metric: str = "transported_face_mass"
+    boundary_hodge_pressure_pairing: str = "active_variational_adjoint"
     boundary_hodge_solver: str = "matrix_free_cg"
     boundary_hodge_tolerance: float = 1.0e-10
     boundary_hodge_max_iterations: int = 80

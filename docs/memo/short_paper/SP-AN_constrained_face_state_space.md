@@ -332,6 +332,32 @@ rank(D_h P_w G_A) gate passes on small probes
 The old `boundary_hodge.wall_trace_projection` remains useful as the
 implementation of `P_w`, but not as a final-state repair.
 
+### Implemented First Slice
+
+The first code slice implements the state-space building blocks, not the final
+restricted PPE solve:
+
+```text
+P_w.apply(faces)                 = project_wall_trace(...)
+restricted_pressure_fluxes(p)    = P_w G_A(p)
+diagnostic restricted operator   = D_h P_w G_A
+```
+
+The canonical rising-bubble YAML records:
+
+```yaml
+boundary_hodge:
+  mode: off
+  state_space: constrained_face
+  wall_retraction: metric_projection
+  pressure_pairing: restricted_variational_adjoint
+  gate: diagnostic
+```
+
+`mode: off` is intentional.  It prevents the old post-pressure wall repair from
+being mistaken for the new state-space projection.  Production enablement
+requires the remaining solve and publication gates.
+
 ## 10. Verification Ladder
 
 The next efficient proof ladder is:

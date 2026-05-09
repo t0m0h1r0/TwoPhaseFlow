@@ -82,6 +82,19 @@ rank(D_h P_w G_A) = rank(D_h | F_w)
 ||D_h f||, ||C_w f||, ||u-R_hf||, ||m-rho u|| all pass together
 ```
 
+## Implemented Slice
+
+Current code implements the GPU-first building block:
+
+```text
+restricted_pressure_fluxes(p) = P_w G_A(p)
+```
+
+in `src/twophase/simulation/boundary_hodge.py`.  It is a matrix-free helper and
+diagnostic operator, not yet a production PPE replacement.  The canonical
+`ch14_rising_bubble.yaml` records `state_space: constrained_face` and
+`pressure_pairing: restricted_variational_adjoint` with `mode: off`.
+
 ## Negative Knowledge
 
 Do not use as production fixes:

@@ -518,7 +518,10 @@ def test_ch14_rising_bubble_yaml_loads_execution_stack():
     assert cfg.run.face_native_predictor_state is True
     assert cfg.run.preserve_projected_faces is True
     assert cfg.run.boundary_hodge_mode == "off"
+    assert cfg.run.boundary_hodge_state_space == "constrained_face"
+    assert cfg.run.boundary_hodge_wall_retraction == "metric_projection"
     assert cfg.run.boundary_hodge_metric == "transported_face_mass"
+    assert cfg.run.boundary_hodge_pressure_pairing == "restricted_variational_adjoint"
     assert cfg.run.boundary_hodge_solver == "matrix_free_cg"
     assert cfg.run.boundary_hodge_gate == "diagnostic"
     assert cfg.run.pressure_scheme == "fccd_matrixfree"

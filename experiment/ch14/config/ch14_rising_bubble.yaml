@@ -130,11 +130,15 @@ numerics:
     face_native_predictor_state: true
     preserve_projected_faces: true
     boundary_hodge:
-      # wall_trace_projection is available as a diagnostic Hodge projection,
-      # but it is not a production fix: validation shows it destroys D_h f.
+      # SP-AN state-space route: keep the production solver off until the
+      # restricted operator D_h P_w G_A passes S1--S8, but make the YAML
+      # contract explicit and reproducible.
       mode: off
+      state_space: constrained_face
       wall_trace: reconstruct_nodes
+      wall_retraction: metric_projection
       metric: transported_face_mass
+      pressure_pairing: restricted_variational_adjoint
       solver: matrix_free_cg
       tolerance: 1.0e-10
       max_iterations: 80

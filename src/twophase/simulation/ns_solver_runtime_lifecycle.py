@@ -31,11 +31,24 @@ def initialise_ns_solver_from_options(solver, options) -> None:
     solver._boundary_hodge_mode = str(
         getattr(options.schemes, "boundary_hodge_mode", "off")
     )
+    solver._boundary_hodge_state_space = str(
+        getattr(options.schemes, "boundary_hodge_state_space", "full_face")
+    )
     solver._boundary_hodge_wall_trace = str(
         getattr(options.schemes, "boundary_hodge_wall_trace", "reconstruct_nodes")
     )
+    solver._boundary_hodge_wall_retraction = str(
+        getattr(options.schemes, "boundary_hodge_wall_retraction", "metric_projection")
+    )
     solver._boundary_hodge_metric = str(
         getattr(options.schemes, "boundary_hodge_metric", "transported_face_mass")
+    )
+    solver._boundary_hodge_pressure_pairing = str(
+        getattr(
+            options.schemes,
+            "boundary_hodge_pressure_pairing",
+            "active_variational_adjoint",
+        )
     )
     solver._boundary_hodge_solver = str(
         getattr(options.schemes, "boundary_hodge_solver", "matrix_free_cg")
