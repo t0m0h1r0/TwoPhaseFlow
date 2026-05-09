@@ -162,7 +162,7 @@ $\kappa_{lg} = \bnabla^2\phi$ と単純化される．
 % ─────────────────────────────────────────────────────────────────────────────
 
 式~\eqref{eq:curvature_div} を2次元 $(x,y)$ 系で展開すると（商の微分法則による導出は
-付録~\ref{app:curvature_2d_derivation}），以下の実装に適した形式が得られる：
+付録~\ref{app:curvature_2d_derivation}），以下の計算に適した形式が得られる：
 \begin{equation}
   \kappa_{lg} = \frac{
     \phi_y^2\,\phi_{xx}
@@ -233,7 +233,7 @@ $\phi \in \mathbb{R}$ 全域で $C^2$ かつ $g' < 0$ を満たすため，
 一方，$|g'(\phi)| = \varepsilon^{-1}\psi(1-\psi)$ であるから，
 $\psi \to 0$ または $\psi \to 1$ の\textbf{飽和領域}では $g'(\phi) \to 0$ に漸近し，
 数値離散では $|\bnabla\psi|$ がアンダーフローして曲率の分母が不安定化する．
-したがって数値実装では適用域を
+したがって数値計算では適用域を
 \[
   I_\psi \equiv \{\phi : \psi_{\min} < H_\varepsilon(-\phi) < 1 - \psi_{\min}\}
   \quad (\text{推奨 } \psi_{\min} = 0.01)
