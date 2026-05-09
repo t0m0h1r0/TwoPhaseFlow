@@ -369,7 +369,7 @@ def test_ch14_capillary_yaml_loads_execution_stack():
     assert cfg.run.ppe_interface_coupling_scheme == "affine_jump"
     assert cfg.run.capillary_range_projection == "component_hodge_augmented"
     assert cfg.run.ppe_defect_correction is True
-    assert cfg.grid.grid_rebuild_freq == 1
+    assert cfg.grid.grid_rebuild_freq == 0
     assert cfg.run.reinit_every == 1
     assert cfg.run.reinit_trigger_mode == "fixed"
     assert cfg.run.interface_tracking_method == "psi_direct"
@@ -432,6 +432,13 @@ def test_ch14_oscillating_droplet_yaml_uses_signed_deformation_only():
     assert cfg.run.snap_times == pytest.approx(
         (0.0, 0.026365165771, 0.052730331541, 0.079095497312, 0.105460663082)
     )
+    assert cfg.grid.grid_rebuild_freq == 0
+    pressure_figs = [
+        fig
+        for fig in cfg.output.figures
+        if fig.get("type") == "snapshot_series" and fig.get("file_prefix") == "pressure_t"
+    ]
+    assert pressure_figs[0]["field"] == "pressure"
     assert "signed_deformation" in cfg.diagnostics
     assert "deformation" not in cfg.diagnostics
 
@@ -478,7 +485,11 @@ def test_ch14_canonical_yamls_share_base_numerical_stack():
         assert cfg.run.curvature_method == "face_implicit", path.name
         expected_reinit = (
             0
-            if path.name in {"ch14_static_droplet.yaml", "ch14_rising_bubble.yaml"}
+            if path.name in {
+                "ch14_static_droplet.yaml",
+                "ch14_oscillating_droplet.yaml",
+                "ch14_rising_bubble.yaml",
+            }
             else 1
         )
         assert cfg.run.reinit_every == expected_reinit, path.name

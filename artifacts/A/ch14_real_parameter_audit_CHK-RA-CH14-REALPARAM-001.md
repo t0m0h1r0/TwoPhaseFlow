@@ -11,6 +11,24 @@ The numerical stack is unchanged.  This audit changes only SI physical scale,
 material constants, final times, snapshot times, and tests/docs that lock those
 values.
 
+During validation, the first capillary run exposed the existing fail-closed
+contract that `conservative_common_flux` cannot be combined with dynamic grid
+rebuilds until conservative `q,m,p` remap exists.  The targeted capillary and
+oscillating-droplet YAMLs therefore keep the initial fitted grid fixed with
+`grid.distribution.schedule: 0`.
+
+The oscillating-droplet smoke then exposed the companion closed-interface
+contract: closed-interface Riesz capillary work cannot be combined with
+q-only redistancing until conservative `q,m,p` reinitialization exists.  The
+oscillating-droplet YAML therefore uses
+`interface.reinitialization.schedule.every_steps: 0`.
+
+The same smoke reached `data.npz` and then fail-closed in plotting because the
+saved affine pressure face cochain was not same-phase integrable as a scalar
+Hodge representative at the smoke time.  The oscillating-droplet pressure
+snapshot now plots the stored scalar `pressure` field, matching the README rule
+for non-integrable affine cochains.
+
 ## Interpretation
 
 The user request "N=10mm程度" is treated as a 10 mm-class physical length:
@@ -77,7 +95,19 @@ Snapshot times are `0, T/4, T/2, 3T/4, T`.
 - Targeted config tests:
   `test_ch14_capillary_yaml_loads_execution_stack`,
   `test_ch14_oscillating_droplet_yaml_uses_signed_deformation_only`, and
-  `test_ch14_oscillating_droplet_variant_uses_signed_deformation_only`: PASS
+  `test_ch14_oscillating_droplet_variant_uses_signed_deformation_only`,
+  plus `test_ch14_canonical_yamls_share_base_numerical_stack`: PASS
+- Remote-first experiment execution: remote unavailable; local fallback is used
+  with the project virtualenv on `PATH`.
+- Full capillary local fallback was attempted after the remote check failed, but
+  CPU execution was stopped after it exceeded the useful interactive budget.
+- Local smoke copies in `/private/tmp` PASS:
+  - `/private/tmp/ch14_capillary_smoke.yaml`: 3 steps, final `t=5.0e-5`,
+    `dt_cap=1.844e-5`, finite KE, wrote
+    `/private/tmp/results/ch14_capillary_smoke/data.npz`.
+  - `/private/tmp/ch14_oscillating_droplet_smoke.yaml`: 2 steps, final
+    `t=5.0e-5`, `dt_cap=2.652e-5`, finite KE, wrote
+    `/private/tmp/results/ch14_oscillating_droplet_smoke/data.npz`.
 
 ## SOLID
 

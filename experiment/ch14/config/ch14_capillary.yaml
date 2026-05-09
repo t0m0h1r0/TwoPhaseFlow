@@ -29,7 +29,9 @@ grid:
         lower: wall
         upper: wall
   distribution:
-    schedule: 1
+    # Conservative common-flux runs keep the initial fitted grid fixed until a
+    # conservative q/momentum grid-remap retraction is implemented.
+    schedule: 0
     axes:
       x:
         type: nonuniform
