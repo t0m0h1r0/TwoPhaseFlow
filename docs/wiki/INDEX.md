@@ -178,6 +178,7 @@ without their curation notes.
 | [WIKI-T-163](theory/WIKI-T-163.md) | Reinitialization-Free CLS Survey and Candidate Routes |
 | [WIKI-T-164](theory/WIKI-T-164.md) | Conservative Common-Flux Energy Ledger for Rising Bubbles |
 | [WIKI-T-165](theory/WIKI-T-165.md) | Variational Gravity Hodge Projection |
+| [WIKI-T-166](theory/WIKI-T-166.md) | Boundary-Constrained Face Hodge Projection |
 
 ## Cross-Domain (48)
 
