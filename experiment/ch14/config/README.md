@@ -210,10 +210,10 @@ frequency:
   tracking cleanup while transporting the interface in physical time.
 - `interface.reinitialization.schedule.every_steps`: full CLS profile restoration
   in pseudo-time after advection.
-  Static and closed-interface conservative common-flux configs set this to `0`
-  until conservative `q,m,p` reinitialization is implemented; otherwise profile
-  redistancing would move the capillary endpoint outside the conservative
-  momentum ledger.
+  Conservative common-flux reinitialization must be represented in the same
+  `q,m,p` bundle as transport.  Checked-in configs may still set this to `0`
+  for benchmark-specific reasons such as static-equilibrium gates or
+  transport-only dynamic gates.
 
 This follows WIKI-X-027: interface advection and reinitialization use different
 time axes and should not be placed as sibling `run` knobs or mixed in one
@@ -234,10 +234,9 @@ periodic.  The canonical form is axis-local and monitor-based:
 - Legacy compact form remains accepted for interface-only grids:
   top-level `type/method/alpha` plus `axes: [x]`, `[y]`, `[x, y]`, or omitted.
   It cannot express wall refinement.
-- `schedule`: non-negative grid rebuild interval. Conservative common-flux
-  configs that do not yet have a conservative `q,m,p` grid-remap retraction
-  must use `0`, meaning the fitted grid is built from the initial interface and
-  then held fixed.
+- `schedule`: non-negative grid rebuild interval. The paper-standard
+  interface-following route is `1`, meaning the fitted grid is rebuilt every
+  physical step from the current conservative common-flux state.
 
 Uniform axes may not declare monitors. Nonuniform axes must declare at least
 one monitor. Periodic axes may use interface monitors but cannot use wall
@@ -254,7 +253,7 @@ grid:
         lower: wall
         upper: wall
   distribution:
-    schedule: 0
+    schedule: 1
     axes:
       x:
         type: uniform

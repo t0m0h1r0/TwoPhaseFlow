@@ -369,7 +369,7 @@ def test_ch14_capillary_yaml_loads_execution_stack():
     assert cfg.run.ppe_interface_coupling_scheme == "affine_jump"
     assert cfg.run.capillary_range_projection == "component_hodge_augmented"
     assert cfg.run.ppe_defect_correction is True
-    assert cfg.grid.grid_rebuild_freq == 0
+    assert cfg.grid.grid_rebuild_freq == 1
     assert cfg.run.reinit_every == 1
     assert cfg.run.reinit_trigger_mode == "fixed"
     assert cfg.run.interface_tracking_method == "psi_direct"
@@ -432,7 +432,7 @@ def test_ch14_oscillating_droplet_yaml_uses_signed_deformation_only():
     assert cfg.run.snap_times == pytest.approx(
         (0.0, 0.026365165771, 0.052730331541, 0.079095497312, 0.105460663082)
     )
-    assert cfg.grid.grid_rebuild_freq == 0
+    assert cfg.grid.grid_rebuild_freq == 1
     pressure_figs = [
         fig
         for fig in cfg.output.figures
@@ -573,7 +573,7 @@ def test_ch14_rising_bubble_yaml_loads_execution_stack():
     assert cfg.grid.bc_type == "periodic_wall"
     assert cfg.grid.grid_rebuild_freq == 0
     assert cfg.physics.g_acc == pytest.approx(9.81)
-    assert cfg.run.T_final == pytest.approx(0.03)
+    assert cfg.run.T_final == pytest.approx(0.05)
     assert cfg.run.snap_interval == pytest.approx(0.005)
     assert cfg.run.snap_times == pytest.approx(
         (0.0, 0.005, 0.01, 0.015, 0.02, 0.025, 0.03)

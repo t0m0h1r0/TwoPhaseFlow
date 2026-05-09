@@ -11,11 +11,12 @@ The numerical stack is unchanged.  This audit changes only SI physical scale,
 material constants, final times, snapshot times, and tests/docs that lock those
 values.
 
-During validation, the first capillary run exposed the existing fail-closed
-contract that `conservative_common_flux` cannot be combined with dynamic grid
-rebuilds until conservative `q,m,p` remap exists.  The targeted capillary and
-oscillating-droplet YAMLs therefore keep the initial fitted grid fixed with
-`grid.distribution.schedule: 0`.
+Initial validation exposed the then-existing fail-closed contract that
+`conservative_common_flux` could not be combined with dynamic grid rebuilds
+until conservative `q,m,p` remap existed.  After merging main
+`CHK-RA-COMMON-FLUX-REMAP-001`, that remap/reinit representation is available,
+so the targeted capillary and oscillating-droplet YAMLs restore the
+interface-following route with `grid.distribution.schedule: 1`.
 
 The oscillating-droplet smoke then exposed the companion closed-interface
 contract: closed-interface Riesz capillary work cannot be combined with
