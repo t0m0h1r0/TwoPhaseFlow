@@ -613,10 +613,28 @@ $\widehat c_{\sigma,f}=s_f-B_h\mu$ である．
 を同時に満たす必要がある．したがって，post-pressure wall-only projection，
 節点壁速度の後置 clamp，または full-space KKT を未検証のまま
 production solve として用いる経路は本稿の標準経路から外す．
-採用するのは，式~\eqref{eq:wall_metric_retraction} の $P_w$ と
-式~\eqref{eq:restricted_pressure_operator} の $G_w=P_wG_A$ を使い，
+採用するのは，式~\eqref{eq:wall_metric_retraction} の $P_w^{(M)}$ と
+式~\eqref{eq:restricted_pressure_operator} の $G_w=P_w^{(A)}G_A$ を使い，
 制約付き pressure complex が Green 恒等式・rank gate・製造解 gate を通るかを
 診断する state-space 契約である．
+実装上は，この契約を次の順で検査する．
+\[
+\begin{gathered}
+  C_w=B_h^wR_h,\quad
+  P_w^{(M)}=
+  I-M^{-1}C_w^T(C_wM^{-1}C_w^T)^+C_w,\\
+  G_w=P_w^{(A)}G_A,\quad
+  K_w=D_fP_w^{(A)}G_A,\quad
+  f^{n+1}=P_w^{(f)}f^\dagger-P_w^{(A)}G_Ap .
+\end{gathered}
+\]
+まず $P_w^{(M)}$ の冪等性，$M$-自己随伴性，$C_wP_w^{(M)}=0$ を確認する．
+次に $G_w$ が $F_w$ 上の制限 Green 恒等式を満たすか，
+$\operatorname{rank}K_w=\operatorname{rank}(D_f|_{F_w})$ が成り立つか，
+製造した $f^{n+1}\in F_w,\ D_ff^{n+1}=0$ を回収できるかを確認する．
+これらの gate を通らない境界トポロジでは，
+節点 clamp，壁面だけの後置投影，dense KKT，または圧力 gauge の暗黙変更で
+計算を進めず，fail-close として扱う．
 
 同じ理由で，デバッグ量は active operator に結び付けて解釈する．
 圧力ジャンプ型経路で作用する毛管量は
@@ -632,6 +650,13 @@ active 毛管 cochain の残差にはならない．
 本稿で物理判断へ用いる残差は，
 $F_w$ と active pressure metric $M_A=Q_f/\alpha_f$ 上で定義した
 圧力仕事・毛管仕事の Hodge 残差である．
+壁付き診断では，式~\eqref{eq:constrained_capillary_reaction_space} の
+$s_{w,f}$，$B_{w,h}$，$\mathcal{R}^{V}_{w,h}$ を用い，
+式~\eqref{eq:constrained_capillary_hodge_residual} の
+$h_{\sigma,w}$ を記録する．
+この残差が大きい場合に意味するのは，
+物理的な非平衡毛管駆動，または制約付き pressure complex の rank/gauge 不整合であり，
+曲率上限，人工減衰，DCCD/UCCD 後置フィルタ，CFL 縮小で消すべき数値ノイズとはみなさない．
 
 \subsection{保存形再開状態と再開同値性}
 \label{sec:conservative_restart_contract}

@@ -775,41 +775,76 @@ $F_h$ の任意元ではなく $F_w$ の元でなければならない．
 すなわち，圧力射影で発散を消した後に節点壁速度だけを上書きする経路は，
 輸送に使う face state と公開する nodal state を分裂させるため採用しない．
 壁制約は射影後の修復ではなく，圧力反力を定義する前の状態空間である．
-その計量直交 retract は
+任意の正定値面計量 $M$ に対する壁 retract は，
 \begin{equation}
-  P_w
+  P_w^{(M)}f
+  =
+  \arg\min_{\eta_f\in F_w}
+  \frac12\|\eta_f-f\|_{M}^{2}
+  \label{eq:wall_metric_projection_problem}
+\end{equation}
+で定義される．この変分問題の KKT 条件を消去すると
+\begin{equation}
+  P_w^{(M)}
   =
   I
   -
-  M_f^{-1}C_w^T
-  \left(C_wM_f^{-1}C_w^T\right)^{+}
+  M^{-1}C_w^T
+  \left(C_wM^{-1}C_w^T\right)^{+}
   C_w ,
   \qquad
-  C_wP_w=0,\quad P_w^2=P_w ,
+  C_wP_w^{(M)}=0,\quad
+  \left(P_w^{(M)}\right)^2=P_w^{(M)} ,
   \label{eq:wall_metric_retraction}
 \end{equation}
-である．ここで $M_f=Q_f\rho_f$ は速度状態の輸送質量計量であり，
-$Q_f$ は非一様格子の face control measure である．
-圧力仕事の随伴診断では，同じ retract 形を
-active pressure metric
+を得る．さらに
+\[
+  \langle P_w^{(M)}a,b\rangle_M
+  =
+  \langle a,P_w^{(M)}b\rangle_M,\qquad
+  f-P_w^{(M)}f\in M^{-1}\mathcal{R}(C_w^T)
+\]
+である．すなわち，取り除かれた成分は admissible variation
+$\eta_f\in F_w$ に仕事をしない壁反力そのものである．
+この事実が，壁処理を数値的な後置 clamp ではなく
+Lagrange--d'Alembert 型の制約反力として読む根拠である．
+
+計量は役割に応じて二つ現れる．速度状態の保存形輸送には
+\[
+  M_f=Q_f\rho_f,\qquad P_w^{(f)}=P_w^{(M_f)}
+\]
+を使う．ここで $Q_f$ は非一様格子の face control measure である．
+一方，圧力仕事と毛管 Hodge 診断には active pressure metric
 \begin{equation}
-  M_A = Q_f/\alpha_f
+  M_A = Q_f/\alpha_f,\qquad P_w^{(A)}=P_w^{(M_A)}
   \label{eq:pressure_metric_roles}
 \end{equation}
-で評価する．この二つの計量は互換に取り替えるものではない．
-前者は速度状態の壁制約，後者は
+を使う．この二つの計量は互換に取り替えるものではない．
+前者は輸送される速度状態の壁制約，後者は
 式~\eqref{eq:pressure_reaction_green_identity} の圧力仕事を測る面計量である．
 
 したがって壁付きの圧力反力代表は full face 空間の後置補正ではなく，
 制約空間 $F_w$ 上の随伴として
 \begin{equation}
-  G_w p = P_wG_Ap,\qquad
+  G_w p = P_w^{(A)}G_Ap,\qquad
   D_w = D_f|_{F_w},\qquad
-  D_fP_wG_Ap = D_fP_w f^\dagger
+  K_wp\equiv D_fP_w^{(A)}G_Ap = D_fP_w^{(f)} f^\dagger
   \label{eq:restricted_pressure_operator}
 \end{equation}
-を満たす候補として検証する．本稿の標準計算では，
-この制約付き pressure complex が
+を満たす候補として検証する．ここで $f^\dagger$ は予測 face state であり，
+補正後の状態は
+\begin{equation}
+  f^{n+1}
+  =
+  P_w^{(f)}f^\dagger
+  -
+  P_w^{(A)}G_Ap,\qquad
+  C_wf^{n+1}=0,\quad D_ff^{n+1}=0
+  \label{eq:restricted_wall_pressure_update}
+\end{equation}
+である．この式は「まず壁を満たす状態空間に入り，その空間内で圧力反力を選ぶ」
+という順序を明示している．
+本稿の標準計算では，この制約付き pressure complex が
 \[
   \langle G_wp,\eta_f\rangle_{M_A}
   +
@@ -818,7 +853,18 @@ active pressure metric
 \]
 を満たすことを診断 gate とし，未検証のまま
 旧来の full-space 圧力射影 + wall-only 修復を production fix として使わない．
-全壁トポロジでは $P_w$ の冪等性・自己随伴性・制限 Green 恒等式を
+さらに，圧力ポテンシャルで $F_w$ 内の非圧縮補正を本当に張れるためには
+\begin{equation}
+  \operatorname{rank}K_w
+  =
+  \operatorname{rank}(D_f|_{F_w}),\qquad
+  D_fP_w^{(f)}f^\dagger\in\mathcal{R}(K_w)
+  \label{eq:restricted_pressure_rank_gate}
+\end{equation}
+が必要である．圧力の定数ゲージや周期方向の商空間は
+$K_w$ の核として処理し，この rank 条件を満たさない場合は
+壁反力と圧力反力を同じ complex として閉じられない．
+全壁トポロジでは $P_w^{(M)}$ の冪等性・自己随伴性・制限 Green 恒等式・rank 条件を
 丸め誤差まで検証できる一方，周期壁混在では商空間と壁トレース行を
 同じ圧力 gauge で作り直すまで fail-close とする．
 
@@ -836,6 +882,34 @@ active pressure metric
 それが式~\eqref{eq:capillary_surface_energy_riesz_cochain} の
 表面エネルギーの仮想仕事と同じ面上補正量を近似していることが
 受理条件であり，形状が真円・楕円に見えるかでは判定しない．
+
+壁付き診断では，毛管 cochain と体積反力も同じ制約空間で読む．
+すなわち
+\begin{equation}
+  s_{w,f}=P_w^{(A)}s_f,\qquad
+  B_{w,h}=P_w^{(A)}B_h,\qquad
+  \mathcal{R}^{V}_{w,h}
+  =
+  \mathcal{R}(G_w)+\mathcal{R}(B_{w,h})
+  \label{eq:constrained_capillary_reaction_space}
+\end{equation}
+を定義し，制約付き Hodge 残差を
+\begin{equation}
+  h_{\sigma,w}
+  =
+  \left(I-\Pi_{\mathcal{R}^{V}_{w,h}}^{M_A}\right)s_{w,f}
+  \label{eq:constrained_capillary_hodge_residual}
+\end{equation}
+とする．制限 Green 恒等式と rank 条件が成り立つとき，
+$h_{\sigma,w}$ は
+\[
+  h_{\sigma,w}\in F_w,\qquad
+  D_fh_{\sigma,w}=0,\qquad
+  B_{w,h}^TM_Ah_{\sigma,w}=0
+\]
+を満たす．したがって，壁反力・圧力反力・成分体積反力で説明できる静的成分を除いた，
+admissible な毛管駆動だけが残る．これが壁付き静止液滴の速度リング残差や
+上昇気泡の壁近傍残差を，同じ数学的判定で読むための理論支柱である．
 
 このとき，補正段階が使う圧力補正量は
 \begin{equation}
