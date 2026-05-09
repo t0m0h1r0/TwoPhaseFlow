@@ -1,6 +1,6 @@
 # Water-air rising-bubble probe in a 10 mm x 20 mm tank, derived from the
-# capillary alpha=2 stack.  The checked-in grid remains the chapter-scale
-# reference grid; lower-resolution probes should override only `grid.cells`.
+# capillary alpha=2 stack.  The checked-in grid is the chapter-14 N=32x64
+# paper/probe grid; resolution studies should override only `grid.cells`.
 # Production numerical stack: conservative common-flux FCCD transport +
 # variational pressure + closed-interface Riesz capillary reaction +
 # direct-ψ filtered curvature + UCCD6.

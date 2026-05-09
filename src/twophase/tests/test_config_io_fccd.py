@@ -525,8 +525,8 @@ def test_ch14_rising_bubble_yaml_loads_execution_stack():
     )
     cfg = ExperimentConfig.from_yaml(path)
 
-    assert cfg.grid.NX == 128
-    assert cfg.grid.NY == 256
+    assert cfg.grid.NX == 32
+    assert cfg.grid.NY == 64
     assert cfg.grid.LX == pytest.approx(0.01)
     assert cfg.grid.LY == pytest.approx(0.02)
     assert cfg.grid.bc_type == "periodic_wall"
