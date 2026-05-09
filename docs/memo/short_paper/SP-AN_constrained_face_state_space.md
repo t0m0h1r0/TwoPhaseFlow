@@ -91,7 +91,7 @@ W_h  = no-slip wall trace space
 R_h  : F_h -> N_h
 B_h  : N_h -> W_h
 C_w  = B_h R_h
-M_f(q) = transported face-mass metric
+M_f(q) = Q_f rho_f, the transported face-mass metric
 ```
 
 Define the wall-constrained face state space:
@@ -144,6 +144,19 @@ The rule is:
 only P_w f is a velocity state;
 components (I-P_w)f are wall reaction work and are not transported.
 ```
+
+The metric is the full transported face mass, not face density alone:
+
+```text
+M_f = Q_f rho_f.
+```
+
+Here `Q_f` is the diagonal face control measure induced by the same primal
+nonuniform grid on which `D_h` and `G_A` are built.  A density-only metric
+breaks the restricted Green identity because pressure work is paired against
+cell/control-volume measures.  In validation, the density-only implementation
+gave an order-one restricted Green residual, while the `Q_f rho_f` metric
+reduced the full-wall residual to roundoff.
 
 ## 5. Restricted Pressure Hodge Projection
 
@@ -357,6 +370,41 @@ boundary_hodge:
 `mode: off` is intentional.  It prevents the old post-pressure wall repair from
 being mistaken for the new state-space projection.  Production enablement
 requires the remaining solve and publication gates.
+
+### Metric Correction From Operator Validation
+
+The first validation ladder found that the metric must include the geometric
+face measure.  For full-wall topology on a small nonuniform manufactured probe:
+
+```text
+density-only metric:
+  restricted Green relative residual = 9.169329e-01
+
+Q_f rho_f metric:
+  restricted Green relative residual = 8.826843e-17
+  rank(D_h P_w G_A) = rank(D_h | F_w) = 19
+  manufactured K_w recovery relative error = 1.537101e-14
+  manufactured divergence L2 = 4.713074e-13
+  manufactured wall-trace Linf = 5.532534e-31
+```
+
+This is a theoretical correction, not a tuning parameter: the same quadrature
+that defines pressure work and `D_h` must define the face-state metric.  The
+runtime helper remains matrix-free and backend-native; the dense matrices above
+exist only in small validation probes.
+
+Mixed `periodic_wall` topology remains fail-closed at this stage:
+
+```text
+rank(D_h P_w G_A) = 27,
+rank(D_h | F_w)   = 30,
+restricted Green relative residual = 1.037769e-01.
+```
+
+The failure is consistent with the quotient-order warning in Section 7.  It is
+not a reason to add a fallback or a wall damper; it is a gate that says periodic
+identifications, pressure gauge variables, and wall trace rows must be rebuilt
+in one quotient space before production use.
 
 ## 10. Verification Ladder
 

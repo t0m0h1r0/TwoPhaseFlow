@@ -23,8 +23,8 @@ requires S1--S6 gates before long simulations.
 ## Code Changes
 
 - `src/twophase/simulation/boundary_hodge.py`
-  - added `face_mass_inner_product` for the current transported face-density
-    metric used by `P_w`;
+  - added `face_mass_inner_product` for the transported face-mass metric
+    `M_f=Q_f rho_f` used by `P_w`;
   - added `restricted_pressure_fluxes`, which composes the active production
     `div_op.pressure_fluxes(...)` with the wall metric retraction
     `project_wall_trace`;

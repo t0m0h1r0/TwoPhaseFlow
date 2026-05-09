@@ -162,16 +162,63 @@ def _face_density_components(xp, fccd, rho, grid) -> list:
     return faces
 
 
-def _apply_inverse_face_mass(xp, covectors: list, face_density_components: list) -> list:
+def _node_control_widths(xp, grid) -> list:
+    """Return nodal control-volume widths for each coordinate axis."""
+    widths = []
+    for axis in range(grid.ndim):
+        coords = xp.asarray(grid.coords[axis])
+        d_face = coords[1:] - coords[:-1]
+        width = xp.empty_like(coords)
+        width[0] = 0.5 * d_face[0]
+        width[-1] = 0.5 * d_face[-1]
+        if int(coords.size) > 2:
+            width[1:-1] = 0.5 * (coords[2:] - coords[:-2])
+        widths.append(width)
+    return widths
+
+
+def _face_volume_weights(xp, grid) -> list:
+    """Return diagonal face control measures ``Q_f`` for each face component."""
+    node_widths = _node_control_widths(xp, grid)
+    weights = []
+    ndim = grid.ndim
+    for axis in range(ndim):
+        n_cells = grid.N[axis]
+        coords = xp.asarray(grid.coords[axis])
+        normal_width = coords[1 : n_cells + 1] - coords[0:n_cells]
+        shape = [1] * ndim
+        shape[axis] = n_cells
+        weight = normal_width.reshape(shape)
+        for other_axis in range(ndim):
+            if other_axis == axis:
+                continue
+            shape = [1] * ndim
+            shape[other_axis] = grid.shape[other_axis]
+            weight = weight * node_widths[other_axis].reshape(shape)
+        weights.append(weight)
+    return weights
+
+
+def _face_mass_components(xp, fccd, rho, grid) -> list:
+    """Return transported face-mass components ``M_f = Q_f rho_f``."""
+    density_components = _face_density_components(xp, fccd, rho, grid)
+    volume_weights = _face_volume_weights(xp, grid)
+    return [
+        density * volume_weight
+        for density, volume_weight in zip(density_components, volume_weights)
+    ]
+
+
+def _apply_inverse_face_mass(xp, covectors: list, face_mass_components: list) -> list:
     corrections = []
-    for covector, density in zip(covectors, face_density_components):
-        density_min = _to_float(xp, xp.min(density))
-        if density_min <= 0.0:
+    for covector, mass in zip(covectors, face_mass_components):
+        mass_min = _to_float(xp, xp.min(mass))
+        if mass_min <= 0.0:
             raise ValueError(
-                "boundary Hodge transported_face_mass requires positive face density, "
-                f"got min={density_min:.6e}"
+                "boundary Hodge transported_face_mass requires positive face mass, "
+                f"got min={mass_min:.6e}"
             )
-        corrections.append(covector / density)
+        corrections.append(covector / mass)
     return corrections
 
 
@@ -187,23 +234,22 @@ def face_mass_inner_product(
     """Return the transported face-mass inner product used by ``P_w``.
 
     Symbol mapping:
-      ``M_f`` -> diagonal transported face density used by the current
-      boundary-Hodge diagnostic metric.
-      ``<a,b>_{M_f}`` -> sum_f rho_f a_f b_f.
+      ``M_f`` -> diagonal transported face mass ``Q_f rho_f``.
+      ``<a,b>_{M_f}`` -> sum_f Q_f rho_f a_f b_f.
     """
-    face_density_components = _face_density_components(
+    face_mass_components = _face_mass_components(
         xp,
         fccd,
         rho,
         grid,
     )
     total = xp.asarray(0.0, dtype=left_components[0].dtype)
-    for left, right, density in zip(
+    for left, right, mass in zip(
         left_components,
         right_components,
-        face_density_components,
+        face_mass_components,
     ):
-        total = total + xp.vdot(left, density * right).real
+        total = total + xp.vdot(left, mass * right).real
     return total
 
 
@@ -277,7 +323,7 @@ def project_wall_trace(
                 "boundary_hodge_correction_linf": 0.0,
             },
         )
-    face_density_components = _face_density_components(xp, fccd, rho, grid)
+    face_mass_components = _face_mass_components(xp, fccd, rho, grid)
 
     def schur(trace_covector):
         face_covectors = wall_trace_adjoint(
@@ -287,7 +333,7 @@ def project_wall_trace(
             bc_type,
             dtype=trace.dtype,
         )
-        correction = _apply_inverse_face_mass(xp, face_covectors, face_density_components)
+        correction = _apply_inverse_face_mass(xp, face_covectors, face_mass_components)
         return wall_trace_from_faces(xp, grid, correction, bc_type)
 
     multiplier, iterations, residual, converged = _cg_solve(
@@ -304,7 +350,7 @@ def project_wall_trace(
         bc_type,
         dtype=trace.dtype,
     )
-    correction = _apply_inverse_face_mass(xp, face_covectors, face_density_components)
+    correction = _apply_inverse_face_mass(xp, face_covectors, face_mass_components)
     corrected = [
         face_component - corr for face_component, corr in zip(face_components, correction)
     ]

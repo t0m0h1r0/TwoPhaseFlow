@@ -47,6 +47,7 @@ where
 
 ```text
 P_w = I - M_f^{-1} C_w^T (C_w M_f^{-1} C_w^T)^+ C_w.
+M_f = Q_f rho_f.
 ```
 
 ## Why This Replaces The Additive Production KKT
@@ -94,6 +95,29 @@ in `src/twophase/simulation/boundary_hodge.py`.  It is a matrix-free helper and
 diagnostic operator, not yet a production PPE replacement.  The canonical
 `ch14_rising_bubble.yaml` records `state_space: constrained_face` and
 `pressure_pairing: restricted_variational_adjoint` with `mode: off`.
+
+## Validation Status
+
+Efficient operator probes showed that the metric must be the geometric
+transported face mass `Q_f rho_f`, not face density alone.  The density-only
+version broke the restricted Green identity at order one.  After the metric
+correction, full-wall probes pass:
+
+```text
+restricted Green relative residual = 8.826843e-17
+rank(D_h P_w G_A) = rank(D_h | F_w) = 19
+manufactured K_w recovery relative error = 1.537101e-14
+manufactured divergence L2 = 4.713074e-13
+manufactured wall-trace Linf = 5.532534e-31
+```
+
+Mixed `periodic_wall` remains fail-closed until topology quotients are rebuilt:
+
+```text
+rank(D_h P_w G_A) = 27,
+rank(D_h | F_w)   = 30,
+restricted Green relative residual = 1.037769e-01.
+```
 
 ## Negative Knowledge
 

@@ -74,6 +74,37 @@ def _assemble_face_matrix(grid, apply_column):
     return np.column_stack(columns)
 
 
+def _node_widths(grid):
+    widths = []
+    for axis in range(grid.ndim):
+        coords = np.asarray(grid.coords[axis], dtype=float)
+        d_face = coords[1:] - coords[:-1]
+        width = np.empty_like(coords)
+        width[0] = 0.5 * d_face[0]
+        width[-1] = 0.5 * d_face[-1]
+        width[1:-1] = 0.5 * (coords[2:] - coords[:-2])
+        widths.append(width)
+    return widths
+
+
+def _nodal_volume(grid):
+    wx, wy = _node_widths(grid)
+    return wx[:, None] * wy[None, :]
+
+
+def _pressure_inner(grid, pressure, divergence):
+    return float(np.vdot(pressure, _nodal_volume(grid) * divergence).real)
+
+
+def _pressure_kwargs():
+    return {
+        "pressure_gradient": "fccd",
+        "pressure_force_contract": "variational_adjoint",
+        "coefficient_scheme": "phase_density",
+        "interface_coupling_scheme": "none",
+    }
+
+
 def test_wall_trace_adjoint_matches_reconstruction_trace():
     backend, grid, _fccd = _grid()
     rng = np.random.default_rng(10)
@@ -192,12 +223,7 @@ def test_restricted_pressure_fluxes_project_pressure_reaction_into_wall_space():
     rng = np.random.default_rng(14)
     pressure = rng.normal(size=grid.shape)
     rho = _rho(grid)
-    kwargs = {
-        "pressure_gradient": "fccd",
-        "pressure_force_contract": "variational_adjoint",
-        "coefficient_scheme": "phase_density",
-        "interface_coupling_scheme": "none",
-    }
+    kwargs = _pressure_kwargs()
     raw_faces = div_op.pressure_fluxes(pressure, rho, **kwargs)
     raw_trace = wall_trace_from_faces(backend.xp, grid, raw_faces, "wall")
 
@@ -225,16 +251,55 @@ def test_restricted_pressure_fluxes_project_pressure_reaction_into_wall_space():
     assert restricted.diagnostics["constrained_face_space_pressure_cg_converged"] == 1.0
 
 
+def test_restricted_pressure_green_identity_on_full_wall_space():
+    backend, grid, fccd = _grid(nx=7, ny=6)
+    div_op = FCCDDivergenceOperator(fccd)
+    rng = np.random.default_rng(15)
+    pressure = rng.normal(size=grid.shape)
+    rho = np.ones(grid.shape)
+    eta = project_wall_trace(
+        xp=backend.xp,
+        grid=grid,
+        fccd=fccd,
+        face_components=_random_faces(rng, grid),
+        rho=rho,
+        bc_type="wall",
+        tolerance=1.0e-12,
+        max_iterations=180,
+    ).face_components
+    restricted = restricted_pressure_fluxes(
+        xp=backend.xp,
+        grid=grid,
+        fccd=fccd,
+        div_op=div_op,
+        pressure=pressure,
+        rho=rho,
+        bc_type="wall",
+        pressure_flux_kwargs=_pressure_kwargs(),
+        tolerance=1.0e-12,
+        max_iterations=180,
+    )
+
+    lhs = float(
+        face_mass_inner_product(
+            xp=backend.xp,
+            grid=grid,
+            fccd=fccd,
+            rho=rho,
+            left_components=restricted.face_components,
+            right_components=eta,
+        )
+    )
+    rhs = _pressure_inner(grid, pressure, div_op.divergence_from_faces(eta))
+    scale = abs(lhs) + abs(rhs) + 1.0e-300
+    assert abs(lhs + rhs) / scale < 1.0e-10
+
+
 def test_restricted_pressure_rank_gate_passes_full_wall_topology():
     backend, grid, fccd = _grid(nx=6, ny=5)
     div_op = FCCDDivergenceOperator(fccd)
     rho = np.ones(grid.shape)
-    pressure_kwargs = {
-        "pressure_gradient": "fccd",
-        "pressure_force_contract": "variational_adjoint",
-        "coefficient_scheme": "phase_density",
-        "interface_coupling_scheme": "none",
-    }
+    pressure_kwargs = _pressure_kwargs()
 
     d_mat = _assemble_face_matrix(
         grid,
@@ -267,3 +332,55 @@ def test_restricted_pressure_rank_gate_passes_full_wall_topology():
     rank_restricted_divergence = np.linalg.matrix_rank(d_mat @ p_w, tol=1.0e-10)
     rank_restricted_pressure = np.linalg.matrix_rank(d_mat @ p_w @ g_mat, tol=1.0e-10)
     assert rank_restricted_pressure == rank_restricted_divergence
+
+
+def test_restricted_pressure_manufactured_projection_recovers_kw_state():
+    backend, grid, fccd = _grid(nx=6, ny=5)
+    div_op = FCCDDivergenceOperator(fccd)
+    rho = np.ones(grid.shape)
+    rng = np.random.default_rng(16)
+
+    d_mat = _assemble_face_matrix(
+        grid,
+        lambda faces: np.asarray(div_op.divergence_from_faces(faces)).ravel(),
+    )
+    p_w = _assemble_face_matrix(
+        grid,
+        lambda faces: _vec(
+            project_wall_trace(
+                xp=backend.xp,
+                grid=grid,
+                fccd=fccd,
+                face_components=faces,
+                rho=rho,
+                bc_type="wall",
+                tolerance=1.0e-12,
+                max_iterations=180,
+            ).face_components
+        ),
+    )
+    pressure_columns = []
+    for index in range(int(np.prod(grid.shape))):
+        pressure = np.zeros(grid.shape)
+        pressure.ravel()[index] = 1.0
+        pressure_columns.append(
+            _vec(div_op.pressure_fluxes(pressure, rho, **_pressure_kwargs()))
+        )
+    g_mat = np.column_stack(pressure_columns)
+    restricted_operator = d_mat @ p_w @ g_mat
+
+    _u, _s, vt = np.linalg.svd(d_mat @ p_w, full_matrices=True)
+    rank = np.linalg.matrix_rank(d_mat @ p_w, tol=1.0e-10)
+    null_basis = vt[rank:].T
+    h = p_w @ (null_basis @ rng.normal(size=null_basis.shape[1]))
+    p0 = rng.normal(size=g_mat.shape[1])
+    f_dag = h + p_w @ g_mat @ p0
+
+    p_hat, *_ = np.linalg.lstsq(restricted_operator, d_mat @ f_dag, rcond=None)
+    f_new = p_w @ f_dag - p_w @ g_mat @ p_hat
+    relative_error = np.linalg.norm(f_new - h) / max(np.linalg.norm(h), 1.0e-300)
+    wall_trace = wall_trace_from_faces(backend.xp, grid, _unvec(f_new, grid), "wall")
+
+    assert relative_error < 1.0e-10
+    assert np.linalg.norm(d_mat @ f_new) < 1.0e-10
+    assert float(np.max(np.abs(wall_trace))) < 1.0e-10
