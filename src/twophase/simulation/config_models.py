@@ -151,6 +151,7 @@ class OutputCfg:
     dir: str = "results"
     save_npz: bool = True
     figures: list = field(default_factory=list)
+    checkpoint_interval: float | None = None
 
 
 @dataclass

@@ -426,7 +426,11 @@ def test_builder_from_dict_rejects_mixed_shape_keys():
 
 def test_ch14_yaml_initial_conditions_use_object_specs():
     root = Path(__file__).resolve().parents[3]
-    paths = sorted((root / "experiment/ch14/config").glob("*.yaml"))
+    paths = sorted(
+        path
+        for path in (root / "experiment/ch14/config").glob("*.yaml")
+        if not path.name.startswith("_")
+    )
     canonical_names = {
         "ch14_capillary.yaml",
         "ch14_oscillating_droplet.yaml",

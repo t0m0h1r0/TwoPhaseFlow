@@ -338,11 +338,15 @@ def test_ch14_canonical_yamls_share_base_numerical_stack():
         / "experiment/ch14/config"
     )
 
-    for path in sorted(config_dir.glob("*.yaml")):
+    for path in sorted(p for p in config_dir.glob("*.yaml") if not p.name.startswith("_")):
         cfg = ExperimentConfig.from_yaml(path)
         assert cfg.run.advection_scheme == "fccd_flux", path.name
         assert cfg.run.curvature_method == "face_implicit", path.name
-        expected_reinit = 0 if path.name == "ch14_static_droplet.yaml" else 1
+        expected_reinit = (
+            0
+            if path.name in {"ch14_static_droplet.yaml", "ch14_rising_bubble.yaml"}
+            else 1
+        )
         assert cfg.run.reinit_every == expected_reinit, path.name
         assert cfg.run.convection_scheme == "uccd6", path.name
         assert cfg.run.convection_time_scheme == "imex_bdf2", path.name
@@ -391,11 +395,13 @@ def test_ch14_rising_bubble_yaml_loads_execution_stack():
     assert cfg.grid.NY == 256
     assert cfg.grid.LX == pytest.approx(0.01)
     assert cfg.grid.LY == pytest.approx(0.02)
-    assert cfg.grid.grid_rebuild_freq == 1
+    assert cfg.grid.grid_rebuild_freq == 0
     assert cfg.physics.g_acc == pytest.approx(9.81)
     assert cfg.run.T_final == pytest.approx(0.03)
     assert cfg.run.snap_interval == pytest.approx(0.01)
-    assert cfg.run.reinit_every == 1
+    assert cfg.output.checkpoint_interval == pytest.approx(0.005)
+    assert cfg.run.momentum_form == "conservative_common_flux"
+    assert cfg.run.reinit_every == 0
     assert cfg.run.reinit_trigger_mode == "fixed"
     assert cfg.run.interface_tracking_method == "psi_direct"
     assert cfg.run.phi_primary_transport is False

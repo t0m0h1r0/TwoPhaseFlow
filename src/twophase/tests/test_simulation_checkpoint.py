@@ -68,6 +68,11 @@ def _solver():
         _conv_prev=[np.full((3, 3), 3.0), np.full((3, 3), 4.0)],
         _velocity_prev=[np.full((3, 3), 5.0), np.full((3, 3), 6.0)],
         _projected_face_components=None,
+        _conservative_density=np.full((3, 3), 11.0),
+        _conservative_momentum_components=[
+            np.full((3, 3), 12.0),
+            np.full((3, 3), 13.0),
+        ],
         _conv_ab2_ready=True,
         _velocity_bdf2_ready=True,
         _wall_contacts=WallContactSet.empty(),
@@ -213,6 +218,9 @@ def test_checkpoint_roundtrip_restores_solver_runtime_state(tmp_path):
     assert isinstance(state["grid_hash"], str)
     assert np.all(state["u"] == 2.0)
     assert np.all(restored_solver._p_prev_dev == 7.0)
+    assert np.all(restored_solver._conservative_density == 11.0)
+    assert np.all(restored_solver._conservative_momentum_components[0] == 12.0)
+    assert np.all(restored_solver._conservative_momentum_components[1] == 13.0)
     assert restored_solver._conv_ab2_ready is True
     assert restored_solver._reinit.updated is True
     assert restored_solver._ppe_solver.invalidated is True

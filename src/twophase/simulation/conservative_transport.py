@@ -1,10 +1,11 @@
-"""Common-flux conservative mass/momentum transport.
+"""Common-flux conservative phase/momentum transport.
 
 Symbol mapping:
-    ``rho`` -> nodal mixture density.
-    ``P`` -> nodal momentum density ``rho * u``.
+    ``q`` -> CLS liquid volume fraction ``psi``.
+    ``rho(q)`` -> affine mixture density.
+    ``P`` -> nodal momentum density ``rho(q) * u``.
     ``F_M`` -> face mass flux reconstructed from a transport ledger.
-    ``K`` -> ``sum 1/2 |P|^2 / rho dV``.
+    ``K`` -> ``sum 1/2 |P|^2 / rho(q) dV``.
 
 The implementation consumes FCCD stage ledgers without reconstructing phase
 fluxes.  All array work stays on ``backend.xp``; only callers that explicitly
@@ -31,17 +32,27 @@ class ConservativeTransportResult:
     kinetic_energy_after: Any
     kinetic_energy_delta: Any
     min_density: Any
+    max_density: Any
     certificate_status: str
 
 
 class ConservativeCommonFluxTransport:
-    """Transport ``rho`` and ``rho u`` by one recorded CLS flux ledger."""
+    """Transport momentum with one recorded CLS common-flux ledger."""
 
-    def __init__(self, backend, grid, fccd, *, min_density_floor: float = 1.0e-14):
+    def __init__(
+        self,
+        backend,
+        grid,
+        fccd,
+        *,
+        divergence_operator=None,
+        min_density_floor: float = 1.0e-14,
+    ):
         self._backend = backend
         self.xp = backend.xp
         self._grid = grid
         self._fccd = fccd
+        self._divergence_operator = divergence_operator
         self._min_density_floor = float(min_density_floor)
         self._dV = grid.cell_volumes()
 
@@ -55,13 +66,17 @@ class ConservativeCommonFluxTransport:
         rho_g: float,
         fail_close: bool = True,
     ) -> ConservativeTransportResult:
-        """Advance density and momentum with the same stage mass flux.
+        """Advance momentum with the same stage mass flux as ``q``.
 
         This is the code counterpart of the common-flux theorem in
-        ``CHK-RA-CH14-BUBBLE-REMEDY-001``.  Stage projections that alter
-        ``psi`` without a momentum remap are rejected.
+        ``CHK-RA-CH14-BUBBLE-REMEDY-001``.  The mixture density is the affine
+        image of the stage phase field, not an independently retracted
+        unknown.  Stage projections that alter ``psi`` without a momentum
+        remap are rejected.
         """
         xp = self.xp
+        rho_l = float(rho_l)
+        rho_g = float(rho_g)
         density0 = xp.asarray(density)
         momentum0 = tuple(xp.asarray(component) for component in momentum_components)
         if len(momentum0) != self._grid.ndim:
@@ -73,44 +88,55 @@ class ConservativeCommonFluxTransport:
         if any(stage.post_stage_projected for stage in ledger.stages):
             raise ValueError("common-flux momentum requires unprojected RK stages")
 
+        expected_density0 = self._phase_density(
+            ledger.psi_before,
+            rho_l=rho_l,
+            rho_g=rho_g,
+        )
+        compatibility = xp.max(xp.abs(density0 - expected_density0))
+        density_scale = max(abs(rho_l), abs(rho_g), 1.0)
+        if bool(self._to_host_scalar(compatibility > 1.0e-10 * density_scale)):
+            raise ValueError("common-flux density must equal affine phase density")
+
         kinetic_before = self._kinetic_energy(density0, momentum0)
-        density_stage = density0
         momentum_stage = momentum0
 
         for stage in ledger.stages:
+            stage_density = self._phase_density(
+                stage.phase_state,
+                rho_l=rho_l,
+                rho_g=rho_g,
+            )
             mass_fluxes = self._stage_mass_fluxes(
                 stage.phase_fluxes,
                 ledger.face_volume_fluxes,
-                rho_l=float(rho_l),
-                rho_g=float(rho_g),
-            )
-            density_candidate = self._forward_euler_density(
-                density_stage,
-                mass_fluxes,
-                ledger.dt,
+                rho_l=rho_l,
+                rho_g=rho_g,
             )
             momentum_candidate = self._forward_euler_momentum(
-                density_stage,
+                stage_density,
                 momentum_stage,
                 mass_fluxes,
                 ledger.dt,
-            )
-            density_stage = (
-                stage.base_weight * density0
-                + stage.candidate_weight * density_candidate
             )
             momentum_stage = tuple(
                 stage.base_weight * p0 + stage.candidate_weight * p_candidate
                 for p0, p_candidate in zip(momentum0, momentum_candidate)
             )
-            min_density = xp.min(density_stage)
+            min_density = xp.min(stage_density)
             if bool(self._to_host_scalar(min_density <= self._min_density_floor)):
                 if fail_close:
                     raise ValueError("common-flux transport produced non-positive density")
 
-        kinetic_after = self._kinetic_energy(density_stage, momentum_stage)
-        min_density = xp.min(density_stage)
-        velocity = tuple(component / density_stage for component in momentum_stage)
+        density_final = self._phase_density(
+            ledger.psi_after_transport,
+            rho_l=rho_l,
+            rho_g=rho_g,
+        )
+        kinetic_after = self._kinetic_energy(density_final, momentum_stage)
+        min_density = xp.min(density_final)
+        max_density = xp.max(density_final)
+        velocity = tuple(component / density_final for component in momentum_stage)
         status = "passed"
         if bool(self._to_host_scalar(kinetic_after > kinetic_before + 1.0e-10)):
             status = "energy_increase"
@@ -118,13 +144,14 @@ class ConservativeCommonFluxTransport:
                 raise ValueError("common-flux transport increased kinetic energy")
 
         return ConservativeTransportResult(
-            density=density_stage,
+            density=density_final,
             momentum_components=momentum_stage,
             velocity_components=velocity,
             kinetic_energy_before=kinetic_before,
             kinetic_energy_after=kinetic_after,
             kinetic_energy_delta=kinetic_after - kinetic_before,
             min_density=min_density,
+            max_density=max_density,
             certificate_status=status,
         )
 
@@ -147,11 +174,16 @@ class ConservativeCommonFluxTransport:
             for phase_flux, volume_flux in zip(phase_fluxes, volume_fluxes)
         )
 
-    def _forward_euler_density(self, density, mass_fluxes, dt: float):
-        divergence = self._divergence_sum(mass_fluxes)
-        return density - float(dt) * divergence
+    def _phase_density(self, phase, *, rho_l: float, rho_g: float):
+        return rho_g + (rho_l - rho_g) * self.xp.asarray(phase)
 
-    def _forward_euler_momentum(self, density, momentum_components, mass_fluxes, dt: float):
+    def _forward_euler_momentum(
+        self,
+        density,
+        momentum_components,
+        mass_fluxes,
+        dt: float,
+    ):
         updated = []
         for component in momentum_components:
             velocity_component = component / density
@@ -163,6 +195,8 @@ class ConservativeCommonFluxTransport:
         return tuple(updated)
 
     def _divergence_sum(self, face_fluxes):
+        if self._divergence_operator is not None:
+            return self._divergence_operator.divergence_from_faces(list(face_fluxes))
         xp = self.xp
         total = xp.zeros_like(self.xp.asarray(self._dV))
         for axis, face_flux in enumerate(face_fluxes):

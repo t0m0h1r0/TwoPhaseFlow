@@ -21,6 +21,7 @@ class TransportStageLedger:
     """One Shu-Osher stage of projection-native CLS transport."""
 
     name: str
+    phase_state: Any
     phase_fluxes: tuple[Any, ...]
     base_weight: float
     candidate_weight: float
@@ -39,4 +40,3 @@ class TransportLedger:
     clip_bounds: tuple[float, float] | None = None
     mass_correction_applied: bool = False
     zero_velocity: bool = False
-

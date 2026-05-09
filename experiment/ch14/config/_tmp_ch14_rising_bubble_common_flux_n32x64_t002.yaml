@@ -1,31 +1,11 @@
-# Water-air rising-bubble probe in a 10 mm x 20 mm tank, derived from the
-# capillary alpha=2 stack.  The checked-in grid remains the chapter-scale
-# reference grid; lower-resolution probes should override only `grid.cells`.
-# Production numerical stack: conservative common-flux FCCD transport +
-# variational pressure + closed-interface Riesz capillary reaction +
-# direct-ψ filtered curvature + UCCD6.
-# - FCCD: conservative interface transport and pressure gradient use the `fccd`
-#   scheme; flux-locus form is the default option for these terms.
-# - Surface tension: `pressure_jump` enters as an affine interface-stress
-#   closure, not as CSF σκ∇ψ or a regular pressure field.
-# - Curvature: interface geometry uses the scalar face-native Young-Laplace
-#   pressure jump.  The P2 ALE discrete-gradient face-cochain route is not a
-#   validated production pressure-jump path.
-# - Pressure force: the projection corrector uses the pressure-adjoint
-#   variational face reaction, not the raw compact gradient representative.
-# - Capillary reaction: closed-interface Riesz constructs the surface-energy
-#   virtual-work cochain and projects component-volume reactions in the same
-#   pressure-adjoint metric as the oscillating-droplet benchmark.
-# - Common flux: ψ, density, and momentum use the same stage flux ledger.
-#   Until a conservative q/momentum redistance and grid-remap retraction is
-#   available, q-only reinitialization and dynamic grid rebuilds are disabled.
-# - UCCD6: momentum convection uses `uccd6` per WIKI-T-062 / WIKI-X-028.
+# Temporary water-air rising-bubble common-flux probe: 10 mm x 20 mm,
+# 32 x 64, advance from t=0 to T=0.02 s with 0.005 s restart checkpoints.
 
 experiment:
   type: circle
 
 grid:
-  cells: [128, 256]
+  cells: [32, 64]
   domain:
     size: [0.01, 0.02]
     boundary: wall
@@ -49,8 +29,6 @@ interface:
     base_factor: 1.5
   geometry:
     curvature:
-      # Scalar face-native Young-Laplace jump; the invalid P2 ALE face-cochain
-      # route is fail-closed for pressure-jump production configs.
       method: face_implicit
   reinitialization:
     algorithm: ridge_eikonal
@@ -75,10 +53,9 @@ physics:
 run:
   momentum_form: conservative_common_flux
   time:
-    final: 0.03
-    # Multiplier on theory CFL constants; 1.0 uses the theory budget.
+    final: 0.02
     cfl: 1.0
-    print_every: 10
+    print_every: 250
   debug:
     step_diagnostics: true
 
@@ -141,12 +118,12 @@ numerics:
           kind: direct
 
 output:
-  dir: results/ch14_rising_bubble
+  dir: results/_tmp_ch14_rising_bubble_common_flux_n32x64_t002_trace_fixed
   save_npz: true
   checkpoints:
     interval: 0.005
   snapshots:
-    interval: 0.01
+    interval: 0.005
   figures:
     - type: time_series
       title: "Water-air rising bubble: centroid height"
@@ -191,11 +168,20 @@ output:
 
     - type: snapshot_series
       field: velocity
+      show_field: false
+      color_quantity: speed
+      color_scale: max
+      vector_cmap: viridis
+      background_color: "#eeeeee"
+      normalize_arrows: false
+      quiver_length_fraction: 0.14
+      quiver_min_speed_fraction: 0.02
+      quiver_width: 0.0055
+      quiver_outline_width_factor: 2.1
+      arrow_color: null
+      arrow_outline_color: "#ffffff"
       file_prefix: velocity_t
 
-    # The affine jump face cochain is not always integrable as a scalar Hodge
-    # representative for this bubble case; plot the stored scalar pressure as
-    # a gauge field rather than relabeling a nonintegrable cochain.
     - type: snapshot_series
       field: pressure
       file_prefix: pressure_t

@@ -328,13 +328,6 @@ def normalise_ns_scheme_runtime(options) -> NSSchemeRuntimeState:
             f"'{getattr(options, 'momentum_form', None)}'. "
             "Use primitive_velocity|conservative_common_flux."
         )
-    if momentum_form == "conservative_common_flux":
-        raise NotImplementedError(
-            "momentum.form='conservative_common_flux' is parsed but not yet "
-            "wired into the full NS predictor/projection route. Use the "
-            "stage ledger and ConservativeCommonFluxTransport gates until "
-            "the production route is connected."
-        )
     convection_time_scheme = canonicalize_convection_time_scheme(
         options.convection_time_scheme
     )

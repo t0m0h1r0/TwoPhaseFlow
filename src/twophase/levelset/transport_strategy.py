@@ -397,6 +397,9 @@ class PsiDirectTransport(ILevelSetTransport):
         dt: float,
         step_index: int = 0,
         *,
+        clip_bounds=(0.0, 1.0),
+        bound_preserving: bool = False,
+        face_divergence_operator=None,
         return_ledger: bool = False,
     ) -> np.ndarray:
         """Direct ψ advection with projection-native face velocities."""
@@ -423,6 +426,9 @@ class PsiDirectTransport(ILevelSetTransport):
                 psi,
                 face_velocity_components,
                 dt,
+                clip_bounds=clip_bounds,
+                bound_preserving=bound_preserving,
+                face_divergence_operator=face_divergence_operator,
                 return_ledger=return_ledger,
             )
         except TypeError:

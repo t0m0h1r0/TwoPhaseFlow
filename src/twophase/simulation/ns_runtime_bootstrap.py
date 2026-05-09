@@ -93,6 +93,9 @@ def build_ns_runtime_bootstrap(
             ),
             cn_mode=cn_mode,
             surface_tension_scheme=surface_tension_scheme,
+            momentum_form=str(
+                getattr(scheme_options, "momentum_form", "primitive_velocity")
+            ),
         ),
         reproj_iim=reproj_iim,
     )

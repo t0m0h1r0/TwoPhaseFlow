@@ -121,6 +121,7 @@ def _run_single(cfg, label: str, outdir: pathlib.Path) -> dict:
         resume_from=getattr(cfg, "_resume_from", None),
         checkpoint_path=getattr(cfg, "_checkpoint_path", None),
         checkpoint_every_steps=getattr(cfg, "_checkpoint_every_steps", None),
+        checkpoint_interval=getattr(cfg, "_checkpoint_interval", None),
         config_path=getattr(cfg, "_config_path", None),
     )
 

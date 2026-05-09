@@ -75,6 +75,10 @@ class NSStepState:
     face_velocity_components: list[Any] | None = None
     projected_face_components: list[Any] | None = None
     projection_dt: float | None = None
+    conservative_density: Any = None
+    conservative_momentum_components: list[Any] | None = None
+    conservative_transport_ledger: Any = None
+    conservative_transport_certificate: dict[str, Any] | None = None
 
     @classmethod
     def from_inputs(cls, inputs: NSStepInputs | NSStepRequest, *, backend) -> "NSStepState":

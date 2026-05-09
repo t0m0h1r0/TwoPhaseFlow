@@ -1,5 +1,6 @@
-# Temporary water-air rising-bubble probe: 10 mm x 20 mm, 32 x 64, T=0.01 s.
-# Uses the same production numerical stack as ch14_rising_bubble.yaml.
+# Temporary water-air rising-bubble common-flux probe: 10 mm x 20 mm,
+# 32 x 64, T=0.01 s.
+# Uses the same conservative common-flux stack as ch14_rising_bubble.yaml.
 
 experiment:
   type: circle
@@ -10,7 +11,7 @@ grid:
     size: [0.01, 0.02]
     boundary: wall
   distribution:
-    schedule: 1
+    schedule: 0
     axes:
       x:
         type: nonuniform
@@ -33,7 +34,7 @@ interface:
   reinitialization:
     algorithm: ridge_eikonal
     schedule:
-      every_steps: 1
+      every_steps: 0
     profile:
       eps_scale: 1.4
       ridge_sigma_0: 3.0
@@ -51,7 +52,7 @@ physics:
   gravity: 9.81
 
 run:
-  momentum_form: primitive_velocity
+  momentum_form: conservative_common_flux
   time:
     final: 0.01
     cfl: 1.0
@@ -68,6 +69,7 @@ numerics:
       spatial: fccd
       time_integrator: tvd_rk3
   momentum:
+    form: conservative_common_flux
     predictor:
       assembly: balanced_buoyancy
     terms:
@@ -117,10 +119,12 @@ numerics:
           kind: direct
 
 output:
-  dir: results/_tmp_ch14_rising_bubble_n32_t001
+  dir: results/_tmp_ch14_rising_bubble_common_flux_n32x64_t001
   save_npz: true
+  checkpoints:
+    interval: 0.005
   snapshots:
-    interval: 0.0025
+    interval: 0.005
   figures:
     - type: time_series
       title: "Water-air rising bubble: centroid height"
