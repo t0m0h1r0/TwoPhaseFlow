@@ -1,16 +1,16 @@
 % paper/sections/12h_summary.tex
 %
 % §12.8  検証結果の総括
-%   11 単体テスト (U1–U11) の pass/fail 総括 + 後続ベンチマーク章への接続
+%   11 単体テスト (U1–U11) の適合判定総括 + 後続統合検証章への接続
 % ═══════════════════════════════════════════════════════════════════════════════
 \subsection{単体検証の総括：Tier I--IX の適合判定}
 \label{sec:verify_summary}
 % ═══════════════════════════════════════════════════════════════════════════════
 
-9 Tier (I--IX) で構成される 11 単体テスト (U1--U11) が完了した．
+9 層 (I--IX) で構成される 11 単体テスト (U1--U11) が完了した．
 表~\ref{tab:verification_summary} に各テストの目的・期待/判定基準・実測/観測値・判定を総括する．
 11 件の単体テストは Part 2 (§\ref{sec:ccd_def}--§\ref{sec:grid}) のうち
-単体化できる primitive を依存順に検査する．
+単体化できる数値要素を依存順に検査する．
 判定基準は MMS/Richardson 検証~\cite{Roache2002,SalariKnupp2000,Roy2003}，
 compact/filtered 差分~\cite{Lele1992,GaitondeVisbal2000,VisbalGaitonde2002}，
 および SSP/TVD 時間積分~\cite{ShuOsher1988,GottliebShu1998,GottliebShuTadmor2001}
@@ -28,7 +28,7 @@ Part II 分担境界に従う．
 \PaperCaptionNote{本表は Chapter 12 の唯一の成果総括表である．冒頭の表~\ref{tab:U_summary} は検証設計マップであり，数値成績は本表に集約する．Chapter 13 の成果総括表~\ref{tab:v_accuracy_summary} と同じ「ID / テスト / 期待・判定基準 / 実測・観測値 / 判定」文法で読む．}
 \PaperTableExtraDenseSetup
 \setlength{\tabcolsep}{2pt}%
-\renewcommand{\arraystretch}{0.82}%
+\renewcommand{\arraystretch}{0.81}%
 \begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.10\linewidth}>{\raggedright\arraybackslash}p{0.18\linewidth}>{\raggedright\arraybackslash}p{0.23\linewidth}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{0.15\linewidth}@{}}
 \toprule
 ID & テスト & \shortstack{期待・判定\\基準} & \shortstack{実測・観測\\値} & 判定 \\
@@ -48,7 +48,7 @@ U3-a & CCD on stretched grid + 2D $D_{xy}$ + GCL & $\Ord{h^6}$ + GCL $\sim\varep
 U3-b & FCCD non-uniform face   & $\Ord{h^4}$（面演算子設計次数；非一様格子）          & $\Ord{h^{4.00}}$/$\Ord{h^{4.09}}$        & \checkmark \\
 U3-c & Ridge--Eikonal D1--D4 metric & 一様極限 $\to 0$，$\alpha>1$ で $D_4$ のみ発火 & $D_1$--$D_3 \lesssim 5\!\times\!10^{-14}$（最大 $D_1=4.3\!\times\!10^{-14}$ at $\alpha\!=\!1.5$；倍精度 round-off floor）, $D_4 \le 4.5\!\times\!10^{-11}$（$\alpha\!=\!1.5$） & \checkmark \\
 \midrule
-\multicolumn{5}{l}{\textbf{Tier III：界面処理 primitives}} \\
+\multicolumn{5}{l}{\textbf{Tier III：界面処理要素}} \\
 \midrule
 U4-a & Godunov Eikonal reinit $|\nabla\phi|=1$ 復元 & band 残差 $\sim h$ & $n_\tau=20$: $2.19\times10^{-2}$, $100$: $9.16\times10^{-3}$ & \checkmark \\
 U4-b & DGR バンド厚補正 & $\varepsilon_{\eff}/\varepsilon^\star \to 1$ & $2.0 \to 1.0000033$ & \checkmark \\
@@ -57,7 +57,7 @@ U5-b & $\delta_\varepsilon$ vs $h$ scaling（$c=\varepsilon/h$ 最適性）& $c 
 \midrule
 \multicolumn{5}{l}{\textbf{Tier IV：圧力ソルバ}} \\
 \midrule
-U6-a & DC $\omega$ route guard（$\rho_l \in \{1,100,1000\}$, $k\in\{2,3\}$, $\omega \in \{0.2..0.9\}$） & $\rho_l=1$ clean，高密度比一括 PPE は保証対象外 & $\rho_l=1$: $5.19\!\times\!10^{-5}$；高密度比は残差改善しても分相 PPE+HFE へ切替 & \checkmark guard \\
+U6-a & DC $\omega$ 受理条件（$\rho_l \in \{1,100,1000\}$, $k\in\{2,3\}$, $\omega \in \{0.2..0.9\}$） & $\rho_l=1$ は合格，高密度比一括 PPE は保証対象外 & $\rho_l=1$: $5.19\!\times\!10^{-5}$；高密度比は残差改善しても分相 PPE+HFE へ切替 & \checkmark \\
 U6-b1 & HFE 1D step extension  & $\Ord{h^6}$              & $\Ord{h^{5.91}}$（1D）   & \checkmark \\
 U6-b2 & HFE 2D band 診断       & 幾何込み条件付き & effective slope max $11.35$ / med $8.72$ & \checkmark \\
 \midrule
@@ -80,18 +80,18 @@ U9   & DCCD-on-pressure 違反   & 差分誤差 $\Ord{h^2}$    & $L_\infty^{\mat
 \midrule
 \multicolumn{5}{l}{\textbf{Tier VIII：保存形共通フラックス台帳}} \\
 \midrule
-U10 & 共通 FCCD ledger による $\psi$・密度・運動量の同一保存写像 & 密度/運動量保存，アフィン密度誤差 $0$，負対照 fail-closed & $\max|\Delta M_\rho|=1.137\!\times\!10^{-13}$, $\max|\Delta P_i|=2.842\!\times\!10^{-14}$, affine error $0$, negative $2/2$ rejected & \checkmark \\
+U10 & 共通 FCCD 台帳による $\psi$・密度・運動量の同一保存写像 & 密度/運動量保存，アフィン密度誤差 $0$，負対照は不適合として棄却 & $\max|\Delta M_\rho|=1.137\!\times\!10^{-13}$, $\max|\Delta P_i|=2.842\!\times\!10^{-14}$, アフィン誤差 $0$, 負対照 $2/2$ 棄却 & \checkmark \\
 \midrule
-\multicolumn{5}{l}{\textbf{Tier IX：制約 face-state 空間}} \\
+\multicolumn{5}{l}{\textbf{Tier IX：制約付き面速度状態空間}} \\
 \midrule
-U11 & $P_w$ と $G_w=P_wG_A$ の wall/periodic-wall quotient gate & $C_wP_w=0$，冪等性，metric self-adjointness，Green identity，rank 一致 & wall trace $\le2.581\!\times\!10^{-12}$, idempotence $4.851\!\times\!10^{-12}$, Green $\le1.294\!\times\!10^{-16}$, rank $19/19$ and $25/25$ & \checkmark \\
+U11 & $P_w$ と $G_w=P_wG_A$ の壁/周期壁商空間条件 & $C_wP_w=0$，冪等性，計量自己随伴性，Green 恒等式，階数一致 & wall trace $\le2.581\!\times\!10^{-12}$, idempotence $4.851\!\times\!10^{-12}$, Green $\le1.294\!\times\!10^{-16}$, rank $19/19$ and $25/25$ & \checkmark \\
 \bottomrule
 \multicolumn{5}{p{0.95\linewidth}}{\footnotesize
 $\triangle$ の類型——
 \checkmark: 設計精度達成，$\bullet$: negation 成立（規則違反量が予測通り発散；合格扱い），$\times$: 未達（本章では該当なし）．
 本表は Tier 順で配置する（26 サブテスト；親テスト U6-b は U6-b1/U6-b2，親テスト U7-a は U7-a1/U7-a2 として
 表内で一意に引用できる枝番へ分割）．
-U6 の一括 PPE 高密度比 sweep は保証対象 primitive ではないため本成果表から除外し，U6 本文では分相 PPE+HFE を必要とする route guard として扱う．
+U6 の一括 PPE 高密度比掃引は保証対象ではないため本成果表から除外し，U6 本文では分相 PPE+HFE を必要とする受理条件として扱う．
 U7-a mismatch は負対照であり，FD2 を合格経路として採用しない．
 }
 \end{tabularx}
@@ -120,20 +120,20 @@ $\times$（不合格）は本章では該当なし．主要結果：
         Richardson 残差床 $\Ord{10^{-11}}$ へ saturation
         （$M_1 = M_0/2$ の比例関係；U5-b の $c=2$ では $1.83\!\times\!10^{-14}$ に到達）．
   \item \textbf{圧力ソルバ：}§9/§11 の標準経路は分相 PPE + HFE + DC であり，
-        U6 はその前提 primitive として DC 緩和 guard と HFE 単体精度を確認する．
+        U6 はその前提要素として DC 緩和受理条件と HFE 単体精度を確認する．
         HFE は 1D stencil $\Ord{h^{5.91}}$（設計達成），
         2D band は完全テンソル混合微分により低次化が消え，max $11.35$ / med $8.72$ の
         effective slope を示す（丸め床を含む診断値であり，§\ref{sec:hfe} の $\Ord{h^6}$ 設計と整合）．
   \item \textbf{時間積分：}TVD-RK3 $\Ord{\Delta t^{3.04}}$，EXT2/AB2 $\Ord{\Delta t^{2.05}}$，
         implicit-BDF2 $\Ord{\Delta t^{2.01}}$，3 層 full-operator BDF2 $\Ord{\Delta t^{2.00\text{--}2.03}}$．
   \item \textbf{制約：}DCCD-on-pressure 違反で $\Ord{h^2}$ 発散誤差を確認（否定テスト合格）．
-  \item \textbf{保存形共通フラックス：}U10 で closed common-flux candidate は
+  \item \textbf{保存形共通フラックス：}U10 で閉じた共通フラックス候補は
         最大 $|\Delta M_\rho|=1.137\times10^{-13}$，
         最大 $|\Delta P_i|=2.842\times10^{-14}$，アフィン密度誤差 $0$ を示し，
-        非アフィン密度と $\psi$-only ledger の負対照は $2/2$ reject した．
-  \item \textbf{制約 face-state 空間：}U11 で $P_w$ は wall/periodic-wall の双方で
-        $C_wP_w=0$，冪等性，metric self-adjointness，制限 Green identity を丸め誤差まで満たし，
-        rank gate は wall $19/19$，periodic-wall quotient $25/25$ で合格した．
+        非アフィン密度と $\psi$ のみの台帳の負対照は $2/2$ 棄却した．
+  \item \textbf{制約付き面速度状態空間：}U11 で $P_w$ は壁/周期壁の双方で
+        $C_wP_w=0$，冪等性，計量自己随伴性，制限 Green 恒等式を丸め誤差まで満たし，
+        階数条件は壁 $19/19$，周期壁商空間 $25/25$ で合格した．
   \item \textbf{coupling：}縮約 BF match の Laplace 圧は $N=128$ で $0.61\%$，
         FD2 mismatch は 1-step 指標で分離できない負対照として長時間 V5 に送る．
         face $\mu$ 補間は算術/調和/VoF で slope $1.91/1.81/1.91$．
@@ -159,28 +159,28 @@ $\times$（不合格）は本章では該当なし．主要結果：
 \end{itemize}
 
 \noindent\textbf{第~\ref{sec:verification}章 への接続：}
-次章（第~\ref{sec:verification}章）は，U1--U11 で確立した primitive を
+次章（第~\ref{sec:verification}章）は，U1--U11 で確立した数値要素を
 そのまま合成した時に初めて現れる結合効果を検出する．
 U 系列と V 系列の対応は，単なる章番号の継承ではなく
 \textbf{単体で合格した式・離散化が，どの統合物理指標で再検査されるか}の対応で読む：
 
 \begin{table}[!ht]
-\caption{§12 primitive から §13 統合検証への接続}
+\caption{§12 数値要素から §13 統合検証への接続}
 \label{tab:U_to_V_bridge}
-\PaperCaptionNote{U 系列は component verification，V 系列は integration verification であり，判定基準は異なる．本表は単体検証だけでは判定できない結合効果を次章の V test に対応付ける橋渡しである．}
+\PaperCaptionNote{U 系列は単体検証，V 系列は統合検証であり，判定基準は異なる．本表は単体検証だけでは判定できない結合効果を次章の V test に対応付ける橋渡しである．}
 \centering\small
 \begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.20\linewidth}>{\raggedright\arraybackslash}p{0.31\linewidth}>{\raggedright\arraybackslash}X@{}}
 \toprule
-結合効果 & 主に引き継ぐ U primitive & §13 での再検査 \\
+結合効果 & 主に引き継ぐ U 要素 & §13 での再検査 \\
 \midrule
 単相・縮約 PPE 時間速度結合 & U2-b, U8 & V1-b（Taylor--Green 渦；単相 PPE の $O(\Delta t)$ trend）と V2（Kovasznay 残差）． \\
 運動量対流・全応力粘性の NS 残差 & U1, U8 & V1/V2（単相 NS）と V7（二相結合系時間診断）． \\
 BF 圧力--界面バランス & U5, U7, U9 & V3/V5（静止液滴と寄生流れ），V8（非一様静止液滴）． \\
 高密度比の圧力ジャンプ・毛管射影結合系 & U6, U8, U9（U7 は縮約 BF 対照） & V6（密度比 sweep）と V7（FCCD, HFE, 分相 PPE/DC, 毛管成分の圧力勾配射影, 射影後面速度閉包, アフィン圧力履歴面加速度を含む結合系時間精度）．U7 は Neumann BF 縮約との差分整理にのみ用いる． \\
-非一様格子・局所厚み & U3, U5 & V8（非一様 NS 静止）と V9（圧力ジャンプ・毛管射影結合系条件下の nominal/local $\varepsilon$ switch）． \\
+非一様格子・局所厚み & U3, U5 & V8（非一様 NS 静止）と V9（圧力ジャンプ・毛管射影結合系条件下の基準/局所 $\varepsilon$ 切替）． \\
 CLS 保存移流 & U4, U5, U8 & V10-a/V10-b（一様格子・NS 非連成 CLS 強変形移流；非一様 moving-interface CLS は本章の保証範囲外）． \\
 保存形共通フラックス台帳 & U10 & 第13章の V 系列には追加せず，第~\ref{sec:benchmarks}章の保存形共通フラックス物理経路へ送る． \\
-制約 face-state / periodic-wall quotient & U11 & V6/V7/V9 の壁付き pressure-jump/HFE 統合経路の状態空間前提を支える．periodic-wall の有限振幅物理応答は第~\ref{sec:benchmarks}章で扱う． \\
+制約付き面速度状態 / 周期壁商空間 & U11 & V6/V7/V9 の壁付き圧力ジャンプ/HFE 統合経路の状態空間前提を支える．周期壁の有限振幅物理応答は第~\ref{sec:benchmarks}章で扱う． \\
 7 ステップ更新順序・面データ引き渡し & U1--U11 全体 & V1--V10 と表~\ref{tab:v_accuracy_summary}（更新順序，射影後面速度閉包，アフィン圧力履歴面加速度，圧力ジャンプ結合系の適用限界）． \\
 \bottomrule
 \end{tabularx}

@@ -18,11 +18,11 @@
 空間離散： & CCD（内点 $\Ord{h^6}$），FCCD（面演算子 $\Ord{h^4}$），UCCD6，DCCD（移流安定化；圧力適用は禁止），非一様格子\\
 格子構造： & コロケート格子 + Balanced-Force 七原則 + FCCD 面ジェット sub-system\\
 時間積分： & TVD-RK3（CLS），IMEX-BDF2/EXT2（NS 対流），implicit-BDF2 + DC（粘性），IPC 圧力増分\\
-圧力閉包： & pressure-jump 型 分相 FCCD-PPE + HFE + DC $k=3$（§~\ref{sec:split_ppe_recovery}）\\
-              & smoothed Heaviside 一括 PPE は低密度比・縮約検証経路として扱い，標準 headline は分相 pressure-jump 経路\\[4pt]
+圧力閉包： & 圧力ジャンプ型 分相 FCCD-PPE + HFE + DC $k=3$（§~\ref{sec:split_ppe_recovery}）\\
+              & smoothed Heaviside 一括 PPE は低密度比・縮約検証経路として扱い，標準経路は分相圧力ジャンプ経路\\[4pt]
 \hline\\[-6pt]
 \multicolumn{2}{@{}l}{\textbf{精度律速（設計上の注意）}}\\[2pt]
-時間方向律速： & 単体では TVD-RK3 $\Ord{\Delta t^{3.04}}$，EXT2/AB2 $\Ord{\Delta t^{2.05}}$，implicit-BDF2 $\Ord{\Delta t^{2.01}}$；range-projected 二相 coupled stack は V7 slope $1.59$（Type-D）\\
+時間方向律速： & 単体では TVD-RK3 $\Ord{\Delta t^{3.04}}$，EXT2/AB2 $\Ord{\Delta t^{2.05}}$，implicit-BDF2 $\Ord{\Delta t^{2.01}}$；圧力ジャンプを含む二相結合構成は V7 で収束率 $1.59$（Type-D）\\
 空間精度律速： & U1/U6 で CCD $\Ord{h^{6.0}}$，FCCD $\Ord{h^{4.0}}$，UCCD6 $\Ord{h^{7.0}}$，HFE 1D $\Ord{h^{5.91}}$ を実測\\[2pt]
 \multicolumn{2}{@{}l}{\footnotesize CCD の $\Ord{h^6}$ は\textbf{内点点別誤差}を指す；境界閉包により大域 $L^2$ ノルムは $\Ord{h^{5/2}}$ に律速（§~\ref{sec:accuracy_summary}）}\\[2pt]
 \multicolumn{2}{@{}l}{\footnotesize V6 は $\rho_l/\rho_g\le833$ のロバスト性を確認．}\\[-1pt]
@@ -42,30 +42,30 @@
 本稿は，その離散化起因成分を構造的に抑えるため，
 結合コンパクト差分法（CCD，内点 $\Ord{h^6}$），FCCD 面ジェット，UCCD6，
 Conservative Level Set（CLS）法，Hermite 場延長法（HFE；\cite{Aslam2004} の Extension PDE に基づく），
-および Balanced-Force 七原則を一つの pressure-jump 型分相 PPE スタックへ統合する．
+および Balanced-Force 七原則を一つの圧力ジャンプ型分相 PPE 構成へ統合する．
 標準経路では，界面を FCCD 保存形 CLS と Ridge--Eikonal 再初期化で更新し，
 表面張力は CSF 体積力ではなく $j_{gl}=p_g-p_l=-\sigma\kappa_{lg}$ の圧力ジャンプとして
 分相 FCCD-PPE + HFE + 欠陥補正（DC $k=3$）へ組み込む．
 この構成により，コロケート格子でも Rhie--Chow 補間に依存せず，
-圧力勾配・表面張力・HFE 上流点・GFM ジャンプが同じ face footprint を共有する
-Balanced-Force sub-system として閉じる．
+圧力勾配・表面張力・HFE 上流点・GFM ジャンプが同じ面位置とステンシルを共有する
+Balanced-Force 部分系として閉じる．
 時間発展は TVD-RK3（CLS），IMEX-BDF2/EXT2（運動量対流），
 implicit-BDF2 + DC（粘性），IPC 圧力増分を組み合わせた 7 ステップ手順として整理する．
 
 検証は，単体検証 U1--U11，統合検証 V1--V10，物理ベンチマーク第~\ref{sec:validation}章の
 三層で構成した．単体検証では CCD $\Ord{h^{6.0}}$，FCCD $\Ord{h^{4.00}}$，
 UCCD6 $\Ord{h^{7.00}}$，HFE 1D $\Ord{h^{5.91}}$，implicit-BDF2 $\Ord{\Delta t^{2.01}}$，
-保存形共通フラックス，制約 face-state / periodic-wall quotient gate などを確認し，
+保存形共通フラックス，制約付き面速度状態・周期壁商空間条件などを確認し，
 統合検証では静止液滴 Laplace 圧力誤差 $0.97\%$，
 寄生流れの CCD/FD 比 $1/2.5$--$1/5.85$（代表ケース），
-密度比 $\rho_l/\rho_g\le833$ での pressure-jump 分相 PPE + DC + HFE のロバスト性
+密度比 $\rho_l/\rho_g\le833$ での圧力ジャンプ型分相 PPE + DC + HFE のロバスト性
 （$u_\infty^{\mathrm{end}}\le1.3\times10^{-9}$，$|\Delta V_\psi|/V_{\psi,0}\le1.2\times10^{-16}$），
 および Zalesak / 単一渦 CLS-only 強変形移流の質量・重心診断を示した．
-一方，range-projected 二相 coupled stack の時間精度は V7 で最終 slope $1.59$ に留まり，
-capillary pressure-jump / projection の界面帯誤差に支配される Type-D 条件付き合格として扱う．
+一方，圧力ジャンプを含む二相結合構成の時間精度は V7 で最終収束率 $1.59$ に留まり，
+毛管圧力ジャンプと射影の界面帯誤差に支配される Type-D 条件付き合格として扱う．
 さらに物理ベンチマークでは，毛管波の毛管復元力，
 Rayleigh--Lamb 型振動液滴の周期・粘性減衰，
 単一気泡上昇の浮力--投影閉包，
 および Rayleigh--Taylor 線形成長から非線形形状形成までを，
-同一の production stack 上で整理した．
+同一の標準構成上で整理した．
 \end{abstract}
