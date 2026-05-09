@@ -673,7 +673,7 @@ $j_{gl}=p_g-p_l$ であり，符号を持たない $\sigma\kappa_{lg}$ 場では
 平坦 Rayleigh--Taylor 界面の全てに同じ式を用いる．
 
 % ─────────────────────────────────────────────────────────────────────────────
-\subsubsection{毛管補正量の変分構成と平衡判定}
+\subsubsection{毛管補正量の変分構成・許容 face-state 空間・平衡判定}
 \label{sec:split_ppe_capillary_range_projection}
 % ─────────────────────────────────────────────────────────────────────────────
 
@@ -761,6 +761,67 @@ $q^{n+1}=q^n-\Delta tD_f^{\mathrm{tr}}F_q$ を評価すれば，
 $D_f^{\mathrm{tr}}\bu_f$ が非零となり，圧力仕事に記録されない質量・運動量圧縮が入る．
 したがって圧力反力の随伴性と共通フラックスの保存性は，
 同じ向き付き面複体を共有する一つの条件である．
+
+壁面境界を持つ計算では，この面複体の状態空間自体を制限する．
+面速度空間を $F_h$，節点速度への再構成を $R_h$，
+no-slip 壁トレース抽出を $B_h^w$ とし，
+\begin{equation}
+  C_w = B_h^wR_h,\qquad
+  F_w=\ker C_w
+  \label{eq:wall_constrained_face_space}
+\end{equation}
+を定義する．有効な速度状態は
+$F_h$ の任意元ではなく $F_w$ の元でなければならない．
+すなわち，圧力射影で発散を消した後に節点壁速度だけを上書きする経路は，
+輸送に使う face state と公開する nodal state を分裂させるため採用しない．
+壁制約は射影後の修復ではなく，圧力反力を定義する前の状態空間である．
+その計量直交 retract は
+\begin{equation}
+  P_w
+  =
+  I
+  -
+  M_f^{-1}C_w^T
+  \left(C_wM_f^{-1}C_w^T\right)^{+}
+  C_w ,
+  \qquad
+  C_wP_w=0,\quad P_w^2=P_w ,
+  \label{eq:wall_metric_retraction}
+\end{equation}
+である．ここで $M_f=Q_f\rho_f$ は速度状態の輸送質量計量であり，
+$Q_f$ は非一様格子の face control measure である．
+圧力仕事の随伴診断では，同じ retract 形を
+active pressure metric
+\begin{equation}
+  M_A = Q_f/\alpha_f
+  \label{eq:pressure_metric_roles}
+\end{equation}
+で評価する．この二つの計量は互換に取り替えるものではない．
+前者は速度状態の壁制約，後者は
+式~\eqref{eq:pressure_reaction_green_identity} の圧力仕事を測る面計量である．
+
+したがって壁付きの圧力反力代表は full face 空間の後置補正ではなく，
+制約空間 $F_w$ 上の随伴として
+\begin{equation}
+  G_w p = P_wG_Ap,\qquad
+  D_w = D_f|_{F_w},\qquad
+  D_fP_wG_Ap = D_fP_w f^\dagger
+  \label{eq:restricted_pressure_operator}
+\end{equation}
+を満たす候補として検証する．本稿の標準計算では，
+この制約付き pressure complex が
+\[
+  \langle G_wp,\eta_f\rangle_{M_A}
+  +
+  \langle p,D_f\eta_f\rangle_{W_p}=0
+  \quad(\eta_f\in F_w)
+\]
+を満たすことを診断 gate とし，未検証のまま
+旧来の full-space 圧力射影 + wall-only 修復を production fix として使わない．
+全壁トポロジでは $P_w$ の冪等性・自己随伴性・制限 Green 恒等式を
+丸め誤差まで検証できる一方，周期壁混在では商空間と壁トレース行を
+同じ圧力 gauge で作り直すまで fail-close とする．
+
 体積制約の反力も同じ写像で
 \begin{equation}
   B_{m,f}
@@ -926,6 +987,24 @@ $\eta_a$ は実際に補正段階へ渡る補正済み補正量の
 圧力ジャンプ形式では非保存的な表面せん断や Marangoni 力を
 $h_{\sigma,f}$ として暗黙に混入してはならない．そのような物理を扱う場合は，
 圧力ジャンプとは別の接線応力項として運動量方程式に明示的に入れる必要がある．
+また，診断量はそれが本当に作用している operator と同じ空間で定義される場合に限り
+物理判断へ用いる．active な圧力ジャンプ経路では，
+切断面 Young--Laplace 代表や表面エネルギー Riesz 代表が実効毛管 cochain であり，
+節点 $\psi$ 直接曲率の最大値をそのまま本番毛管力の大きさとは読まない．
+同様に，PPE 右辺の診断は，closed-interface 源と履歴圧力面加速度を加えた後，
+実際に solver へ渡す右辺で定義する：
+\begin{equation}
+  b_p^{\mathrm{diag}}
+  =
+  b_p^{\mathrm{pred}}
+  +D_f\widehat c_{\sigma,f}
+  +D_f a_{p,f}^{\,n}
+  \quad\text{（該当項がある場合）}.
+  \label{eq:diagnostic_contract_active_route}
+\end{equation}
+CSF 体積力を使わない pressure-jump 経路では，
+節点力との差を取る旧来の balanced-force residual は
+active 毛管 cochain の残差ではない．
 本稿の標準経路では，表面張力を
 式~\eqref{eq:capillary_surface_energy_riesz_cochain} の
 表面エネルギーの仮想仕事として構成し，
