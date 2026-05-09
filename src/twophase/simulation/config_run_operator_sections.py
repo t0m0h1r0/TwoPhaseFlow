@@ -373,7 +373,7 @@ def parse_run_operator_settings(
         default="tvd_rk3",
         aliases={"explicit": "tvd_rk3", "rk3": "tvd_rk3"},
     )
-    validate_choice(
+    momentum_form = validate_choice(
         momentum.get("form", "primitive_velocity"),
         _MOMENTUM_FORMS,
         layout["paths"]["momentum_form"],
@@ -421,6 +421,7 @@ def parse_run_operator_settings(
         "poisson_interface_coupling": poisson_settings["poisson_interface_coupling"],
         "capillary_range_projection": poisson_settings["capillary_range_projection"],
         "advection_scheme": advection_scheme,
+        "momentum_form": momentum_form,
         "convection_scheme": convection_scheme,
         "convection_time_scheme": convection_time_scheme,
         "ppe_solver": poisson_settings["ppe_solver"],

@@ -58,6 +58,127 @@ def test_construction_uniform():
     assert s._reinit_threshold == pytest.approx(1.10)
 
 
+def test_prepare_step_reconstructed_face_state_satisfies_wall_trace():
+    from twophase.simulation.ns_step_state import NSStepInputs
+
+    s = _make_solver(alpha_grid=1.0, canonical_face_state=True)
+    xp = s._backend.xp
+    shape = s._grid.shape
+
+    class BoundaryRichReconstruction:
+        def reconstruct_nodes(self, face_components):
+            del face_components
+            return xp.ones(shape), -2.0 * xp.ones(shape)
+
+    s._div_op = BoundaryRichReconstruction()
+    s._projected_face_components = [xp.ones((N, N + 1)), xp.ones((N + 1, N))]
+
+    state = s._prepare_step_inputs(
+        NSStepInputs(
+            psi=xp.ones(shape),
+            u=xp.zeros(shape),
+            v=xp.zeros(shape),
+            dt=0.1,
+            rho_l=1.0,
+            rho_g=1.0,
+            sigma=0.0,
+            mu=1.0,
+        )
+    )
+
+    u = np.asarray(s._backend.to_host(state.u))
+    v = np.asarray(s._backend.to_host(state.v))
+    assert np.max(np.abs(u[0, :])) == pytest.approx(0.0)
+    assert np.max(np.abs(u[-1, :])) == pytest.approx(0.0)
+    assert np.max(np.abs(u[:, 0])) == pytest.approx(0.0)
+    assert np.max(np.abs(u[:, -1])) == pytest.approx(0.0)
+    assert np.max(np.abs(v[0, :])) == pytest.approx(0.0)
+    assert np.max(np.abs(v[-1, :])) == pytest.approx(0.0)
+    assert np.max(np.abs(v[:, 0])) == pytest.approx(0.0)
+    assert np.max(np.abs(v[:, -1])) == pytest.approx(0.0)
+    np.testing.assert_allclose(u[1:-1, 1:-1], 1.0)
+    np.testing.assert_allclose(v[1:-1, 1:-1], -2.0)
+
+
+def test_corrector_reconstructed_face_state_satisfies_wall_trace():
+    from twophase.backend import Backend
+    from twophase.simulation.ns_step_services import correct_ns_velocity_stage
+    from twophase.simulation.ns_step_state import NSStepInputs, NSStepState
+    from twophase.simulation.runtime_setup import apply_velocity_bc
+
+    backend = Backend(use_gpu=False)
+    xp = backend.xp
+    shape = (N + 1, N + 1)
+    face_x = xp.zeros((N, N + 1))
+    face_y = xp.zeros((N + 1, N))
+
+    class ZeroGradient:
+        def gradient(self, pressure, axis):
+            del axis
+            return xp.zeros_like(pressure)
+
+    class BoundaryRichProjection:
+        def pressure_fluxes(self, pressure, rho, **kwargs):
+            del pressure, rho, kwargs
+            return [face_x, face_y]
+
+        def face_fluxes(self, components):
+            del components
+            return [face_x, face_y]
+
+        def reconstruct_nodes(self, face_components):
+            del face_components
+            return xp.ones(shape), -2.0 * xp.ones(shape)
+
+    state = NSStepState.from_inputs(
+        NSStepInputs(
+            psi=xp.ones(shape),
+            u=xp.zeros(shape),
+            v=xp.zeros(shape),
+            dt=0.1,
+            rho_l=1.0,
+            rho_g=1.0,
+            sigma=0.0,
+            mu=1.0,
+        ),
+        backend=backend,
+    )
+    state.rho = xp.ones(shape)
+    state.u_star = xp.ones(shape)
+    state.v_star = -xp.ones(shape)
+    state.p_corrector = xp.zeros(shape)
+    state.f_x = xp.zeros(shape)
+    state.f_y = xp.zeros(shape)
+    state.predictor_face_components = [face_x, face_y]
+    state.pressure_correction_face_components = [face_x, face_y]
+
+    state = correct_ns_velocity_stage(
+        state,
+        backend=backend,
+        pressure_grad_op=ZeroGradient(),
+        face_flux_projection=True,
+        canonical_face_state=True,
+        face_native_predictor_state=True,
+        preserve_projected_faces=False,
+        fccd_div_op=None,
+        div_op=BoundaryRichProjection(),
+        ppe_runtime=None,
+        bc_type="wall",
+        apply_velocity_bc=apply_velocity_bc,
+    )
+
+    assert np.max(np.abs(state.u[0, :])) == pytest.approx(0.0)
+    assert np.max(np.abs(state.u[-1, :])) == pytest.approx(0.0)
+    assert np.max(np.abs(state.u[:, 0])) == pytest.approx(0.0)
+    assert np.max(np.abs(state.u[:, -1])) == pytest.approx(0.0)
+    assert np.max(np.abs(state.v[0, :])) == pytest.approx(0.0)
+    assert np.max(np.abs(state.v[-1, :])) == pytest.approx(0.0)
+    assert np.max(np.abs(state.v[:, 0])) == pytest.approx(0.0)
+    assert np.max(np.abs(state.v[:, -1])) == pytest.approx(0.0)
+    np.testing.assert_allclose(state.u[1:-1, 1:-1], 1.0)
+    np.testing.assert_allclose(state.v[1:-1, 1:-1], -2.0)
+
+
 def test_construction_nonuniform():
     s = _make_solver(alpha_grid=2.0)
     assert s._alpha_grid == 2.0
@@ -372,6 +493,85 @@ def test_imex_bdf2_predictor_uses_ext2_and_projection_dt():
     assert conv_ready is True
     assert velocity_ready is True
     np.testing.assert_allclose(next_conv[0], xp.full(shape, 3.0))
+    np.testing.assert_allclose(next_velocity[0], state.u)
+
+
+def test_common_flux_predictor_skips_duplicate_velocity_convection():
+    from twophase.backend import Backend
+    from twophase.simulation.ns_step_services import compute_ns_predictor_stage
+    from twophase.simulation.ns_step_state import NSStepInputs, NSStepState
+
+    backend = Backend(use_gpu=False)
+    xp = backend.xp
+    shape = (2, 2)
+
+    class ExplodingConvection:
+        def compute(self, ctx):
+            raise AssertionError("common-flux momentum already transports advection")
+
+    class RecordingPredictor:
+        def predict_bdf2(
+            self,
+            u,
+            v,
+            u_prev,
+            v_prev,
+            conv_u,
+            conv_v,
+            mu,
+            rho,
+            dt,
+            ccd,
+            buoy_v=None,
+            psi=None,
+        ):
+            self.u_prev = xp.copy(u_prev)
+            self.v_prev = xp.copy(v_prev)
+            self.conv_u = xp.copy(conv_u)
+            self.conv_v = xp.copy(conv_v)
+            return xp.copy(u), xp.copy(v)
+
+    predictor = RecordingPredictor()
+    inputs = NSStepInputs(
+        psi=xp.ones(shape),
+        u=xp.full(shape, 2.0),
+        v=xp.full(shape, -1.0),
+        dt=0.3,
+        rho_l=1.0,
+        rho_g=1.0,
+        sigma=0.0,
+        mu=1.0,
+    )
+    state = NSStepState.from_inputs(inputs, backend=backend)
+    state.rho = xp.ones(shape)
+    state.mu_field = xp.ones(shape)
+    velocity_prev = (xp.full(shape, 0.5), xp.full(shape, -0.25))
+
+    state, conv_ready, next_conv, velocity_ready, next_velocity = (
+        compute_ns_predictor_stage(
+            state,
+            backend=backend,
+            ccd=None,
+            conv_term=ExplodingConvection(),
+            viscous_predictor=predictor,
+            scheme_runtime=SimpleNamespace(convection_time_scheme="imex_bdf2"),
+            conv_ab2_ready=False,
+            conv_prev=None,
+            velocity_bdf2_ready=True,
+            velocity_prev=velocity_prev,
+            projection_consistent_buoyancy=True,
+            conservative_momentum_transport=True,
+        )
+    )
+
+    assert state.projection_dt == pytest.approx(0.2)
+    np.testing.assert_allclose(predictor.conv_u, xp.zeros(shape))
+    np.testing.assert_allclose(predictor.conv_v, xp.zeros(shape))
+    np.testing.assert_allclose(predictor.u_prev, velocity_prev[0])
+    np.testing.assert_allclose(predictor.v_prev, velocity_prev[1])
+    assert conv_ready is False
+    assert next_conv is None
+    assert velocity_ready is True
     np.testing.assert_allclose(next_velocity[0], state.u)
 
 

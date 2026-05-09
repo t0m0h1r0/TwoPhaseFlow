@@ -1,0 +1,561 @@
+candidate,density_ratio,cfl,n,energy0,energy1,relative_delta,mass_delta,momentum_delta,theorem_status,notes
+common_upwind_flux,1.0,0.0,32,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,1.0,0.0,32,0.24499999999999997,0.24499999999999997,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,1.0,0.0,32,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,1.0,0.0,32,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,1.0,0.0,32,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,1.0,0.0,32,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,1.0,0.0,32,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,1.0,0.1,32,0.10617499999999999,0.10587757881525647,-0.002801235552093414,0.0,5.551115123125783e-17,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,1.0,0.1,32,0.24499999999999997,0.24499999999999997,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,1.0,0.1,32,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,1.0,0.1,32,0.10617499999999999,0.10653851478135318,0.0034237323414474767,0.0,1.1102230246251565e-16,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,1.0,0.1,32,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,1.0,0.1,32,0.10617499999999999,0.10587757881525647,-0.002801235552093414,0.0,5.551115123125783e-17,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,1.0,0.1,32,0.10617499999999999,0.10587757881525647,-0.002801235552093414,0.0,5.551115123125783e-17,open,rho and momentum use opposite flux maps
+common_upwind_flux,1.0,0.25,32,0.10617499999999999,0.10555537253178435,-0.005835907400194438,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,1.0,0.25,32,0.24499999999999997,0.24499999999999997,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,1.0,0.25,32,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,1.0,0.25,32,0.10617499999999999,0.1072077124470261,0.009726512333657658,0.0,5.551115123125783e-17,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,1.0,0.25,32,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,1.0,0.25,32,0.10617499999999999,0.10555537253178435,-0.005835907400194438,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,1.0,0.25,32,0.10617499999999999,0.10555537253178435,-0.005835907400194438,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,1.0,0.5,32,0.10617499999999999,0.10534883004237913,-0.007781209866925917,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,1.0,0.5,32,0.24499999999999997,0.24499999999999997,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,1.0,0.5,32,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,1.0,0.5,32,0.10617499999999999,0.10865350987286261,0.023343629600778144,0.0,0.0,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,1.0,0.5,32,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,1.0,0.5,32,0.10617499999999999,0.10534883004237913,-0.007781209866925917,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,1.0,0.5,32,0.10617499999999999,0.10534883004237912,-0.007781209866926048,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,1.0,0.9,32,0.10617499999999999,0.10587757881525647,-0.002801235552093414,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,1.0,0.9,32,0.24499999999999997,0.24499999999999997,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,1.0,0.9,32,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,1.0,0.9,32,0.10617499999999999,0.11182600251012677,0.053223475489774213,0.0,0.0,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,1.0,0.9,32,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,1.0,0.9,32,0.10617499999999999,0.10587757881525647,-0.002801235552093414,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,1.0,0.9,32,0.10617499999999999,0.10587757881525649,-0.002801235552093283,0.0,5.551115123125783e-17,open,rho and momentum use opposite flux maps
+common_upwind_flux,10.0,0.0,32,0.6463953949135494,0.6463953949135494,0.0,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,10.0,0.0,32,1.3474999999999997,1.3474999999999997,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,10.0,0.0,32,0.6463953949135494,0.6463953949135494,0.0,0.0,0.0,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,10.0,0.0,32,0.6463953949135494,0.6463953949135494,0.0,0.0,0.0,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,10.0,0.0,32,0.6463953949135494,0.6463953949135494,0.0,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,10.0,0.0,32,0.6463953949135494,0.6463953949135494,0.0,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,10.0,0.0,32,0.6463953949135494,0.6463953949135494,0.0,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,10.0,0.1,32,0.6463953949135494,0.6445433557288602,-0.0028651800419104497,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,10.0,0.1,32,1.3474999999999997,1.3474999999999997,0.0,0.0,4.440892098500626e-16,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,10.0,0.1,32,0.6463953949135494,0.6478282795790855,0.002216730930961826,0.0,0.004455203311481082,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,10.0,0.1,32,0.6463953949135494,0.6486530436163662,0.003492674484660902,0.0,7.4267785394877e-05,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,10.0,0.1,32,0.6463953949135494,0.6449765206646497,-0.0021950562458592417,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,10.0,0.1,32,0.6463953949135494,0.6459708204148651,-0.0006568340400089874,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,10.0,0.1,32,0.6463953949135494,0.6418876650321093,-0.006973641701211345,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,10.0,0.25,32,0.6463953949135494,0.6425309405887529,-0.005978468218068403,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,10.0,0.25,32,1.3474999999999997,1.3474999999999997,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,10.0,0.25,32,0.6463953949135494,0.6499776065773897,0.0055418273274044786,0.0,0.011138008278702038,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,10.0,0.25,32,0.6463953949135494,0.6527905026725535,0.009893492140146499,0.0,0.00046417365871853633,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,10.0,0.25,32,0.6463953949135494,0.6429001639506289,-0.005407264640844081,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,10.0,0.25,32,0.6463953949135494,0.6460778132371493,-0.0004913117867161361,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,10.0,0.25,32,0.6463953949135494,0.636017772799798,-0.016054604032473503,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,10.0,0.5,32,0.6463953949135494,0.6412278720900954,-0.007994368252182745,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,10.0,0.5,32,1.3474999999999997,1.3474999999999997,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,10.0,0.5,32,0.6463953949135494,0.6535598182412301,0.011083654654809129,0.0,0.02227601655740452,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,10.0,0.5,32,0.6463953949135494,0.6616575893849557,0.023611236391075336,0.0,0.0018566946348750335,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,10.0,0.5,32,0.6463953949135494,0.6395751302347799,-0.010551227209286765,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,10.0,0.5,32,0.6463953949135494,0.648239746795118,0.002853287470922169,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,10.0,0.5,32,0.6463953949135494,0.628647636369785,-0.027456505234134513,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,10.0,0.9,32,0.6463953949135494,0.6445250381149825,-0.002893518136553228,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,10.0,0.9,32,1.3474999999999997,1.3474999999999997,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,10.0,0.9,32,0.6463953949135494,0.6592913569033747,0.019950578378656433,0.0,0.04009682980332796,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,10.0,0.9,32,0.6463953949135494,0.6808401242191647,0.053287398976940584,0.0,0.006015690616996139,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,10.0,0.9,32,0.6463953949135494,0.6345960646746378,-0.018254044400315736,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,10.0,0.9,32,0.6463953949135494,0.656856232175355,0.016183341255401038,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,10.0,0.9,32,0.6463953949135494,0.6232975589669805,-0.03573329285499947,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,100.0,0.0,32,6.048599344049043,6.048599344049043,0.0,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,100.0,0.0,32,12.372499999999999,12.372499999999999,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,100.0,0.0,32,6.048599344049043,6.048599344049043,0.0,0.0,0.0,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,100.0,0.0,32,6.048599344049043,6.048599344049043,0.0,0.0,0.0,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,100.0,0.0,32,6.048599344049043,6.048599344049043,0.0,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,100.0,0.0,32,6.048599344049043,6.048599344049043,0.0,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,100.0,0.0,32,6.048599344049043,6.048599344049043,0.0,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,100.0,0.1,32,6.048599344049043,6.031202102141544,-0.0028762430635475384,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,100.0,0.1,32,12.372499999999999,12.372499999999999,0.0,0.0,7.105427357601002e-15,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,100.0,0.1,32,6.048599344049043,6.0643610753699395,0.002605848135139573,0.0,0.049007236426291456,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,100.0,0.1,32,6.048599344049043,6.0697983319664965,0.0035047763476531877,0.0,0.0008169456393467556,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,100.0,0.1,32,6.048599344049043,6.033018433064708,-0.002575953555208512,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,100.0,0.1,32,6.048599344049043,6.046928832378663,-0.00027618157119684684,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,100.0,0.1,32,6.048599344049043,6.002083197039292,-0.007690399770901644,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,100.0,0.25,32,6.048599344049043,6.012290931962953,-0.006002780151377027,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,100.0,0.25,32,12.372499999999999,12.372499999999999,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,100.0,0.25,32,6.048599344049043,6.088003672351287,0.006514620337849373,0.0,0.12251809106572864,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,100.0,0.25,32,6.048599344049043,6.108618404927827,0.009922803192086853,0.0,0.005105910245909229,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,100.0,0.25,32,6.048599344049043,6.010316320392445,-0.006329237808462769,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,100.0,0.25,32,6.048599344049043,6.051462195089001,0.00047330809615859533,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,100.0,0.25,32,6.048599344049043,5.941228959085548,-0.017751280727352586,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,100.0,0.5,32,6.048599344049043,6.000026182646251,-0.008030480883244618,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,100.0,0.5,32,12.372499999999999,12.372499999999999,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,100.0,0.5,32,6.048599344049043,6.127408000653531,0.013029240675698746,0.0,0.24503618213145018,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,100.0,0.5,32,6.048599344049043,6.191698384505886,0.02365821115224511,0.0,0.02042364098362981,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,100.0,0.5,32,6.048599344049043,5.974219418321711,-0.012297049531063893,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,100.0,0.5,32,6.048599344049043,6.077788813515316,0.004825822939486281,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,100.0,0.5,32,6.048599344049043,5.8639625229482855,-0.030525549899815013,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,100.0,0.9,32,6.048599344049043,6.031000708693273,-0.002909538945257593,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,100.0,0.9,32,12.372499999999999,12.372499999999999,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,100.0,0.9,32,6.048599344049043,6.1904549259371215,0.023452633216257627,0.0,0.4410651278366089,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,100.0,0.9,32,6.048599344049043,6.370981341309544,0.05329861988258136,0.0,0.06617259678696286,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,100.0,0.9,32,6.048599344049043,5.920818844875541,-0.021125634532103674,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,100.0,0.9,32,6.048599344049043,6.168716039161042,0.019858596722921822,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,100.0,0.9,32,6.048599344049043,5.80499731911164,-0.040274121508324406,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,833.3333333333334,0.0,32,50.06655744811603,50.06655744811603,0.0,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,833.3333333333334,0.0,32,102.20583333333332,102.20583333333332,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,833.3333333333334,0.0,32,50.06655744811603,50.06655744811603,0.0,0.0,0.0,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,833.3333333333334,0.0,32,50.06655744811603,50.06655744811603,0.0,0.0,0.0,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,833.3333333333334,0.0,32,50.06655744811603,50.06655744811603,0.0,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,833.3333333333334,0.0,32,50.06655744811603,50.06655744811603,0.0,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,833.3333333333334,0.0,32,50.06655744811603,50.06655744811603,0.0,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,833.3333333333334,0.1,32,50.06655744811603,49.92249574743934,-0.0028774037605037704,5.684341886080802e-14,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,833.3333333333334,0.1,32,102.20583333333332,102.20583333333333,1.3904152289287473e-16,5.684341886080802e-14,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,833.3333333333334,0.1,32,50.06655744811603,50.1990727447769,0.002646782671211125,5.684341886080802e-14,0.4120238025469689,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,833.3333333333334,0.1,32,50.06655744811603,50.24209327407867,0.0035060494451720245,5.684341886080802e-14,0.006868394819690593,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,833.3333333333334,0.1,32,50.06655744811603,49.93558606129881,-0.002615945523175786,5.684341886080802e-14,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,833.3333333333334,0.1,32,50.06655744811603,50.05473868768525,-0.00023606097629192034,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,833.3333333333334,0.1,32,50.06655744811603,49.677764005177906,-0.007765531779192725,5.684341886080802e-14,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,833.3333333333334,0.25,32,50.06655744811603,49.765891557550795,-0.006005323830719027,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,833.3333333333334,0.25,32,102.20583333333332,102.20583333333332,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,833.3333333333334,0.25,32,50.06655744811603,50.397845689768225,0.006616956678028239,0.0,1.0300595063674223,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,833.3333333333334,0.25,32,50.06655744811603,50.563512423304125,0.009925886670021013,0.0,0.04292746762303068,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,833.3333333333334,0.25,32,50.06655744811603,49.74484216251895,-0.006425752078729859,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,833.3333333333334,0.25,32,50.06655744811603,50.095358885465714,0.0005752629862664697,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,833.3333333333334,0.25,32,50.06655744811603,49.16895878628707,-0.01792810825388064,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,833.3333333333334,0.5,32,50.06655744811603,49.664310013698596,-0.008034253899607172,5.684341886080802e-14,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,833.3333333333334,0.5,32,102.20583333333332,102.20583333333332,0.0,5.684341886080802e-14,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,833.3333333333334,0.5,32,50.06655744811603,50.72913393142042,0.013233913356056478,5.684341886080802e-14,2.0601190127347877,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,833.3333333333334,0.5,32,50.06655744811603,51.25129004845421,0.02366315282543478,5.684341886080802e-14,0.17170987049200903,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,833.3333333333334,0.5,32,50.06655744811603,49.44178341561572,-0.01247886941593229,5.684341886080802e-14,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,833.3333333333334,0.5,32,50.06655744811603,50.31865478423751,0.005035244062520745,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,833.3333333333334,0.5,32,50.06655744811603,48.52240930868149,-0.030841907615372612,5.684341886080802e-14,2.842170943040401e-14,open,rho and momentum use opposite flux maps
+common_upwind_flux,833.3333333333334,0.9,32,50.06655744811603,49.92080265378044,-0.0029112206184064757,5.684341886080802e-14,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,833.3333333333334,0.9,32,102.20583333333332,102.20583333333332,0.0,5.684341886080802e-14,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,833.3333333333334,0.9,32,50.06655744811603,51.25919511806395,0.023821044040901972,5.684341886080802e-14,3.7082142229226065,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,833.3333333333334,0.9,32,50.06655744811603,52.73509496204596,0.05329980030473114,5.684341886080802e-14,0.5563399803941138,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,833.3333333333334,0.9,32,50.06655744811603,48.99402844180131,-0.0214220641678066,5.684341886080802e-14,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,833.3333333333334,0.9,32,50.06655744811603,51.080476702030346,0.020251427411701738,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,833.3333333333334,0.9,32,50.06655744811603,48.02728923002116,-0.04073114514030971,5.684341886080802e-14,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,1.0,0.0,64,0.106175,0.106175,0.0,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,1.0,0.0,64,0.24499999999999994,0.24499999999999994,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,1.0,0.0,64,0.106175,0.106175,0.0,0.0,0.0,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,1.0,0.0,64,0.106175,0.106175,0.0,0.0,0.0,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,1.0,0.0,64,0.106175,0.106175,0.0,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,1.0,0.0,64,0.106175,0.106175,0.0,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,1.0,0.0,64,0.106175,0.106175,0.0,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,1.0,0.1,64,0.106175,0.10609992550790304,-0.0007070825721400396,0.0,-5.551115123125783e-17,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,1.0,0.1,64,0.24499999999999994,0.24499999999999994,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,1.0,0.1,64,0.106175,0.106175,0.0,0.0,0.0,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,1.0,0.1,64,0.106175,0.10626675771256294,0.0008642120326153715,0.0,-1.1102230246251565e-16,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,1.0,0.1,64,0.106175,0.106175,0.0,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,1.0,0.1,64,0.106175,0.10609992550790304,-0.0007070825721400396,0.0,-5.551115123125783e-17,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,1.0,0.1,64,0.106175,0.10609992550790304,-0.0007070825721400396,0.0,-5.551115123125783e-17,open,rho and momentum use opposite flux maps
+common_upwind_flux,1.0,0.25,64,0.106175,0.1060185948081313,-0.0014730886919585573,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,1.0,0.25,64,0.24499999999999994,0.24499999999999994,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,1.0,0.25,64,0.106175,0.106175,0.0,0.0,0.0,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,1.0,0.25,64,0.106175,0.10643567531978115,0.0024551478199307548,0.0,-1.1102230246251565e-16,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,1.0,0.25,64,0.106175,0.106175,0.0,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,1.0,0.25,64,0.106175,0.1060185948081313,-0.0014730886919585573,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,1.0,0.25,64,0.106175,0.1060185948081313,-0.0014730886919585573,0.0,-5.551115123125783e-17,open,rho and momentum use opposite flux maps
+common_upwind_flux,1.0,0.5,64,0.106175,0.10596645974417507,-0.0019641182559447866,0.0,-5.551115123125783e-17,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,1.0,0.5,64,0.24499999999999994,0.24499999999999994,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,1.0,0.5,64,0.106175,0.106175,0.0,0.0,0.0,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,1.0,0.5,64,0.106175,0.10680062076747476,0.005892354767833837,0.0,-1.1102230246251565e-16,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,1.0,0.5,64,0.106175,0.106175,0.0,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,1.0,0.5,64,0.106175,0.10596645974417507,-0.0019641182559447866,0.0,-5.551115123125783e-17,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,1.0,0.5,64,0.106175,0.10596645974417507,-0.0019641182559447866,0.0,-1.1102230246251565e-16,open,rho and momentum use opposite flux maps
+common_upwind_flux,1.0,0.9,64,0.106175,0.10609992550790304,-0.0007070825721400396,0.0,-1.1102230246251565e-16,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,1.0,0.9,64,0.24499999999999994,0.24499999999999994,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,1.0,0.9,64,0.106175,0.106175,0.0,0.0,0.0,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,1.0,0.9,64,0.106175,0.10760141534984248,0.013434568870661405,0.0,-1.1102230246251565e-16,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,1.0,0.9,64,0.106175,0.106175,0.0,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,1.0,0.9,64,0.106175,0.10609992550790304,-0.0007070825721400396,0.0,-1.1102230246251565e-16,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,1.0,0.9,64,0.106175,0.10609992550790304,-0.0007070825721400396,0.0,-1.1102230246251565e-16,open,rho and momentum use opposite flux maps
+common_upwind_flux,10.0,0.0,64,0.6463953949135492,0.6463953949135492,0.0,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,10.0,0.0,64,1.3475000000000001,1.3475000000000001,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,10.0,0.0,64,0.6463953949135492,0.6463953949135492,0.0,0.0,0.0,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,10.0,0.0,64,0.6463953949135492,0.6463953949135492,0.0,0.0,0.0,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,10.0,0.0,64,0.6463953949135492,0.6463953949135492,0.0,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,10.0,0.0,64,0.6463953949135492,0.6463953949135492,0.0,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,10.0,0.0,64,0.6463953949135492,0.6463953949135492,0.0,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,10.0,0.1,64,0.6463953949135492,0.6459261807107449,-0.0007258934802081604,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,10.0,0.1,64,1.3475000000000001,1.3474999999999997,-3.2956527632657706e-16,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,10.0,0.1,64,0.6463953949135492,0.6470994294490826,0.0010891700978586326,0.0,0.0022826142831853247,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,10.0,0.1,64,0.6463953949135492,0.6469654617801981,0.0008819166583404982,0.0,1.100252548891234e-05,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,10.0,0.1,64,0.6463953949135492,0.6456948276347685,-0.0010838061104603898,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,10.0,0.1,64,0.6463953949135492,0.6466286002044686,0.0003607780821991968,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,10.0,0.1,64,0.6463953949135492,0.6445729953738885,-0.002819326303994668,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,10.0,0.25,64,0.6463953949135492,0.6454170296686405,-0.001513570877217722,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,10.0,0.25,64,1.3475000000000001,1.3474999999999997,-3.2956527632657706e-16,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,10.0,0.25,64,0.6463953949135492,0.6481554812523826,0.002722925244646582,0.0,0.005706535707963312,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,10.0,0.25,64,0.6463953949135492,0.6480038040984821,0.0024882745106004243,0.0,6.876578430592417e-05,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,10.0,0.25,64,0.6463953949135492,0.6446569065670862,-0.0026895122708842523,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,10.0,0.25,64,0.6463953949135492,0.6471667793857254,0.0011933631926312536,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,10.0,0.25,64,0.6463953949135492,0.6420562157797627,-0.0067128868304621786,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,10.0,0.5,64,0.6463953949135492,0.6450889539281011,-0.002021117408521938,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,10.0,0.5,64,1.3475000000000001,1.3474999999999997,-3.2956527632657706e-16,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,10.0,0.5,64,0.6463953949135492,0.6499155675912159,0.005445850489292992,0.0,0.011413071415926623,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,10.0,0.5,64,0.6463953949135492,0.6502202049740995,0.005917136926790427,0.0,0.00027506313722458486,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,10.0,0.5,64,0.6463953949135492,0.6429611399633447,-0.0053129322659606175,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,10.0,0.5,64,0.6463953949135492,0.6485660680074952,0.003358119675707514,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,10.0,0.5,64,0.6463953949135492,0.6384425811161581,-0.012303326818184917,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,10.0,0.9,64,0.6463953949135492,0.6459238580622366,-0.0007294867120389847,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,10.0,0.9,64,1.3475000000000001,1.3474999999999997,-3.2956527632657706e-16,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,10.0,0.9,64,0.6463953949135492,0.6527317057333493,0.00980253088072735,0.0,0.02054352854866881,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,10.0,0.9,64,0.6463953949135492,0.6550178947184639,0.01333935834438903,0.0,0.0008912045646076727,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,10.0,0.9,64,0.6463953949135492,0.6403350666239546,-0.00937557466727499,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,10.0,0.9,64,0.6463953949135492,0.652110970433482,0.008842228092756066,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,10.0,0.9,64,0.6463953949135492,0.634184127635185,-0.018891327776240533,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,100.0,0.0,64,6.048599344049043,6.048599344049043,0.0,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,100.0,0.0,64,12.372499999999999,12.372499999999999,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,100.0,0.0,64,6.048599344049043,6.048599344049043,0.0,0.0,0.0,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,100.0,0.0,64,6.048599344049043,6.048599344049043,0.0,0.0,0.0,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,100.0,0.0,64,6.048599344049043,6.048599344049043,0.0,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,100.0,0.0,64,6.048599344049043,6.048599344049043,0.0,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,100.0,0.0,64,6.048599344049043,6.048599344049043,0.0,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,100.0,0.1,64,6.048599344049043,6.044188796466231,-0.0007291849454620195,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,100.0,0.1,64,12.372499999999999,12.372499999999999,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,100.0,0.1,64,6.048599344049043,6.056343723939909,0.0012803592121679267,0.0,0.025108757115042124,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,100.0,0.1,64,6.048599344049043,6.053952502456549,0.0008850244664945294,0.0,0.00012102778037714756,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,100.0,0.1,64,6.048599344049043,6.040899675964427,-0.001272967119601189,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,100.0,0.1,64,6.048599344049043,6.05192178407783,0.0005492908092939335,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,100.0,0.1,64,6.048599344049043,6.029328913854417,-0.003185932659531436,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,100.0,0.25,64,6.048599344049043,6.039401657276634,-0.0015206308517455819,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,100.0,0.25,64,12.372499999999999,12.372499999999999,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,100.0,0.25,64,6.048599344049043,6.067960293776208,0.003200898030419817,0.0,0.06277189278759465,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,100.0,0.25,64,6.048599344049043,6.063685091885492,0.0024940894541628056,0.0,0.0007564236273651659,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,100.0,0.25,64,6.048599344049043,6.02951675585634,-0.003154877204997406,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,100.0,0.25,64,6.048599344049043,6.058688855834832,0.0016680740799464883,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,100.0,0.25,64,6.048599344049043,6.002589322347793,-0.00760672332289902,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,100.0,0.5,64,6.048599344049043,6.036314399275123,-0.0020310395969616265,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,100.0,0.5,64,12.372499999999999,12.372499999999999,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,100.0,0.5,64,6.048599344049043,6.087321243503375,0.006401796060839927,0.0,0.1255437855751964,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,100.0,0.5,64,6.048599344049043,6.084416047040346,0.005921487100404747,0.0,0.0030256945094713217,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,100.0,0.5,64,6.048599344049043,6.010983786640825,-0.006218887261102244,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,100.0,0.5,64,6.048599344049043,6.074723073333365,0.004318971682266235,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,100.0,0.5,64,6.048599344049043,5.963826955781723,-0.014015209711438999,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,100.0,0.9,64,6.048599344049043,6.044163250544925,-0.0007334083895773202,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,100.0,0.9,64,12.372499999999999,12.372499999999999,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,100.0,0.9,64,6.048599344049043,6.118298763066841,0.011523232909511929,0.0,0.22597881403535425,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,100.0,0.9,64,6.048599344049043,6.129182688404677,0.013322645421194415,0.0,0.009803250210687509,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,100.0,0.9,64,6.048599344049043,5.982448835391557,-0.010936500319296058,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,100.0,0.9,64,6.048599344049043,6.112742809213515,0.010604680772513043,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,100.0,0.9,64,6.048599344049043,5.9170258962726985,-0.021752713362605817,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,833.3333333333334,0.0,64,50.06655744811603,50.06655744811603,0.0,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,833.3333333333334,0.0,64,102.20583333333332,102.20583333333332,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,833.3333333333334,0.0,64,50.06655744811603,50.06655744811603,0.0,0.0,0.0,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,833.3333333333334,0.0,64,50.06655744811603,50.06655744811603,0.0,0.0,0.0,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,833.3333333333334,0.0,64,50.06655744811603,50.06655744811603,0.0,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,833.3333333333334,0.0,64,50.06655744811603,50.06655744811603,0.0,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,833.3333333333334,0.0,64,50.06655744811603,50.06655744811603,0.0,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,833.3333333333334,0.1,64,50.06655744811603,50.03003234260778,-0.0007295309957369785,1.1368683772161603e-13,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,833.3333333333334,0.1,64,102.20583333333332,102.20583333333333,1.3904152289287473e-16,1.1368683772161603e-13,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,833.3333333333334,0.1,64,50.06655744811603,50.13166760497627,0.001300472015231254,1.1368683772161603e-13,0.2110995505597657,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,833.3333333333334,0.1,64,50.06655744811603,50.110883945004595,0.0008853514031696959,1.1368683772161603e-13,0.001017529857278987,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,833.3333333333334,0.1,64,50.06655744811603,50.001829023689396,-0.0012928475159034278,1.1368683772161603e-13,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,833.3333333333334,0.1,64,50.06655744811603,50.095052376936806,0.0005691409650105516,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,833.3333333333334,0.1,64,50.06655744811603,49.905121497242106,-0.003224426825056202,1.1368683772161603e-13,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,833.3333333333334,0.25,64,50.06655744811603,49.99038755748418,-0.0015213726390271712,1.1368683772161603e-13,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,833.3333333333334,0.25,64,102.20583333333332,102.20583333333332,0.0,1.1368683772161603e-13,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,833.3333333333334,0.25,64,50.06655744811603,50.22933284026664,0.0032511800380782764,1.1368683772161603e-13,0.5277488763994143,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,833.3333333333334,0.25,64,50.06655744811603,50.191458547927795,0.002494701177351777,1.1368683772161603e-13,0.006359561607894193,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,833.3333333333334,0.25,64,50.06655744811603,49.90615846320244,-0.003203715076272477,1.1368683772161603e-13,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,833.3333333333334,0.25,64,50.06655744811603,50.152578357237886,0.0017181310940142013,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,833.3333333333334,0.25,64,50.06655744811603,49.68102964331546,-0.007700305841880375,1.1368683772161603e-13,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,833.3333333333334,0.5,64,50.06655744811603,49.96481811127562,-0.0020320817333175445,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,833.3333333333334,0.5,64,102.20583333333332,102.20583333333332,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,833.3333333333334,0.5,64,50.06655744811603,50.39210823241727,0.006502360076156837,0.0,1.0554977527988854,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,833.3333333333334,0.5,64,50.06655744811603,50.3630488342468,0.005921944732030395,0.0,0.02543824643151993,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,833.3333333333334,0.5,64,50.06655744811603,49.750450759399754,-0.0063137292601724414,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,833.3333333333334,0.5,64,50.06655744811603,50.28787788992617,0.00442052445965547,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,833.3333333333334,0.5,64,50.06655744811603,49.35593623308801,-0.014193530597034492,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,833.3333333333334,0.9,64,50.06655744811603,50.02981757094476,-0.0007338207187371532,5.684341886080802e-14,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,833.3333333333334,0.9,64,102.20583333333332,102.20583333333333,1.3904152289287473e-16,5.684341886080802e-14,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,833.3333333333334,0.9,64,50.06655744811603,50.65254885985826,0.011704248137082136,5.684341886080802e-14,1.8998959550379766,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,833.3333333333334,0.9,64,50.06655744811603,50.7334884147368,0.01332088724717909,5.684341886080802e-14,0.08241991843800633,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,833.3333333333334,0.9,64,50.06655744811603,49.510856386061945,-0.011099246490633126,5.684341886080802e-14,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,833.3333333333334,0.9,64,50.06655744811603,50.60685667924559,0.010791619369665493,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,833.3333333333334,0.9,64,50.06655744811603,48.962684374588505,-0.022048112148942284,5.684341886080802e-14,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,1.0,0.0,128,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,1.0,0.0,128,0.24500000000000002,0.24500000000000002,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,1.0,0.0,128,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,1.0,0.0,128,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,1.0,0.0,128,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,1.0,0.0,128,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,1.0,0.0,128,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,1.0,0.1,128,0.10617499999999999,0.10615618611992117,-0.000177196892666087,0.0,5.551115123125783e-17,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,1.0,0.1,128,0.24500000000000002,0.24500000000000002,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,1.0,0.1,128,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,1.0,0.1,128,0.10617499999999999,0.10619799474231856,0.00021657397992527557,0.0,0.0,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,1.0,0.1,128,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,1.0,0.1,128,0.10617499999999999,0.10615618611992117,-0.000177196892666087,0.0,5.551115123125783e-17,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,1.0,0.1,128,0.10617499999999999,0.10615618611992117,-0.000177196892666087,0.0,5.551115123125783e-17,open,rho and momentum use opposite flux maps
+common_upwind_flux,1.0,0.25,128,0.10617499999999999,0.10613580441650244,-0.00036916019305436974,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,1.0,0.25,128,0.24500000000000002,0.24500000000000002,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,1.0,0.25,128,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,1.0,0.25,128,0.10617499999999999,0.10624032597249594,0.0006152669884242981,0.0,5.551115123125783e-17,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,1.0,0.25,128,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,1.0,0.25,128,0.10617499999999999,0.10613580441650244,-0.00036916019305436974,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,1.0,0.25,128,0.10617499999999999,0.10613580441650244,-0.00036916019305436974,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,1.0,0.5,128,0.10617499999999999,0.10612273922200324,-0.0004922135907393339,0.0,1.1102230246251565e-16,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,1.0,0.5,128,0.24500000000000002,0.24500000000000002,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,1.0,0.5,128,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,1.0,0.5,128,0.10617499999999999,0.10633178233399027,0.0014766407722182633,0.0,1.1102230246251565e-16,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,1.0,0.5,128,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,1.0,0.5,128,0.10617499999999999,0.10612273922200324,-0.0004922135907393339,0.0,1.1102230246251565e-16,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,1.0,0.5,128,0.10617499999999999,0.10612273922200324,-0.0004922135907393339,0.0,5.551115123125783e-17,open,rho and momentum use opposite flux maps
+common_upwind_flux,1.0,0.9,128,0.10617499999999999,0.10615618611992117,-0.000177196892666087,0.0,5.551115123125783e-17,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,1.0,0.9,128,0.24500000000000002,0.24500000000000002,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,1.0,0.9,128,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,1.0,0.9,128,0.10617499999999999,0.10653246372149777,0.0033667409606572218,0.0,1.1102230246251565e-16,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,1.0,0.9,128,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,1.0,0.9,128,0.10617499999999999,0.10615618611992117,-0.000177196892666087,0.0,5.551115123125783e-17,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,1.0,0.9,128,0.10617499999999999,0.10615618611992117,-0.000177196892666087,0.0,5.551115123125783e-17,open,rho and momentum use opposite flux maps
+common_upwind_flux,10.0,0.0,128,0.6463953949135492,0.6463953949135492,0.0,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,10.0,0.0,128,1.3474999999999997,1.3474999999999997,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,10.0,0.0,128,0.6463953949135492,0.6463953949135492,0.0,0.0,0.0,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,10.0,0.0,128,0.6463953949135492,0.6463953949135492,0.0,0.0,0.0,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,10.0,0.0,128,0.6463953949135492,0.6463953949135492,0.0,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,10.0,0.0,128,0.6463953949135492,0.6463953949135492,0.0,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,10.0,0.0,128,0.6463953949135492,0.6463953949135492,0.0,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,10.0,0.1,128,0.6463953949135492,0.6462776270312403,-0.00018219170995911117,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,10.0,0.1,128,1.3474999999999997,1.3475,1.6478263816328858e-16,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,10.0,0.1,128,0.6463953949135492,0.6467424703943392,0.0005369399032249553,0.0,0.001149974830143119,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,10.0,0.1,128,0.6463953949135492,0.6465382418594743,0.00022099004270310362,0.0,1.7335377098248728e-06,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,10.0,0.1,128,0.6463953949135492,0.6460491783820101,-0.000535611073753712,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,10.0,0.1,128,0.6463953949135492,0.6466242655611486,0.00035407221245746187,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,10.0,0.1,128,0.6463953949135492,0.6455973563542297,-0.0012345981509139983,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,10.0,0.25,128,0.6463953949135492,0.6461499358562932,-0.00037973515774948407,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,10.0,0.25,128,1.3474999999999997,1.3474999999999997,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,10.0,0.25,128,0.6463953949135492,0.6472630836155243,0.0013423497580627318,0.0,0.0028749370753575754,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,10.0,0.25,128,0.6463953949135492,0.6467975801540615,0.0006221969458276625,0.0,1.0834610687737722e-05,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,10.0,0.25,128,0.6463953949135492,0.645533065733006,-0.001334058360144456,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,10.0,0.25,128,0.6463953949135492,0.647014859470289,0.0009583368966027804,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,10.0,0.25,128,0.6463953949135492,0.6444534843529096,-0.0030042147204643274,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,10.0,0.5,128,0.6463953949135492,0.6460678671343869,-0.0005066988127385164,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,10.0,0.5,128,1.3474999999999997,1.3474999999999997,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,10.0,0.5,128,0.6463953949135492,0.6481307723174994,0.0026846995161254636,0.0,0.005749874150715151,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,10.0,0.5,128,0.6463953949135492,0.6473497137305706,0.0014763700739993395,0.0,4.333844275183907e-05,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,10.0,0.5,128,0.6463953949135492,0.6446813966911568,-0.0026516250516013078,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,10.0,0.5,128,0.6463953949135492,0.6477919504861669,0.0021605283447361516,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,10.0,0.5,128,0.6463953949135492,0.6426891169354105,-0.0057337629681511034,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,10.0,0.9,128,0.6463953949135492,0.6462773356615539,-0.00018264247072979578,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,10.0,0.9,128,1.3474999999999997,1.3474999999999997,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,10.0,0.9,128,0.6463953949135492,0.6495190742406591,0.004832459129025284,0.0,0.010349773471287627,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,10.0,0.9,128,0.6463953949135492,0.6485437193434138,0.0033235453822375864,0.0,0.0001404165545162428,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,10.0,0.9,128,0.6463953949135492,0.6433406829897728,-0.004725763747411959,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,10.0,0.9,128,0.6463953949135492,0.6493631591465796,0.004591252128934603,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,10.0,0.9,128,0.6463953949135492,0.6402366811434717,-0.00952778101227234,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,100.0,0.0,128,6.048599344049043,6.048599344049043,0.0,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,100.0,0.0,128,12.372499999999999,12.372499999999999,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,100.0,0.0,128,6.048599344049043,6.048599344049043,0.0,0.0,0.0,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,100.0,0.0,128,6.048599344049043,6.048599344049043,0.0,0.0,0.0,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,100.0,0.0,128,6.048599344049043,6.048599344049043,0.0,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,100.0,0.0,128,6.048599344049043,6.048599344049043,0.0,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,100.0,0.0,128,6.048599344049043,6.048599344049043,0.0,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,100.0,0.1,128,6.048599344049043,6.047492040194905,-0.00018306781308420215,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,100.0,0.1,128,12.372499999999999,12.372499999999999,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,100.0,0.1,128,6.048599344049043,6.052417174337732,0.0006311924582085758,0.0,0.012649723131573865,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,100.0,0.1,128,6.048599344049043,6.049940713031032,0.00022176522293689612,0.0,1.9068914809849957e-05,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,100.0,0.1,128,6.048599344049043,6.04479258607212,-0.0006293619002336941,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,100.0,0.1,128,6.048599344049043,6.05130666719192,0.00044759505281839095,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,100.0,0.1,128,6.048599344049043,6.040015452038123,-0.001419153678837291,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,100.0,0.25,128,6.048599344049043,6.046291267913336,-0.0003815885305707418,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,100.0,0.25,128,12.372499999999999,12.372499999999999,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,100.0,0.25,128,6.048599344049043,6.058143919770767,0.0015779811455217333,0.0,0.03162430782893466,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,100.0,0.25,128,6.048599344049043,6.052370121969717,0.0006234134063423849,0.0,0.00011918071756866766,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,100.0,0.25,128,6.048599344049043,6.039123836691612,-0.001566562243332153,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,100.0,0.25,128,6.048599344049043,6.055815455123765,0.0011930218327028128,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,100.0,0.25,128,6.048599344049043,6.027670145145487,-0.0034601727958964486,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,100.0,0.5,128,6.048599344049043,6.045519177892003,-0.0005092362680742475,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,100.0,0.5,128,12.372499999999999,12.372499999999999,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,100.0,0.5,128,6.048599344049043,6.067688495492492,0.0031559622910434667,0.0,0.06324861565786932,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,100.0,0.5,128,6.048599344049043,6.057529027696375,0.0014763225565795415,0.0,0.0004767228702675652,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,100.0,0.5,128,6.048599344049043,6.029785584414752,-0.003110432442975623,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,100.0,0.5,128,6.048599344049043,6.064524243590243,0.0026328243342597364,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,100.0,0.5,128,6.048599344049043,6.008511717495882,-0.006627588351111669,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,100.0,0.9,128,6.048599344049043,6.047488835229356,-0.0001835976821277033,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,100.0,0.9,128,12.372499999999999,12.372499999999997,-1.435729916670237e-16,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,100.0,0.9,128,6.048599344049043,6.08295981664725,0.005680732123878063,0.0,0.11384750818416478,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,100.0,0.9,128,6.048599344049043,6.068656275562574,0.0033159629812916356,0.0,0.0015445820996760062,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,100.0,0.9,128,6.048599344049043,6.015126644736295,-0.005533958757853623,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,100.0,0.9,128,6.048599344049043,6.081563074111465,0.005449812127968651,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,100.0,0.9,128,6.048599344049043,5.981553198593963,-0.011084573740372356,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,833.3333333333334,0.0,128,50.06655744811603,50.06655744811603,0.0,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,833.3333333333334,0.0,128,102.20583333333332,102.20583333333332,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,833.3333333333334,0.0,128,50.06655744811603,50.06655744811603,0.0,0.0,0.0,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,833.3333333333334,0.0,128,50.06655744811603,50.06655744811603,0.0,0.0,0.0,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,833.3333333333334,0.0,128,50.06655744811603,50.06655744811603,0.0,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,833.3333333333334,0.0,128,50.06655744811603,50.06655744811603,0.0,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,833.3333333333334,0.0,128,50.06655744811603,50.06655744811603,0.0,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,833.3333333333334,0.1,128,50.06655744811603,50.05738725922977,-0.0001831599645284544,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,833.3333333333334,0.1,128,102.20583333333332,102.20583333333332,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,833.3333333333334,0.1,128,50.06655744811603,50.09865550276539,0.0006411076831600279,0.0,0.1063513759580701,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,833.3333333333334,0.1,128,50.06655744811603,50.077664552206684,0.00022184677071447294,0.0,0.00016032013564881709,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,833.3333333333334,0.1,128,50.06655744811603,50.034553920930335,-0.0006392196471438849,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,833.3333333333334,0.1,128,50.06655744811603,50.08945980364285,0.0004574381921616618,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,833.3333333333334,0.1,128,50.06655744811603,49.994534189137624,-0.0014385502548890517,0.0,2.842170943040401e-14,open,rho and momentum use opposite flux maps
+common_upwind_flux,833.3333333333334,0.25,128,50.06655744811603,50.04744286535772,-0.00038178344453009634,-1.1368683772161603e-13,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,833.3333333333334,0.25,128,102.20583333333332,102.20583333333333,1.3904152289287473e-16,-1.1368683772161603e-13,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,833.3333333333334,0.25,128,50.06655744811603,50.14680258473942,0.001602769207899857,-1.1368683772161603e-13,0.2658784398951184,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,833.3333333333334,0.25,128,50.06655744811603,50.097776018245426,0.0006235413761321376,-1.1368683772161603e-13,0.0010020008477340525,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,833.3333333333334,0.25,128,50.06655744811603,49.98690195099444,-0.0015909920949555914,-1.1368683772161603e-13,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,833.3333333333334,0.25,128,50.06655744811603,50.12752547651441,0.0012177395751956572,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,833.3333333333334,0.25,128,50.06655744811603,49.89092273761467,-0.003508024506845039,-1.1368683772161603e-13,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,833.3333333333334,0.5,128,50.06655744811603,50.041048381891926,-0.000509503099959252,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,833.3333333333334,0.5,128,102.20583333333332,102.20583333333332,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,833.3333333333334,0.5,128,50.06655744811603,50.227047721362794,0.00320553841579943,0.0,0.5317568797902368,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,833.3333333333334,0.5,128,50.06655744811603,50.14047158593627,0.0014763175578196334,0.0,0.004008003390822523,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,833.3333333333334,0.5,128,50.06655744811603,49.90841809702064,-0.0031585824781195653,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,833.3333333333334,0.5,128,50.06655744811603,50.200867303517214,0.002682626133030414,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,833.3333333333334,0.5,128,50.06655744811603,49.73005194390095,-0.006721163214862463,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,833.3333333333334,0.9,128,50.06655744811603,50.05736031388262,-0.0001836981550597222,0.0,2.842170943040401e-14,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,833.3333333333334,0.9,128,102.20583333333332,102.20583333333332,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,833.3333333333334,0.9,128,50.06655744811603,50.35543993996022,0.005769969148439258,0.0,0.9571623836224035,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,833.3333333333334,0.9,128,50.06655744811603,50.23253636327425,0.003315165324283065,0.0,0.012985930986133098,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,833.3333333333334,0.9,128,50.06655744811603,49.78525301351253,-0.005618609485883152,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,833.3333333333334,0.9,128,50.06655744811603,50.343951727818904,0.0055405103494551005,0.0,2.842170943040401e-14,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,833.3333333333334,0.9,128,50.06655744811603,49.50346435208644,-0.011246890633795288,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,1.0,0.0,256,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,1.0,0.0,256,0.24500000000000002,0.24500000000000002,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,1.0,0.0,256,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,1.0,0.0,256,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,1.0,0.0,256,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,1.0,0.0,256,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,1.0,0.0,256,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,1.0,0.1,256,0.10617499999999999,0.10617029369659009,-4.4325909205571223e-05,0.0,1.1102230246251565e-16,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,1.0,0.1,256,0.24500000000000002,0.24500000000000002,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,1.0,0.1,256,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,1.0,0.1,256,0.10617499999999999,0.10618075214861213,5.4176111251558704e-05,0.0,5.551115123125783e-17,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,1.0,0.1,256,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,1.0,0.1,256,0.10617499999999999,0.10617029369659009,-4.4325909205571223e-05,0.0,1.1102230246251565e-16,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,1.0,0.1,256,0.10617499999999999,0.10617029369659008,-4.432590920570193e-05,0.0,1.1102230246251565e-16,open,rho and momentum use opposite flux maps
+common_upwind_flux,1.0,0.25,256,0.10617499999999999,0.10616519520122931,-9.234564417873086e-05,0.0,5.551115123125783e-17,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,1.0,0.25,256,0.24500000000000002,0.24500000000000002,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,1.0,0.25,256,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,1.0,0.25,256,0.10617499999999999,0.10619134133128452,0.00015390940696520498,0.0,0.0,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,1.0,0.25,256,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,1.0,0.25,256,0.10617499999999999,0.10616519520122931,-9.234564417873086e-05,0.0,5.551115123125783e-17,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,1.0,0.25,256,0.10617499999999999,0.1061651952012293,-9.234564417886156e-05,0.0,5.551115123125783e-17,open,rho and momentum use opposite flux maps
+common_upwind_flux,1.0,0.5,256,0.10617499999999999,0.10616192693497241,-0.00012312752557177184,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,1.0,0.5,256,0.24500000000000002,0.24500000000000002,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,1.0,0.5,256,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,1.0,0.5,256,0.10617499999999999,0.1062142191950828,0.00036938257671583836,0.0,5.551115123125783e-17,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,1.0,0.5,256,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,1.0,0.5,256,0.10617499999999999,0.10616192693497241,-0.00012312752557177184,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,1.0,0.5,256,0.10617499999999999,0.1061619269349724,-0.00012312752557190257,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,1.0,0.9,256,0.10617499999999999,0.10617029369659006,-4.432590920583264e-05,0.0,5.551115123125783e-17,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,1.0,0.9,256,0.24500000000000002,0.24500000000000002,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,1.0,0.9,256,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,1.0,0.9,256,0.10617499999999999,0.1062644197647888,0.0008421922749122579,0.0,0.0,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,1.0,0.9,256,0.10617499999999999,0.10617499999999999,0.0,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,1.0,0.9,256,0.10617499999999999,0.10617029369659006,-4.432590920583264e-05,0.0,5.551115123125783e-17,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,1.0,0.9,256,0.10617499999999999,0.10617029369659008,-4.432590920570193e-05,0.0,1.1102230246251565e-16,open,rho and momentum use opposite flux maps
+common_upwind_flux,10.0,0.0,256,0.6463953949135495,0.6463953949135495,0.0,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,10.0,0.0,256,1.3474999999999997,1.3474999999999997,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,10.0,0.0,256,0.6463953949135495,0.6463953949135495,0.0,0.0,0.0,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,10.0,0.0,256,0.6463953949135495,0.6463953949135495,0.0,0.0,0.0,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,10.0,0.0,256,0.6463953949135495,0.6463953949135495,0.0,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,10.0,0.0,256,0.6463953949135495,0.6463953949135495,0.0,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,10.0,0.0,256,0.6463953949135495,0.6463953949135495,0.0,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,10.0,0.1,256,0.6463953949135495,0.6463659147300657,-4.560704441242597e-05,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,10.0,0.1,256,1.3474999999999997,1.3474999999999997,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,10.0,0.1,256,0.6463953949135495,0.6465674840478358,0.00026622889896881435,0.0,0.0005765062240614682,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,10.0,0.1,256,0.6463953949135495,0.6464311245026555,5.527512941332858e-05,0.0,3.037617979373408e-07,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,10.0,0.1,256,0.6463953949135495,0.6462235193206424,-0.00026589854175877503,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,10.0,0.1,256,0.6463953949135495,0.6465378904453382,0.00022044639072304437,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,10.0,0.1,256,0.6463953949135495,0.6460252179660227,-0.0005726788130602817,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,10.0,0.25,256,0.6463953949135495,0.6463339639078033,-9.503626763058534e-05,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,10.0,0.25,256,1.3474999999999997,1.3474999999999997,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,10.0,0.25,256,0.6463953949135495,0.6468256177492653,0.0006655722474219499,0.0,0.0014412655601532265,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,10.0,0.25,256,0.6463953949135495,0.6464958835800272,0.00015546005938231605,0.0,1.8985112375524693e-06,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,10.0,0.25,256,0.6463953949135495,0.6459665056085144,-0.0006635092211515544,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,10.0,0.25,256,0.6463953949135495,0.6467634733666825,0.0005694323567732916,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,10.0,0.25,256,0.6463953949135495,0.6454831069067036,-0.0014113466989780338,0.0,-4.440892098500626e-16,open,rho and momentum use opposite flux maps
+common_upwind_flux,10.0,0.5,256,0.6463953949135495,0.6463134555048021,-0.00012676360226592176,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,10.0,0.5,256,1.3474999999999997,1.3475,1.6478263816328858e-16,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,10.0,0.5,256,0.6463953949135495,0.6472558405849813,0.0013311444948442433,0.0,0.002882531120307341,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,10.0,0.5,256,0.6463953949135495,0.646633557852698,0.0003684477659071673,0.0,7.594044949765788e-06,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,10.0,0.5,256,0.6463953949135495,0.6455402760432332,-0.0013229037165876974,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,10.0,0.5,256,0.6463953949135495,0.6471710172320189,0.0011999193134306395,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,10.0,0.5,256,0.6463953949135495,0.6446146931880238,-0.00275481808740894,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,10.0,0.9,256,0.6463953949135495,0.6463658782763269,-4.5663439830914704e-05,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,10.0,0.9,256,1.3474999999999997,1.3474999999999997,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,10.0,0.9,256,0.6463953949135495,0.6479441971221269,0.002396060090719844,0.0,0.005188556016552326,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,10.0,0.9,256,0.6463953949135495,0.6469310421649237,0.000828668111792266,0.0,2.460470563692141e-05,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,10.0,0.9,256,0.6463953949135495,0.6448638138480258,-0.0023694182810947836,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,10.0,0.9,256,0.6463953949135495,0.6479051754739392,0.002335692011840017,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,10.0,0.9,256,0.6463953949135495,0.643316616908721,-0.004762994954876247,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,100.0,0.0,256,6.048599344049044,6.048599344049044,0.0,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,100.0,0.0,256,12.372499999999999,12.372499999999999,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,100.0,0.0,256,6.048599344049044,6.048599344049044,0.0,0.0,0.0,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,100.0,0.0,256,6.048599344049044,6.048599344049044,0.0,0.0,0.0,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,100.0,0.0,256,6.048599344049044,6.048599344049044,0.0,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,100.0,0.0,256,6.048599344049044,6.048599344049044,0.0,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,100.0,0.0,256,6.048599344049044,6.048599344049044,0.0,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,100.0,0.1,256,6.048599344049044,6.04832212531983,-4.5831888251397994e-05,0.0,3.552713678800501e-15,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,100.0,0.1,256,12.372499999999999,12.372499999999999,0.0,0.0,-7.105427357601002e-15,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,100.0,0.1,256,6.048599344049044,6.050492324526194,0.000312961789907996,0.0,0.006341568464677039,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,100.0,0.1,256,6.048599344049044,6.048934848043089,5.5468047222444764e-05,0.0,3.3413797808634627e-06,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,100.0,0.1,256,6.048599344049044,6.046709115742514,-0.00031250678033243234,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,100.0,0.1,256,6.048599344049044,6.050214259081091,0.00026698991620867,0.0,3.552713678800501e-15,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,100.0,0.1,256,6.048599344049044,6.044576062777188,-0.0006651591621478495,0.0,3.552713678800501e-15,open,rho and momentum use opposite flux maps
+common_upwind_flux,100.0,0.25,256,6.048599344049044,6.048021652082864,-9.550838687117687e-05,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,100.0,0.25,256,12.372499999999999,12.372499999999999,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,100.0,0.25,256,6.048599344049044,6.053331795241919,0.00078240447476999,0.0,0.015853921161692597,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,100.0,0.25,256,6.048599344049044,6.049541306067453,0.0001557322554908139,0.0,2.0883623612633073e-05,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,100.0,0.25,256,6.048599344049044,6.043884077408402,-0.000779563395165392,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,100.0,0.25,256,6.048599344049044,6.052748762197903,0.0006860130606835333,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,100.0,0.25,256,6.048599344049044,6.038672224822376,-0.0016412261189749254,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,100.0,0.5,256,6.048599344049044,6.047828743182791,-0.00012740153916973753,0.0,3.552713678800501e-15,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,100.0,0.5,256,12.372499999999999,12.372499999999999,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,100.0,0.5,256,6.048599344049044,6.058064246434794,0.0015648089495401269,0.0,0.03170784232337809,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,100.0,0.5,256,6.048599344049044,6.0508269444288505,0.0003682836724833457,0.0,8.353449445053229e-05,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,100.0,0.5,256,6.048599344049044,6.039203070330761,-0.0015534627413414368,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,100.0,0.5,256,6.048599344049044,6.057271948909236,0.0014338203552405149,0.0,3.552713678800501e-15,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,100.0,0.5,256,6.048599344049044,6.029182278141494,-0.00321017558001309,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,100.0,0.9,256,6.048599344049044,6.0483217243318625,-4.5898182602282646e-05,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,100.0,0.9,256,12.372499999999999,12.372499999999999,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,100.0,0.9,256,6.048599344049044,6.065636168343397,0.0028166561091725515,0.0,0.05707411618207914,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,100.0,0.9,256,6.048599344049044,6.053597266166275,0.0008262941274409546,0.0,0.00027065176200480323,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,100.0,0.9,256,6.048599344049044,6.031784313406845,-0.0027799875121075662,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,100.0,0.9,256,6.048599344049044,6.065286486257311,0.002758844032988441,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,100.0,0.9,256,6.048599344049044,6.014908789880621,-0.005569976163418699,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,833.3333333333334,0.0,256,50.066557448116036,50.066557448116036,0.0,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,833.3333333333334,0.0,256,102.20583333333332,102.20583333333332,0.0,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,833.3333333333334,0.0,256,50.066557448116036,50.066557448116036,0.0,0.0,0.0,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,833.3333333333334,0.0,256,50.066557448116036,50.066557448116036,0.0,0.0,0.0,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,833.3333333333334,0.0,256,50.066557448116036,50.066557448116036,0.0,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,833.3333333333334,0.0,256,50.066557448116036,50.066557448116036,0.0,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,833.3333333333334,0.0,256,50.066557448116036,50.066557448116036,0.0,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,833.3333333333334,0.1,256,50.066557448116036,50.06426161905621,-4.585554064116673e-05,0.0,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,833.3333333333334,0.1,256,102.20583333333332,102.20583333333333,1.3904152289287473e-16,0.0,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,833.3333333333334,0.1,256,50.066557448116036,50.0824725062017,0.00031787801871844645,0.0,0.05331614968451959,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,833.3333333333334,0.1,256,50.066557448116036,50.06933555837255,5.548834188156965e-05,0.0,2.8092341096908058e-05,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,833.3333333333334,0.1,256,50.066557448116036,50.05066588566026,-0.00031740873081290345,0.0,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,833.3333333333334,0.1,256,50.066557448116036,50.080169913596244,0.0002718873869910877,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,833.3333333333334,0.1,256,50.066557448116036,50.032768362702626,-0.0006748833380131201,0.0,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,833.3333333333334,0.25,256,50.066557448116036,50.06177318554421,-9.555804943814156e-05,5.684341886080802e-14,2.842170943040401e-14,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,833.3333333333334,0.25,256,102.20583333333332,102.20583333333333,1.3904152289287473e-16,5.684341886080802e-14,5.684341886080802e-14,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,833.3333333333334,0.25,256,50.066557448116036,50.10634509333021,0.0007946950467966129,5.684341886080802e-14,0.13329037421127055,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,833.3333333333334,0.25,256,50.066557448116036,50.07435585966871,0.00015576089010617219,5.684341886080802e-14,0.00017557713186988622,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,833.3333333333334,0.25,256,50.066557448116036,50.026916507556294,-0.0007917648542307374,5.684341886080802e-14,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,833.3333333333334,0.25,256,50.066557448116036,50.101518146203134,0.0006982844411327283,0.0,2.842170943040401e-14,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,833.3333333333334,0.25,256,50.066557448116036,49.983177589631865,-0.0016653803004246528,5.684341886080802e-14,0.0,open,rho and momentum use opposite flux maps
+common_upwind_flux,833.3333333333334,0.5,256,50.066557448116036,50.060175531997736,-0.00012746864261466552,5.684341886080802e-14,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,833.3333333333334,0.5,256,102.20583333333332,102.20583333333332,0.0,5.684341886080802e-14,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,833.3333333333334,0.5,256,50.066557448116036,50.14613273854439,0.0015893900935932258,5.684341886080802e-14,0.2665807484224558,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,833.3333333333334,0.5,256,50.066557448116036,50.0849952794938,0.00036826641010567247,5.684341886080802e-14,0.0007023085273942797,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,833.3333333333334,0.5,256,50.066557448116036,49.98756802762209,-0.0015776882717731075,5.684341886080802e-14,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,833.3333333333334,0.5,256,50.066557448116036,50.13957729224547,0.001458455461115014,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,833.3333333333334,0.5,256,50.066557448116036,49.903442416719436,-0.0032579637928099293,5.684341886080802e-14,2.842170943040401e-14,open,rho and momentum use opposite flux maps
+common_upwind_flux,833.3333333333334,0.9,256,50.066557448116036,50.064258247790264,-4.592287632628524e-05,5.684341886080802e-14,0.0,closed,same convex conservative update for rho and momentum
+common_upwind_constant_velocity,833.3333333333334,0.9,256,102.20583333333332,102.20583333333333,1.3904152289287473e-16,5.684341886080802e-14,0.0,closed,same flux with uniform velocity; energy reduces to conserved mass
+density_upwind_velocity_current,833.3333333333334,0.9,256,50.066557448116036,50.20979297088709,0.0028609021684681472,5.684341886080802e-14,0.47984534716047733,open,"rho moved, velocity left in old cell metric"
+density_upwind_velocity_imex,833.3333333333334,0.9,256,50.066557448116036,50.10791464691802,0.0008260443879098534,5.684341886080802e-14,0.002275479628735866,open,"rho moved, velocity updated by explicit history"
+density_upwind_momentum_lagged,833.3333333333334,0.9,256,50.066557448116036,49.925215266727996,-0.0028230856801870854,5.684341886080802e-14,0.0,open,old momentum evaluated in moved density metric
+momentum_upwind_density_current,833.3333333333334,0.9,256,50.066557448116036,50.206916697660105,0.0028034531770937785,0.0,0.0,open,"momentum moved, density left in old metric"
+independent_opposite_fluxes,833.3333333333334,0.9,256,50.066557448116036,49.783456104108794,-0.005654499898472556,5.684341886080802e-14,0.0,open,rho and momentum use opposite flux maps

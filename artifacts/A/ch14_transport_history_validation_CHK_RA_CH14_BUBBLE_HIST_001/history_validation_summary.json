@@ -1,0 +1,73 @@
+{
+  "controls": {
+    "constant_density_shift_1cell": {
+      "density_ratio": 1.0,
+      "shift_cells": 1.0,
+      "paired_rate": -2.8278027663225513e-07,
+      "imex_rate": -2.882138204068907e-07,
+      "imex_minus_current_rate": -5.433543774635563e-09,
+      "ke": 0.25
+    },
+    "high_density_zero_shift": {
+      "density_ratio": 833.3333333333334,
+      "shift_cells": 0.0,
+      "paired_rate": -2.8278027662930275e-07,
+      "imex_rate": -2.8278027662930275e-07,
+      "imex_minus_current_rate": 0.0,
+      "ke": 104.29166666666666
+    },
+    "high_density_shift_1cell": {
+      "density_ratio": 833.3333333333334,
+      "shift_cells": 1.0,
+      "paired_rate": -2.8278027662930275e-07,
+      "imex_rate": 0.030519832418148006,
+      "imex_minus_current_rate": 0.030520115198424635,
+      "ke": 104.29166666666666
+    }
+  },
+  "checkpoint_replay": [
+    {
+      "case": "stable_pre_step_t0p009995",
+      "state_phase": "pre_step",
+      "step": 1358,
+      "dt_candidate": 7.3614638448192565e-06,
+      "dt_effective": 4.745670895218296e-06,
+      "ke": 5.9314097867277835e-05,
+      "conv_n_power": 0.00015149522046310686,
+      "conv_prev_power": -0.0014787131532949496,
+      "imex_power": 0.0017817035942211629,
+      "linear_energy_increment_dt_candidate": 1.311594659104361e-08,
+      "linear_energy_increment_bdf2_dt": 8.743964394029072e-09,
+      "imex_linf": 150.31938578615285
+    },
+    {
+      "case": "stable_post_step_t0p01",
+      "state_phase": "post_step",
+      "step": 1359,
+      "dt_candidate": 0.0,
+      "dt_effective": 0.0,
+      "ke": 5.936032042677943e-05,
+      "conv_n_power": 0.00015081914789117344,
+      "conv_prev_power": -0.0014843971305820657,
+      "imex_power": 0.0017860354263644128,
+      "linear_energy_increment_dt_candidate": 0.0,
+      "linear_energy_increment_bdf2_dt": 0.0,
+      "imex_linf": 150.22099068681698
+    },
+    {
+      "case": "pre_blowup_t0p018033",
+      "state_phase": "pre_step",
+      "step": 2469,
+      "dt_candidate": 1.7233282549561157e-09,
+      "dt_effective": 1.7233282549561157e-09,
+      "ke": 883870.8994627862,
+      "conv_n_power": -14102904962523.1,
+      "conv_prev_power": 1286036810697943.5,
+      "imex_power": -1314242620622990.0,
+      "linear_energy_increment_dt_candidate": -2264871.44198717,
+      "linear_energy_increment_bdf2_dt": -1509914.294658113,
+      "imex_linf": 11565353737791.96
+    }
+  ],
+  "interpretation": "The history defect requires both variable density and history lag. The controls remove either factor and nearly close the energy gate; the interaction produces positive normalized IMEX work and is present in the stable rising-bubble checkpoint before blow-up."
+}

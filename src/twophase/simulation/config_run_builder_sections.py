@@ -168,6 +168,7 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
         ridge_sigma_0=options.ridge_sigma_0,
         reinit_volume_constraint=reinit_volume_constraint,
         advection_scheme=options.operator_settings["advection_scheme"],
+        momentum_form=options.operator_settings["momentum_form"],
         convection_scheme=options.operator_settings["convection_scheme"],
         ppe_solver=options.operator_settings["ppe_solver"],
         ppe_dc_base_solver=options.operator_settings["ppe_dc_base_solver"],

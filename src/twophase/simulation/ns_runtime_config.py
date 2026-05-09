@@ -60,6 +60,7 @@ class NSPPERuntimeState:
 
 @dataclass(frozen=True)
 class NSSchemeRuntimeState:
+    momentum_form: str
     convection_time_scheme: str
     viscous_time_scheme: str
     viscous_solver: str
@@ -318,6 +319,15 @@ def normalise_ns_ppe_runtime(
 
 
 def normalise_ns_scheme_runtime(options) -> NSSchemeRuntimeState:
+    momentum_form = str(
+        getattr(options, "momentum_form", "primitive_velocity")
+    ).strip().lower()
+    if momentum_form not in {"primitive_velocity", "conservative_common_flux"}:
+        raise ValueError(
+            "Unsupported momentum_form="
+            f"'{getattr(options, 'momentum_form', None)}'. "
+            "Use primitive_velocity|conservative_common_flux."
+        )
     convection_time_scheme = canonicalize_convection_time_scheme(
         options.convection_time_scheme
     )
@@ -367,6 +377,7 @@ def normalise_ns_scheme_runtime(options) -> NSSchemeRuntimeState:
         )
 
     return NSSchemeRuntimeState(
+        momentum_form=momentum_form,
         convection_time_scheme=convection_time_scheme,
         viscous_time_scheme=viscous_time_scheme,
         viscous_solver=str(getattr(options, "viscous_solver", "defect_correction")),

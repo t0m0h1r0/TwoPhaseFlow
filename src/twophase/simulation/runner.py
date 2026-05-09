@@ -27,6 +27,7 @@ def run_simulation(
     resume_from: str | Path | None = None,
     checkpoint_path: str | Path | None = None,
     checkpoint_every_steps: int | None = None,
+    checkpoint_interval: float | None = None,
     config_path: str | Path | None = None,
 ) -> dict:
     """Run a complete simulation from an :class:`ExperimentConfig`."""
@@ -42,7 +43,17 @@ def run_simulation(
     from ..levelset.wall_contact import WallContactSet
     from ..tools.diagnostics import DiagnosticCollector
 
-    if (resume_from or checkpoint_path or checkpoint_every_steps) and config_path is None:
+    checkpoint_interval = _normalise_checkpoint_interval(
+        checkpoint_interval
+        if checkpoint_interval is not None
+        else getattr(getattr(cfg, "output", None), "checkpoint_interval", None)
+    )
+    if (
+        resume_from
+        or checkpoint_path
+        or checkpoint_every_steps
+        or checkpoint_interval is not None
+    ) and config_path is None:
         raise CheckpointError("checkpointed ch14 runs require the source config path")
 
     solver = TwoPhaseNSSolver.from_config(cfg)
@@ -135,6 +146,7 @@ def run_simulation(
 
     t = float(resume_state["t"]) if resume_state else 0.0
     step = int(resume_state["step"]) if resume_state else 0
+    next_time_checkpoint = _next_time_checkpoint(t, checkpoint_interval, T)
     previous_results = resume_state["results"] if resume_state else {}
     dbg_history: list = list(resume_state["debug_history"]) if resume_state else []
     pre_blowup_checkpoint_written = False
@@ -162,6 +174,8 @@ def run_simulation(
             dt_candidate = float(resume_dt_candidate)
             resume_dt_candidate = None
         dt = min(dt_candidate, T - t)
+        if next_time_checkpoint is not None:
+            dt = min(dt, max(0.0, next_time_checkpoint - t))
         if dt < 1e-12:
             break
         terminal_clamped = bool(dt < dt_candidate - max(1.0e-15, 1.0e-12 * dt_candidate))
@@ -247,6 +261,41 @@ def run_simulation(
         while snap_idx < len(snap_times) and t >= snap_times[snap_idx]:
             snaps.append(_capture_runtime_snapshot(solver, ph, t, psi, u, v, p))
             snap_idx += 1
+        while (
+            checkpoint_interval is not None
+            and checkpoint_path is not None
+            and next_time_checkpoint is not None
+            and _time_reached(t, next_time_checkpoint)
+        ):
+            current_results = _merge_time_series(
+                previous_results,
+                {**diag.to_arrays()},
+            )
+            frame = capture_checkpoint_frame(
+                solver=solver,
+                psi=psi,
+                u=u,
+                v=v,
+                p=_checkpoint_pressure(solver, p, psi),
+                t=t,
+                step=step,
+                config_path=config_path,
+                results=current_results,
+                snapshots=snaps,
+                debug_history=dbg_history,
+                state_phase="pre_step",
+                dt_candidate=None,
+                dt_effective=None,
+                terminal_clamped=False,
+            )
+            time_path = _time_checkpoint_path(checkpoint_path, next_time_checkpoint)
+            write_checkpoint_frame(time_path, frame)
+            print(f"  [checkpoint] saved {time_path.name} at t={t:.8g}")
+            next_time_checkpoint = _next_time_checkpoint(
+                next_time_checkpoint,
+                checkpoint_interval,
+                T,
+            )
 
         if step % cfg.run.print_every == 0 or step <= 2:
             ke = diag.last("kinetic_energy", 0.0)
@@ -372,6 +421,41 @@ def _pre_blowup_checkpoint_path(checkpoint_path: str | Path) -> Path:
 def _continuation_checkpoint_path(checkpoint_path: str | Path) -> Path:
     """Return the sibling pre-step frame for exact continuation restarts."""
     return Path(checkpoint_path).with_name("checkpoint_continuation.npz")
+
+
+def _normalise_checkpoint_interval(value) -> float | None:
+    if value is None:
+        return None
+    interval = float(value)
+    if interval <= 0.0:
+        return None
+    return interval
+
+
+def _next_time_checkpoint(
+    t: float,
+    interval: float | None,
+    final_time: float,
+) -> float | None:
+    if interval is None or not np.isfinite(final_time):
+        return None
+    index = int(np.floor(max(0.0, t) / interval + 1.0e-9)) + 1
+    target = index * interval
+    if target > final_time + max(1.0e-12, 1.0e-9 * abs(final_time)):
+        return None
+    return float(min(target, final_time))
+
+
+def _time_reached(t: float, target: float) -> bool:
+    tol = max(1.0e-12, 1.0e-9 * max(abs(t), abs(target), 1.0))
+    return bool(t + tol >= target)
+
+
+def _time_checkpoint_path(checkpoint_path: str | Path, time_value: float) -> Path:
+    """Return a restartable checkpoint path keyed by physical time."""
+    path = Path(checkpoint_path)
+    label = f"{time_value:.9f}".rstrip("0").rstrip(".").replace(".", "p")
+    return path.with_name(f"checkpoint_t{label}.npz")
 
 
 def _checkpoint_pressure(solver, p, psi):

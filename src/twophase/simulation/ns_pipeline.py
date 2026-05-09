@@ -28,6 +28,7 @@ from .ns_step_services import (
     record_ns_step_diagnostics,
     solve_ns_pressure_stage,
 )
+from .conservative_transport import ConservativeCommonFluxTransport
 from .interface_projection_diagnostics import (
     reinit_projection_diagnostics,
     zero_reinit_projection_diagnostics,
@@ -174,6 +175,7 @@ class TwoPhaseNSSolver:
         surface_tension_scheme: str = "pressure_jump",
         capillary_force_source: str = "curvature_jump",
         curvature_method: str = "psi_direct_filtered",
+        momentum_form: str = "primitive_velocity",
         convection_time_scheme: str = "imex_bdf2",
         pressure_gradient_scheme: str | None = "fccd_flux",
         surface_tension_gradient_scheme: str | None = "none",
@@ -285,6 +287,7 @@ class TwoPhaseNSSolver:
                 surface_tension_scheme=surface_tension_scheme,
                 capillary_force_source=capillary_force_source,
                 curvature_method=curvature_method,
+                momentum_form=momentum_form,
                 convection_time_scheme=convection_time_scheme,
                 advection_scheme=advection_scheme,
                 convection_scheme=convection_scheme,
@@ -747,6 +750,156 @@ class TwoPhaseNSSolver:
             state.u, state.v = self._div_op.reconstruct_nodes(
                 self._projected_face_components
             )
+            _apply_bc(state.u, state.v, state.bc_hook, self.bc_type)
+        if self._conservative_common_flux_enabled():
+            density = getattr(self, "_conservative_density", None)
+            momentum = getattr(self, "_conservative_momentum_components", None)
+            if density is not None:
+                state.conservative_density = self._backend.xp.asarray(density)
+            if momentum is not None:
+                state.conservative_momentum_components = [
+                    self._backend.xp.asarray(component) for component in momentum
+                ]
+        return state
+
+    def _conservative_common_flux_enabled(self) -> bool:
+        return getattr(self, "_momentum_form", "primitive_velocity") == (
+            "conservative_common_flux"
+        )
+
+    def _face_velocity_for_common_flux(self, state: NSStepState):
+        """Return projection-native face velocities for common-flux transport."""
+        xp = self._backend.xp
+        if state.face_velocity_components is not None:
+            return [xp.asarray(component) for component in state.face_velocity_components]
+        if hasattr(self._div_op, "face_fluxes"):
+            return [
+                xp.asarray(component)
+                for component in self._div_op.face_fluxes([state.u, state.v])
+            ]
+        raise RuntimeError(
+            "conservative_common_flux requires projection-native face velocities"
+        )
+
+    def _publish_conservative_state(self, state: NSStepState) -> NSStepState:
+        """Persist conservative density/momentum as backend-native arrays."""
+        xp = self._backend.xp
+        density = state.conservative_density
+        if density is None:
+            density = state.rho
+        if density is None:
+            density = state.rho_g + (state.rho_l - state.rho_g) * state.psi
+        density = xp.asarray(density)
+        momentum = [
+            density * xp.asarray(state.u),
+            density * xp.asarray(state.v),
+        ]
+        state.conservative_density = density
+        state.conservative_momentum_components = momentum
+        self._conservative_density = density
+        self._conservative_momentum_components = momentum
+        return state
+
+    def _advance_conservative_common_flux_stage(
+        self,
+        state: NSStepState,
+        *,
+        psi_previous,
+        will_rebuild: bool,
+        step_diag_enabled: bool,
+        record_projection_fields: bool,
+        capillary_needs_transport_endpoint: bool,
+    ) -> NSStepState:
+        """Transport ``q, rho, rho u`` with the same FCCD stage ledger."""
+        if will_rebuild:
+            raise NotImplementedError(
+                "conservative_common_flux requires conservative q/momentum "
+                "grid remap before dynamic grid rebuild can be enabled"
+            )
+        if getattr(self, "_interface_tracking_method", "psi_direct") != "psi_direct":
+            raise NotImplementedError(
+                "conservative_common_flux currently requires psi_direct transport"
+            )
+        if getattr(self._transport, "mass_correction", False):
+            raise NotImplementedError(
+                "conservative_common_flux requires mass correction to be expressed "
+                "as a conservative q/momentum remap"
+            )
+        advance_face = getattr(self._transport, "advance_with_face_velocity", None)
+        if not callable(advance_face):
+            raise RuntimeError(
+                "conservative_common_flux requires transport.advance_with_face_velocity"
+            )
+
+        xp = self._backend.xp
+        if hasattr(self._transport, "record_reinit_projection"):
+            self._transport.record_reinit_projection = (
+                step_diag_enabled
+                or record_projection_fields
+                or capillary_needs_transport_endpoint
+            )
+        face_velocity = self._face_velocity_for_common_flux(state)
+        advanced = advance_face(
+            state.psi,
+            face_velocity,
+            state.dt,
+            step_index=state.step_index,
+            clip_bounds=None,
+            bound_preserving=True,
+            face_divergence_operator=self._div_op,
+            return_ledger=True,
+        )
+        state.psi, ledger = advanced
+        state.psi = xp.asarray(state.psi)
+        state.conservative_transport_ledger = ledger
+        reinit_projection = getattr(self._transport, "last_reinit_projection", None)
+        if reinit_projection and reinit_projection.get("triggered", False):
+            raise NotImplementedError(
+                "conservative_common_flux requires conservative q/momentum "
+                "reinitialization before redistancing can be enabled"
+            )
+        state.psi_transport_endpoint = getattr(ledger, "psi_after_transport", state.psi)
+        if record_projection_fields and reinit_projection:
+            state.interface_projection_fields = dict(reinit_projection)
+        state.interface_projection_diagnostics = zero_reinit_projection_diagnostics()
+        state.psi_previous = psi_previous
+
+        density0 = state.conservative_density
+        if density0 is None:
+            density0 = state.rho_g + (state.rho_l - state.rho_g) * ledger.psi_before
+        density0 = xp.asarray(density0)
+        momentum0 = state.conservative_momentum_components
+        if momentum0 is None:
+            momentum0 = [density0 * xp.asarray(state.u), density0 * xp.asarray(state.v)]
+        transport = ConservativeCommonFluxTransport(
+            self._backend,
+            self._grid,
+            self._fccd,
+            divergence_operator=self._div_op,
+        )
+        result = transport.advance(
+            density0,
+            tuple(momentum0),
+            ledger,
+            rho_l=state.rho_l,
+            rho_g=state.rho_g,
+        )
+        state.conservative_density = result.density
+        state.rho = result.density
+        state.psi = xp.asarray(ledger.psi_after_transport)
+        state.conservative_momentum_components = list(result.momentum_components)
+        state.conservative_transport_certificate = {
+            "kinetic_energy_before": result.kinetic_energy_before,
+            "kinetic_energy_after": result.kinetic_energy_after,
+            "kinetic_energy_delta": result.kinetic_energy_delta,
+            "min_density": result.min_density,
+            "max_density": result.max_density,
+            "status": result.certificate_status,
+        }
+        state.u, state.v = result.velocity_components
+        self._conservative_density = result.density
+        self._conservative_momentum_components = list(result.momentum_components)
+        self._projected_face_components = None
         return state
 
     def _advance_interface_stage(
@@ -791,6 +944,15 @@ class TwoPhaseNSSolver:
             getattr(self, "_capillary_force_source", "curvature_jump")
             == "closed_interface_riesz"
         )
+        if self._conservative_common_flux_enabled():
+            return self._advance_conservative_common_flux_stage(
+                state,
+                psi_previous=psi_previous,
+                will_rebuild=will_rebuild,
+                step_diag_enabled=step_diag_enabled,
+                record_projection_fields=record_projection_fields,
+                capillary_needs_transport_endpoint=capillary_needs_transport_endpoint,
+            )
         if hasattr(self._transport, "record_reinit_projection"):
             self._transport.record_reinit_projection = (
                 step_diag_enabled
@@ -976,6 +1138,7 @@ class TwoPhaseNSSolver:
             Y=self.Y,
             coords=(self.X, self.Y),
             ppe_coefficient_scheme=self._ppe_coefficient_scheme,
+            conservative_momentum_transport=self._conservative_common_flux_enabled(),
         )
         return state
 
@@ -1057,6 +1220,8 @@ class TwoPhaseNSSolver:
         _apply_bc(state.u_star, state.v_star, state.bc_hook, self.bc_type)
         state = self._solve_pressure_stage(state)
         state = self._correct_velocity_stage(state)
+        if self._conservative_common_flux_enabled():
+            state = self._publish_conservative_state(state)
         self._projected_face_components = state.projected_face_components
         self._record_step_diagnostics(state)
 

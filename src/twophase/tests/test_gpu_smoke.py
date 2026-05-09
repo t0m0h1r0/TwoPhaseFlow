@@ -24,7 +24,10 @@ from twophase.backend import Backend
 from twophase.config import GridConfig
 from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
+from twophase.ccd.fccd import FCCDSolver
 from twophase.levelset.compact_filters import HelmholtzKappaFilter, LeleCompactFilter
+from twophase.levelset.fccd_advection import FCCDLevelSetAdvection
+from twophase.simulation.conservative_transport import ConservativeCommonFluxTransport
 
 
 pytestmark = pytest.mark.gpu
@@ -317,6 +320,47 @@ def test_psi_direct_mass_correction_keeps_gpu_device(tiny_grid_factory, gpu_back
 
     assert type(psi_new).__module__.split(".", 1)[0] == "cupy"
     assert float(gpu_backend.to_host(xp.abs(mass_after - mass_before))) < 1.0e-12
+
+
+def test_common_flux_transport_keeps_gpu_device(tiny_grid_factory, gpu_backend):
+    """Common-flux ledger and momentum transport stay on CuPy arrays."""
+    grid = tiny_grid_factory(gpu_backend, N=8)
+    xp = gpu_backend.xp
+    fccd = FCCDSolver(grid, gpu_backend, bc_type="periodic")
+    advection = FCCDLevelSetAdvection(
+        gpu_backend,
+        grid,
+        fccd,
+        mode="flux",
+        mass_correction=False,
+    )
+    X, Y = grid.meshgrid()
+    psi = 0.5 + 0.05 * xp.sin(2.0 * xp.pi * X) * xp.cos(2.0 * xp.pi * Y)
+    face_velocity = [
+        xp.full((8, 9), 0.02),
+        xp.full((9, 8), -0.015),
+    ]
+    psi_new, ledger = advection.advance_with_face_velocity(
+        psi,
+        face_velocity,
+        0.01,
+        clip_bounds=None,
+        return_ledger=True,
+    )
+    density = 1.2 + (1000.0 - 1.2) * ledger.psi_before
+    momentum = (density * 0.1, density * -0.05)
+    result = ConservativeCommonFluxTransport(gpu_backend, grid, fccd).advance(
+        density,
+        momentum,
+        ledger,
+        rho_l=1000.0,
+        rho_g=1.2,
+    )
+
+    assert type(psi_new).__module__.split(".", 1)[0] == "cupy"
+    assert type(ledger.stages[0].phase_fluxes[0]).__module__.split(".", 1)[0] == "cupy"
+    assert type(result.density).__module__.split(".", 1)[0] == "cupy"
+    assert float(gpu_backend.to_host(result.kinetic_energy_delta)) <= 1.0e-10
 
 
 def test_psi_direct_adaptive_reinit_keeps_gpu_device(gpu_backend):

@@ -66,6 +66,19 @@ def _outdir(config_path: pathlib.Path) -> pathlib.Path:
     return config_path.parent / "results" / config_path.stem
 
 
+def _configured_outdir(config_path: pathlib.Path, cfg) -> pathlib.Path:
+    """Resolve the YAML output directory while preserving legacy defaults."""
+    output = getattr(cfg, "output", None)
+    raw_dir = getattr(output, "dir", None)
+    if raw_dir and raw_dir != "results":
+        p = pathlib.Path(raw_dir)
+        if p.is_absolute():
+            return p
+        base = config_path.parent.parent if config_path.parent.name == "config" else config_path.parent
+        return base / p
+    return _outdir(config_path)
+
+
 def _peek_handler_key(config_path: pathlib.Path) -> str:
     """Read just enough of the YAML to choose a handler.
 
@@ -101,6 +114,7 @@ def _dispatch(
     resume_from: pathlib.Path | None = None,
     checkpoint_final: bool = True,
     checkpoint_every_steps: int | None = None,
+    checkpoint_interval: float | None = None,
 ) -> None:
     from .registry import HANDLER_REGISTRY
     from . import handlers  # noqa: F401  trigger handler registrations
@@ -114,12 +128,17 @@ def _dispatch(
         )
 
     cfg = handler.load_config(config_path)
-    outdir = _outdir(config_path)
+    outdir = _configured_outdir(config_path, cfg)
     outdir.mkdir(parents=True, exist_ok=True)
     cfg._config_path = config_path
     cfg._checkpoint_path = outdir / "checkpoint_final.npz" if checkpoint_final else None
     cfg._resume_from = resume_from
     cfg._checkpoint_every_steps = checkpoint_every_steps
+    cfg._checkpoint_interval = (
+        checkpoint_interval
+        if checkpoint_interval is not None
+        else getattr(cfg.output, "checkpoint_interval", None)
+    )
 
     title = ""
     exp_meta = getattr(cfg, "experiment", None)
@@ -158,6 +177,8 @@ def main() -> None:
                         help="Do not write outdir/checkpoint_final.npz after a run.")
     parser.add_argument("--checkpoint-every-steps", type=int, default=None,
                         help="Also refresh the checkpoint every N completed steps.")
+    parser.add_argument("--checkpoint-interval", type=float, default=None,
+                        help="Write restartable checkpoints every physical-time interval.")
     parser.add_argument("--all", action="store_true",
                         help="Run all YAML configs in all chapter config/ directories.")
     args = parser.parse_args()
@@ -176,6 +197,7 @@ def main() -> None:
                 plot_only=args.plot_only,
                 checkpoint_final=not args.no_checkpoint_final,
                 checkpoint_every_steps=args.checkpoint_every_steps,
+                checkpoint_interval=args.checkpoint_interval,
             )
         return
 
@@ -189,4 +211,5 @@ def main() -> None:
         resume_from=pathlib.Path(args.resume_from).resolve() if args.resume_from else None,
         checkpoint_final=not args.no_checkpoint_final,
         checkpoint_every_steps=args.checkpoint_every_steps,
+        checkpoint_interval=args.checkpoint_interval,
     )

@@ -1,0 +1,127 @@
+{
+  "ratio1_shift1": [
+    {
+      "candidate": "baseline_velocity_uccd6_imex",
+      "density_ratio": 1.0,
+      "shift_cells": 1.0,
+      "current_rate": -2.8278027663225513e-07,
+      "history_rate": -2.882138204068907e-07,
+      "history_minus_current_rate": -5.433543774635563e-09,
+      "ke": 0.25,
+      "linf": 3.5834641949976898
+    },
+    {
+      "candidate": "conservative_velocity_imex",
+      "density_ratio": 1.0,
+      "shift_cells": 1.0,
+      "current_rate": 3.4694469519535988e-18,
+      "history_rate": -6.938893903907244e-18,
+      "history_minus_current_rate": -1.0408340855860843e-17,
+      "ke": 0.25,
+      "linf": 3.560345852287219
+    },
+    {
+      "candidate": "consistent_momentum_history",
+      "density_ratio": 1.0,
+      "shift_cells": 1.0,
+      "current_rate": -1.7347234759768056e-17,
+      "history_rate": -1.9556010653695094e-17,
+      "history_minus_current_rate": -2.208775893927038e-18,
+      "ke": 0.25,
+      "linf": 3.5603458522872264
+    },
+    {
+      "candidate": "current_only_conservative_velocity",
+      "density_ratio": 1.0,
+      "shift_cells": 1.0,
+      "current_rate": 3.4694469519535988e-18,
+      "history_rate": 3.4694469519535988e-18,
+      "history_minus_current_rate": 0.0,
+      "ke": 0.25,
+      "linf": 3.121324441059054
+    },
+    {
+      "candidate": "current_only_momentum",
+      "density_ratio": 1.0,
+      "shift_cells": 1.0,
+      "current_rate": -1.7347234759768056e-17,
+      "history_rate": -1.7347234759768056e-17,
+      "history_minus_current_rate": 0.0,
+      "ke": 0.25,
+      "linf": 3.121324441059061
+    },
+    {
+      "candidate": "current_only_uccd6",
+      "density_ratio": 1.0,
+      "shift_cells": 1.0,
+      "current_rate": -2.8278027663225513e-07,
+      "history_rate": -2.8278027663225513e-07,
+      "history_minus_current_rate": 0.0,
+      "ke": 0.25,
+      "linf": 3.1415921006976446
+    }
+  ],
+  "ratio833_shift1": [
+    {
+      "candidate": "baseline_velocity_uccd6_imex",
+      "density_ratio": 833.3333333333334,
+      "shift_cells": 1.0,
+      "current_rate": -2.8278027662930275e-07,
+      "history_rate": 0.030519832418148006,
+      "history_minus_current_rate": 0.030520115198424635,
+      "ke": 104.29166666666666,
+      "linf": 3.5834641949976898
+    },
+    {
+      "candidate": "conservative_velocity_imex",
+      "density_ratio": 833.3333333333334,
+      "shift_cells": 1.0,
+      "current_rate": -3.193609978945716e-17,
+      "history_rate": 0.030477093985218886,
+      "history_minus_current_rate": 0.030477093985218917,
+      "ke": 104.29166666666666,
+      "linf": 3.5738889728627248
+    },
+    {
+      "candidate": "consistent_momentum_history",
+      "density_ratio": 833.3333333333334,
+      "shift_cells": 1.0,
+      "current_rate": -1.2774439915782865e-17,
+      "history_rate": 0.029862196544742668,
+      "history_minus_current_rate": 0.029862196544742682,
+      "ke": 104.29166666666666,
+      "linf": 2144.499377203967
+    },
+    {
+      "candidate": "current_only_conservative_velocity",
+      "density_ratio": 833.3333333333334,
+      "shift_cells": 1.0,
+      "current_rate": -3.193609978945716e-17,
+      "history_rate": -3.193609978945716e-17,
+      "history_minus_current_rate": 0.0,
+      "ke": 104.29166666666666,
+      "linf": 3.1319708707176037
+    },
+    {
+      "candidate": "current_only_momentum",
+      "density_ratio": 833.3333333333334,
+      "shift_cells": 1.0,
+      "current_rate": -1.2774439915782865e-17,
+      "history_rate": -1.2774439915782865e-17,
+      "history_minus_current_rate": 0.0,
+      "ke": 104.29166666666666,
+      "linf": 1842.1865485548783
+    },
+    {
+      "candidate": "current_only_uccd6",
+      "density_ratio": 833.3333333333334,
+      "shift_cells": 1.0,
+      "current_rate": -2.8278027662930275e-07,
+      "history_rate": -2.8278027662930275e-07,
+      "history_minus_current_rate": 0.0,
+      "ke": 104.29166666666666,
+      "linf": 3.1415921006976446
+    }
+  ],
+  "interpretation": "A viable candidate must keep history-current power near zero for both constant and variable density. Current-only controls close by construction. Naive conservative velocity and consistent momentum history are measured here as offline hypotheses, not production fixes."
+}

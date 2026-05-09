@@ -889,8 +889,10 @@ def test_ch14_rising_bubble_yaml_builds_solver():
     assert solver.LX == pytest.approx(cfg.grid.LX)
     assert solver.LY == pytest.approx(cfg.grid.LY)
     assert isinstance(solver._transport, PsiDirectTransport)
-    assert solver._interface_runtime.rebuild_freq == 1
-    assert solver._interface_runtime.reinit_every == 1
+    assert solver._momentum_form == "conservative_common_flux"
+    assert solver._transport.mass_correction is False
+    assert solver._interface_runtime.rebuild_freq == 0
+    assert solver._interface_runtime.reinit_every == 0
     assert solver._advection_scheme == "fccd_flux"
     assert solver._convection_scheme == "uccd6"
     assert solver._convection_time_scheme == "imex_bdf2"

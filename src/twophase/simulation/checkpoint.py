@@ -375,6 +375,18 @@ def _capture_solver_state(arrays: dict[str, np.ndarray], solver) -> None:
         getattr(solver, "_projected_face_components", None),
         solver,
     )
+    _put_optional(
+        arrays,
+        "solver/conservative_density",
+        getattr(solver, "_conservative_density", None),
+        solver,
+    )
+    _put_list(
+        arrays,
+        "solver/conservative_momentum_components",
+        getattr(solver, "_conservative_momentum_components", None),
+        solver,
+    )
     arrays["solver/flags"] = np.asarray(
         [
             bool(getattr(solver, "_conv_ab2_ready", False)),
@@ -417,6 +429,12 @@ def _restore_solver_state(solver, arrays: dict[str, np.ndarray]) -> None:
     solver._velocity_prev = _list_device(arrays, "solver/velocity_prev", xp)
     solver._projected_face_components = _list_device(
         arrays, "solver/projected_face_components", xp
+    )
+    solver._conservative_density = _optional_device(
+        arrays, "solver/conservative_density", xp
+    )
+    solver._conservative_momentum_components = _list_device(
+        arrays, "solver/conservative_momentum_components", xp
     )
     flags = arrays.get("solver/flags", np.asarray([False, False], dtype=bool))
     solver._conv_ab2_ready = bool(flags[0])

@@ -351,7 +351,10 @@ def build_pressure_robust_buoyancy_residual_accel_faces(
 
 def materialise_ns_step_fields(state: NSStepState) -> NSStepState:
     """Build density and viscosity fields for the current step."""
-    state.rho = state.rho_g + (state.rho_l - state.rho_g) * state.psi
+    if state.conservative_density is not None:
+        state.rho = state.conservative_density
+    else:
+        state.rho = state.rho_g + (state.rho_l - state.rho_g) * state.psi
     if state.mu_l is not None and state.mu_g is not None:
         state.mu_field = state.mu_g + (state.mu_l - state.mu_g) * state.psi
     else:
@@ -444,16 +447,21 @@ def compute_ns_predictor_stage(
     Y=None,
     coords=None,
     ppe_coefficient_scheme: str = "phase_separated",
+    conservative_momentum_transport: bool = False,
 ) -> tuple[NSStepState, bool, tuple | None, bool, tuple | None]:
     """Advance the momentum predictor stage."""
     xp = backend.xp
-    conv_ctx = NSComputeContext(
-        velocity=[state.u, state.v],
-        ccd=ccd,
-        rho=state.rho,
-        mu=state.mu_field,
-    )
-    conv_u, conv_v = conv_term.compute(conv_ctx)
+    if conservative_momentum_transport:
+        conv_u = xp.zeros_like(state.u)
+        conv_v = xp.zeros_like(state.v)
+    else:
+        conv_ctx = NSComputeContext(
+            velocity=[state.u, state.v],
+            ccd=ccd,
+            rho=state.rho,
+            mu=state.mu_field,
+        )
+        conv_u, conv_v = conv_term.compute(conv_ctx)
 
     buoy_v = xp.zeros_like(state.v)
     if state.g_acc != 0.0 and not projection_consistent_buoyancy:
@@ -464,13 +472,18 @@ def compute_ns_predictor_stage(
     next_conv_ab2_ready = conv_ab2_ready
     next_velocity_prev = velocity_prev
     next_velocity_bdf2_ready = velocity_bdf2_ready
+    convection_history_ready = conv_ab2_ready and conv_prev is not None
+    if conservative_momentum_transport:
+        convection_history_ready = True
     bdf2_history_ready = (
-        conv_ab2_ready
-        and conv_prev is not None
-        and velocity_bdf2_ready
-        and velocity_prev is not None
+        convection_history_ready and velocity_bdf2_ready and velocity_prev is not None
     )
-    if scheme_runtime.convection_time_scheme == "ab2":
+    if conservative_momentum_transport:
+        conv_step_u = conv_u
+        conv_step_v = conv_v
+        next_conv_prev = None
+        next_conv_ab2_ready = False
+    elif scheme_runtime.convection_time_scheme == "ab2":
         if conv_ab2_ready and conv_prev is not None:
             conv_step_u = 1.5 * conv_u - 0.5 * conv_prev[0]
             conv_step_v = 1.5 * conv_v - 0.5 * conv_prev[1]
@@ -1239,14 +1252,7 @@ def correct_ns_velocity_stage(
         state.projected_face_components = None
         state.u = state.u_star - projection_dt / state.rho * dp_dx + projection_dt * state.f_x / state.rho
         state.v = state.v_star - projection_dt / state.rho * dp_dy + projection_dt * state.f_y / state.rho
-    preserve_face_state = (
-        keep_face_state
-        and state.projected_face_components is not None
-        and not is_all_periodic(bc_type, 2)
-        and state.bc_hook is None
-    )
-    if not preserve_face_state:
-        apply_velocity_bc(state.u, state.v, state.bc_hook, bc_type)
+    apply_velocity_bc(state.u, state.v, state.bc_hook, bc_type)
     return state
 
 def record_ns_step_diagnostics(

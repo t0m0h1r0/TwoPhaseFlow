@@ -315,6 +315,7 @@ class PsiDirectTransport(ILevelSetTransport):
         self._reinit_reference_monitor: float | None = None
         self.record_reinit_projection = False
         self.last_reinit_projection = {"triggered": False}
+        self.last_transport_ledger = None
         if self.mass_correction and grid is None:
             raise ValueError("PsiDirectTransport mass correction requires grid")
 
@@ -395,9 +396,15 @@ class PsiDirectTransport(ILevelSetTransport):
         face_velocity_components: List[np.ndarray],
         dt: float,
         step_index: int = 0,
+        *,
+        clip_bounds=(0.0, 1.0),
+        bound_preserving: bool = False,
+        face_divergence_operator=None,
+        return_ledger: bool = False,
     ) -> np.ndarray:
         """Direct ψ advection with projection-native face velocities."""
         self.last_reinit_projection = {"triggered": False}
+        self.last_transport_ledger = None
         record_projection = bool(self.record_reinit_projection)
         advance_face = getattr(self.advection, "advance_with_face_velocity", None)
         if not callable(advance_face):
@@ -414,7 +421,26 @@ class PsiDirectTransport(ILevelSetTransport):
             dV = self._current_dV()
             M_pre = xp.sum(xp.asarray(psi) * dV)
 
-        psi = xp.asarray(advance_face(psi, face_velocity_components, dt))
+        try:
+            advanced = advance_face(
+                psi,
+                face_velocity_components,
+                dt,
+                clip_bounds=clip_bounds,
+                bound_preserving=bound_preserving,
+                face_divergence_operator=face_divergence_operator,
+                return_ledger=return_ledger,
+            )
+        except TypeError:
+            if return_ledger:
+                raise
+            advanced = advance_face(psi, face_velocity_components, dt)
+        if return_ledger:
+            psi, ledger = advanced
+            self.last_transport_ledger = ledger
+        else:
+            psi = advanced
+        psi = xp.asarray(psi)
         psi_after_transport = xp.array(psi, copy=True) if record_projection else None
 
         if self._should_reinitialize(psi, step_index):
@@ -437,4 +463,6 @@ class PsiDirectTransport(ILevelSetTransport):
                 psi_after_reinit=psi,
             )
 
+        if return_ledger:
+            return psi, self.last_transport_ledger
         return psi

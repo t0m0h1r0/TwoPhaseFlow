@@ -55,6 +55,7 @@ class NSRuntimeComponentOptions:
     viscous_dc_low_operator: str
     cn_mode: str
     surface_tension_scheme: str
+    momentum_form: str = "primitive_velocity"
 
 
 def build_ns_runtime_components(
@@ -108,7 +109,7 @@ def build_ns_runtime_components(
             reinit_trigger_mode=options.reinit_trigger_mode,
             reinit_threshold=options.reinit_threshold,
             grid=grid,
-            mass_correction=True,
+            mass_correction=options.momentum_form != "conservative_common_flux",
         )
 
     step_diag = build_ns_step_diagnostics(

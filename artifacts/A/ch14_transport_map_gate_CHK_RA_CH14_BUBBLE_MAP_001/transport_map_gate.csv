@@ -1,0 +1,361 @@
+candidate,density_ratio,shift_cells,n,energy0,energy1,relative_delta,mass_delta,notes
+common_exact_map,1.0,0.0,32,0.3568125,0.3568125,0.0,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,1.0,0.0,32,0.3568125,0.3568125,0.0,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,1.0,0.0,32,0.3568125,0.3568125,0.0,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,1.0,0.0,32,0.3568125,0.3568125,0.0,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,1.0,0.0,32,0.3568125,0.3568125,0.0,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,1.0,0.0,32,0.3568125,0.3568125,0.0,0.0,density and velocity use opposite maps
+common_exact_map,1.0,0.25,32,0.3568125,0.35681250000000003,1.5557513044318188e-16,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,1.0,0.25,32,0.3568125,0.3568125,0.0,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,1.0,0.25,32,0.3568125,0.3596374710506414,0.00791724239100773,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,1.0,0.25,32,0.3568125,0.35681250000000003,1.5557513044318188e-16,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,1.0,0.25,32,0.3568125,0.3568125,0.0,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,1.0,0.25,32,0.3568125,0.3568125,0.0,0.0,density and velocity use opposite maps
+common_exact_map,1.0,0.5,32,0.3568125,0.3568125,0.0,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,1.0,0.5,32,0.3568125,0.3568125,0.0,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,1.0,0.5,32,0.3568125,0.36809492927697796,0.031620050522271445,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,1.0,0.5,32,0.3568125,0.3568125,0.0,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,1.0,0.5,32,0.3568125,0.3568125,0.0,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,1.0,0.5,32,0.3568125,0.3568125,0.0,0.0,density and velocity use opposite maps
+common_exact_map,1.0,1.0,32,0.3568125,0.3568125,0.0,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,1.0,1.0,32,0.3568125,0.3568125,0.0,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,1.0,1.0,32,0.3568125,0.40166409383639706,0.12570073592264028,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,1.0,1.0,32,0.3568125,0.3568125,0.0,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,1.0,1.0,32,0.3568125,0.3568125,0.0,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,1.0,1.0,32,0.3568125,0.3568125,0.0,0.0,density and velocity use opposite maps
+common_exact_map,1.0,2.0,32,0.3568125,0.3568125,0.0,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,1.0,2.0,32,0.3568125,0.3568125,0.0,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,1.0,2.0,32,0.3568125,0.5318420923164673,0.49053660484559064,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,1.0,2.0,32,0.3568125,0.3568125,0.0,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,1.0,2.0,32,0.3568125,0.3568125,0.0,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,1.0,2.0,32,0.3568125,0.3568125,0.0,0.0,density and velocity use opposite maps
+common_exact_map,10.0,0.0,32,1.9553145346405467,1.9553145346405467,0.0,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,10.0,0.0,32,1.9553145346405467,1.9553145346405467,0.0,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,10.0,0.0,32,1.9553145346405467,1.9553145346405467,0.0,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,10.0,0.0,32,1.9553145346405467,1.9553145346405467,0.0,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,10.0,0.0,32,1.9553145346405467,1.9553145346405467,0.0,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,10.0,0.0,32,1.9553145346405467,1.9553145346405467,0.0,0.0,density and velocity use opposite maps
+common_exact_map,10.0,0.25,32,1.9553145346405467,1.955314534640547,1.1355953274589177e-16,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,10.0,0.25,32,1.9553145346405467,1.9556975733363382,0.00019589620442416326,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,10.0,0.25,32,1.9553145346405467,1.9706583345544044,0.007847228485251564,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,10.0,0.25,32,1.9553145346405467,1.9548844686825064,-0.00021994720052513392,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,10.0,0.25,32,1.9553145346405467,1.9551403278303827,-8.90940087017901e-05,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,10.0,0.25,32,1.9553145346405467,1.9560306440761424,0.00036623746354306146,0.0,density and velocity use opposite maps
+common_exact_map,10.0,0.5,32,1.9553145346405467,1.955314534640547,1.1355953274589177e-16,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,10.0,0.5,32,1.9553145346405467,1.9560306440761424,0.00036623746354306146,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,10.0,0.5,32,1.9553145346405467,2.016606469529613,0.031346330118869434,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,10.0,0.5,32,1.9553145346405467,1.9544108282376,-0.0004621795557372114,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,10.0,0.5,32,1.9553145346405467,1.955439105662361,6.370894278510069e-05,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,10.0,0.5,32,1.9553145346405467,1.9565378331041856,0.0006256274588905323,0.0,density and velocity use opposite maps
+common_exact_map,10.0,1.0,32,1.9553145346405467,1.9553145346405467,0.0,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,10.0,1.0,32,1.9553145346405467,1.9565378331041854,0.0006256274588904187,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,10.0,1.0,32,1.9553145346405467,2.1990777007412317,0.12466698415122092,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,10.0,1.0,32,1.9553145346405467,1.9533490010694028,-0.0010052262878029806,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,10.0,1.0,32,1.9553145346405467,1.9574871565372167,0.0011111367803898636,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,10.0,1.0,32,1.9553145346405467,1.9568851276184391,0.0008032431356017839,0.0,density and velocity use opposite maps
+common_exact_map,10.0,2.0,32,1.9553145346405467,1.9553145346405465,-1.1355953274589177e-16,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,10.0,2.0,32,1.9553145346405467,1.9568851276184391,0.0008032431356017839,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,10.0,2.0,32,1.9553145346405467,2.907609777692997,0.4870291844005111,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,10.0,2.0,32,1.9553145346405467,1.9509028787587908,-0.0022562384739634603,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,10.0,2.0,32,1.9553145346405467,1.9674119318829941,0.006186931579614795,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,10.0,2.0,32,1.9553145346405467,1.955143353960323,-8.754636514543352e-05,0.0,density and velocity use opposite maps
+common_exact_map,100.0,0.0,32,17.940334881046017,17.940334881046017,0.0,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,100.0,0.0,32,17.940334881046017,17.940334881046017,0.0,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,100.0,0.0,32,17.940334881046017,17.940334881046017,0.0,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,100.0,0.0,32,17.940334881046017,17.940334881046017,0.0,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,100.0,0.0,32,17.940334881046017,17.940334881046017,0.0,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,100.0,0.0,32,17.940334881046017,17.940334881046017,0.0,0.0,density and velocity use opposite maps
+common_exact_map,100.0,0.25,32,17.940334881046017,17.940334881046013,-1.9802939590352612e-16,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,100.0,0.25,32,17.940334881046017,17.944548306699723,0.0002348576925482908,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,100.0,0.25,32,17.940334881046017,18.080866969592037,0.007833303529606513,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,100.0,0.25,32,17.940334881046017,17.93560415550757,-0.0002636921534528021,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,100.0,0.25,32,17.940334881046017,17.9389039090309,-7.976283746130282e-05,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,100.0,0.25,32,17.940334881046017,17.948212084837568,0.00043907785689516855,0.0,density and velocity use opposite maps
+common_exact_map,100.0,0.5,32,17.940334881046017,17.940334881046017,0.0,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,100.0,0.5,32,17.940334881046017,17.948212084837568,0.00043907785689516855,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,100.0,0.5,32,17.940334881046017,18.50172187205596,0.03129189029815988,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,100.0,0.5,32,17.940334881046017,17.930394110613598,-0.000554101720972947,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,100.0,0.5,32,17.940334881046017,17.94366499012743,0.0001856213445007898,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,100.0,0.5,32,17.940334881046017,17.95379116414604,0.0007500575206229674,0.0,density and velocity use opposite maps
+common_exact_map,100.0,1.0,32,17.940334881046017,17.940334881046017,0.0,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,100.0,1.0,32,17.940334881046017,17.95379116414604,0.0007500575206229674,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,100.0,1.0,32,17.940334881046017,20.173213769789577,0.12446138288659254,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,100.0,1.0,32,17.940334881046017,17.91871401176343,-0.0012051541638405177,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,100.0,1.0,32,17.940334881046017,17.97221584297503,0.0017770550070776215,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,100.0,1.0,32,17.940334881046017,17.957611403802833,0.0009629989000411031,0.0,density and velocity use opposite maps
+common_exact_map,100.0,2.0,32,17.940334881046017,17.940334881046013,-1.9802939590352612e-16,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,100.0,2.0,32,17.940334881046017,17.957611403802833,0.0009629989000411031,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,100.0,2.0,32,17.940334881046017,26.665286631458294,0.48633159906230056,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,100.0,2.0,32,17.940334881046017,17.891806666346703,-0.0027049781969557146,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,100.0,2.0,32,17.940334881046017,18.106311083049484,0.009251566545662478,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,100.0,2.0,32,17.940334881046017,17.938451893563553,-0.0001049583240752846,0.0,density and velocity use opposite maps
+common_exact_map,833.3333333333334,0.0,32,148.18864881472018,148.18864881472018,0.0,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,833.3333333333334,0.0,32,148.18864881472018,148.18864881472018,0.0,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,833.3333333333334,0.0,32,148.18864881472018,148.18864881472018,0.0,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,833.3333333333334,0.0,32,148.18864881472018,148.18864881472018,0.0,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,833.3333333333334,0.0,32,148.18864881472018,148.1886488147202,1.9179410607852686e-16,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,833.3333333333334,0.0,32,148.18864881472018,148.18864881472018,0.0,0.0,density and velocity use opposite maps
+common_exact_map,833.3333333333334,0.25,32,148.18864881472018,148.1886488147202,1.9179410607852686e-16,5.684341886080802e-14,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,833.3333333333334,0.25,32,148.18864881472018,148.22407280077172,0.0002390465554202544,5.684341886080802e-14,"density moved, velocity left at current grid"
+density_map_velocity_imex,833.3333333333334,0.25,32,148.18864881472018,149.34923362545425,0.007831806417137526,5.684341886080802e-14,"density moved, velocity updated by explicit history"
+density_current_velocity_map,833.3333333333334,0.25,32,148.18864881472018,148.1488756777859,-0.00026839530053354255,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,833.3333333333334,0.25,32,148.18864881472018,148.17706450137825,-7.817274423232907e-05,5.684341886080802e-14,momentum kept on old map and divided by moved density
+independent_opposite_maps,833.3333333333334,0.25,32,148.18864881472018,148.25487567622696,0.0004469091393739652,5.684341886080802e-14,density and velocity use opposite maps
+common_exact_map,833.3333333333334,0.5,32,148.18864881472018,148.1886488147202,1.9179410607852686e-16,-5.684341886080802e-14,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,833.3333333333334,0.5,32,148.18864881472018,148.25487567622696,0.0004469091393739652,-5.684341886080802e-14,"density moved, velocity left at current grid"
+density_map_velocity_imex,833.3333333333334,0.5,32,148.18864881472018,152.82488441115953,0.0312860373147475,-5.684341886080802e-14,"density moved, velocity updated by explicit history"
+density_current_velocity_map,833.3333333333334,0.5,32,148.18864881472018,148.10507270775136,-0.0005639845402282823,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,833.3333333333334,0.5,32,148.18864881472018,148.21845042123218,0.00020110586573507475,-5.684341886080802e-14,momentum kept on old map and divided by moved density
+independent_opposite_maps,833.3333333333334,0.5,32,148.18864881472018,148.30178126893153,0.0007634353583505736,-5.684341886080802e-14,density and velocity use opposite maps
+common_exact_map,833.3333333333334,1.0,32,148.18864881472018,148.18864881472018,0.0,5.684341886080802e-14,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,833.3333333333334,1.0,32,148.18864881472018,148.30178126893153,0.0007634353583505736,5.684341886080802e-14,"density moved, velocity left at current grid"
+density_map_velocity_imex,833.3333333333334,1.0,32,148.18864881472018,166.6291372953687,0.12443927809683056,5.684341886080802e-14,"density moved, velocity updated by explicit history"
+density_current_velocity_map,833.3333333333334,1.0,32,148.18864881472018,148.00687335815923,-0.0012266489910993754,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,833.3333333333334,1.0,32,148.18864881472018,148.46404555160422,0.0018584199200598775,5.684341886080802e-14,momentum kept on old map and divided by moved density
+independent_opposite_maps,833.3333333333334,1.0,32,148.18864881472018,148.33389958012012,0.0009801747067789436,5.684341886080802e-14,density and velocity use opposite maps
+common_exact_map,833.3333333333334,2.0,32,148.18864881472018,148.18864881472018,0.0,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,833.3333333333334,2.0,32,148.18864881472018,148.33389958012012,0.0009801747067789436,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,833.3333333333334,2.0,32,148.18864881472018,220.24635729176813,0.48625659963430456,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,833.3333333333334,2.0,32,148.18864881472018,147.78065234298893,-0.0027532235093213437,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,833.3333333333334,2.0,32,148.18864881472018,149.61459517211205,0.009622507316162397,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,833.3333333333334,2.0,32,148.18864881472018,148.1728177718121,-0.00010683033440617433,0.0,density and velocity use opposite maps
+common_exact_map,1.0,0.0,64,0.3568125,0.3568125,0.0,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,1.0,0.0,64,0.3568125,0.3568125,0.0,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,1.0,0.0,64,0.3568125,0.3568125,0.0,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,1.0,0.0,64,0.3568125,0.3568125,0.0,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,1.0,0.0,64,0.3568125,0.3568125,0.0,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,1.0,0.0,64,0.3568125,0.3568125,0.0,0.0,density and velocity use opposite maps
+common_exact_map,1.0,0.25,64,0.3568125,0.3568125,0.0,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,1.0,0.25,64,0.3568125,0.3568125,0.0,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,1.0,0.25,64,0.3568125,0.357519015778721,0.001980075750488144,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,1.0,0.25,64,0.3568125,0.3568125,0.0,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,1.0,0.25,64,0.3568125,0.3568125,0.0,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,1.0,0.25,64,0.3568125,0.3568125,0.0,0.0,density and velocity use opposite maps
+common_exact_map,1.0,0.5,64,0.3568125,0.3568125,0.0,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,1.0,0.5,64,0.3568125,0.3568125,0.0,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,1.0,0.5,64,0.3568125,0.3596374710506415,0.007917242391007884,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,1.0,0.5,64,0.3568125,0.3568125,0.0,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,1.0,0.5,64,0.3568125,0.3568125,0.0,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,1.0,0.5,64,0.3568125,0.3568125,0.0,0.0,density and velocity use opposite maps
+common_exact_map,1.0,1.0,64,0.3568125,0.3568125,0.0,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,1.0,1.0,64,0.3568125,0.3568125,0.0,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,1.0,1.0,64,0.3568125,0.36809492927697796,0.031620050522271445,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,1.0,1.0,64,0.3568125,0.3568125,0.0,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,1.0,1.0,64,0.3568125,0.3568125,0.0,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,1.0,1.0,64,0.3568125,0.3568125,0.0,0.0,density and velocity use opposite maps
+common_exact_map,1.0,2.0,64,0.3568125,0.3568125,0.0,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,1.0,2.0,64,0.3568125,0.3568125,0.0,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,1.0,2.0,64,0.3568125,0.40166409383639706,0.12570073592264028,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,1.0,2.0,64,0.3568125,0.3568125,0.0,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,1.0,2.0,64,0.3568125,0.3568125,0.0,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,1.0,2.0,64,0.3568125,0.3568125,0.0,0.0,density and velocity use opposite maps
+common_exact_map,10.0,0.0,64,1.9553145346405467,1.9553145346405467,0.0,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,10.0,0.0,64,1.9553145346405467,1.9553145346405467,0.0,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,10.0,0.0,64,1.9553145346405467,1.9553145346405467,0.0,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,10.0,0.0,64,1.9553145346405467,1.9553145346405467,0.0,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,10.0,0.0,64,1.9553145346405467,1.9553145346405467,0.0,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,10.0,0.0,64,1.9553145346405467,1.9553145346405467,0.0,0.0,density and velocity use opposite maps
+common_exact_map,10.0,0.25,64,1.9553145346405467,1.9553145346405465,-1.1355953274589177e-16,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,10.0,0.25,64,1.9553145346405467,1.9555121285276975,0.000101054783591182,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,10.0,0.25,64,1.9553145346405467,1.959151635536064,0.0019623957309879837,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,10.0,0.25,64,1.9553145346405467,1.9551051759266325,-0.00010707162975840156,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,10.0,0.25,64,1.9553145346405467,1.955168964264384,-7.4448572638247e-05,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,10.0,0.25,64,1.9553145346405467,1.9556975733363382,0.00019589620442416326,0.0,density and velocity use opposite maps
+common_exact_map,10.0,0.5,64,1.9553145346405467,1.955314534640547,1.1355953274589177e-16,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,10.0,0.5,64,1.9553145346405467,1.9556975733363382,0.00019589620442416326,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,10.0,0.5,64,1.9553145346405467,1.9706583345544046,0.007847228485251677,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,10.0,0.5,64,1.9553145346405467,1.9548844686825064,-0.00021994720052513392,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,10.0,0.5,64,1.9553145346405467,1.955140327830383,-8.909400870167654e-05,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,10.0,0.5,64,1.9553145346405467,1.9560306440761424,0.00036623746354306146,0.0,density and velocity use opposite maps
+common_exact_map,10.0,1.0,64,1.9553145346405467,1.955314534640547,1.1355953274589177e-16,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,10.0,1.0,64,1.9553145346405467,1.9560306440761426,0.00036623746354317503,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,10.0,1.0,64,1.9553145346405467,2.016606469529613,0.031346330118869434,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,10.0,1.0,64,1.9553145346405467,1.9544108282376,-0.0004621795557372114,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,10.0,1.0,64,1.9553145346405467,1.9554391056623608,6.370894278498713e-05,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,10.0,1.0,64,1.9553145346405467,1.9565378331041856,0.0006256274588905323,0.0,density and velocity use opposite maps
+common_exact_map,10.0,2.0,64,1.9553145346405467,1.955314534640547,1.1355953274589177e-16,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,10.0,2.0,64,1.9553145346405467,1.9565378331041856,0.0006256274588905323,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,10.0,2.0,64,1.9553145346405467,2.199077700741232,0.12466698415122114,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,10.0,2.0,64,1.9553145346405467,1.953349001069403,-0.001005226287802867,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,10.0,2.0,64,1.9553145346405467,1.957487156537217,0.0011111367803899772,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,10.0,2.0,64,1.9553145346405467,1.9568851276184394,0.0008032431356018974,0.0,density and velocity use opposite maps
+common_exact_map,100.0,0.0,64,17.940334881046013,17.940334881046013,0.0,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,100.0,0.0,64,17.940334881046013,17.940334881046013,0.0,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,100.0,0.0,64,17.940334881046013,17.940334881046013,0.0,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,100.0,0.0,64,17.940334881046013,17.940334881046013,0.0,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,100.0,0.0,64,17.940334881046013,17.940334881046013,0.0,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,100.0,0.0,64,17.940334881046013,17.940334881046013,0.0,0.0,density and velocity use opposite maps
+common_exact_map,100.0,0.25,64,17.940334881046013,17.940334881046017,1.9802939590352617e-16,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,100.0,0.25,64,17.940334881046013,17.942508413804674,0.0001211534106287786,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,100.0,0.25,64,17.940334881046013,17.975477833109494,0.001958879379704864,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,100.0,0.25,64,17.940334881046013,17.93803193519296,-0.00012836693787060145,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,100.0,0.25,64,17.940334881046013,17.938854341907977,-8.252572473441143e-05,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,100.0,0.25,64,17.940334881046013,17.944548306699723,0.00023485769254848884,0.0,density and velocity use opposite maps
+common_exact_map,100.0,0.5,64,17.940334881046013,17.940334881046017,1.9802939590352617e-16,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,100.0,0.5,64,17.940334881046013,17.94454830669972,0.00023485769254829081,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,100.0,0.5,64,17.940334881046013,18.080866969592037,0.007833303529606714,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,100.0,0.5,64,17.940334881046013,17.935604155507573,-0.0002636921534524061,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,100.0,0.5,64,17.940334881046013,17.9389039090309,-7.97628374611048e-05,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,100.0,0.5,64,17.940334881046013,17.948212084837568,0.0004390778568953667,0.0,density and velocity use opposite maps
+common_exact_map,100.0,1.0,64,17.940334881046013,17.940334881046017,1.9802939590352617e-16,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,100.0,1.0,64,17.940334881046013,17.948212084837568,0.0004390778568953667,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,100.0,1.0,64,17.940334881046013,18.50172187205596,0.03129189029816008,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,100.0,1.0,64,17.940334881046013,17.930394110613598,-0.0005541017209727492,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,100.0,1.0,64,17.940334881046013,17.943664990127424,0.00018562134450059183,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,100.0,1.0,64,17.940334881046013,17.95379116414604,0.0007500575206231656,0.0,density and velocity use opposite maps
+common_exact_map,100.0,2.0,64,17.940334881046013,17.940334881046013,0.0,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,100.0,2.0,64,17.940334881046013,17.95379116414604,0.0007500575206231656,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,100.0,2.0,64,17.940334881046013,20.17321376978958,0.12446138288659296,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,100.0,2.0,64,17.940334881046013,17.91871401176343,-0.00120515416384032,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,100.0,2.0,64,17.940334881046013,17.972215842975036,0.001777055007078216,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,100.0,2.0,64,17.940334881046013,17.95761140380283,0.0009629989000411032,0.0,density and velocity use opposite maps
+common_exact_map,833.3333333333334,0.0,64,148.1886488147202,148.1886488147202,0.0,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,833.3333333333334,0.0,64,148.1886488147202,148.1886488147202,0.0,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,833.3333333333334,0.0,64,148.1886488147202,148.1886488147202,0.0,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,833.3333333333334,0.0,64,148.1886488147202,148.1886488147202,0.0,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,833.3333333333334,0.0,64,148.1886488147202,148.1886488147202,0.0,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,833.3333333333334,0.0,64,148.1886488147202,148.1886488147202,0.0,0.0,density and velocity use opposite maps
+common_exact_map,833.3333333333334,0.25,64,148.1886488147202,148.1886488147202,0.0,-5.684341886080802e-14,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,833.3333333333334,0.25,64,148.1886488147202,148.2069225901356,0.00012331427245984548,-5.684341886080802e-14,"density moved, velocity left at current grid"
+density_map_velocity_imex,833.3333333333334,0.25,64,148.1886488147202,148.47887648000415,0.0019585013265544173,-5.684341886080802e-14,"density moved, velocity updated by explicit history"
+density_current_velocity_map,833.3333333333334,0.25,64,148.1886488147202,148.16928701069634,-0.00013065645836396835,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,833.3333333333334,0.25,64,148.1886488147202,148.17631236226862,-8.324829567085346e-05,-5.684341886080802e-14,momentum kept on old map and divided by moved density
+independent_opposite_maps,833.3333333333334,0.25,64,148.1886488147202,148.22407280077172,0.00023904655542006256,-5.684341886080802e-14,density and velocity use opposite maps
+common_exact_map,833.3333333333334,0.5,64,148.1886488147202,148.1886488147202,0.0,-1.1368683772161603e-13,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,833.3333333333334,0.5,64,148.1886488147202,148.2240728007717,0.00023904655541987077,-1.1368683772161603e-13,"density moved, velocity left at current grid"
+density_map_velocity_imex,833.3333333333334,0.5,64,148.1886488147202,149.34923362545425,0.007831806417137334,-1.1368683772161603e-13,"density moved, velocity updated by explicit history"
+density_current_velocity_map,833.3333333333334,0.5,64,148.1886488147202,148.1488756777859,-0.0002683953005337343,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,833.3333333333334,0.5,64,148.1886488147202,148.17706450137825,-7.817274423252085e-05,-1.1368683772161603e-13,momentum kept on old map and divided by moved density
+independent_opposite_maps,833.3333333333334,0.5,64,148.1886488147202,148.25487567622696,0.0004469091393737733,-1.1368683772161603e-13,density and velocity use opposite maps
+common_exact_map,833.3333333333334,1.0,64,148.1886488147202,148.1886488147202,0.0,-5.684341886080802e-14,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,833.3333333333334,1.0,64,148.1886488147202,148.25487567622696,0.0004469091393737733,-5.684341886080802e-14,"density moved, velocity left at current grid"
+density_map_velocity_imex,833.3333333333334,1.0,64,148.1886488147202,152.82488441115953,0.0312860373147473,-5.684341886080802e-14,"density moved, velocity updated by explicit history"
+density_current_velocity_map,833.3333333333334,1.0,64,148.1886488147202,148.1050727077514,-0.0005639845402282822,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,833.3333333333334,1.0,64,148.1886488147202,148.21845042123212,0.00020110586573449931,-5.684341886080802e-14,momentum kept on old map and divided by moved density
+independent_opposite_maps,833.3333333333334,1.0,64,148.1886488147202,148.3017812689315,0.0007634353583501898,-5.684341886080802e-14,density and velocity use opposite maps
+common_exact_map,833.3333333333334,2.0,64,148.1886488147202,148.1886488147202,0.0,-1.1368683772161603e-13,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,833.3333333333334,2.0,64,148.1886488147202,148.30178126893153,0.0007634353583503816,-1.1368683772161603e-13,"density moved, velocity left at current grid"
+density_map_velocity_imex,833.3333333333334,2.0,64,148.1886488147202,166.6291372953687,0.12443927809683035,-1.1368683772161603e-13,"density moved, velocity updated by explicit history"
+density_current_velocity_map,833.3333333333334,2.0,64,148.1886488147202,148.00687335815923,-0.001226648991099567,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,833.3333333333334,2.0,64,148.1886488147202,148.46404555160439,0.0018584199200608362,-1.1368683772161603e-13,momentum kept on old map and divided by moved density
+independent_opposite_maps,833.3333333333334,2.0,64,148.1886488147202,148.3338995801201,0.0009801747067785598,-1.1368683772161603e-13,density and velocity use opposite maps
+common_exact_map,1.0,0.0,128,0.3568125,0.3568125,0.0,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,1.0,0.0,128,0.3568125,0.3568125,0.0,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,1.0,0.0,128,0.3568125,0.3568125,0.0,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,1.0,0.0,128,0.3568125,0.3568125,0.0,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,1.0,0.0,128,0.3568125,0.3568125,0.0,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,1.0,0.0,128,0.3568125,0.3568125,0.0,0.0,density and velocity use opposite maps
+common_exact_map,1.0,0.25,128,0.3568125,0.3568125,0.0,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,1.0,0.25,128,0.3568125,0.3568125,0.0,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,1.0,0.25,128,0.3568125,0.3569891460126064,0.0004950667720621291,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,1.0,0.25,128,0.3568125,0.3568125,0.0,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,1.0,0.25,128,0.3568125,0.3568125,0.0,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,1.0,0.25,128,0.3568125,0.35681250000000003,1.5557513044318188e-16,0.0,density and velocity use opposite maps
+common_exact_map,1.0,0.5,128,0.3568125,0.3568125,0.0,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,1.0,0.5,128,0.3568125,0.3568125,0.0,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,1.0,0.5,128,0.3568125,0.35751901577872097,0.001980075750487988,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,1.0,0.5,128,0.3568125,0.3568125,0.0,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,1.0,0.5,128,0.3568125,0.3568125,0.0,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,1.0,0.5,128,0.3568125,0.3568125,0.0,0.0,density and velocity use opposite maps
+common_exact_map,1.0,1.0,128,0.3568125,0.35681250000000003,1.5557513044318188e-16,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,1.0,1.0,128,0.3568125,0.3568125,0.0,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,1.0,1.0,128,0.3568125,0.3596374710506414,0.00791724239100773,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,1.0,1.0,128,0.3568125,0.35681250000000003,1.5557513044318188e-16,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,1.0,1.0,128,0.3568125,0.3568125,0.0,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,1.0,1.0,128,0.3568125,0.3568125,0.0,0.0,density and velocity use opposite maps
+common_exact_map,1.0,2.0,128,0.3568125,0.3568125,0.0,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,1.0,2.0,128,0.3568125,0.3568125,0.0,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,1.0,2.0,128,0.3568125,0.36809492927697796,0.031620050522271445,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,1.0,2.0,128,0.3568125,0.3568125,0.0,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,1.0,2.0,128,0.3568125,0.3568125,0.0,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,1.0,2.0,128,0.3568125,0.3568125,0.0,0.0,density and velocity use opposite maps
+common_exact_map,10.0,0.0,128,1.9553145346405467,1.9553145346405467,0.0,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,10.0,0.0,128,1.9553145346405467,1.9553145346405467,0.0,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,10.0,0.0,128,1.9553145346405467,1.9553145346405467,0.0,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,10.0,0.0,128,1.9553145346405467,1.9553145346405467,0.0,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,10.0,0.0,128,1.9553145346405467,1.9553145346405467,0.0,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,10.0,0.0,128,1.9553145346405467,1.9553145346405467,0.0,0.0,density and velocity use opposite maps
+common_exact_map,10.0,0.25,128,1.9553145346405467,1.955314534640547,1.1355953274589177e-16,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,10.0,0.25,128,1.9553145346405467,1.9554148269648453,5.129216937824862e-05,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,10.0,0.25,128,1.9553145346405467,1.9562738629050753,0.0004906260591495884,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,10.0,0.25,128,1.9553145346405467,1.9552113006087022,-5.2796637070727105e-05,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,10.0,0.25,128,1.9553145346405467,1.955227224111202,-4.465293322267532e-05,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,10.0,0.25,128,1.9553145346405467,1.9555121285276977,0.00010105478359129555,0.0,density and velocity use opposite maps
+common_exact_map,10.0,0.5,128,1.9553145346405467,1.955314534640547,1.1355953274589177e-16,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,10.0,0.5,128,1.9553145346405467,1.9555121285276977,0.00010105478359129555,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,10.0,0.5,128,1.9553145346405467,1.9591516355360645,0.0019623957309882105,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,10.0,0.5,128,1.9553145346405467,1.9551051759266325,-0.00010707162975840156,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,10.0,0.5,128,1.9553145346405467,1.9551689642643841,-7.444857263813345e-05,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,10.0,0.5,128,1.9553145346405467,1.9556975733363382,0.00019589620442416326,0.0,density and velocity use opposite maps
+common_exact_map,10.0,1.0,128,1.9553145346405467,1.955314534640547,1.1355953274589177e-16,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,10.0,1.0,128,1.9553145346405467,1.9556975733363382,0.00019589620442416326,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,10.0,1.0,128,1.9553145346405467,1.9706583345544049,0.007847228485251791,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,10.0,1.0,128,1.9553145346405467,1.9548844686825064,-0.00021994720052513392,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,10.0,1.0,128,1.9553145346405467,1.955140327830383,-8.909400870167654e-05,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,10.0,1.0,128,1.9553145346405467,1.9560306440761424,0.00036623746354306146,0.0,density and velocity use opposite maps
+common_exact_map,10.0,2.0,128,1.9553145346405467,1.9553145346405467,0.0,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,10.0,2.0,128,1.9553145346405467,1.9560306440761424,0.00036623746354306146,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,10.0,2.0,128,1.9553145346405467,2.016606469529613,0.031346330118869434,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,10.0,2.0,128,1.9553145346405467,1.9544108282376,-0.0004621795557372114,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,10.0,2.0,128,1.9553145346405467,1.9554391056623612,6.370894278521424e-05,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,10.0,2.0,128,1.9553145346405467,1.9565378331041856,0.0006256274588905323,0.0,density and velocity use opposite maps
+common_exact_map,100.0,0.0,128,17.940334881046013,17.940334881046013,0.0,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,100.0,0.0,128,17.940334881046013,17.940334881046013,0.0,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,100.0,0.0,128,17.940334881046013,17.940334881046013,0.0,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,100.0,0.0,128,17.940334881046013,17.940334881046013,0.0,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,100.0,0.0,128,17.940334881046013,17.940334881046013,0.0,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,100.0,0.0,128,17.940334881046013,17.940334881046013,0.0,0.0,density and velocity use opposite maps
+common_exact_map,100.0,0.25,128,17.940334881046013,17.940334881046013,0.0,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,100.0,0.25,128,17.940334881046013,17.941438096613297,6.149358830805348e-05,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,100.0,0.25,128,17.940334881046013,17.94912103182977,0.0004897428527400827,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,100.0,0.25,128,17.940334881046013,17.939199306695727,-6.329727721447617e-05,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,100.0,0.25,128,17.940334881046013,17.939404574647668,-5.1855575969660825e-05,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,100.0,0.25,128,17.940334881046013,17.942508413804674,0.0001211534106287786,0.0,density and velocity use opposite maps
+common_exact_map,100.0,0.5,128,17.940334881046013,17.940334881046013,0.0,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,100.0,0.5,128,17.940334881046013,17.942508413804674,0.0001211534106287786,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,100.0,0.5,128,17.940334881046013,17.975477833109498,0.001958879379705062,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,100.0,0.5,128,17.940334881046013,17.93803193519296,-0.00012836693787060145,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,100.0,0.5,128,17.940334881046013,17.938854341907977,-8.252572473441143e-05,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,100.0,0.5,128,17.940334881046013,17.94454830669972,0.00023485769254829081,0.0,density and velocity use opposite maps
+common_exact_map,100.0,1.0,128,17.940334881046013,17.940334881046017,1.9802939590352617e-16,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,100.0,1.0,128,17.940334881046013,17.944548306699723,0.00023485769254848884,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,100.0,1.0,128,17.940334881046013,18.080866969592037,0.007833303529606714,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,100.0,1.0,128,17.940334881046013,17.93560415550757,-0.00026369215345260413,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,100.0,1.0,128,17.940334881046013,17.938903909030902,-7.976283746090677e-05,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,100.0,1.0,128,17.940334881046013,17.948212084837568,0.0004390778568953667,0.0,density and velocity use opposite maps
+common_exact_map,100.0,2.0,128,17.940334881046013,17.940334881046013,0.0,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,100.0,2.0,128,17.940334881046013,17.948212084837568,0.0004390778568953667,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,100.0,2.0,128,17.940334881046013,18.50172187205596,0.03129189029816008,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,100.0,2.0,128,17.940334881046013,17.930394110613598,-0.0005541017209727492,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,100.0,2.0,128,17.940334881046013,17.943664990127427,0.00018562134450078986,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,100.0,2.0,128,17.940334881046013,17.95379116414604,0.0007500575206231656,0.0,density and velocity use opposite maps
+common_exact_map,833.3333333333334,0.0,128,148.18864881472018,148.18864881472018,0.0,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,833.3333333333334,0.0,128,148.18864881472018,148.18864881472018,0.0,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,833.3333333333334,0.0,128,148.18864881472018,148.18864881472018,0.0,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,833.3333333333334,0.0,128,148.18864881472018,148.18864881472018,0.0,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,833.3333333333334,0.0,128,148.18864881472018,148.18864881472018,0.0,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,833.3333333333334,0.0,128,148.18864881472018,148.18864881472018,0.0,0.0,density and velocity use opposite maps
+common_exact_map,833.3333333333334,0.25,128,148.18864881472018,148.1886488147202,1.9179410607852686e-16,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,833.3333333333334,0.25,128,148.18864881472018,148.19792399745256,6.259037251886722e-05,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,833.3333333333334,0.25,128,148.18864881472018,148.26120907491986,0.0004896478966509887,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,833.3333333333334,0.25,128,148.18864881472018,148.17910157851588,-6.442623156808182e-05,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,833.3333333333334,0.25,128,148.18864881472018,148.18085503946907,-5.2593604931648064e-05,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,833.3333333333334,0.25,128,148.18864881472018,148.2069225901356,0.0001233142724600373,0.0,density and velocity use opposite maps
+common_exact_map,833.3333333333334,0.5,128,148.18864881472018,148.1886488147202,1.9179410607852686e-16,-5.684341886080802e-14,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,833.3333333333334,0.5,128,148.18864881472018,148.2069225901356,0.0001233142724600373,-5.684341886080802e-14,"density moved, velocity left at current grid"
+density_map_velocity_imex,833.3333333333334,0.5,128,148.18864881472018,148.47887648000415,0.0019585013265546094,-5.684341886080802e-14,"density moved, velocity updated by explicit history"
+density_current_velocity_map,833.3333333333334,0.5,128,148.18864881472018,148.16928701069634,-0.00013065645836377659,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,833.3333333333334,0.5,128,148.18864881472018,148.17631236226862,-8.324829567066167e-05,-5.684341886080802e-14,momentum kept on old map and divided by moved density
+independent_opposite_maps,833.3333333333334,0.5,128,148.18864881472018,148.22407280077175,0.00023904655542044618,-5.684341886080802e-14,density and velocity use opposite maps
+common_exact_map,833.3333333333334,1.0,128,148.18864881472018,148.1886488147202,1.9179410607852686e-16,-5.684341886080802e-14,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,833.3333333333334,1.0,128,148.18864881472018,148.22407280077172,0.0002390465554202544,-5.684341886080802e-14,"density moved, velocity left at current grid"
+density_map_velocity_imex,833.3333333333334,1.0,128,148.18864881472018,149.34923362545425,0.007831806417137526,-5.684341886080802e-14,"density moved, velocity updated by explicit history"
+density_current_velocity_map,833.3333333333334,1.0,128,148.18864881472018,148.14887567778587,-0.00026839530053373434,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,833.3333333333334,1.0,128,148.18864881472018,148.17706450137825,-7.817274423232907e-05,-5.684341886080802e-14,momentum kept on old map and divided by moved density
+independent_opposite_maps,833.3333333333334,1.0,128,148.18864881472018,148.25487567622696,0.0004469091393739652,-5.684341886080802e-14,density and velocity use opposite maps
+common_exact_map,833.3333333333334,2.0,128,148.18864881472018,148.18864881472024,3.8358821215705373e-16,0.0,rho and velocity are both pullbacks by the same map
+density_map_velocity_current,833.3333333333334,2.0,128,148.18864881472018,148.25487567622696,0.0004469091393739652,0.0,"density moved, velocity left at current grid"
+density_map_velocity_imex,833.3333333333334,2.0,128,148.18864881472018,152.82488441115953,0.0312860373147475,0.0,"density moved, velocity updated by explicit history"
+density_current_velocity_map,833.3333333333334,2.0,128,148.18864881472018,148.1050727077514,-0.0005639845402280905,0.0,"velocity moved, density left at current grid"
+density_map_momentum_lagged,833.3333333333334,2.0,128,148.18864881472018,148.21845042123215,0.00020110586573488296,0.0,momentum kept on old map and divided by moved density
+independent_opposite_maps,833.3333333333334,2.0,128,148.18864881472018,148.30178126893156,0.0007634353583507654,0.0,density and velocity use opposite maps

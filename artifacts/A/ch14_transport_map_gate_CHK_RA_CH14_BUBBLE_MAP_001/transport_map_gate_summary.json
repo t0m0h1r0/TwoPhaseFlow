@@ -1,0 +1,106 @@
+{
+  "n64_ratio833_shift1": [
+    {
+      "candidate": "common_exact_map",
+      "density_ratio": 833.3333333333334,
+      "shift_cells": 1.0,
+      "n": 64,
+      "energy0": 148.1886488147202,
+      "energy1": 148.1886488147202,
+      "relative_delta": 0.0,
+      "mass_delta": -5.684341886080802e-14,
+      "notes": "rho and velocity are both pullbacks by the same map"
+    },
+    {
+      "candidate": "density_current_velocity_map",
+      "density_ratio": 833.3333333333334,
+      "shift_cells": 1.0,
+      "n": 64,
+      "energy0": 148.1886488147202,
+      "energy1": 148.1050727077514,
+      "relative_delta": -0.0005639845402282822,
+      "mass_delta": 0.0,
+      "notes": "velocity moved, density left at current grid"
+    },
+    {
+      "candidate": "density_map_momentum_lagged",
+      "density_ratio": 833.3333333333334,
+      "shift_cells": 1.0,
+      "n": 64,
+      "energy0": 148.1886488147202,
+      "energy1": 148.21845042123212,
+      "relative_delta": 0.00020110586573449931,
+      "mass_delta": -5.684341886080802e-14,
+      "notes": "momentum kept on old map and divided by moved density"
+    },
+    {
+      "candidate": "density_map_velocity_current",
+      "density_ratio": 833.3333333333334,
+      "shift_cells": 1.0,
+      "n": 64,
+      "energy0": 148.1886488147202,
+      "energy1": 148.25487567622696,
+      "relative_delta": 0.0004469091393737733,
+      "mass_delta": -5.684341886080802e-14,
+      "notes": "density moved, velocity left at current grid"
+    },
+    {
+      "candidate": "density_map_velocity_imex",
+      "density_ratio": 833.3333333333334,
+      "shift_cells": 1.0,
+      "n": 64,
+      "energy0": 148.1886488147202,
+      "energy1": 152.82488441115953,
+      "relative_delta": 0.0312860373147473,
+      "mass_delta": -5.684341886080802e-14,
+      "notes": "density moved, velocity updated by explicit history"
+    },
+    {
+      "candidate": "independent_opposite_maps",
+      "density_ratio": 833.3333333333334,
+      "shift_cells": 1.0,
+      "n": 64,
+      "energy0": 148.1886488147202,
+      "energy1": 148.3017812689315,
+      "relative_delta": 0.0007634353583501898,
+      "mass_delta": -5.684341886080802e-14,
+      "notes": "density and velocity use opposite maps"
+    }
+  ],
+  "controls": {
+    "common_map_ratio833_shift2": {
+      "candidate": "common_exact_map",
+      "density_ratio": 833.3333333333334,
+      "shift_cells": 2.0,
+      "n": 64,
+      "energy0": 148.1886488147202,
+      "energy1": 148.1886488147202,
+      "relative_delta": 0.0,
+      "mass_delta": -1.1368683772161603e-13,
+      "notes": "rho and velocity are both pullbacks by the same map"
+    },
+    "imex_velocity_ratio1_shift1": {
+      "candidate": "density_map_velocity_imex",
+      "density_ratio": 1.0,
+      "shift_cells": 1.0,
+      "n": 64,
+      "energy0": 0.3568125,
+      "energy1": 0.36809492927697796,
+      "relative_delta": 0.031620050522271445,
+      "mass_delta": 0.0,
+      "notes": "density moved, velocity updated by explicit history"
+    },
+    "imex_velocity_ratio833_shift1": {
+      "candidate": "density_map_velocity_imex",
+      "density_ratio": 833.3333333333334,
+      "shift_cells": 1.0,
+      "n": 64,
+      "energy0": 148.1886488147202,
+      "energy1": 152.82488441115953,
+      "relative_delta": 0.0312860373147473,
+      "mass_delta": -5.684341886080802e-14,
+      "notes": "density moved, velocity updated by explicit history"
+    }
+  },
+  "interpretation": "Pure transport preserves kinetic energy when rho and velocity are pullbacks by the same volume-preserving map.  Energy opens when density and velocity/momentum are evaluated on different maps, identifying map consistency as the structural requirement."
+}

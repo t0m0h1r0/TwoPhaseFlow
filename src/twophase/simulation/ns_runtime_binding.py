@@ -48,6 +48,7 @@ def bind_ns_ppe_runtime(solver, state) -> None:
 
 def bind_ns_scheme_runtime(solver, state) -> None:
     solver._scheme_runtime = state
+    solver._momentum_form = state.momentum_form
     solver._convection_time_scheme = state.convection_time_scheme
     solver._viscous_time_scheme = state.viscous_time_scheme
     solver._viscous_solver = state.viscous_solver

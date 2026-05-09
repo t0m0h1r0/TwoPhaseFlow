@@ -1,4 +1,4 @@
-# Wiki Index — 363 entries
+# Wiki Index — 364 entries
 
 ## Active Retrieval Gate
 
@@ -9,7 +9,7 @@ recent research findings.  Older cards remain listed for provenance, but cards
 marked SUPERSEDED or REFERENCE must not be used as current algorithm policy
 without their curation notes.
 
-## Theory (163)
+## Theory (164)
 
 | REF-ID | Title |
 |--------|-------|
@@ -176,6 +176,7 @@ without their curation notes.
 | [WIKI-T-161](theory/WIKI-T-161.md) | Retired Fixed-Stratum Variational Reinit Candidate |
 | [WIKI-T-162](theory/WIKI-T-162.md) | Closed-Interface Capillary Discretization Policy |
 | [WIKI-T-163](theory/WIKI-T-163.md) | Reinitialization-Free CLS Survey and Candidate Routes |
+| [WIKI-T-164](theory/WIKI-T-164.md) | Conservative Common-Flux Energy Ledger for Rising Bubbles |
 
 ## Cross-Domain (48)
 
