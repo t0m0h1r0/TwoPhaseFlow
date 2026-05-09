@@ -55,6 +55,7 @@
 | **SP-AH** | [SP-AH_trace_preserving_reinit_projection.md](SP-AH_trace_preserving_reinit_projection.md) | **Retired fixed-stratum trace-preserving variational reinitialization candidate** | 2026-05-06 | RETIRED |
 | **SP-AI** | [SP-AI_closed_interface_capillary_discretization_policy.md](SP-AI_closed_interface_capillary_discretization_policy.md) | **Closed-interface capillary discretization policy: trace geometry, Riesz pullback, component reactions, and augmented Hodge projection** | 2026-05-07 | ACTIVE |
 | **SP-AJ** | [SP-AJ_conservative_common_flux_energy_ledger.md](SP-AJ_conservative_common_flux_energy_ledger.md) | **Conservative common-flux energy ledger for SI water-air rising-bubble stability** | 2026-05-09 | ACTIVE |
+| **SP-AK** | [SP-AK_variational_gravity_hodge_projection.md](SP-AK_variational_gravity_hodge_projection.md) | **Variational gravity Hodge projection: gravity as a common-flux transport-adjoint force covector** | 2026-05-09 | ACTIVE |
 
 **Letter collision history**:
 - 2026-04-21: `SP-H_uccd6_hyperviscosity.md` created (UCCD6 short paper).
