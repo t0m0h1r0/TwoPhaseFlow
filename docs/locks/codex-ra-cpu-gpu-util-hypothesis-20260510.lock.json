@@ -1,0 +1,12 @@
+{
+  "branch": "codex/ra-cpu-gpu-util-hypothesis-20260510",
+  "branch_slug": "codex-ra-cpu-gpu-util-hypothesis-20260510",
+  "session_id": "0E03D4BA-0BF0-42C1-A8AA-81B9FE6FC6B6",
+  "worktree_path": ".claude/worktrees/codex-ra-cpu-gpu-util-hypothesis-20260510",
+  "holder_agent": "ResearchArchitect",
+  "id_prefix": "RA-CPU-GPU-UTIL",
+  "acquired_at": "2026-05-09T22:05:24Z",
+  "expires_at": "2026-05-10T22:05:24Z",
+  "meta_version": "8.0.0-candidate",
+  "scope": "CPU-side parallelism hypothesis for GPU utilization under single-core saturation"
+}
