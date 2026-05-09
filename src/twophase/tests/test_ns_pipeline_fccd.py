@@ -906,6 +906,8 @@ def test_ch14_rising_bubble_yaml_builds_solver():
     assert solver._canonical_face_state is True
     assert solver._face_native_predictor_state is True
     assert solver._preserve_projected_faces is True
+    assert solver._boundary_hodge_mode == "off"
+    assert solver._boundary_hodge_gate == "diagnostic"
     assert isinstance(solver._ppe_solver, PPESolverDefectCorrection)
     assert isinstance(solver._ppe_solver.operator, PPESolverFCCDMatrixFree)
     assert isinstance(solver._ppe_solver.base_solver, PPESolverFDDirect)

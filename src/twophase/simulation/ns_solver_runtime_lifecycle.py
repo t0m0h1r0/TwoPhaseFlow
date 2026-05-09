@@ -28,6 +28,27 @@ def initialise_ns_solver_from_options(solver, options) -> None:
     solver._preserve_projected_faces = bool(
         getattr(options.schemes, "preserve_projected_faces", False)
     )
+    solver._boundary_hodge_mode = str(
+        getattr(options.schemes, "boundary_hodge_mode", "off")
+    )
+    solver._boundary_hodge_wall_trace = str(
+        getattr(options.schemes, "boundary_hodge_wall_trace", "reconstruct_nodes")
+    )
+    solver._boundary_hodge_metric = str(
+        getattr(options.schemes, "boundary_hodge_metric", "transported_face_mass")
+    )
+    solver._boundary_hodge_solver = str(
+        getattr(options.schemes, "boundary_hodge_solver", "matrix_free_cg")
+    )
+    solver._boundary_hodge_tolerance = float(
+        getattr(options.schemes, "boundary_hodge_tolerance", 1.0e-10)
+    )
+    solver._boundary_hodge_max_iterations = int(
+        getattr(options.schemes, "boundary_hodge_max_iterations", 80)
+    )
+    solver._boundary_hodge_gate = str(
+        getattr(options.schemes, "boundary_hodge_gate", "diagnostic")
+    )
     solver._projection_consistent_buoyancy = bool(
         getattr(options.schemes, "projection_consistent_buoyancy", False)
     )

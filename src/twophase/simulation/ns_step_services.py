@@ -35,6 +35,7 @@ from .face_boundary import (
     zero_wall_normal_face_components,
     zero_wall_velocity_face_components,
 )
+from .boundary_hodge import project_wall_trace, wall_trace_from_faces
 from .ns_predictor_face_state import FaceNativePredictorAssembly
 from .ns_step_state import NSStepState
 
@@ -72,6 +73,19 @@ def _apply_solver_interface_jump(ppe_solver, base_pressure):
     if callable(applier):
         return applier(base_pressure)
     return base_pressure
+
+
+def _scalar_from_backend(backend, xp, value) -> float:
+    return float(np.asarray(backend.to_host(xp.asarray(value))))
+
+
+def _face_linf(backend, xp, components: list) -> float:
+    if not components:
+        return 0.0
+    return max(
+        _scalar_from_backend(backend, xp, xp.max(xp.abs(component)))
+        for component in components
+    )
 
 
 def _capillary_interface_psi(*, xp, state: NSStepState, curvature_method: str):
@@ -1340,6 +1354,130 @@ def solve_ns_pressure_stage(
     state.p_corrector = state.pressure_increment
     return state, next_p_prev_dev, next_p_prev
 
+
+def _apply_boundary_hodge_projection(
+    state: NSStepState,
+    *,
+    xp,
+    proj_op,
+    bc_type: str,
+    boundary_hodge_mode: str,
+    boundary_hodge_wall_trace: str,
+    boundary_hodge_metric: str,
+    boundary_hodge_solver: str,
+    boundary_hodge_tolerance: float,
+    boundary_hodge_max_iterations: int,
+) -> None:
+    """Apply the configured boundary Hodge projection in-place."""
+    mode = str(boundary_hodge_mode).strip().lower()
+    if mode == "off" or state.projected_face_components is None:
+        return
+    if mode != "wall_trace_projection":
+        raise ValueError(f"unsupported boundary_hodge mode {boundary_hodge_mode!r}")
+    if str(boundary_hodge_wall_trace).strip().lower() != "reconstruct_nodes":
+        raise ValueError("boundary_hodge.wall_trace must be 'reconstruct_nodes'")
+    if str(boundary_hodge_metric).strip().lower() != "transported_face_mass":
+        raise ValueError("boundary_hodge.metric must be 'transported_face_mass'")
+    fccd = getattr(proj_op, "_fccd", None)
+    grid = getattr(fccd, "grid", None)
+    if grid is None:
+        grid = getattr(proj_op, "_grid", None)
+    if grid is None:
+        raise RuntimeError("boundary_hodge requires a face operator with grid metadata.")
+    if str(boundary_hodge_solver).strip().lower() != "matrix_free_cg":
+        raise ValueError("boundary_hodge.solver must be 'matrix_free_cg'")
+    projection = project_wall_trace(
+        xp=xp,
+        grid=grid,
+        fccd=fccd,
+        face_components=state.projected_face_components,
+        rho=state.rho,
+        bc_type=bc_type,
+        tolerance=boundary_hodge_tolerance,
+        max_iterations=boundary_hodge_max_iterations,
+    )
+    state.projected_face_components = projection.face_components
+    state.boundary_hodge_diagnostics = dict(projection.diagnostics)
+
+
+def _record_boundary_hodge_post_diagnostics(
+    state: NSStepState,
+    *,
+    backend,
+    xp,
+    proj_op,
+    div_op,
+    bc_type: str,
+    boundary_hodge_mode: str,
+    boundary_hodge_tolerance: float,
+    boundary_hodge_gate: str,
+) -> None:
+    """Record post-BC consistency diagnostics and optionally fail close."""
+    if (
+        str(boundary_hodge_mode).strip().lower() == "off"
+        or state.projected_face_components is None
+    ):
+        return
+    diagnostics = dict(state.boundary_hodge_diagnostics or {})
+    grid = getattr(getattr(proj_op, "_fccd", None), "grid", None)
+    if grid is None:
+        grid = getattr(proj_op, "_grid", None)
+    if grid is not None:
+        wall_trace = wall_trace_from_faces(
+            xp,
+            grid,
+            state.projected_face_components,
+            bc_type,
+        )
+        diagnostics["boundary_hodge_wall_post_linf"] = _scalar_from_backend(
+            backend,
+            xp,
+            xp.max(xp.abs(wall_trace)) if getattr(wall_trace, "size", 0) else xp.asarray(0.0),
+        )
+    if hasattr(div_op, "divergence_from_faces"):
+        div_field = div_op.divergence_from_faces(state.projected_face_components)
+        diagnostics["boundary_hodge_div_linf"] = _scalar_from_backend(
+            backend,
+            xp,
+            xp.max(xp.abs(div_field)),
+        )
+    if hasattr(proj_op, "reconstruct_nodes"):
+        reconstructed = proj_op.reconstruct_nodes(state.projected_face_components)
+        diagnostics["boundary_hodge_reconstruct_delta_linf"] = _face_linf(
+            backend,
+            xp,
+            [reconstructed[0] - state.u, reconstructed[1] - state.v],
+        )
+    state.boundary_hodge_diagnostics = diagnostics
+    gate = str(boundary_hodge_gate).strip().lower()
+    if gate != "fail_close":
+        return
+    wall_linf = diagnostics.get(
+        "boundary_hodge_wall_post_linf",
+        diagnostics.get("boundary_hodge_wall_linf", 0.0),
+    )
+    residual = diagnostics.get("boundary_hodge_cg_residual", 0.0)
+    converged = diagnostics.get("boundary_hodge_cg_converged", 1.0)
+    reconstruction_delta = diagnostics.get("boundary_hodge_reconstruct_delta_linf", 0.0)
+    tolerance = max(float(boundary_hodge_tolerance), 1.0e-14)
+    div_linf = diagnostics.get("boundary_hodge_div_linf", 0.0)
+    div_tolerance = max(1.0e-6, 1000.0 * tolerance)
+    if converged < 0.5 or wall_linf > 10.0 * tolerance or residual > 10.0 * tolerance:
+        raise RuntimeError(
+            "boundary_hodge fail-close: wall trace projection did not converge "
+            f"(wall_linf={wall_linf:.6e}, residual={residual:.6e})."
+        )
+    if div_linf > div_tolerance:
+        raise RuntimeError(
+            "boundary_hodge fail-close: constrained face state is not divergence-free "
+            f"(div_linf={div_linf:.6e}, tolerance={div_tolerance:.6e})."
+        )
+    if reconstruction_delta > 10.0 * tolerance:
+        raise RuntimeError(
+            "boundary_hodge fail-close: reconstructed face state differs from "
+            f"post-BC nodal state by {reconstruction_delta:.6e}."
+        )
+
 def correct_ns_velocity_stage(
     state: NSStepState,
     *,
@@ -1357,6 +1495,13 @@ def correct_ns_velocity_stage(
     apply_velocity_bc,
     curvature_method: str = "psi_direct_filtered",
     capillary_force_source: str = "curvature_jump",
+    boundary_hodge_mode: str = "off",
+    boundary_hodge_wall_trace: str = "reconstruct_nodes",
+    boundary_hodge_metric: str = "transported_face_mass",
+    boundary_hodge_solver: str = "matrix_free_cg",
+    boundary_hodge_tolerance: float = 1.0e-10,
+    boundary_hodge_max_iterations: int = 80,
+    boundary_hodge_gate: str = "diagnostic",
 ) -> NSStepState:
     """Apply pressure correction and optional face-flux projection."""
     xp = backend.xp
@@ -1488,6 +1633,18 @@ def correct_ns_velocity_stage(
                     xp=xp,
                     bc_type=bc_type,
                 )
+            _apply_boundary_hodge_projection(
+                state,
+                xp=xp,
+                proj_op=proj_op,
+                bc_type=bc_type,
+                boundary_hodge_mode=boundary_hodge_mode,
+                boundary_hodge_wall_trace=boundary_hodge_wall_trace,
+                boundary_hodge_metric=boundary_hodge_metric,
+                boundary_hodge_solver=boundary_hodge_solver,
+                boundary_hodge_tolerance=boundary_hodge_tolerance,
+                boundary_hodge_max_iterations=boundary_hodge_max_iterations,
+            )
             state.u, state.v = proj_op.reconstruct_nodes(state.projected_face_components)
         elif keep_face_state and hasattr(proj_op, "project_faces"):
             state.projected_face_components = proj_op.project_faces(
@@ -1497,6 +1654,18 @@ def correct_ns_velocity_stage(
                 projection_dt,
                 [state.f_x / state.rho, state.f_y / state.rho],
                 **project_kwargs,
+            )
+            _apply_boundary_hodge_projection(
+                state,
+                xp=xp,
+                proj_op=proj_op,
+                bc_type=bc_type,
+                boundary_hodge_mode=boundary_hodge_mode,
+                boundary_hodge_wall_trace=boundary_hodge_wall_trace,
+                boundary_hodge_metric=boundary_hodge_metric,
+                boundary_hodge_solver=boundary_hodge_solver,
+                boundary_hodge_tolerance=boundary_hodge_tolerance,
+                boundary_hodge_max_iterations=boundary_hodge_max_iterations,
             )
             state.u, state.v = proj_op.reconstruct_nodes(state.projected_face_components)
         else:
@@ -1514,6 +1683,18 @@ def correct_ns_velocity_stage(
         state.u = state.u_star - projection_dt / state.rho * dp_dx + projection_dt * state.f_x / state.rho
         state.v = state.v_star - projection_dt / state.rho * dp_dy + projection_dt * state.f_y / state.rho
     apply_velocity_bc(state.u, state.v, state.bc_hook, bc_type)
+    if face_flux_projection and state.projected_face_components is not None:
+        _record_boundary_hodge_post_diagnostics(
+            state,
+            backend=backend,
+            xp=xp,
+            proj_op=proj_op,
+            div_op=div_op,
+            bc_type=bc_type,
+            boundary_hodge_mode=boundary_hodge_mode,
+            boundary_hodge_tolerance=boundary_hodge_tolerance,
+            boundary_hodge_gate=boundary_hodge_gate,
+        )
     return state
 
 def record_ns_step_diagnostics(
@@ -1546,3 +1727,4 @@ def record_ns_step_diagnostics(
     )
     step_diag.record_ppe_stats(state.interface_projection_diagnostics or {})
     step_diag.record_ppe_stats(state.capillary_face_diagnostics or {})
+    step_diag.record_ppe_stats(state.boundary_hodge_diagnostics or {})

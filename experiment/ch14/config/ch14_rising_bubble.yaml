@@ -129,6 +129,16 @@ numerics:
     canonical_face_state: true
     face_native_predictor_state: true
     preserve_projected_faces: true
+    boundary_hodge:
+      # wall_trace_projection is available as a diagnostic Hodge projection,
+      # but it is not a production fix: validation shows it destroys D_h f.
+      mode: off
+      wall_trace: reconstruct_nodes
+      metric: transported_face_mass
+      solver: matrix_free_cg
+      tolerance: 1.0e-10
+      max_iterations: 80
+      gate: diagnostic
     pressure_history:
       form: pressure_coordinate
       extrapolation: bdf2

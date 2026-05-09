@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from .config_models import RunCfg
-from .config_sections import opt_float
+from .config_sections import opt_float, validate_choice
 from .config_run_tracking_sections import (
     parse_tracking_enabled,
     parse_tracking_method,
@@ -20,6 +20,11 @@ LEGACY_THEORY_CFL_ALIASES = {"auto", "theory", "theoretical"}
 THEORY_CFL_ADVECTIVE = 0.10
 THEORY_CFL_CAPILLARY = 0.05
 THEORY_CFL_VISCOUS = 1.0
+_BOUNDARY_HODGE_MODES = ("off", "wall_trace_projection")
+_BOUNDARY_HODGE_WALL_TRACES = ("reconstruct_nodes",)
+_BOUNDARY_HODGE_METRICS = ("transported_face_mass",)
+_BOUNDARY_HODGE_SOLVERS = ("matrix_free_cg",)
+_BOUNDARY_HODGE_GATES = ("off", "diagnostic", "fail_close")
 
 
 @dataclass(frozen=True)
@@ -76,6 +81,68 @@ def resolve_cfl_policy(raw: Any) -> tuple[float, str, float, float, float]:
     )
 
 
+def _parse_boundary_hodge(projection: dict[str, Any]) -> dict[str, Any]:
+    raw = projection.get("boundary_hodge", {}) or {}
+    if isinstance(raw, str):
+        raw = {"mode": raw}
+    if not isinstance(raw, dict):
+        raise ValueError("numerics.projection.boundary_hodge must be a mapping or mode string.")
+    mode_raw = raw.get("mode", "off")
+    if mode_raw is True:
+        mode_value = "wall_trace_projection"
+    elif mode_raw is False:
+        mode_value = "off"
+    else:
+        mode_value = mode_raw
+    mode = validate_choice(
+        str(mode_value).strip().lower(),
+        _BOUNDARY_HODGE_MODES,
+        "numerics.projection.boundary_hodge.mode",
+    )
+    wall_trace = validate_choice(
+        str(raw.get("wall_trace", "reconstruct_nodes")).strip().lower(),
+        _BOUNDARY_HODGE_WALL_TRACES,
+        "numerics.projection.boundary_hodge.wall_trace",
+    )
+    metric = validate_choice(
+        str(raw.get("metric", "transported_face_mass")).strip().lower(),
+        _BOUNDARY_HODGE_METRICS,
+        "numerics.projection.boundary_hodge.metric",
+    )
+    solver = validate_choice(
+        str(raw.get("solver", "matrix_free_cg")).strip().lower(),
+        _BOUNDARY_HODGE_SOLVERS,
+        "numerics.projection.boundary_hodge.solver",
+    )
+    if mode == "wall_trace_projection" and solver != "matrix_free_cg":
+        raise ValueError(
+            "numerics.projection.boundary_hodge.solver must be "
+            "'matrix_free_cg' for mode='wall_trace_projection'."
+        )
+    gate = validate_choice(
+        str(raw.get("gate", "diagnostic")).strip().lower(),
+        _BOUNDARY_HODGE_GATES,
+        "numerics.projection.boundary_hodge.gate",
+    )
+    tolerance = float(raw.get("tolerance", 1.0e-10))
+    if tolerance <= 0.0:
+        raise ValueError("numerics.projection.boundary_hodge.tolerance must be > 0.")
+    max_iterations = int(raw.get("max_iterations", 80))
+    if max_iterations <= 0:
+        raise ValueError(
+            "numerics.projection.boundary_hodge.max_iterations must be positive."
+        )
+    return {
+        "mode": mode,
+        "wall_trace": wall_trace,
+        "metric": metric,
+        "solver": solver,
+        "tolerance": tolerance,
+        "max_iterations": max_iterations,
+        "gate": gate,
+    }
+
+
 def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
     """Build `RunCfg` from normalized run-section fragments."""
     snap_raw = options.snapshots.get("times", [])
@@ -87,6 +154,7 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
     if cfl_raw is not None and dt_fixed_raw is not None:
         raise ValueError("run.time: 'cfl' and 'dt' are mutually exclusive.")
     cfl_number, cfl_policy, cfl_adv, cfl_cap, cfl_visc = resolve_cfl_policy(cfl_raw)
+    boundary_hodge = _parse_boundary_hodge(options.projection)
 
     tracking_redist = tracking_redistance(options.tracking)
     reinit_schedule = options.reinit_schedule
@@ -236,6 +304,13 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
         preserve_projected_faces=bool(
             options.projection.get("preserve_projected_faces", False)
         ),
+        boundary_hodge_mode=boundary_hodge["mode"],
+        boundary_hodge_wall_trace=boundary_hodge["wall_trace"],
+        boundary_hodge_metric=boundary_hodge["metric"],
+        boundary_hodge_solver=boundary_hodge["solver"],
+        boundary_hodge_tolerance=boundary_hodge["tolerance"],
+        boundary_hodge_max_iterations=boundary_hodge["max_iterations"],
+        boundary_hodge_gate=boundary_hodge["gate"],
         projection_consistent_buoyancy=bool(
             options.projection.get("projection_consistent_buoyancy", False)
         ),
@@ -271,5 +346,18 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
                 "variational_potential gravity must not be combined with "
                 "projection_consistent_buoyancy; both represent buoyancy in "
                 "the pressure Hodge space."
+            )
+    if cfg.boundary_hodge_mode != "off":
+        required_projection_flags = {
+            "face_flux_projection": cfg.face_flux_projection,
+            "canonical_face_state": cfg.canonical_face_state,
+            "face_native_predictor_state": cfg.face_native_predictor_state,
+            "preserve_projected_faces": cfg.preserve_projected_faces,
+        }
+        missing = [name for name, enabled in required_projection_flags.items() if not enabled]
+        if missing:
+            raise ValueError(
+                "numerics.projection.boundary_hodge requires projection flags "
+                f"{', '.join(missing)} to be true."
             )
     return cfg

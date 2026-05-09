@@ -199,6 +199,23 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             preserve_projected_faces=bool(
                 getattr(run, "preserve_projected_faces", False)
             ),
+            boundary_hodge_mode=str(getattr(run, "boundary_hodge_mode", "off")),
+            boundary_hodge_wall_trace=str(
+                getattr(run, "boundary_hodge_wall_trace", "reconstruct_nodes")
+            ),
+            boundary_hodge_metric=str(
+                getattr(run, "boundary_hodge_metric", "transported_face_mass")
+            ),
+            boundary_hodge_solver=str(
+                getattr(run, "boundary_hodge_solver", "matrix_free_cg")
+            ),
+            boundary_hodge_tolerance=float(
+                getattr(run, "boundary_hodge_tolerance", 1.0e-10)
+            ),
+            boundary_hodge_max_iterations=int(
+                getattr(run, "boundary_hodge_max_iterations", 80)
+            ),
+            boundary_hodge_gate=str(getattr(run, "boundary_hodge_gate", "diagnostic")),
             projection_consistent_buoyancy=bool(
                 getattr(run, "projection_consistent_buoyancy", False)
             ),

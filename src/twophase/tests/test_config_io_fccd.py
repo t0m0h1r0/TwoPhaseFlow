@@ -517,6 +517,10 @@ def test_ch14_rising_bubble_yaml_loads_execution_stack():
     assert cfg.run.canonical_face_state is True
     assert cfg.run.face_native_predictor_state is True
     assert cfg.run.preserve_projected_faces is True
+    assert cfg.run.boundary_hodge_mode == "off"
+    assert cfg.run.boundary_hodge_metric == "transported_face_mass"
+    assert cfg.run.boundary_hodge_solver == "matrix_free_cg"
+    assert cfg.run.boundary_hodge_gate == "diagnostic"
     assert cfg.run.pressure_scheme == "fccd_matrixfree"
     assert cfg.run.ppe_interface_coupling_scheme == "affine_jump"
     assert cfg.run.capillary_force_source == "closed_interface_riesz"
