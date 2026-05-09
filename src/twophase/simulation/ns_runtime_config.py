@@ -45,6 +45,8 @@ class NSPPERuntimeState:
     capillary_reaction_projection: str
     pressure_force_contract: str
     scalar_operator_pairing: str
+    pressure_history_mode: str
+    pressure_history_extrapolation: str
     ppe_tolerance: float
     ppe_max_iterations: int
     ppe_restart: int | None
@@ -208,6 +210,12 @@ def normalise_ns_ppe_runtime(
     scalar_operator_pairing = str(
         getattr(options, "scalar_operator_pairing", "legacy")
     ).strip().lower()
+    pressure_history_mode = str(
+        getattr(options, "pressure_history_mode", "face_acceleration")
+    ).strip().lower()
+    pressure_history_extrapolation = str(
+        getattr(options, "pressure_history_extrapolation", "constant")
+    ).strip().lower()
     if capillary_range_projection not in {
         "auto",
         "none",
@@ -279,6 +287,29 @@ def normalise_ns_ppe_runtime(
             "scalar_operator_pairing requires "
             "pressure_force_contract='variational_adjoint' unless using legacy."
         )
+    if pressure_history_mode not in {
+        "face_acceleration",
+        "pressure_coordinate",
+    }:
+        raise ValueError(
+            "Unsupported pressure_history_mode="
+            f"'{getattr(options, 'pressure_history_mode', None)}'. "
+            "Use face_acceleration|pressure_coordinate."
+        )
+    if pressure_history_extrapolation not in {"constant", "bdf2"}:
+        raise ValueError(
+            "Unsupported pressure_history_extrapolation="
+            f"'{getattr(options, 'pressure_history_extrapolation', None)}'. "
+            "Use constant|bdf2."
+        )
+    if (
+        pressure_history_mode == "pressure_coordinate"
+        and pressure_force_contract != "variational_adjoint"
+    ):
+        raise ValueError(
+            "pressure_history_mode='pressure_coordinate' requires "
+            "pressure_force_contract='variational_adjoint'."
+        )
     validate_pressure_jump_ppe_compatibility(
         surface_tension_scheme=surface_tension_scheme,
         ppe_coefficient_scheme=ppe_coefficient_scheme,
@@ -304,6 +335,8 @@ def normalise_ns_ppe_runtime(
         capillary_reaction_projection=capillary_reaction_projection,
         pressure_force_contract=pressure_force_contract,
         scalar_operator_pairing=scalar_operator_pairing,
+        pressure_history_mode=pressure_history_mode,
+        pressure_history_extrapolation=pressure_history_extrapolation,
         ppe_tolerance=float(options.ppe_tolerance),
         ppe_max_iterations=int(options.ppe_max_iterations),
         ppe_restart=options.ppe_restart,

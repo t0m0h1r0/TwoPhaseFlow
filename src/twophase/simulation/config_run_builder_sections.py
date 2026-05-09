@@ -179,6 +179,10 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
         capillary_reaction_projection=options.operator_settings["capillary_reaction_projection"],
         pressure_force_contract=options.operator_settings["pressure_force_contract"],
         scalar_operator_pairing=options.operator_settings["scalar_operator_pairing"],
+        pressure_history_mode=options.operator_settings["pressure_history_mode"],
+        pressure_history_extrapolation=options.operator_settings[
+            "pressure_history_extrapolation"
+        ],
         capillary_closed_interface_endpoint=options.operator_settings[
             "capillary_closed_interface_endpoint"
         ],

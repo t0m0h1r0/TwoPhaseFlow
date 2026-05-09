@@ -450,6 +450,8 @@ def test_ch14_rising_bubble_yaml_loads_execution_stack():
     assert cfg.run.capillary_reaction_projection == "pressure_component_hodge"
     assert cfg.run.pressure_force_contract == "variational_adjoint"
     assert cfg.run.scalar_operator_pairing == "variational_operator"
+    assert cfg.run.pressure_history_mode == "pressure_coordinate"
+    assert cfg.run.pressure_history_extrapolation == "bdf2"
     assert cfg.run.capillary_closed_interface_endpoint == "conservative_psi"
     assert cfg.run.capillary_closed_interface_metric == "pressure_adjoint"
     assert cfg.run.capillary_closed_interface_constraints == ("component_volume",)

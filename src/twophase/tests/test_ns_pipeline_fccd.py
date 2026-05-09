@@ -1578,6 +1578,109 @@ def test_affine_jump_pressure_history_faces_store_full_cochain():
     np.testing.assert_allclose(state.pressure_accel_face_components[1], -3.0)
 
 
+def test_affine_jump_pressure_coordinate_history_solves_correction_only():
+    """Pressure-coordinate history stores scalar coordinates, not old face forces."""
+    from twophase.simulation.ns_step_services import solve_ns_pressure_stage
+    from twophase.simulation.ns_step_state import NSStepState
+
+    shape = (3, 3)
+    arr = np.zeros(shape)
+
+    class AffineFluxRecorder:
+        def __init__(self):
+            self.pressures = []
+
+        def divergence(self, components):
+            return np.zeros(shape)
+
+        def divergence_from_faces(self, face_components):
+            raise AssertionError("pressure_coordinate must not add old face history")
+
+        def pressure_fluxes(self, pressure, rho, **kwargs):
+            del rho, kwargs
+            pressure_arr = np.asarray(pressure)
+            self.pressures.append(np.array(pressure_arr, copy=True))
+            return [pressure_arr, -pressure_arr]
+
+        def reconstruct_nodes(self, face_components):
+            return face_components
+
+    class JumpPressureSolver:
+        def solve(self, rhs, rho, dt=0.0, p_init=None):
+            del rho, dt, p_init
+            self.rhs = np.array(rhs, copy=True)
+            self.last_base_pressure = np.full_like(rhs, 4.0)
+            return np.full_like(rhs, 9.0)
+
+        def apply_interface_jump(self, base_pressure):
+            return base_pressure + 10.0
+
+    state = NSStepState(
+        psi=np.array([[1.0, 1.0, 1.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]),
+        u=arr,
+        v=arr,
+        dt=1.0e-3,
+        rho_l=1000.0,
+        rho_g=1.0,
+        sigma=2.0,
+        mu=0.0,
+        g_acc=0.0,
+        rho_ref=500.5,
+        mu_l=None,
+        mu_g=None,
+        bc_hook=None,
+        step_index=1,
+        rho=np.ones(shape),
+        kappa=np.full(shape, 3.0),
+        f_x=np.zeros(shape),
+        f_y=np.zeros(shape),
+        u_star=np.zeros(shape),
+        v_star=np.zeros(shape),
+        previous_base_pressure=np.full(shape, 100.0),
+        pressure_extrapolated_base=np.full(shape, 100.0),
+        previous_pressure_accel_face_components=[
+            np.full(shape, 5.0),
+            np.full(shape, 7.0),
+        ],
+    )
+    backend = type(
+        "BackendStub",
+        (),
+        {"xp": np, "is_gpu": lambda self: False, "to_host": lambda self, arr: arr},
+    )()
+    ppe_runtime = type(
+        "PPERuntime",
+        (),
+        {
+            "ppe_solver_name": "fccd_iterative",
+            "ppe_coefficient_scheme": "phase_separated",
+            "ppe_interface_coupling_scheme": "affine_jump",
+            "pressure_history_mode": "pressure_coordinate",
+        },
+    )()
+    div_op = AffineFluxRecorder()
+    ppe_solver = JumpPressureSolver()
+
+    state, _, _ = solve_ns_pressure_stage(
+        state,
+        backend=backend,
+        div_op=div_op,
+        ppe_solver=ppe_solver,
+        p_prev_dev=None,
+        surface_tension_scheme="pressure_jump",
+        face_native_predictor_state=True,
+        ppe_runtime=ppe_runtime,
+    )
+
+    np.testing.assert_allclose(ppe_solver.rhs, 0.0)
+    np.testing.assert_allclose(div_op.pressures[0], 4.0)
+    np.testing.assert_allclose(div_op.pressures[1], 104.0)
+    np.testing.assert_allclose(state.pressure_base, 104.0)
+    np.testing.assert_allclose(state.pressure, 114.0)
+    np.testing.assert_allclose(state.pressure_correction_face_components[0], 4.0)
+    np.testing.assert_allclose(state.pressure_accel_face_components[0], 104.0)
+
+
 def test_range_projected_capillary_jump_replaces_hodge_face_component():
     """Range projection should remove the non-range capillary cochain from correction."""
     from twophase.simulation.ns_step_services import solve_ns_pressure_stage

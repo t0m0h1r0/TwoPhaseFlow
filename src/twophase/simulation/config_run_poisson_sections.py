@@ -15,6 +15,10 @@ from .config_constants import (
     _POISSON_INTERFACE_COUPLINGS,
     _PRESSURE_FORCE_CONTRACT_ALIASES,
     _PRESSURE_FORCE_CONTRACTS,
+    _PRESSURE_HISTORY_EXTRAPOLATION_ALIASES,
+    _PRESSURE_HISTORY_EXTRAPOLATIONS,
+    _PRESSURE_HISTORY_MODE_ALIASES,
+    _PRESSURE_HISTORY_MODES,
     _SCALAR_OPERATOR_PAIRING_ALIASES,
     _SCALAR_OPERATOR_PAIRINGS,
 )
@@ -133,6 +137,31 @@ def parse_run_poisson_settings(*, layout: dict, projection: dict) -> dict:
             "poisson.operator.scalar_operator_pairing requires "
             "pressure_force_contract='variational_adjoint' unless using legacy."
         )
+    pressure_history = projection.get("pressure_history", {}) or {}
+    pressure_history_mode = validate_choice(
+        _PRESSURE_HISTORY_MODE_ALIASES.get(
+            str(pressure_history.get("form", "face_acceleration")).strip().lower(),
+            pressure_history.get("form", "face_acceleration"),
+        ),
+        _PRESSURE_HISTORY_MODES,
+        "numerics.projection.pressure_history.form",
+    )
+    pressure_history_extrapolation = validate_choice(
+        _PRESSURE_HISTORY_EXTRAPOLATION_ALIASES.get(
+            str(pressure_history.get("extrapolation", "constant")).strip().lower(),
+            pressure_history.get("extrapolation", "constant"),
+        ),
+        _PRESSURE_HISTORY_EXTRAPOLATIONS,
+        "numerics.projection.pressure_history.extrapolation",
+    )
+    if (
+        pressure_history_mode == "pressure_coordinate"
+        and pressure_force_contract != "variational_adjoint"
+    ):
+        raise ValueError(
+            "numerics.projection.pressure_history.form='pressure_coordinate' "
+            "requires poisson.operator.pressure_force_contract='variational_adjoint'."
+        )
 
     (
         ppe_solver,
@@ -162,6 +191,8 @@ def parse_run_poisson_settings(*, layout: dict, projection: dict) -> dict:
         "capillary_reaction_projection": capillary_reaction_projection,
         "pressure_force_contract": pressure_force_contract,
         "scalar_operator_pairing": scalar_operator_pairing,
+        "pressure_history_mode": pressure_history_mode,
+        "pressure_history_extrapolation": pressure_history_extrapolation,
         "ppe_solver": ppe_solver,
         "ppe_dc_base_solver": ppe_dc_base_solver,
         "pressure_scheme": _PPE_TO_PRESSURE_SCHEME[ppe_solver],

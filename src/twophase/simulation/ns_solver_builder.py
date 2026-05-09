@@ -118,6 +118,12 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             scalar_operator_pairing=str(
                 getattr(run, "scalar_operator_pairing", "legacy")
             ),
+            pressure_history_mode=str(
+                getattr(run, "pressure_history_mode", "face_acceleration")
+            ),
+            pressure_history_extrapolation=str(
+                getattr(run, "pressure_history_extrapolation", "constant")
+            ),
             ppe_iteration_method=str(getattr(run, "ppe_iteration_method", "gmres")),
             ppe_tolerance=float(getattr(run, "ppe_tolerance", 1.0e-8)),
             ppe_max_iterations=int(getattr(run, "ppe_max_iterations", 500)),

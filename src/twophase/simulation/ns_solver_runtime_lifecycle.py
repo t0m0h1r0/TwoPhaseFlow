@@ -35,6 +35,7 @@ def initialise_ns_solver_from_options(solver, options) -> None:
     solver._conservative_density = None
     solver._conservative_momentum_components = None
     solver._p_prev_accel_face_components = None
+    solver._p_base_prev2_dev = None
     solver._record_interface_projection_fields = False
     solver._last_interface_projection_fields = None
     solver._initialise_geometry(options.grid)

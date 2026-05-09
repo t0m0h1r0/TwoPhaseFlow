@@ -122,6 +122,13 @@ numerics:
     face_flux_projection: true
     canonical_face_state: true
     face_native_predictor_state: true
+    pressure_history:
+      form: pressure_coordinate
+      extrapolation: bdf2
+      reaction: variational_adjoint
+      metric: transported_face_mass
+      range_gate: fail_close
+      work_gate: fail_close
     poisson:
       operator:
         discretization: fccd

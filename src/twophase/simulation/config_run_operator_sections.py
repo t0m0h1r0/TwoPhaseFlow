@@ -445,6 +445,10 @@ def parse_run_operator_settings(
         "capillary_reaction_projection": poisson_settings["capillary_reaction_projection"],
         "pressure_force_contract": poisson_settings["pressure_force_contract"],
         "scalar_operator_pairing": poisson_settings["scalar_operator_pairing"],
+        "pressure_history_mode": poisson_settings["pressure_history_mode"],
+        "pressure_history_extrapolation": poisson_settings[
+            "pressure_history_extrapolation"
+        ],
         "capillary_closed_interface_endpoint": (
             surface_settings["capillary_closed_interface_endpoint"]
         ),

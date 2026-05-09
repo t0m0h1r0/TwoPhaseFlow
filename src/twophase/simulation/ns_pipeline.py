@@ -161,6 +161,8 @@ class TwoPhaseNSSolver:
         capillary_reaction_projection: str = "none",
         pressure_force_contract: str = "raw_compact_gradient",
         scalar_operator_pairing: str = "legacy",
+        pressure_history_mode: str = "face_acceleration",
+        pressure_history_extrapolation: str = "constant",
         ppe_iteration_method: str = "gmres",
         ppe_tolerance: float = 1.0e-8,
         ppe_max_iterations: int = 500,
@@ -267,6 +269,8 @@ class TwoPhaseNSSolver:
                 capillary_reaction_projection=capillary_reaction_projection,
                 pressure_force_contract=pressure_force_contract,
                 scalar_operator_pairing=scalar_operator_pairing,
+                pressure_history_mode=pressure_history_mode,
+                pressure_history_extrapolation=pressure_history_extrapolation,
                 ppe_iteration_method=ppe_iteration_method,
                 ppe_tolerance=ppe_tolerance,
                 ppe_max_iterations=ppe_max_iterations,
@@ -735,6 +739,10 @@ class TwoPhaseNSSolver:
             state.previous_base_pressure = self._backend.xp.asarray(
                 self._p_base_prev_dev
             )
+        if getattr(self, "_p_base_prev2_dev", None) is not None:
+            state.previous_previous_base_pressure = self._backend.xp.asarray(
+                self._p_base_prev2_dev
+            )
         if self._p_prev_accel_face_components is not None:
             state.previous_pressure_accel_face_components = [
                 self._backend.xp.asarray(component)
@@ -1139,6 +1147,10 @@ class TwoPhaseNSSolver:
             coords=(self.X, self.Y),
             ppe_coefficient_scheme=self._ppe_coefficient_scheme,
             conservative_momentum_transport=self._conservative_common_flux_enabled(),
+            ppe_runtime=self._ppe_runtime,
+            curvature_method=self._curvature_method,
+            capillary_force_source=self._capillary_force_source,
+            grid=self._grid,
         )
         return state
 
@@ -1162,6 +1174,7 @@ class TwoPhaseNSSolver:
             curvature_method=self._curvature_method,
             capillary_force_source=self._capillary_force_source,
         )
+        self._p_base_prev2_dev = self._p_base_prev_dev
         self._p_base_prev_dev = state.pressure_base
         self._p_prev_accel_face_components = state.pressure_accel_face_components
         return state

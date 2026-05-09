@@ -75,6 +75,8 @@ class SolverPPEOptions:
     capillary_reaction_projection: str = "none"
     pressure_force_contract: str = "raw_compact_gradient"
     scalar_operator_pairing: str = "legacy"
+    pressure_history_mode: str = "face_acceleration"
+    pressure_history_extrapolation: str = "constant"
     ppe_iteration_method: str = "gmres"
     ppe_tolerance: float = 1.0e-8
     ppe_max_iterations: int = 500

@@ -239,6 +239,87 @@ def _pressure_face_flux_kwargs(
     return kwargs
 
 
+def _pressure_history_mode(ppe_runtime) -> str:
+    """Return the active pressure-history representation."""
+    return str(
+        getattr(ppe_runtime, "pressure_history_mode", "face_acceleration")
+    ).strip().lower()
+
+
+def _pressure_coordinate_history_base(*, xp, state: NSStepState, ppe_runtime):
+    """Extrapolate scalar pressure coordinates for pressure-adjoint history."""
+    previous = state.previous_base_pressure
+    if previous is None:
+        return None
+    previous = xp.asarray(previous)
+    extrapolation = str(
+        getattr(ppe_runtime, "pressure_history_extrapolation", "constant")
+    ).strip().lower()
+    if (
+        extrapolation == "bdf2"
+        and state.previous_previous_base_pressure is not None
+    ):
+        return 2.0 * previous - xp.asarray(state.previous_previous_base_pressure)
+    return previous
+
+
+def _pressure_coordinate_history_faces(
+    *,
+    xp,
+    state: NSStepState,
+    div_op,
+    ppe_runtime,
+    curvature_method: str,
+    capillary_force_source: str,
+    grid,
+) -> tuple[object | None, list | None]:
+    """Build pressure-history faces by reapplying current-metric ``G_var``.
+
+    A3 mapping:
+      Equation: ``r_p^E=-D_f^T W_p lambda^E`` and
+      ``a_p^E=M_f^{-1}r_p^E``.
+      Discretization: the stored scalar coordinate ``lambda`` is extrapolated,
+      then converted to face reaction by the active pressure-adjoint flux
+      operator using the current density/interface metric.
+      Code: no old face-acceleration array is reused.
+    """
+    base = _pressure_coordinate_history_base(
+        xp=xp,
+        state=state,
+        ppe_runtime=ppe_runtime,
+    )
+    if base is None:
+        return None, None
+    closed_interface_source = capillary_force_source == "closed_interface_riesz"
+    interface_psi = _capillary_interface_psi(
+        xp=xp,
+        state=state,
+        curvature_method=curvature_method,
+    )
+    interface_psi_previous = _capillary_interface_psi_previous(
+        state=state,
+        curvature_method=curvature_method,
+    )
+    transport_temporaries = _capillary_transport_variational_temporaries(
+        xp=xp,
+        state=state,
+        curvature_method=curvature_method,
+        grid=grid,
+        sigma=state.sigma,
+    )
+    kwargs = _pressure_face_flux_kwargs(
+        xp=xp,
+        state=state,
+        ppe_runtime=ppe_runtime,
+        interface_sigma=0.0 if closed_interface_source else state.sigma,
+        curvature_method=curvature_method,
+        interface_psi=interface_psi,
+        interface_psi_previous=interface_psi_previous,
+        transport_variational_temporaries=transport_temporaries,
+    )
+    return base, div_op.pressure_fluxes(base, state.rho, **kwargs)
+
+
 def _closed_interface_trace_projection_diagnostics(projection) -> dict:
     """Adapt trace-Riesz projection output to capillary diagnostic kwargs."""
     component_hodge_components = None
@@ -448,6 +529,10 @@ def compute_ns_predictor_stage(
     coords=None,
     ppe_coefficient_scheme: str = "phase_separated",
     conservative_momentum_transport: bool = False,
+    ppe_runtime=None,
+    curvature_method: str = "psi_direct_filtered",
+    capillary_force_source: str = "curvature_jump",
+    grid=None,
 ) -> tuple[NSStepState, bool, tuple | None, bool, tuple | None]:
     """Advance the momentum predictor stage."""
     xp = backend.xp
@@ -509,12 +594,40 @@ def compute_ns_predictor_stage(
     previous_pressure_accel_nodes = None
     can_use_pressure_history_faces = (
         face_native_predictor_state
-        and state.previous_pressure_accel_face_components is not None
         and div_op is not None
         and hasattr(div_op, "face_fluxes")
         and hasattr(div_op, "reconstruct_nodes")
     )
-    if can_use_pressure_history_faces:
+    if (
+        can_use_pressure_history_faces
+        and hasattr(div_op, "pressure_fluxes")
+        and _pressure_history_mode(ppe_runtime) == "pressure_coordinate"
+    ):
+        (
+            state.pressure_extrapolated_base,
+            previous_pressure_accel_faces,
+        ) = _pressure_coordinate_history_faces(
+            xp=xp,
+            state=state,
+            div_op=div_op,
+            ppe_runtime=ppe_runtime,
+            curvature_method=curvature_method,
+            capillary_force_source=capillary_force_source,
+            grid=grid,
+        )
+        if previous_pressure_accel_faces is not None:
+            state.pressure_history_face_components = [
+                xp.asarray(component) for component in previous_pressure_accel_faces
+            ]
+            previous_pressure_accel_nodes = div_op.reconstruct_nodes(
+                previous_pressure_accel_faces
+            )
+            conv_step_u = conv_step_u - previous_pressure_accel_nodes[0]
+            conv_step_v = conv_step_v - previous_pressure_accel_nodes[1]
+    elif (
+        can_use_pressure_history_faces
+        and state.previous_pressure_accel_face_components is not None
+    ):
         previous_pressure_accel_faces = [
             xp.asarray(component)
             for component in state.previous_pressure_accel_face_components
@@ -962,9 +1075,14 @@ def solve_ns_pressure_stage(
         and hasattr(div_op, "pressure_fluxes")
         and hasattr(div_op, "reconstruct_nodes")
     )
+    pressure_coordinate_history = (
+        uses_affine_face_history
+        and _pressure_history_mode(ppe_runtime) == "pressure_coordinate"
+    )
     previous_pressure_accel_faces = None
     if (
         uses_affine_face_history
+        and not pressure_coordinate_history
         and state.previous_pressure_accel_face_components is not None
     ):
         if not hasattr(div_op, "divergence_from_faces"):
@@ -993,11 +1111,15 @@ def solve_ns_pressure_stage(
         previous_base = p_prev_dev
     if previous_base is None:
         previous_base = xp.zeros_like(base_increment)
-    state.pressure_base = (
-        xp.asarray(base_increment)
-        if uses_affine_face_history
-        else xp.asarray(previous_base) + xp.asarray(base_increment)
-    )
+    if pressure_coordinate_history:
+        history_base = state.pressure_extrapolated_base
+        if history_base is None:
+            history_base = xp.zeros_like(base_increment)
+        state.pressure_base = xp.asarray(history_base) + xp.asarray(base_increment)
+    elif uses_affine_face_history:
+        state.pressure_base = xp.asarray(base_increment)
+    else:
+        state.pressure_base = xp.asarray(previous_base) + xp.asarray(base_increment)
     state.pressure = _apply_solver_interface_jump(ppe_solver, state.pressure_base)
     state.pressure_accel_face_components = None
     state.pressure_correction_face_components = None
@@ -1035,25 +1157,43 @@ def solve_ns_pressure_stage(
                 jump_context=jump_context,
             )
         )
-        full_pressure_faces = div_op.pressure_fluxes(
-            state.pressure_increment,
+        correction_pressure = (
+            xp.asarray(base_increment)
+            if pressure_coordinate_history
+            else xp.asarray(state.pressure_increment)
+        )
+        correction_pressure_faces = div_op.pressure_fluxes(
+            correction_pressure,
             state.rho,
             **pressure_flux_eval_kwargs,
         )
-        if previous_pressure_accel_faces is None:
+        if pressure_coordinate_history:
             state.pressure_correction_face_components = [
-                xp.asarray(component) for component in full_pressure_faces
+                xp.asarray(component) for component in correction_pressure_faces
+            ]
+            state.pressure_accel_face_components = [
+                xp.asarray(component)
+                for component in div_op.pressure_fluxes(
+                    state.pressure_base,
+                    state.rho,
+                    **pressure_flux_eval_kwargs,
+                )
+            ]
+        elif previous_pressure_accel_faces is None:
+            state.pressure_correction_face_components = [
+                xp.asarray(component) for component in correction_pressure_faces
             ]
         else:
             state.pressure_correction_face_components = [
                 xp.asarray(full_face) - previous_face
                 for full_face, previous_face in zip(
-                    full_pressure_faces, previous_pressure_accel_faces
+                    correction_pressure_faces, previous_pressure_accel_faces
                 )
             ]
-        state.pressure_accel_face_components = [
-            xp.asarray(component) for component in full_pressure_faces
-        ]
+        if not pressure_coordinate_history:
+            state.pressure_accel_face_components = [
+                xp.asarray(component) for component in correction_pressure_faces
+            ]
         if state.debug_scalars is not None:
             if range_projection is None:
                 range_projection = capillary_jump_range_projection(

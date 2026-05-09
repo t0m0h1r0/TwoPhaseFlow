@@ -103,6 +103,8 @@ class RunCfg:
     capillary_reaction_projection: str = "none"
     pressure_force_contract: str = "raw_compact_gradient"
     scalar_operator_pairing: str = "legacy"
+    pressure_history_mode: str = "face_acceleration"
+    pressure_history_extrapolation: str = "constant"
     capillary_force_source: str = "curvature_jump"
     capillary_closed_interface_endpoint: str = "conservative_psi"
     capillary_closed_interface_metric: str = "pressure_adjoint"
