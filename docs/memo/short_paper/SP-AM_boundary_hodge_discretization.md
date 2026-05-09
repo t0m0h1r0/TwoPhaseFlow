@@ -599,7 +599,51 @@ but the correctness reference should remain the matrix-free identities.
 7. Add checkpoint invariants for `D_h f`, `C_w f`, `u=R_h f`, and `m=rho u`.
 8. Run T1--T8 before long rising-bubble runs.
 
-## 20. Conclusion
+## 20. Rank-Probe Refinement
+
+The coupled projection is an operator theorem, not merely a syntactic KKT
+block.  Before enabling `boundary_hodge.mode=constrained_kkt`, the
+implementation must pass a small-grid rank and conditioning probe using the
+same production operators that will be used at runtime.
+
+Let
+
+```text
+A = [D_h; C_w],
+B = [G_A, M_f^{-1} C_w^T].
+```
+
+The required rank gate is
+
+```text
+rank(A B) = rank(A).
+```
+
+This gate must be evaluated in the pressure quotient space appropriate to the
+boundary topology.  A diagnostic dense probe on `Nx=6, Ny=5` found:
+
+```text
+wall:          rank(A B)=59/59, feasible but dt-scaled condition number grows
+periodic_wall: rank(A B)=49/52, not production-ready
+```
+
+The mixed periodic-wall failure is not a reason to replace `G_A` by a generic
+assembled `D_h^T`.  Such a replacement would bypass the pressure Green identity
+and the affine/variational pressure contract.  The correct remedy is to put the
+periodic duplicate rows and pressure variables in the same quotient space used
+by the production pressure operator, then rerun the rank gate.
+
+The rank gate is necessary but not sufficient.  The same probe must also report
+conditioning after the physical `dt` scaling because
+
+```text
+f = f_dag - dt G_A p - dt M_f^{-1} C_w^T lambda
+```
+
+can make the pressure/wall blocks badly scaled.  A production solver therefore
+requires block row scaling and preconditioning before long runs.
+
+## 21. Conclusion
 
 The discrete fix is not a new force model.  It is a completion of the discrete
 constraint complex:

@@ -102,6 +102,28 @@ m_new = rho u_new.
 ||m_new - rho u_new||   <= tolerance
 ```
 
+## Rank Gate
+
+Before `constrained_kkt` may be enabled as production, the actual runtime
+operators must pass:
+
+```text
+A = [D_h; C_w]
+B = [G_A, M_f^{-1}C_w^T]
+rank(A B) = rank(A)
+```
+
+Small-grid diagnostic evidence:
+
+```text
+wall:          rank(A B)=59/59; feasible but needs dt scaling/preconditioning
+periodic_wall: rank(A B)=49/52; not production-ready with current quotient
+```
+
+Do not bypass this by substituting a generic dense `D_h^T` for `G_A`; that would
+hide a pressure-complex mismatch instead of preserving the variational pressure
+contract.
+
 ## Rejected Discretizations
 
 Do not use:
