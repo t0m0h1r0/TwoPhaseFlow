@@ -101,9 +101,14 @@ def _face_velocity(backend, grid, cfl: float):
 
 
 def _integral(backend, grid, value) -> float:
-    xp = backend.xp
-    total = xp.sum(xp.asarray(value) * xp.asarray(grid.cell_volumes()))
-    return _scalar(backend, total)
+    """Physical integral on the unique periodic tensor grid.
+
+    Periodic grids store duplicate endpoint nodes.  Conservation must be
+    measured on the unique cycle, not by counting the periodic image twice.
+    """
+    arr = np.asarray(backend.to_host(value))
+    unique = arr[tuple(slice(0, n) for n in grid.N)]
+    return float(np.mean(unique) * np.prod(grid.L))
 
 
 def _scalar(backend, value) -> float:
