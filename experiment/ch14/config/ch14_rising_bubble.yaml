@@ -79,7 +79,7 @@ physics:
 run:
   momentum_form: conservative_common_flux
   time:
-    final: 0.03
+    final: 0.05
     # Multiplier on theory CFL constants; 1.0 uses the theory budget.
     cfl: 1.0
     print_every: 10
