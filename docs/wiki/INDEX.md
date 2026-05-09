@@ -179,6 +179,7 @@ without their curation notes.
 | [WIKI-T-164](theory/WIKI-T-164.md) | Conservative Common-Flux Energy Ledger for Rising Bubbles |
 | [WIKI-T-165](theory/WIKI-T-165.md) | Variational Gravity Hodge Projection |
 | [WIKI-T-166](theory/WIKI-T-166.md) | Boundary-Constrained Face Hodge Projection |
+| [WIKI-T-167](theory/WIKI-T-167.md) | Discrete Boundary-Constrained Face Hodge Operator |
 
 ## Cross-Domain (48)
 
