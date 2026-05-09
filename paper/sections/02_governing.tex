@@ -249,6 +249,40 @@ $\rho(\psi),\mu(\psi)$ の点値補間と，$\rho^{-1}$ 係数・$\mu$ 係数の
 ヘヴィサイド関数 $H_\varepsilon(-\phi)$ に相当し（§~\ref{sec:notation} 参照），
 その時間発展は第~\ref{sec:levelset}章の CLS 法で計算される．
 
+\paragraph{保存形で読むべき変数．}
+式~\eqref{eq:NS_onefluid} は primitive velocity 形式で書いた一流体方程式であるが，
+密度が $\psi$ に依存する二相計算では，数値実装上の主たる保存変数を
+\begin{equation}
+  q\equiv \psi,\qquad
+  \rho(q)=\rho_g+(\rho_l-\rho_g)q,\qquad
+  \bm{p}_m=\rho(q)\bu
+  \label{eq:conservative_qmp_state}
+\end{equation}
+として読む方が安全である．
+添字 $m$ は momentum を表し，圧力 $p$ と区別するために付ける．
+非相変化・非圧縮のもとでは
+\begin{align}
+  \partial_t q + \bnabla\cdot(q\bu) &= 0,
+  \label{eq:phase_conservative_form} \\
+  \partial_t \rho(q)+\bnabla\cdot(\rho(q)\bu) &= 0,
+  \label{eq:mass_from_phase_conservative_form} \\
+  \partial_t \bm{p}_m+\bnabla\cdot(\bm{p}_m\otimes\bu)
+  &=
+  -\bnabla p+\bnabla\cdot[\mu(\psi)(\bnabla\bu+\bnabla\bu^T)]
+  +\rho(\psi)\bm{g}+\bm{f}_\sigma .
+  \label{eq:momentum_conservative_form}
+\end{align}
+式~\eqref{eq:NS_onefluid} の primitive 形式は，
+式~\eqref{eq:mass_from_phase_conservative_form} と
+式~\eqref{eq:momentum_conservative_form} を同じ速度・同じ発散演算子で割り合わせたときに
+初めて得られる等価形である．
+したがって離散化では，$\psi$ だけを保存形で運び，
+運動量側で別の節点速度対流を重ねると，連続式では消えるはずの
+質量移流と運動量移流の差が数値的な仕事として残る．
+第~\ref{sec:cls_advection}章以降で用いる保存形共通フラックスは，
+この連続等価性を離散レベルで保つための要請であり，
+経験的な damping や CFL 調整ではない．
+
 \begin{tcolorbox}[mybox, title={点値補間と面係数：$\rho^{-1}$ には調和平均，$\mu$ には算術平均}]
 \begin{center}
 \renewcommand{\arraystretch}{\PaperTableArrayStretch}
