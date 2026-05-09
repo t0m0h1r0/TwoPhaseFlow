@@ -423,6 +423,121 @@ K_h(m^T,p^T) <= K_h(m^n,p^n) + eps_T.
 If this inequality fails, the step has created kinetic energy during pure
 transport and the responsible face/stage fluxes must be reported.
 
+### 4.1 Implementation Corrections And Their Theoretical Status
+
+The 2026-05-09 implementation pass changed the production route only where the
+previous code violated the common-flux algebra above.  The corrections are
+theorem-preserving under the following identities.
+
+**Same-incidence transport.**  The pressure projection, phase transport,
+density transport, and momentum transport must use one oriented face complex:
+
+```text
+D u_f = 0       in the projected face complex,
+q^{r+1} = q^r - dt D F_q^r,
+m^{r+1} = m^r - dt D F_m^r,
+p^{r+1} = p^r - dt D F_p^r.
+```
+
+Using a pressure-projection divergence `D_P` for incompressibility and a
+different transport divergence `D_T` for the phase means that a velocity can be
+divergence-free in `D_P` but compressive in `D_T`.  Then the transport step can
+create density and momentum defects with no pressure-work or transport-work
+entry in the ledger.  The fix is therefore not a numerical convenience: the
+common-flux theorem requires the transported fluxes to be accumulated with the
+same `D` that defines the face state accepted by projection.
+
+**Affine density is a dependent variable.**  Density is not an independently
+transported or retracted unknown.  At each Runge--Kutta stage,
+
+```text
+rho^r = rho_g + (rho_l-rho_g) q^r,
+m^r   = V_c rho^r.
+```
+
+The transport ledger must therefore store the stage phase state used to build
+`F_q^r`; otherwise the code cannot reconstruct the unique stage density
+`rho^r` and cannot prove `F_m^r = rho_g F_V^r + Delta rho F_q^r`.  Rejecting
+non-affine initial density and projected/clipped stage ledgers is the discrete
+mass-closure condition, not an extra stabilizer.
+
+**No duplicate primitive convection.**  In the conservative route the advective
+operator is already
+
+```text
+partial_t p + div(p \otimes u) = ...
+```
+
+with `p=rho u`.  The primitive form
+
+```text
+rho (partial_t u + u dot grad u) = ...
+```
+
+is obtained only after combining the conservative momentum equation with the
+mass equation.  Applying a primitive `u dot grad u` predictor after the
+common-flux momentum update therefore adds the nonlinear transport work a
+second time.  The correct conservative split is:
+
+```text
+common-flux transport advances p,
+force/viscous/projection stages act on the transported p/m view of u,
+primitive convection history is disabled for this route.
+```
+
+This is the direct algebraic explanation of the pre-blow-up probe: the
+transport-only stage was not the energy source, while the subsequent primitive
+predictor injected the large kinetic-energy jump.
+
+**Bound-preserving flux limiting.**  The admissible boundedness correction is a
+flux correction, not endpoint clipping:
+
+```text
+F_q = F_low + alpha (F_high-F_low),    0 <= alpha <= 1.
+```
+
+Because the same limited `F_q` is recorded in the ledger, density and momentum
+are transported by the same physical face flux.  This preserves the
+common-flux identity.  Its theorem-level assumption is the standard FCT one:
+the donor `F_low` update must itself be invariant-domain admissible under the
+current CFL and boundary convention.  If the low-order update leaves
+`0 <= q <= 1`, no choice of anti-diffusive limiter can certify the step; the
+production response must be time-step rejection or fail-close, not clipping the
+endpoint `q` without a momentum remap.
+
+**Trace projection after face reconstruction.**  The projection-native state is
+the face cochain.  Reconstructed nodal velocities are convenience
+representatives used by CCD/UCCD/viscous operators.  On wall boundaries they
+must lie in the trace subspace
+
+```text
+C_b u_h = 0.
+```
+
+Applying the nodal wall projection immediately after reconstructing a canonical
+face state is therefore the discrete boundary constraint, equivalent to adding
+a boundary reaction multiplier.  It must not overwrite the canonical face
+cochain used for projection and common-flux transport.  With that separation,
+wall trace enforcement removes an inadmissible representative without changing
+the projected face state.
+
+**Checkpoint closure.**  A restartable conservative state is not `(q,u,p_s)`;
+it is the complete pre-step conservative state and face-history cochains:
+
+```text
+(q,m,p, projected face state, affine pressure face impulse, time histories).
+```
+
+Storing only primitive velocity can restart in a different mass metric after
+phase transport or reinitialization, which is a hidden impulse.  Capturing
+conservative density and momentum in the checkpoint is therefore required for
+time-reversal/restart equivalence.
+
+Under these identities the implementation pass is theoretically admissible for
+the tested reinit-free/static-grid route.  It does not yet certify q-only
+reinitialization, dynamic grid remap, curvature near-singular diagnostics, or
+long-time high-k behavior; those remain fail-close or diagnostic targets.
+
 ## 5. Reinitialization Is a Remap, Not a Postprocess
 
 Ridge--Eikonal or any other profile restoration changes the representation of

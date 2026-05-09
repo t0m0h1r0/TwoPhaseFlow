@@ -173,6 +173,44 @@ F_p = F_m u_up.
 The same ledger must drive phase, density/mass, and momentum.  Endpoint volume
 conservation alone is not enough.
 
+## 2026-05-09 Implementation Audit
+
+The stabilized rising-bubble route is admissible because each code change
+restores one algebraic identity of the conservative common-flux system:
+
+- **Same divergence complex.**  The projected face velocity is incompressible
+  only in the divergence operator that produced it.  Phase and momentum
+  transport must therefore accumulate fluxes with the same `D`; otherwise a
+  face field can be divergence-free for pressure but compressive for transport.
+- **Affine density closure.**  Density is `rho(q)`, not an independent
+  unknown.  The stage ledger must store the phase state so that every RK stage
+  uses `rho^r = rho_g + (rho_l-rho_g)q^r` and rejects non-affine restarts or
+  clipped/projected ledgers.
+- **No duplicate primitive convection.**  Once `p=rho u` has been advanced by
+  `div(p tensor u)`, a primitive `u dot grad u` predictor would count the same
+  nonlinear transport work again.  The conservative route therefore disables
+  primitive convection and its AB/BDF history while retaining velocity history
+  for non-advective time integration.
+- **Flux limiting, not endpoint clipping.**  Boundedness may be enforced only
+  by replacing the recorded phase flux with
+  `F_low + alpha(F_high-F_low)`, `0<=alpha<=1`, so mass and momentum see the
+  same limited face flux.  This is theorem-grade only when the donor low-order
+  update is invariant-domain admissible under the current CFL; otherwise the
+  step must be rejected or fail-closed.
+- **Wall trace projection.**  A reconstructed node field used by CCD/UCCD or
+  viscosity must satisfy `C_b u=0`.  Enforcing this trace after face
+  reconstruction is a boundary reaction on the representative; it must not
+  replace the canonical projected face cochain.
+- **Checkpoint closure.**  Restart equivalence requires pre-step `q,m,p` plus
+  projected face state and pressure-history face cochains.  Primitive velocity
+  alone is not a conservative restart state.
+
+This audit supports the current static-grid, reinit-free
+`conservative_common_flux` route.  It does not yet certify q-only
+reinitialization, dynamic interface-fitted remap, curvature near-singular
+diagnostics, or long-time high-k growth; those remain fail-close or diagnostic
+targets, not solved physics.
+
 ## Reinitialization Rule
 
 Reinitialization is admissible only as
