@@ -272,37 +272,37 @@ class PPESolverDefectCorrection(IPPESolver):
                 self.operator.apply(correction),
                 record_stats=False,
             )
-            numerator = float(
-                self.backend.asnumpy(xp.sum(residual * correction_image))
+            residual_sq = xp.sum(residual.ravel() * residual.ravel())
+            numerator = xp.sum(residual * correction_image)
+            denominator = xp.sum(correction_image * correction_image)
+            zero = xp.asarray(0.0, dtype=residual_sq.dtype)
+            one = xp.asarray(1.0, dtype=residual_sq.dtype)
+            denominator_safe = xp.where(denominator > zero, denominator, one)
+            alpha_opt = numerator / denominator_safe
+            line_search = xp.asarray(
+                [self.relaxation * (0.5**index) for index in range(12)],
+                dtype=residual_sq.dtype,
             )
-            denominator = float(
-                self.backend.asnumpy(xp.sum(correction_image * correction_image))
+            candidates = xp.concatenate([xp.reshape(alpha_opt, (1,)), line_search])
+            trial_sq = (
+                residual_sq
+                - 2.0 * candidates * numerator
+                + candidates * candidates * denominator
             )
-            candidates: list[float] = []
-            if denominator > 0.0:
-                alpha_opt = numerator / denominator
-                if alpha_opt > 0.0:
-                    candidates.append(alpha_opt)
-            alpha = float(self.relaxation)
-            for _line_search in range(12):
-                candidates.append(alpha)
-                alpha *= 0.5
-            for alpha in candidates:
-                trial_pressure = pressure + alpha * correction
-                trial_pressure = self._enforce_pressure_gauge(trial_pressure)
-                trial_residual = rhs_dev - self.operator.apply(trial_pressure)
-                trial_residual = self._enforce_rhs_compatibility(
-                    trial_residual,
-                    record_stats=False,
-                )
-                trial_norm = float(
-                    self.backend.asnumpy(xp.linalg.norm(trial_residual.ravel()))
-                )
-                if trial_norm < residual_norm:
-                    pressure = trial_pressure
-                    accepted = True
-                    corrections_applied += 1
-                    break
+            valid = (candidates > zero) & (trial_sq < residual_sq)
+            first_valid = xp.argmax(valid)
+            selected = xp.stack([
+                xp.asarray(xp.any(valid), dtype=residual_sq.dtype),
+                candidates[first_valid],
+            ])
+            accepted_value, selected_alpha = [
+                float(value) for value in self.backend.asnumpy(selected)
+            ]
+            if accepted_value > 0.5:
+                pressure = pressure + selected_alpha * correction
+                pressure = self._enforce_pressure_gauge(pressure)
+                accepted = True
+                corrections_applied += 1
             if not accepted:
                 final_residual = residual
                 final_residual_norm = residual_norm
