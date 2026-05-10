@@ -46,6 +46,25 @@ def _transport_projection_record(
     return record
 
 
+def _pre_transport_sharp_volume_target(reinitializer, psi):
+    """Return the sharp-volume target that a conserving reinit must restore."""
+    if not getattr(reinitializer, "preserves_sharp_volume", False):
+        return None
+    volume_fn = getattr(reinitializer, "sharp_phase_volume", None)
+    if not callable(volume_fn):
+        return None
+    return float(volume_fn(psi))
+
+
+def _set_reinit_sharp_volume_target(reinitializer, target) -> None:
+    """Pass a pre-transport sharp-volume target to compatible reinitializers."""
+    if target is None:
+        return
+    setter = getattr(reinitializer, "set_sharp_phase_volume_target", None)
+    if callable(setter):
+        setter(target)
+
+
 class ILevelSetTransport(ABC):
     """Abstract interface for level-set transport (advection + reinit + redistancing).
 
@@ -172,6 +191,9 @@ class PhiPrimaryTransport(ILevelSetTransport):
         # Pre-advection mass snapshot
         dV_pre = self.grid.cell_volumes()
         M_pre = xp.sum(psi * dV_pre)
+        sharp_volume_pre = _pre_transport_sharp_volume_target(
+            self.reinitializer, psi
+        )
 
         # Transform ψ → φ (logit space)
         phi = self.reconstruct.phi_from_psi(psi)
@@ -189,6 +211,7 @@ class PhiPrimaryTransport(ILevelSetTransport):
         # Periodic redistancing to correct interface thickness
         if step_index > 0 and (step_index % self.redist_every == 0):
             reinit_triggered = True
+            _set_reinit_sharp_volume_target(self.reinitializer, sharp_volume_pre)
             psi = self.reinitializer.reinitialize(psi)
             phi = self.reconstruct.phi_from_psi(psi)
             psi = self.reconstruct.psi_from_phi(phi)
@@ -232,6 +255,9 @@ class PhiPrimaryTransport(ILevelSetTransport):
         xp = self.xp
         dV_pre = self.grid.cell_volumes()
         M_pre = xp.sum(xp.asarray(psi) * dV_pre)
+        sharp_volume_pre = _pre_transport_sharp_volume_target(
+            self.reinitializer, psi
+        )
 
         phi = self.reconstruct.phi_from_psi(psi)
         phi = xp.asarray(
@@ -248,6 +274,7 @@ class PhiPrimaryTransport(ILevelSetTransport):
 
         if step_index > 0 and (step_index % self.redist_every == 0):
             reinit_triggered = True
+            _set_reinit_sharp_volume_target(self.reinitializer, sharp_volume_pre)
             psi = self.reinitializer.reinitialize(psi)
             phi = self.reconstruct.phi_from_psi(psi)
             psi = self.reconstruct.psi_from_phi(phi)
@@ -363,6 +390,9 @@ class PsiDirectTransport(ILevelSetTransport):
         if self.mass_correction:
             dV = self._current_dV()
             M_pre = xp.sum(xp.asarray(psi) * dV)
+        sharp_volume_pre = _pre_transport_sharp_volume_target(
+            self.reinitializer, psi
+        )
 
         # Advect ψ directly
         psi = xp.asarray(self.advection.advance(psi, velocity, dt))
@@ -370,6 +400,7 @@ class PsiDirectTransport(ILevelSetTransport):
 
         if self._should_reinitialize(psi, step_index):
             reinit_triggered = True
+            _set_reinit_sharp_volume_target(self.reinitializer, sharp_volume_pre)
             psi = xp.asarray(self.reinitializer.reinitialize(psi))
             if self.reinit_trigger_mode == "adaptive":
                 self._reinit_reference_monitor = max(self._volume_monitor(psi), 1.0e-30)
@@ -420,6 +451,9 @@ class PsiDirectTransport(ILevelSetTransport):
         if self.mass_correction:
             dV = self._current_dV()
             M_pre = xp.sum(xp.asarray(psi) * dV)
+        sharp_volume_pre = _pre_transport_sharp_volume_target(
+            self.reinitializer, psi
+        )
 
         try:
             advanced = advance_face(
@@ -445,6 +479,7 @@ class PsiDirectTransport(ILevelSetTransport):
 
         if self._should_reinitialize(psi, step_index):
             reinit_triggered = True
+            _set_reinit_sharp_volume_target(self.reinitializer, sharp_volume_pre)
             psi = xp.asarray(self.reinitializer.reinitialize(psi))
             if self.reinit_trigger_mode == "adaptive":
                 self._reinit_reference_monitor = max(self._volume_monitor(psi), 1.0e-30)

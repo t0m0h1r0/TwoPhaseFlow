@@ -25,6 +25,7 @@ import math
 import numpy as np
 from typing import TYPE_CHECKING, Tuple
 
+from .boundary import boundary_axes
 from .metrics import compute_metrics
 
 if TYPE_CHECKING:
@@ -69,6 +70,8 @@ class Grid:
 
         self.shape: tuple = tuple(n + 1 for n in self.N)
         self._cell_volumes = None
+        self._cell_volume_axes: tuple[str, ...] | None = None
+        self.bc_type = getattr(grid_config, "bc_type", "wall")
 
         # Metrics (identity for uniform grid)
         self._build_metrics()
@@ -452,20 +455,57 @@ class Grid:
         """Approximate uniform cell volume (product of mean spacings)."""
         return math.prod(L / N for L, N in zip(self.L, self.N))
 
-    def cell_volumes(self):
-        """Per-node control volumes retained by the current grid geometry."""
-        if self._cell_volumes is not None:
+    def set_boundary_type(self, bc_type) -> None:
+        """Set the topology used by physical nodal control volumes."""
+        axes = boundary_axes(bc_type, self.ndim)
+        if axes == self._cell_volume_axes:
+            self.bc_type = bc_type
+            return
+        self.bc_type = bc_type
+        self._cell_volumes = None
+        self._cell_volume_axes = None
+
+    def cell_volumes(self, bc_type=None):
+        """Per-node physical control volumes on the boundary quotient.
+
+        The CCD metric spacing ``self.h`` is retained on non-periodic axes
+        because the current pressure/FCCD Hodge contracts are calibrated to
+        that nodal metric.  For periodic axes, however, the terminal nodal
+        plane is an image of node 0 and carries zero independent measure, while
+        node 0 receives the wrapped half cell.
+        """
+        axes = boundary_axes(self.bc_type if bc_type is None else bc_type, self.ndim)
+        if self._cell_volumes is not None and self._cell_volume_axes == axes:
             return self._cell_volumes
-        self._cell_volumes = self._build_cell_volume_field()
+        self._cell_volumes = self._build_cell_volume_field(axes)
+        self._cell_volume_axes = axes
         return self._cell_volumes
 
-    def _build_cell_volume_field(self):
-        """Materialize the control-volume field produced by this grid build."""
+    def _build_cell_volume_field(self, axes=None):
+        """Materialize the physical control-volume field for this grid build."""
+        if axes is None:
+            axes = boundary_axes(self.bc_type, self.ndim)
         xp = self.xp
-        vol = xp.asarray(self.h[0])
+        vol = xp.asarray(self._axis_control_widths(0, axes[0]))
         for ax in range(1, self.ndim):
-            vol = xp.expand_dims(vol, axis=ax) * xp.asarray(self.h[ax])
+            vol = xp.expand_dims(vol, axis=ax) * xp.asarray(
+                self._axis_control_widths(ax, axes[ax])
+            )
         return vol
+
+    def _axis_control_widths(self, axis: int, boundary: str) -> np.ndarray:
+        """Return one-dimensional dual-cell widths for one coordinate axis."""
+        coords = np.asarray(self.coords[axis], dtype=float)
+        widths = np.empty_like(coords)
+        if coords.size == 1:
+            widths[0] = self.L[axis]
+            return widths
+        cell_widths = np.diff(coords)
+        if str(boundary).lower() == "periodic":
+            widths[:-1] = 0.5 * (np.roll(cell_widths, 1) + cell_widths)
+            widths[-1] = 0.0
+            return widths
+        return np.asarray(self.h[axis], dtype=float)
 
     def __repr__(self) -> str:
         h_str = " × ".join(

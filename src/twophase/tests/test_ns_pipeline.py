@@ -231,8 +231,7 @@ def test_rebuild_grid_mass_conservation():
     u = np.zeros_like(psi)
     v = np.zeros_like(psi)
 
-    h_uniform = LX / N
-    M_before = float(np.sum(psi)) * h_uniform ** 2
+    M_before = float(np.sum(psi * s._grid.cell_volumes()))
 
     psi, u, v = s._rebuild_grid(psi, u, v)
 

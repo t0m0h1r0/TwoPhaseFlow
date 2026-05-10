@@ -604,8 +604,8 @@ def test_volume_conservation_single_step(backend, alpha):
     assert rel < 0.05, f"alpha={alpha}: volume drift {rel*100:.2f}% > 5%"
 
 
-def test_sharp_volume_constraint_preserves_p1_phase_area(backend):
-    """Sharp-volume mode enforces the P1 phase volume, not diffuse mass."""
+def test_sharp_volume_constraint_preserves_p1_phase_area(backend, monkeypatch):
+    """Sharp-volume mode enforces P1 phase area as the only hard invariant."""
     grid, ccd = _mk_grid(n=32, L=1.0, alpha=2.0, backend=backend)
     phi_exact = _phi_circle(grid, 0.5, 0.5, 0.25)
     eps = 1.5 * float(np.min(grid.h[0]))
@@ -621,17 +621,21 @@ def test_sharp_volume_constraint_preserves_p1_phase_area(backend):
         volume_constraint="sharp_phase_volume",
     )
 
+    def _forbidden_diffuse_restore(*args, **kwargs):
+        raise AssertionError("sharp_phase_volume must not also enforce diffuse mass")
+
+    monkeypatch.setattr(
+        reinit,
+        "_apply_diffuse_mass_profile_constraint",
+        _forbidden_diffuse_restore,
+    )
+
     area_in = float(liquid_area_2d(xp=backend.xp, grid=grid, psi=psi))
-    dV = grid.cell_volumes()
-    mass_in = float(backend.xp.sum(backend.xp.asarray(psi) * dV))
     psi_out = reinit.reinitialize(psi)
     area_out = float(liquid_area_2d(xp=backend.xp, grid=grid, psi=psi_out))
-    mass_out = float(backend.xp.sum(psi_out * dV))
     rel = abs(area_out - area_in) / max(abs(area_in), 1e-30)
-    mass_rel = abs(mass_out - mass_in) / max(abs(mass_in), 1e-30)
 
     assert rel < 5.0e-5
-    assert mass_rel < 1.0e-8
 
 
 # ── V6 — backward compatibility via builder (default='split') ──────────

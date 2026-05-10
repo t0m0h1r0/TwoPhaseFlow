@@ -68,6 +68,24 @@ class _NoopReinitializer:
         return psi
 
 
+class _SharpTargetRecorder:
+    preserves_sharp_volume = True
+
+    def __init__(self):
+        self.target = None
+        self.reinit_seen_target = None
+
+    def sharp_phase_volume(self, psi):
+        return float(np.sum(psi))
+
+    def set_sharp_phase_volume_target(self, target):
+        self.target = float(target)
+
+    def reinitialize(self, psi):
+        self.reinit_seen_target = self.target
+        return psi
+
+
 # ── V10: Volume conservation of level-set advection ──────────────────────
 
 @pytest.mark.parametrize("mode", ["node", "flux"])
@@ -154,6 +172,30 @@ def test_psi_direct_mass_correction_uses_current_grid_volumes(backend):
     target_2 = float(np.sum(psi * volumes_2))
     psi = transport.advance(psi, [np.zeros_like(psi), np.zeros_like(psi)], dt=0.1)
     assert float(np.sum(psi * volumes_2)) == pytest.approx(target_2, abs=1e-12)
+
+
+def test_sharp_reinit_receives_pre_transport_volume_target(backend):
+    """Closed-interface reinit restores the pre-transport geometric volume."""
+    grid = _MutableVolumeGrid(np.ones((2, 2)))
+    reinitializer = _SharpTargetRecorder()
+    psi = np.array([[0.2, 0.4], [0.6, 0.8]])
+    transport = PsiDirectTransport(
+        backend,
+        _NudgingAdvection([[0.5, 0.5], [0.5, 0.5]]),
+        reinitializer,
+        reinit_every=1,
+        grid=grid,
+        mass_correction=False,
+    )
+
+    transport.advance(
+        psi,
+        [np.zeros_like(psi), np.zeros_like(psi)],
+        dt=0.1,
+        step_index=1,
+    )
+
+    assert reinitializer.reinit_seen_target == pytest.approx(float(np.sum(psi)))
 
 
 @pytest.mark.parametrize("mode", ["node", "flux"])
