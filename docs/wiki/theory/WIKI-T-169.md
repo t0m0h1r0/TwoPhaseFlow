@@ -11,6 +11,8 @@ sources:
     description: "Volume-first reinitialization theory motivating geometric fractions as long-term route"
   - path: artifacts/A/geometric_cell_fraction_formal_theory_CHK-RA-GEOM-CELL-FRACTION-002.md
     description: "Formal state-space, operator, invariant, and verification theory; adoption intentionally undecided"
+  - path: artifacts/A/geometric_cell_fraction_residual_tasks_CHK-RA-GEOM-CELL-FRACTION-003.md
+    description: "Residual task analysis, idea matrix, and deeper verification probes for capillary-ready reconstruction"
 depends_on:
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-159]]"
@@ -165,3 +167,53 @@ not by itself prove a globally smooth or variationally balanced capillary
 surface.  Adoption should remain blocked until static Hodge balance and
 dynamic nonconstant-curvature drive are both proven on the same `I_h/F_C`
 geometry.
+
+## Residual Task Refinement
+
+The decisive obstruction is now sharper:
+
+```text
+F_C determines material mass, but F_C alone does not determine surface energy.
+```
+
+A half-cell manufactured probe shows the nonuniqueness.  In a unit square,
+every central straight cut has `F_C=1/2`, but the interface length is
+
+```text
+L(theta) = 1 / max(|sin theta|, |cos theta|),
+```
+
+which varies from `1` to `sqrt(2)`.  Therefore `E_sigma` is not a function of
+`F_C` alone unless a reconstruction rule, moments, gauge, or explicit
+interface complex is part of the state.
+
+The candidate directions are now separated into two nested theory targets:
+
+```text
+Target A: bridge theory
+  dual state F_C + phi_pred,
+  PLIC/cut reconstruction using phi normals,
+  local hard constraint A_h(I_h)_C = F_C,
+  phi_new = signed_distance(I_h),
+  geometric swept-volume flux.
+
+Target B: complete theory
+  cut-cell complex K_h with subcell volumes, face apertures, interface facets,
+  incidence matrices, pressure/capillary Hodge metrics.
+```
+
+Target A is the best next theory-development route because it keeps the
+level-set gauge intuition while forcing material volume to be local and
+geometric.  Target B is the long-term mathematically clean endpoint.
+
+Remaining adoption blockers:
+
+```text
+R_h(F,phi) local volume exactness plus interface continuity,
+S_h(I_h), dS_h, and T_h(I_h) in one Hodge metric,
+bounded geometric swept flux without hidden clipping,
+common-flux mass/momentum from the same Phi_l,
+nonuniform/periodic/wall quotient geometry,
+gauge-retraction surface-work accounting,
+checkpoint state for restart equivalence.
+```
