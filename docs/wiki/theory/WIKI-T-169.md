@@ -29,6 +29,8 @@ sources:
     description: "AO-Fast active-stratum, approximate-candidate, GPU-PCG route for making SP-AO computationally viable"
   - path: artifacts/A/ch14_ao_dc_accuracy_theory_CHK-RA-CH14-AO-FASTVOL-002.md
     description: "AO-Fast fixed-stratum approximation-order contract and residual-monotone DC theory"
+  - path: artifacts/A/paper_ch9_ao_fast_theory_CHK-RA-CH14-AO-FASTVOL-003.md
+    description: "Paper Chapter 9 insertion of active-stratum approximation accuracy and residual-monotone DC conditions"
 depends_on:
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-159]]"
