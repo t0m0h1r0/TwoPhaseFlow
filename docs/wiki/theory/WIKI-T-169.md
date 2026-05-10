@@ -19,6 +19,8 @@ sources:
     description: "Theta-constrained continuous P1 trace bundle and capillary-work lift candidate"
   - path: artifacts/A/geometric_cell_fraction_projection_solver_theory_CHK-RA-GEOM-CELL-FRACTION-006.md
     description: "Implicit compatibility projection solver theory, residual probes, and fail-close gates"
+  - path: artifacts/A/geometric_cell_fraction_discretization_theory_CHK-RA-GEOM-CELL-FRACTION-007.md
+    description: "Metric cell-complex discretization, q-form phase carrier, Hodge adjoints, and capillary bundle work"
 depends_on:
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-159]]"
@@ -362,3 +364,108 @@ maximum admissible step before sign/case change,
 hard compatibility residual after line search,
 Delta S_Pi not hidden as capillary work.
 ```
+
+## Discrete Cell-Complex Formulation
+
+The production hard phase variable is the integrated liquid volume
+
+```text
+q_C = |C| theta_C,
+theta_C = q_C / |C|.
+```
+
+`theta_C` remains the normalized user-facing fraction, but conservation,
+compatibility residuals, and work pairings are written in `q` units.  This is
+mandatory on nonuniform grids because equal `theta` changes do not represent
+equal physical volumes.
+
+Use an oriented metric cell complex:
+
+```text
+B      cell-face incidence,
+H_C    diag(|C|),
+M_f    face kinetic/mass Hodge,
+D_h U  = H_C^{-1} B U.
+```
+
+The conservative phase update is:
+
+```text
+q^{n+1} = q^n - Delta t B Phi_l,
+```
+
+where `Phi_l` is a bounded geometric swept-volume flux of the same liquid set
+represented by `Gamma_h`.  For periodic/wall closure:
+
+```text
+1^T B Phi_l = 0,
+```
+
+so global liquid volume conservation is topological.  Boundedness must be
+proved by the swept-volume construction, not repaired by clipping.
+
+The geometry map on a fixed regular stratum is:
+
+```text
+Q_h^S(phi)_C = |C cap Omega_l(Gamma(phi))|,
+J_q = d Q_h^S(phi) / d phi.
+```
+
+The physical compatibility projection is:
+
+```text
+min_phi  1/2 ||phi-phi^-||_{W_eta}^2
+subject to Q_h^S(phi)_C = q^-_C.
+```
+
+Linearized KKT form:
+
+```text
+[ W_eta   J_q^T ][ delta ] = [ W_eta delta_pred ]
+[ J_q       0   ][ lambda]   [ r_q              ],
+
+r_q = q^- - Q_h^S(phi_k).
+```
+
+Using `J_A=H_C^{-1}J_q` is acceptable for reporting normalized fractions, but
+the hard projection and Schur complement must be based on `J_q`:
+
+```text
+S_q = J_q W_eta^{-1} J_q^T.
+```
+
+Pressure and capillary work use the same face Hodge.  With face variable `u`,
+
+```text
+<G_h p, u>_{M_f} = -p^T B u,
+G_h p = -M_f^{-1} B^T p.
+```
+
+At a compatible state `q=Q_h(phi)`, capillary force is defined by bundle
+virtual work:
+
+```text
+L_B(w)
+  = argmin_delta_phi ||delta_phi-delta_phi_pred(w)||_{W_eta}^2
+    subject to J_q delta_phi = T_q(Gamma_h) w,
+
+r_sigma(w) = -sigma dS_h(phi)[L_B(w)],
+a_sigma    = M_f^{-1} r_sigma.
+```
+
+The static droplet criterion is not the name of the shape.  It is the discrete
+Young--Laplace range condition:
+
+```text
+sigma dS_h(delta_phi) + pi^T J_q delta_phi = 0
+```
+
+for admissible bundle variations.  If this holds, capillary force is pressure
+exact and the projected drive is zero; if it does not hold, the interface has a
+physical nonzero capillary drive.
+
+CCD/FCCD/UCCD remain primary for smooth velocity, pressure, and gauge
+derivatives.  They must not be applied to discontinuous `theta_C` as though it
+were a smooth scalar.  The connection is through declared maps
+`Q_h`, `J_q`, `T_q`, and `L_B`, not through hidden differentiation of the
+phase fraction.
