@@ -23,6 +23,8 @@ sources:
     description: "Metric cell-complex discretization, q-form phase carrier, Hodge adjoints, and capillary bundle work"
   - path: artifacts/A/geometric_cell_fraction_implementation_ux_CHK-RA-GEOM-CELL-FRACTION-008.md
     description: "Implementation layering, GPU-first route, and UX/YAML contract for geometric cell fractions"
+  - path: docs/memo/short_paper/SP-AO_geometric_cell_fraction_state_space.md
+    description: "Implementation-ready short paper compiling the geometric cell-fraction state-space theory"
 depends_on:
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-159]]"

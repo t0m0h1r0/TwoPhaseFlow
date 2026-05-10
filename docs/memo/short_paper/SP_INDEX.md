@@ -59,6 +59,7 @@
 | **SP-AL** | [SP-AL_boundary_constrained_face_hodge.md](SP-AL_boundary_constrained_face_hodge.md) | **Boundary-constrained face Hodge projection for no-slip conservative common-flux states** | 2026-05-09 | ACTIVE |
 | **SP-AM** | [SP-AM_boundary_hodge_discretization.md](SP-AM_boundary_hodge_discretization.md) | **Discrete boundary-constrained face Hodge operator and GPU-first KKT solver contract** | 2026-05-09 | REFERENCE |
 | **SP-AN** | [SP-AN_constrained_face_state_space.md](SP-AN_constrained_face_state_space.md) | **Constrained face-state space reformulation for wall-bounded common-flux flow** | 2026-05-09 | ACTIVE |
+| **SP-AO** | [SP-AO_geometric_cell_fraction_state_space.md](SP-AO_geometric_cell_fraction_state_space.md) | **Geometric cell-fraction state space: q-form phase carrier, compatibility projection, bundle capillarity, and implementation/YAML contract** | 2026-05-10 | ACTIVE |
 
 **Letter collision history**:
 - 2026-04-21: `SP-H_uccd6_hyperviscosity.md` created (UCCD6 short paper).
