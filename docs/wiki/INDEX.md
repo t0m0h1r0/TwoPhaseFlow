@@ -181,6 +181,7 @@ without their curation notes.
 | [WIKI-T-166](theory/WIKI-T-166.md) | Boundary-Constrained Face Hodge Projection |
 | [WIKI-T-167](theory/WIKI-T-167.md) | Discrete Boundary-Constrained Face Hodge Operator |
 | [WIKI-T-168](theory/WIKI-T-168.md) | Constrained Face-State Space Reformulation |
+| [WIKI-T-169](theory/WIKI-T-169.md) | Geometric Cell Fraction State-Space Reformulation |
 
 ## Cross-Domain (48)
 
