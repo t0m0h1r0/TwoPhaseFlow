@@ -21,6 +21,8 @@ sources:
     description: "Implicit compatibility projection solver theory, residual probes, and fail-close gates"
   - path: artifacts/A/geometric_cell_fraction_discretization_theory_CHK-RA-GEOM-CELL-FRACTION-007.md
     description: "Metric cell-complex discretization, q-form phase carrier, Hodge adjoints, and capillary bundle work"
+  - path: artifacts/A/geometric_cell_fraction_implementation_ux_CHK-RA-GEOM-CELL-FRACTION-008.md
+    description: "Implementation layering, GPU-first route, and UX/YAML contract for geometric cell fractions"
 depends_on:
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-159]]"
@@ -469,3 +471,143 @@ derivatives.  They must not be applied to discontinuous `theta_C` as though it
 were a smooth scalar.  The connection is through declared maps
 `Q_h`, `J_q`, `T_q`, and `L_B`, not through hidden differentiation of the
 phase fraction.
+
+## Implementation And UX/YAML Direction
+
+The implementation should not overload existing `psi` arrays with new meaning.
+Introduce a typed geometric phase state:
+
+```text
+GeometricPhaseState:
+  q        physical liquid cell volumes
+  phi      continuous nodal gauge
+  stratum  fixed-stratum case/sign data
+  ledger   compatibility residuals, sign margins, Delta S_Pi
+```
+
+Recommended module split:
+
+```text
+src/twophase/geometry/
+  cell_complex.py
+  phase_state.py
+  p1_cut_geometry.py
+  p1_cut_jacobian.py
+  swept_flux.py
+  compatibility_projection.py
+  bundle_capillary.py
+  diagnostics.py
+```
+
+The production path should be GPU-first:
+
+```text
+struct-of-arrays geometry cache,
+backend.xp arrays,
+vectorized marching-squares case formulas,
+sparse row tables for J_q and dS_h,
+matrix-free Schur solve S_q lambda = J_q W_eta^{-1} J_q^T lambda,
+no host/device transfer except explicit diagnostics.
+```
+
+The YAML front door should declare a state-space contract:
+
+```yaml
+interface:
+  state_space:
+    kind: geometric_cell_fraction
+    conserved_variable: q
+    normalized_view: theta
+    gauge:
+      variable: phi
+      trace: p1_levelset
+    compatibility:
+      constraint: hard_cell_volume
+      units: physical_volume
+      projection:
+        method: fixed_stratum_schur
+        metric: screened_gauge_hodge
+        fail_close: true
+        trust_region: sign_margin
+        residual_tolerance: 1.0e-11
+```
+
+The numerical stack must then be internally consistent:
+
+```yaml
+numerics:
+  interface:
+    transport:
+      variable: q
+      spatial: geometric_swept_volume
+      boundedness: certified
+      fail_close: true
+  momentum:
+    form: conservative_common_flux
+    terms:
+      surface_tension:
+        source: bundle_virtual_work
+        closed_interface:
+          endpoint: geometric_cell_fraction
+          residual_contract:
+            metric: pressure_adjoint
+            constraints: [cell_volume]
+            fail_close: true
+```
+
+Parser gates must reject mixed-state configurations:
+
+```text
+geometric_cell_fraction with transport.variable=psi,
+q transport without conservative_common_flux,
+bundle_virtual_work with endpoint other than geometric_cell_fraction,
+geometric_cell_fraction with old Ridge-Eikonal volume reinitialization,
+fail_close=false,
+boundedness repaired by clipping,
+capillary from incompatible diffuse psi.
+```
+
+Compatibility projection is not reinitialization.  It should live under
+`interface.state_space.compatibility.projection`; old `interface.reinitialization`
+should be `algorithm: none` for the geometric route, or a temporary alias that
+maps to the compatibility projection without invoking Ridge-Eikonal.
+
+Required diagnostics:
+
+```text
+q_volume_conservation,
+compatibility_residual_q,
+stratum_margin,
+projection_surface_work,
+young_laplace_hodge_residual,
+common_flux_phase_momentum_certificate.
+```
+
+Checkpoint UX should distinguish restartable continuation state from plot
+artifacts:
+
+```yaml
+output:
+  checkpoints:
+    continuation_state: pre_step_full
+    include:
+      - q
+      - phi
+      - stratum
+      - transport_stage_ledger
+      - compatibility_projection_ledger
+      - pressure_history
+      - momentum_state
+```
+
+Activation order:
+
+```text
+schema fail-closed parse gate,
+Q_h/S_h/J_q/dS_h geometry gates,
+q compatibility projection gates,
+bounded swept-volume/common-flux gates,
+bundle capillary Hodge gates,
+restart equivalence gates,
+then ch14 YAML activation.
+```
