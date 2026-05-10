@@ -231,12 +231,19 @@ def test_rebuild_grid_mass_conservation():
     u = np.zeros_like(psi)
     v = np.zeros_like(psi)
 
-    M_before = float(np.sum(psi * s._grid.cell_volumes()))
+    xp = s._backend.xp
+    psi_dev = xp.asarray(psi)
+    dV_before = s._grid.cell_volumes()
+    M_before = float(
+        np.asarray(s._backend.to_host(xp.sum(psi_dev * dV_before)))
+    )
 
     psi, u, v = s._rebuild_grid(psi, u, v)
 
     dV = s._grid.cell_volumes()
-    M_after = float(np.sum(psi * dV))
+    M_after = float(
+        np.asarray(s._backend.to_host(xp.sum(xp.asarray(psi) * dV)))
+    )
 
     assert abs(M_after - M_before) / max(abs(M_before), 1e-30) < 1e-6, \
         f"Mass not conserved: {M_before:.6e} -> {M_after:.6e}"
