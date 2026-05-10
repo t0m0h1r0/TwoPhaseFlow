@@ -111,31 +111,27 @@ class CFLCalculator:
             xp.max(xp.abs(xp.asarray(vel)))
             for vel in velocity_components
         ]
-        u_sum = (
-            scalar_value(xp.sum(xp.stack(speed_maxima)))
-            if speed_maxima else 0.0
-        )
-        u_sum = max(u_sum, 1e-14)
-
-        dt_conv = cfl * h / u_sum
-
-        dt = dt_conv
+        if speed_maxima:
+            u_sum = xp.sum(xp.stack(speed_maxima))
+        else:
+            u_sum = xp.asarray(0.0)
+        dt_conv = cfl * h / xp.maximum(u_sum, 1.0e-14)
+        dt_candidates = [dt_conv]
 
         # Viscous CFL — only included for explicit viscous treatment
         # (cn_viscous=False). The cn_viscous=True path is 1-step Picard on
         # CN (Heun predictor-corrector) and is NOT truly unconditionally
         # stable; see module docstring + docs/memo/extended_cn_impl_design.md §1.2.
         if not self._cn_viscous:
-            nu_max = scalar_value(xp.max(mu / rho))
-            nu_max = max(nu_max, 1e-14)
-            dt_visc = cfl * h * h / (4.0 * nu_max)
-            dt = min(dt, dt_visc)
+            nu_max = xp.max(xp.asarray(mu) / xp.asarray(rho))
+            dt_visc = cfl * h * h / (4.0 * xp.maximum(nu_max, 1.0e-14))
+            dt_candidates.append(dt_visc)
 
         # Capillary wave CFL (§7.9 eq:dt_sigma)
         # Apply the same CFL safety factor as convective/viscous constraints.
         # Without it, dt == dt_sigma (the marginal stability limit), which can
         # cause capillary instability that breaks physical symmetry.
         if self._dt_sigma is not None:
-            dt = min(dt, cfl * self._dt_sigma)
+            dt_candidates.append(xp.asarray(cfl * self._dt_sigma, dtype=dt_conv.dtype))
 
-        return max(dt, 1e-8)
+        return scalar_value(xp.maximum(xp.min(xp.stack(dt_candidates)), 1.0e-8))
