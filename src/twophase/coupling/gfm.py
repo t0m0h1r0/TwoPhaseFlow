@@ -117,9 +117,6 @@ class GFMCorrector:
             # Detect interface-crossing faces: sign(phi_L) != sign(phi_R)
             crosses = (phi_L * phi_R) < 0.0
 
-            if not xp.any(crosses):
-                continue
-
             kappa_f = 0.5 * (kappa[sl_L] + kappa[sl_R])
             inv_rho_f = 2.0 / (rho[sl_L] + rho[sl_R])
             sign_L = xp.where(phi_L > 0, -1.0, 1.0)

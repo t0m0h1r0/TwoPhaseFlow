@@ -148,17 +148,22 @@ def compute_runtime_timestep_budget(
     rho_min = physics.rho_g
 
     xp = context.backend.xp
-    axis_speeds = np.asarray(
-        context.backend.to_host(
-            xp.stack([xp.max(xp.abs(xp.asarray(u))), xp.max(xp.abs(xp.asarray(v)))])
-        )
+    speed_dtype = xp.result_type(xp.asarray(u).dtype, xp.asarray(v).dtype, float)
+    h_inv = xp.asarray(
+        [1.0 / float(h_axis) for h_axis in h_axes],
+        dtype=speed_dtype,
     )
-    advective_rate = sum(
-        float(speed) / float(h_axis)
-        for speed, h_axis in zip(axis_speeds, h_axes)
-    )
-    dt_advective = (
-        float("inf") if advective_rate <= 1e-14 else cfl_advective / advective_rate
+    axis_speeds = xp.stack([
+        xp.max(xp.abs(xp.asarray(u))),
+        xp.max(xp.abs(xp.asarray(v))),
+    ])
+    advective_rate_dev = xp.sum(axis_speeds * h_inv)
+    active_advective = advective_rate_dev > 1.0e-14
+    advective_rate_safe = xp.where(active_advective, advective_rate_dev, 1.0)
+    dt_advective_dev = xp.where(
+        active_advective,
+        cfl_advective / advective_rate_safe,
+        xp.asarray(float("inf"), dtype=speed_dtype),
     )
 
     if context.viscous_time_scheme in {"crank_nicolson", "implicit_bdf2"}:
@@ -170,6 +175,7 @@ def compute_runtime_timestep_budget(
         inv_h2_sum = sum(1.0 / (float(h_axis) ** 2) for h_axis in h_axes)
         explicit_visc_dt = 1.0 / (2.0 * nu_max * inv_h2_sum)
         dt_visc = cfl_viscous * (2.0 if context.cn_viscous else 1.0) * explicit_visc_dt
+    dt_visc_dev = xp.asarray(dt_visc, dtype=speed_dtype)
 
     if physics.sigma > 0.0:
         rho_sum = physics.rho_l + physics.rho_g
@@ -178,20 +184,30 @@ def compute_runtime_timestep_budget(
         )
     else:
         dt_cap = float("inf")
-    candidates = {
-        "advective": dt_advective,
-        "viscous": dt_visc,
-        "capillary": dt_cap,
-    }
-    limiter = min(candidates, key=candidates.get)
+    dt_cap_dev = xp.asarray(dt_cap, dtype=speed_dtype)
+    candidates_dev = xp.stack([dt_advective_dev, dt_visc_dev, dt_cap_dev])
+    limiter_index_dev = xp.argmin(candidates_dev)
+    values = np.asarray(
+        context.backend.to_host(
+            xp.stack([
+                xp.min(candidates_dev),
+                xp.asarray(limiter_index_dev, dtype=speed_dtype),
+                dt_advective_dev,
+                dt_visc_dev,
+                dt_cap_dev,
+                advective_rate_dev,
+            ])
+        )
+    )
+    limiter = ("advective", "viscous", "capillary")[int(values[1])]
     return NSTimestepBudget(
-        dt=float(candidates[limiter]),
+        dt=float(values[0]),
         limiter=limiter,
-        dt_advective=float(dt_advective),
-        dt_viscous=float(dt_visc),
-        dt_capillary=float(dt_cap),
+        dt_advective=float(values[2]),
+        dt_viscous=float(values[3]),
+        dt_capillary=float(values[4]),
         h_min=float(h_min),
-        advective_rate=float(advective_rate),
+        advective_rate=float(values[5]),
     )
 
 

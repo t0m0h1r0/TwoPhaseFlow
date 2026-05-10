@@ -93,8 +93,18 @@ class DiagnosticsReporter:
         psi_1mpsi = psi * (1.0 - psi)
         near_iface = psi_1mpsi > 0.1
 
-        if xp.sum(near_iface) < 4:
+        eps_local = xp.where(
+            near_iface,
+            psi_1mpsi / xp.maximum(grad_mag, 1e-30),
+            xp.zeros_like(psi_1mpsi),
+        )
+        count, eps_sum = self.backend.to_host(
+            xp.stack([
+                xp.sum(near_iface, dtype=eps_local.dtype),
+                xp.sum(eps_local),
+            ])
+        )
+        if float(count) < 4.0:
             return None
 
-        eps_eff = psi_1mpsi[near_iface] / xp.maximum(grad_mag[near_iface], 1e-30)
-        return float(xp.mean(eps_eff)) / sim.eps
+        return float(eps_sum) / float(count) / sim.eps

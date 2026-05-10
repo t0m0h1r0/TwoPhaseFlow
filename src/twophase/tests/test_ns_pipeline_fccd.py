@@ -834,8 +834,9 @@ def test_ch14_capillary_wave_yaml_builds_initial_field():
     assert psi.shape == solver._grid.shape
 
     x0 = int(np.argmin(np.abs(np.asarray(solver._grid.coords[0]) - 0.0)))
-    y_low = int(np.argmin(np.abs(np.asarray(solver._grid.coords[1]) - 0.25)))
-    y_high = int(np.argmin(np.abs(np.asarray(solver._grid.coords[1]) - 0.75)))
+    y_coords = np.asarray(solver._grid.coords[1])
+    y_low = int(np.argmin(np.abs(y_coords - 0.25 * cfg.grid.LY)))
+    y_high = int(np.argmin(np.abs(y_coords - 0.75 * cfg.grid.LY)))
     assert psi[x0, y_low] > 0.5
     assert psi[x0, y_high] < 0.5
 
@@ -869,7 +870,17 @@ def test_ch14_capillary_curvature_is_supported_on_interface_band():
     psi_min = getattr(solver._curv, "psi_min", 0.01)
     tail = (psi_h <= psi_min) | (psi_h >= 1.0 - psi_min)
     assert np.all(kappa_h[tail] == 0.0)
-    assert float(np.max(np.abs(kappa_h * (1.0 - psi_h)))) < 20.0
+    capillary = next(
+        obj for obj in cfg.initial_condition["objects"]
+        if obj.get("type") == "capillary_wave"
+    )
+    wavelength = (
+        float(capillary.get("length", cfg.grid.LX))
+        / float(capillary["mode"])
+    )
+    k_wave = 2.0 * np.pi / wavelength
+    continuum_kappa_max = abs(float(capillary["amplitude"])) * k_wave * k_wave
+    assert float(np.max(np.abs(kappa_h * (1.0 - psi_h)))) < 2.0 * continuum_kappa_max
 
 
 def test_ch14_rising_bubble_yaml_builds_solver():
