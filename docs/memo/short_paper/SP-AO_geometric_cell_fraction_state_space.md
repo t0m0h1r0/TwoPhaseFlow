@@ -585,6 +585,32 @@ dS_h(phi + delta phi) = dS_h(phi) + local secant/Hessian candidate,
 T_q(phi + delta phi) = T_q(phi) + higher-order remainder.
 ```
 
+The accuracy claim is part of the contract.  On a fixed stratum, let
+
+```text
+gamma_C = min crossing-edge |phi_b - phi_a|,
+m_C     = min node |phi_v|,
+beta_C  = ||delta phi||_{infty,C} / min(gamma_C, m_C).
+```
+
+For `beta_C <= beta_* < 1`, the P1 cut maps are smooth in the local nodal
+values and the first-order frozen candidate satisfies
+
+```text
+|Q_h^S(phi+delta phi)_C - Q_h^S(phi)_C - J_q,C delta phi_C|
+  <= C_Q |C| beta_C^2,
+
+|S_h^S(phi+delta phi)_C - S_h^S(phi)_C - dS_C delta phi_C|
+  <= C_S |Gamma_C| beta_C^2.
+```
+
+The constants depend only on the fixed case table, aspect-ratio bounds, and
+the lower crossing margin; they must not depend on the global grid size.  If a
+second-order local secant/Hessian candidate is implemented, its advertised
+accuracy is `O(beta_C^3)` on the same stratum and must be verified against the
+exact active-stratum recomputation.  These are proposal accuracies only; the
+committed state is judged by exact physical-volume residuals in `q` units.
+
 These approximations are candidate generators, not the contract.  Acceptance
 must recompute the exact active-stratum `Q_h` and `S_h` and check the physical
 residual, sign/case margins, and projection-work ledger before committing the
@@ -605,6 +631,33 @@ exact gate, e.g.
 ```text
 tau_cg <= min(0.1 tau_q, c_work tau_surface, c_round sqrt(|A|) eps).
 ```
+
+Defect correction is admissible when it is a residual-monotone nonlinear
+compatibility iteration.  Define the exact active residual
+
+```text
+R(phi) = Q_h^S(phi) - q^-.
+```
+
+Let `P_0` be a cheap frozen active-Schur inverse or preconditioned approximate
+inverse.  A DC candidate is
+
+```text
+delta phi_DC = - P_0 R(phi_k),
+phi_trial(alpha) = phi_k + alpha delta phi_DC.
+```
+
+The accepted `alpha` is chosen by an on-device line search or scalar quadratic
+model to decrease the exact residual ledger:
+
+```text
+||R(phi_trial(alpha))||_{H_C^{-1}} < ||R(phi_k)||_{H_C^{-1}},
+```
+
+while also preserving sign/case margins and projection-work gates.  Fixed-count
+DC without residual decrease is not an AO-Fast method.  If DC stagnates, the
+solver escalates to the active PCG/Newton solve or fails closed; it must not
+repair the state by clipping `q` or relaxing the hard volume constraint.
 
 The target complexity is `O(k |A|)` per Newton update, where `|A|` is the
 number of active interface-band cells.  The rejected production complexity is

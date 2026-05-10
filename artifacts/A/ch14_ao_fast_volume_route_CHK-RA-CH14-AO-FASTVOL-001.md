@@ -105,6 +105,28 @@ If an exact check fails, refresh the stratum and retry once; if the refreshed
 problem fails, fail closed. No tolerance may silently relax the physical volume
 contract.
 
+Approximation accuracy is explicit.  On each active cell, define
+
+```text
+gamma_C = min crossing-edge |phi_b - phi_a|,
+m_C     = min node |phi_v|,
+beta_C  = ||delta phi||_{infty,C} / min(gamma_C, m_C).
+```
+
+For `beta_C <= beta_* < 1`, the fixed-stratum first-order geometry candidate
+has local remainders
+
+```text
+|R_Q,C| <= C_Q |C| beta_C^2,
+|R_S,C| <= C_S |Gamma_C| beta_C^2.
+```
+
+If a second-order secant/Hessian candidate is used, its declared proposal error
+is `O(beta_C^3)`.  The constants are local case/aspect-ratio constants.  They
+are not allowed to hide a grid-size-dependent full-domain error.  In all cases
+the final accepted state is exact-gated in physical `q` units, not accepted
+because the approximation was expected to be high order.
+
 Useful high-order approximations are therefore limited to smooth auxiliary
 maps. Examples are FCCD/UCCD prediction of `phi^-`, DCCD/FCCD construction of
 the screened gauge Hodge `W_eta`, and high-order face-state reconstruction for
@@ -127,6 +149,32 @@ Use matrix-free PCG with:
 - inexact Newton tolerance tied to the downstream exact gate:
   `tau_cg <= min(0.1 tau_q, c_work tau_surface, c_round sqrt(|A|) eps)`;
 - exact residual recomputation before accepting the Newton step.
+
+Use DC when it is cheaper than a full Newton/PCG refresh and when it is
+monotone in the exact compatibility residual.  With
+
+```text
+R(phi) = Q_h^S(phi) - q^-,
+delta phi_DC = -P_0 R(phi_k),
+```
+
+where `P_0` is the frozen active-Schur inverse or a certified approximate
+inverse, accept only
+
+```text
+phi_{k+1} = phi_k + alpha delta phi_DC
+```
+
+such that the exact device-side residual ledger decreases:
+
+```text
+||R(phi_{k+1})||_{H_C^{-1}} < ||R(phi_k)||_{H_C^{-1}}.
+```
+
+`alpha` may come from the same scalar residual-minimizing idea used by the PPE
+DC route, but the acceptance residual is the exact `Q_h-q` residual.  Fixed
+iteration counts, relaxed volume constraints, and clipping are rejected.
+Stagnating DC escalates to active PCG/Newton or fails closed.
 
 The solve complexity is `O(k |A|)` per Newton update, where `|A|` is the number
 of mixed/interface-band cells. The forbidden model is `O(k |C_h|)` full-domain
@@ -159,11 +207,12 @@ Promote the route only after these gates pass:
 
 ```text
 AO-F1: active-table Q/S/J/dS equals exact full-grid reference on manufactured cuts;
-AO-F2: frozen-stratum candidate reduces projection work and passes exact residual gates;
-AO-F3: compact PCG iteration count is bounded under nonuniform, periodic, and wall probes;
-AO-F4: GPU tests show no per-iteration host synchronization and no full-domain geometry rebuild;
-AO-F5: ch14 one-step static/oscillating/capillary runs conserve q and expose face-native pressure diagnostics;
-AO-F6: restart restores active tables or rebuilds them deterministically and matches zero-start short runs.
+AO-F2: approximation remainders scale as O(beta^2) or declared O(beta^3);
+AO-F3: frozen-stratum/DC candidates reduce exact residuals and pass exact gates;
+AO-F4: compact PCG/DC iteration count is bounded under nonuniform, periodic, and wall probes;
+AO-F5: GPU tests show no per-iteration host synchronization and no full-domain geometry rebuild;
+AO-F6: ch14 one-step static/oscillating/capillary runs conserve q and expose face-native pressure diagnostics;
+AO-F7: restart restores active tables or rebuilds them deterministically and matches zero-start short runs.
 ```
 
 ## Decision

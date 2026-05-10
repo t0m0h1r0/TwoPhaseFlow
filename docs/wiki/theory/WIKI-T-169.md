@@ -27,6 +27,8 @@ sources:
     description: "Implementation-ready short paper compiling the geometric cell-fraction state-space theory"
   - path: artifacts/A/ch14_ao_fast_volume_route_CHK-RA-CH14-AO-FASTVOL-001.md
     description: "AO-Fast active-stratum, approximate-candidate, GPU-PCG route for making SP-AO computationally viable"
+  - path: artifacts/A/ch14_ao_dc_accuracy_theory_CHK-RA-CH14-AO-FASTVOL-002.md
+    description: "AO-Fast fixed-stratum approximation-order contract and residual-monotone DC theory"
 depends_on:
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-159]]"
@@ -522,6 +524,19 @@ projection-work gates pass.  Compatibility projection is solved on the active
 interface graph by matrix-free PCG with warm starts, diagonal/component-block
 Jacobi preconditioning, and optional connected-component deflation, targeting
 `O(k |A|)` work rather than full-domain `O(k |C_h|)` geometry and Schur work.
+
+Approximation accuracy must be declared locally.  With
+`beta_C=||delta phi||_{infty,C}/min(gamma_C,m_C)` on a fixed regular stratum,
+first-order frozen geometry has `O(beta_C^2)` local `Q_h/S_h` remainders, and
+any second-order secant/Hessian candidate must demonstrate `O(beta_C^3)` before
+promotion.  Approximation order never replaces exact acceptance in physical
+`q` units.
+
+DC is admissible as a geometry compatibility iteration only when it is
+residual-monotone for the exact residual `R(phi)=Q_h^S(phi)-q^-`.  The frozen
+active Schur inverse may be used as a cheap defect-correction operator, with
+the step length chosen by an on-device residual decrease test.  Fixed-count DC,
+clipping, or relaxed volume constraints remain forbidden.
 
 CCD/DCCD/FCCD/UCCD remain useful on the smooth side of the split: gauge
 prediction, screened gauge metric `W_eta`, face-state reconstruction,
