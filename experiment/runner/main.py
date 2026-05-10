@@ -112,6 +112,7 @@ def _dispatch(
     plot_only: bool,
     *,
     resume_from: pathlib.Path | None = None,
+    final_time: float | None = None,
     checkpoint_final: bool = True,
     checkpoint_every_steps: int | None = None,
     checkpoint_interval: float | None = None,
@@ -128,6 +129,8 @@ def _dispatch(
         )
 
     cfg = handler.load_config(config_path)
+    if final_time is not None:
+        cfg = cfg.override(**{"run.T_final": float(final_time)})
     outdir = _configured_outdir(config_path, cfg)
     outdir.mkdir(parents=True, exist_ok=True)
     cfg._config_path = config_path
@@ -173,6 +176,8 @@ def main() -> None:
                         help="Re-plot from saved .npz without rerunning.")
     parser.add_argument("--resume-from", default=None,
                         help="Explicitly resume from a ch14 checkpoint .npz.")
+    parser.add_argument("--final-time", type=float, default=None,
+                        help="Override run.time.final at launch without editing the YAML.")
     parser.add_argument("--no-checkpoint-final", action="store_true",
                         help="Do not write outdir/checkpoint_final.npz after a run.")
     parser.add_argument("--checkpoint-every-steps", type=int, default=None,
@@ -195,6 +200,7 @@ def main() -> None:
             _dispatch(
                 cp,
                 plot_only=args.plot_only,
+                final_time=args.final_time,
                 checkpoint_final=not args.no_checkpoint_final,
                 checkpoint_every_steps=args.checkpoint_every_steps,
                 checkpoint_interval=args.checkpoint_interval,
@@ -209,6 +215,7 @@ def main() -> None:
         _resolve_config(args.config),
         plot_only=args.plot_only,
         resume_from=pathlib.Path(args.resume_from).resolve() if args.resume_from else None,
+        final_time=args.final_time,
         checkpoint_final=not args.no_checkpoint_final,
         checkpoint_every_steps=args.checkpoint_every_steps,
         checkpoint_interval=args.checkpoint_interval,
