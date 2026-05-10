@@ -17,6 +17,8 @@ sources:
     description: "Notation refinement from F_C/I_h to theta_C/Gamma_h"
   - path: artifacts/A/geometric_cell_fraction_bridge_projection_CHK-RA-GEOM-CELL-FRACTION-005.md
     description: "Theta-constrained continuous P1 trace bundle and capillary-work lift candidate"
+  - path: artifacts/A/geometric_cell_fraction_projection_solver_theory_CHK-RA-GEOM-CELL-FRACTION-006.md
+    description: "Implicit compatibility projection solver theory, residual probes, and fail-close gates"
 depends_on:
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-159]]"
@@ -307,3 +309,56 @@ Delta S_Pi = S_h(Gamma(phi^+)) - S_h(Gamma(phi^-_transported)).
 ```
 
 It is not physical capillary work.
+
+## Implicit Projection Solver Direction
+
+The compatibility equation is solved as a fixed-stratum hard constrained
+projection, not as an explicit per-cell formula:
+
+```text
+min_phi  1/2 ||phi-phi^-||_W^2 + eta/2 ||L(phi-phi^-)||^2
+subject to A_h^S(Gamma(phi))_C = theta^-_C.
+```
+
+Linearized correction:
+
+```text
+r     = theta^- - A_h(Gamma(phi_k)),
+J_A   = dA_h(Gamma(phi_k))/dphi,
+W_eta = W + eta L^T L,
+
+delta = W_eta^{-1} J_A^T
+        (J_A W_eta^{-1} J_A^T)^{-1} r.
+```
+
+Manufactured probes clarified two hazards:
+
+1. Small smooth perturbations can be corrected on a fixed stratum, but larger
+   residuals quickly cross case boundaries.  A one-step linear solve at N=32
+   reduced `amp=1e-5` residual from `4.44e-05` to `1.25e-07`, while
+   `amp=3e-4` changed 20 cell cases and failed.
+2. Constraint equations alone do not select a physical gauge.  For constant
+   shift targets, residuals can be matched with no case changes, but the
+   unconstrained minimum-norm correction is not the constant shift.  Therefore
+   `phi^-`, `W_eta`, and smooth/eikonal gauge terms are part of the theory.
+
+Clarified solver direction:
+
+```text
+fixed-stratum hard projection
++ predictor-based gauge selection
++ W_eta smoothness/eikonal metric
++ trust-region and sign-margin gates
++ Schur complement over mixed cells
++ explicit Delta S_Pi ledger.
+```
+
+Mandatory fail-close gates:
+
+```text
+rank(J_A),
+condition estimate,
+maximum admissible step before sign/case change,
+hard compatibility residual after line search,
+Delta S_Pi not hidden as capillary work.
+```
