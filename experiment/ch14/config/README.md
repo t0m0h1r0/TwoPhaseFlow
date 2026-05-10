@@ -44,6 +44,21 @@ The physical force source remains experiment-specific: closed droplet and
 bubble interfaces use the closed-interface Riesz pressure-jump route, while
 graph/open-interface benchmarks keep their validated curvature-jump route.
 
+`ch14_capillary.yaml` and `ch14_oscillating_droplet.yaml` are SI water-air
+cases at about 20 C.  The capillary wave uses a 20 mm x 20 mm tank with
+mode 2, so the wavelength is 10 mm; the oscillating droplet uses the same
+20 mm square tank with a 10 mm-class ellipse (`a=5.5 mm`, `b=4.5 mm`).
+Their final times and snapshot times are no longer inherited from the old
+unit-box scale.  The capillary-wave theory reference uses the rigid-wall
+two-layer finite-depth dispersion relation because the 10 mm interface sits
+midway between the upper and lower walls of the 20 mm tank; the paper-facing
+snapshot window then follows the signed mode-2 production response over one
+observed cycle.  The oscillating-droplet window follows the Rayleigh-Lamb
+water-air period.  Its every-step dynamic Ridge--Eikonal restoration uses the
+transported CLS `diffuse_mass` constraint; the sharper `sharp_phase_volume`
+constraint is kept for static/equilibrium gates where the sharp area and
+diffuse profile targets are compatible without moving the interface.
+
 The five production configs emit periodic snapshots with `psi`, `velocity`,
 and pressure-family figures. The runner stores raw fields in `data.npz` under
 `fields/psi`, `fields/velocity`, and `fields/pressure` (plus compatibility
@@ -203,8 +218,11 @@ frequency:
   tracking cleanup while transporting the interface in physical time.
 - `interface.reinitialization.schedule.every_steps`: full CLS profile restoration
   in pseudo-time after advection.
-  `ch14_static_droplet.yaml` sets this to `0` because a static-equilibrium
-  validation must not add unaccounted pseudo-time surface-energy work.
+  Conservative common-flux reinitialization must be represented in the same
+  `q,m,p` bundle as transport.  The current dynamic capillary-wave and
+  oscillating-droplet configs use every-step restoration; checked-in configs may
+  still set this to `0` for benchmark-specific reasons such as
+  static-equilibrium gates or transport-only dynamic gates.
 
 This follows WIKI-X-027: interface advection and reinitialization use different
 time axes and should not be placed as sibling `run` knobs or mixed in one
@@ -226,9 +244,8 @@ periodic.  The canonical form is axis-local and monitor-based:
   top-level `type/method/alpha` plus `axes: [x]`, `[y]`, `[x, y]`, or omitted.
   It cannot express wall refinement.
 - `schedule`: non-negative grid rebuild interval. The paper-standard
-  interface-following route is `1`, meaning rebuild every physical step from
-  the current tracked interface. `static`/`0` remains available for explicit
-  fixed-grid comparisons.
+  interface-following route is `1`, meaning the fitted grid is rebuilt every
+  physical step from the current conservative common-flux state.
 
 Uniform axes may not declare monitors. Nonuniform axes must declare at least
 one monitor. Periodic axes may use interface monitors but cannot use wall
@@ -260,10 +277,9 @@ grid:
             apply_to: [lower, upper]
 ```
 
-The capillary-wave YAML keeps `x` uniform and periodic, while `y` is
-nonuniform because it contains both the interface-normal resolution and the
-upper/lower wall resolution. It does not use a fake interface-fitting axis with
-`alpha: 1.0`.
+The capillary-wave YAML keeps `x` periodic and interface-fitted, while `y` is
+also nonuniform because it contains both the interface-normal resolution and the
+upper/lower wall resolution.
 
 The distribution is located under `grid` because it changes the mesh. It may
 use interface information as an input, but it is not itself interface physics.

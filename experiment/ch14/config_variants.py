@@ -90,9 +90,9 @@ def n64_oscillating_droplet(
     raw = load_canonical_yaml("ch14_oscillating_droplet")
     raw["grid"]["cells"] = [64, 64]
     _set_axis_alpha(raw, alpha)
-    raw["initial_condition"]["objects"][0]["semi_axes"] = [0.275, 0.225]
-    raw["physics"]["surface_tension"] = 0.072
-    _set_oscillating_omega(raw, 0.167435)
+    raw["initial_condition"]["objects"][0]["semi_axes"] = [0.0055, 0.0045]
+    raw["physics"]["surface_tension"] = 0.0728
+    _set_oscillating_omega(raw, 59.578473371)
 
     if dc_iterations is not None:
         raw["numerics"]["projection"]["poisson"]["solver"]["corrections"][
@@ -110,8 +110,8 @@ def n64_oscillating_droplet(
         raw["interface"]["geometry"]["curvature"] = {
             "method": "transport_variational_p2_ale_discrete_gradient"
         }
-        raw["run"]["time"]["final"] = 37.52611644626026
-        raw["output"]["snapshots"]["interval"] = 1.0
+        raw["run"]["time"]["final"] = 0.105460663082
+        raw["output"]["snapshots"]["interval"] = 0.005
         _replace_pressure_snapshot_with_hodge(raw)
 
     return raw

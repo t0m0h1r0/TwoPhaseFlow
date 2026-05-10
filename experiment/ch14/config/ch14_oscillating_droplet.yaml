@@ -1,8 +1,9 @@
 # Rayleigh-Lamb n=2 oscillating droplet benchmark on the ch14 base stack.
-# The true ellipse uses semi-axes a=0.275, b=0.225. With water-air density and
-# sigma=0.072, the area-equivalent radius sqrt(ab)=0.24875 gives T≈37.5.
-# The chapter-14 paper gate reports the N=32 one-period run
-# T = 2*pi/0.167435 = 37.526116446.
+# SI scale: 20 mm x 20 mm tank with a 10 mm-class droplet.
+# The true ellipse uses semi-axes a=5.5 mm, b=4.5 mm. With water-air
+# properties at about 20 C (rho_l=998.2, rho_g=1.204, sigma=0.0728),
+# the area-equivalent radius sqrt(ab)=4.974937 mm gives
+# omega0=59.578473371 and T=0.105460663082 s.
 
 experiment:
   type: ellipse
@@ -10,7 +11,7 @@ experiment:
 grid:
   cells: [32, 32]
   domain:
-    size: [1.0, 1.0]
+    size: [0.02, 0.02]
     boundary: periodic
   distribution:
     schedule: 1
@@ -38,27 +39,34 @@ interface:
   reinitialization:
     algorithm: ridge_eikonal
     schedule:
+      # Conservative q/momentum reinitialization is represented in the current
+      # common-flux bundle, so the dynamic closed-interface route restores the
+      # CLS profile every physical step.
       every_steps: 1
     profile:
       eps_scale: 1.4
       ridge_sigma_0: 3.0
-      volume_constraint: sharp_phase_volume
+      # Every-step dynamic profile restoration preserves the transported CLS
+      # mass.  The sharper static-area constraint is reserved for equilibrium
+      # gates because it can be incompatible with diffuse mass at moving
+      # closed interfaces.
+      volume_constraint: diffuse_mass
 
 physics:
   phases:
     liquid:
-      rho: 1000.0
-      mu: 1.0e-3
+      rho: 998.2
+      mu: 1.002e-3
     gas:
-      rho: 1.2
-      mu: 1.8e-5
-  surface_tension: 0.072
+      rho: 1.204
+      mu: 1.825e-5
+  surface_tension: 0.0728
   gravity: 0.0
 
 run:
   momentum_form: conservative_common_flux
   time:
-    final: 37.526116446
+    final: 0.105460663082
     # Multiplier on theory CFL constants; 1.0 uses the §7 CFL budget.
     cfl: 1.0
     print_every: 200
@@ -150,7 +158,7 @@ output:
   dir: results/ch14_oscillating_droplet
   save_npz: true
   snapshots:
-    times: [0.0, 9.381529112, 18.763058223, 28.144587335, 37.526116446]
+    times: [0.0, 0.026365165771, 0.052730331541, 0.079095497312, 0.105460663082]
   figures:
     - type: time_series
       title: "Rayleigh-Lamb n=2 droplet: signed deformation"
@@ -161,7 +169,7 @@ output:
       ylabel: "$D_s(t)$"
       analytical:
         formula: prosperetti
-        omega0: 0.167435
+        omega0: 59.578473371
         beta: 0.0
         D0: 0.10
       file: signed_deformation.pdf
@@ -211,7 +219,7 @@ output:
       file_prefix: velocity_t
 
     - type: snapshot_series
-      field: pressure_hodge
+      field: pressure
       shared_scale: true
       symmetric_scale: true
       file_prefix: pressure_t
@@ -222,8 +230,8 @@ initial_condition:
   background_phase: gas
   objects:
     - type: ellipse
-      center: [0.5, 0.5]
-      semi_axes: [0.275, 0.225]
+      center: [0.01, 0.01]
+      semi_axes: [0.0055, 0.0045]
       interior_phase: liquid
 
 initial_velocity: null

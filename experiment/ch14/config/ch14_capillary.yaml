@@ -1,7 +1,11 @@
 # N=32 water-air capillary-flow one-period benchmark for §14.
-# The mode-2 capillary wave has k=4π.  With water-air density and
-# sigma=0.072, the inviscid small-amplitude dispersion relation gives
-# omega=sqrt(sigma*k^3/(rho_l+rho_g))=0.377764048 and T≈16.632565583.
+# SI scale: 20 mm x 20 mm tank, mode-2 wavelength lambda=10 mm,
+# and initial amplitude A0=0.2 mm.  With water-air properties at about
+# 20 C (rho_l=998.2, rho_g=1.204, sigma=0.0728), k=628.318530718 and
+# h_l=h_g=10 mm.  The rigid-wall two-layer dispersion relation gives the
+# continuum reference omega=134.419859151 and T=0.046742983863 s.  The paper
+# snapshot window is instead the signed mode-2 production response over one
+# observed cycle: upper crest -> flat -> lower crest -> flat -> upper crest.
 # Production numerical stack: FCCD PPE + face-native Young-Laplace jump + UCCD6.
 # - FCCD: conservative interface transport and pressure gradient use the `fccd`
 #   scheme; flux-locus form is the default option for these terms.
@@ -21,7 +25,7 @@ experiment:
 grid:
   cells: [32, 32]
   domain:
-    size: [1.0, 1.0]
+    size: [0.02, 0.02]
     boundary:
       x: periodic
       y:
@@ -65,18 +69,18 @@ interface:
 physics:
   phases:
     liquid:
-      rho: 1000.0
-      mu: 1.0e-3
+      rho: 998.2
+      mu: 1.002e-3
     gas:
-      rho: 1.2
-      mu: 1.8e-5
-  surface_tension: 0.072
+      rho: 1.204
+      mu: 1.825e-5
+  surface_tension: 0.0728
   gravity: 0.0
 
 run:
   momentum_form: conservative_common_flux
   time:
-    final: 16.632565583
+    final: 0.035379718894
     # Multiplier on theory CFL constants; 1.0 uses the theory budget.
     cfl: 1.0
     print_every: 200
@@ -160,16 +164,16 @@ output:
   dir: results/ch14_capillary
   save_npz: true
   snapshots:
-    times: [0.0, 4.158141396, 8.316282792, 12.474424188, 16.632565583]
+    times: [0.0, 0.008899695230, 0.017677817828, 0.026630729902, 0.035379718894]
   figures:
     - type: time_series
-      title: "Water-air capillary wave: interface amplitude"
+      title: "Water-air capillary wave: signed mode amplitude"
       x: times
-      y: [interface_amplitude]
-      labels: ["A(t)"]
+      y: [signed_interface_amplitude]
+      labels: ["$a_2(t)$"]
       xlabel: "$t$"
-      ylabel: "$A(t)$"
-      file: interface_amplitude.pdf
+      ylabel: "$a_2(t)$"
+      file: signed_interface_amplitude.pdf
 
     - type: time_series
       title: "Water-air capillary flow: volume drift"
@@ -221,17 +225,24 @@ output:
       symmetric_scale: true
       file_prefix: pressure_t
 
-diagnostics: [volume_conservation, kinetic_energy, interface_amplitude]
+diagnostics:
+  - volume_conservation
+  - kinetic_energy
+  - interface_amplitude
+  - type: signed_interface_amplitude
+    mode: 2
+    length: 0.02
+    phase: 0.0
 
 initial_condition:
   background_phase: gas
   objects:
     - type: capillary_wave
       axis: y
-      mean: 0.5
-      amplitude: 0.01
+      mean: 0.01
+      amplitude: 0.0002
       mode: 2
-      length: 1.0
+      length: 0.02
       phase: 0.0
       interior_phase: liquid
 

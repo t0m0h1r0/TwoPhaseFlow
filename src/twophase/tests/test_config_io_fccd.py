@@ -319,7 +319,28 @@ def test_ch14_capillary_yaml_loads_execution_stack():
     assert len(objects) == 1
     assert objects[0]["type"] == "capillary_wave"
     assert objects[0]["mode"] == 2
+    assert objects[0]["mean"] == pytest.approx(0.01)
+    assert objects[0]["amplitude"] == pytest.approx(0.0002)
+    assert objects[0]["length"] == pytest.approx(0.02)
+    assert cfg.grid.LX == pytest.approx(0.02)
+    assert cfg.grid.LY == pytest.approx(0.02)
+    assert cfg.physics.rho_l == pytest.approx(998.2)
+    assert cfg.physics.rho_g == pytest.approx(1.204)
+    assert cfg.physics.mu_l == pytest.approx(1.002e-3)
+    assert cfg.physics.mu_g == pytest.approx(1.825e-5)
+    assert cfg.physics.sigma == pytest.approx(0.0728)
+    assert cfg.run.T_final == pytest.approx(0.035379718894)
+    assert cfg.run.snap_times == pytest.approx(
+        (0.0, 0.008899695230, 0.017677817828, 0.026630729902, 0.035379718894)
+    )
     assert "interface_amplitude" in cfg.diagnostics
+    assert any(
+        isinstance(d, dict)
+        and d.get("type") == "signed_interface_amplitude"
+        and d.get("mode") == 2
+        and d.get("length") == pytest.approx(0.02)
+        for d in cfg.diagnostics
+    )
     assert "deformation" not in cfg.diagnostics
     assert cfg.run.advection_scheme == "fccd_flux"
     assert cfg.run.convection_scheme == "uccd6"
@@ -402,6 +423,31 @@ def test_ch14_oscillating_droplet_yaml_uses_signed_deformation_only():
     )
     cfg = ExperimentConfig.from_yaml(path)
 
+    objects = cfg.initial_condition["objects"]
+    assert len(objects) == 1
+    assert objects[0]["type"] == "ellipse"
+    assert objects[0]["center"] == pytest.approx((0.01, 0.01))
+    assert objects[0]["semi_axes"] == pytest.approx((0.0055, 0.0045))
+    assert cfg.grid.LX == pytest.approx(0.02)
+    assert cfg.grid.LY == pytest.approx(0.02)
+    assert cfg.physics.rho_l == pytest.approx(998.2)
+    assert cfg.physics.rho_g == pytest.approx(1.204)
+    assert cfg.physics.mu_l == pytest.approx(1.002e-3)
+    assert cfg.physics.mu_g == pytest.approx(1.825e-5)
+    assert cfg.physics.sigma == pytest.approx(0.0728)
+    assert cfg.run.T_final == pytest.approx(0.105460663082)
+    assert cfg.run.snap_times == pytest.approx(
+        (0.0, 0.026365165771, 0.052730331541, 0.079095497312, 0.105460663082)
+    )
+    assert cfg.grid.grid_rebuild_freq == 1
+    assert cfg.run.reinit_every == 1
+    assert cfg.run.reinit_volume_constraint == "diffuse_mass"
+    pressure_figs = [
+        fig
+        for fig in cfg.output.figures
+        if fig.get("type") == "snapshot_series" and fig.get("file_prefix") == "pressure_t"
+    ]
+    assert pressure_figs[0]["field"] == "pressure"
     assert "signed_deformation" in cfg.diagnostics
     assert "deformation" not in cfg.diagnostics
 
@@ -448,7 +494,10 @@ def test_ch14_canonical_yamls_share_base_numerical_stack():
         assert cfg.run.curvature_method == "face_implicit", path.name
         expected_reinit = (
             0
-            if path.name in {"ch14_static_droplet.yaml", "ch14_rising_bubble.yaml"}
+            if path.name in {
+                "ch14_static_droplet.yaml",
+                "ch14_rising_bubble.yaml",
+            }
             else 1
         )
         assert cfg.run.reinit_every == expected_reinit, path.name
