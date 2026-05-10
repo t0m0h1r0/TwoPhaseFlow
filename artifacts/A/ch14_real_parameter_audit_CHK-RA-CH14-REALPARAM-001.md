@@ -21,7 +21,12 @@ interface-following route with `grid.distribution.schedule: 1`.
 After the conservative common-flux remap/reinitialization representation landed
 on main, both targeted dynamic YAMLs use every-step profile restoration:
 `grid.distribution.schedule: 1` and
-`interface.reinitialization.schedule.every_steps: 1`.
+`interface.reinitialization.schedule.every_steps: 1`.  The oscillating droplet
+uses the transported CLS `diffuse_mass` restoration constraint for that
+every-step dynamic route.  The sharper `sharp_phase_volume` constraint is not
+used there because it can demand simultaneous sharp-area and diffuse-profile
+targets that are incompatible at a moving closed interface without relocating
+the sharp interface.
 
 The same smoke reached `data.npz` and then fail-closed in plotting because the
 saved affine pressure face cochain was not same-phase integrable as a scalar

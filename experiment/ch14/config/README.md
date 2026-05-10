@@ -54,7 +54,10 @@ two-layer finite-depth dispersion relation because the 10 mm interface sits
 midway between the upper and lower walls of the 20 mm tank; the paper-facing
 snapshot window then follows the signed mode-2 production response over one
 observed cycle.  The oscillating-droplet window follows the Rayleigh-Lamb
-water-air period.
+water-air period.  Its every-step dynamic Ridge--Eikonal restoration uses the
+transported CLS `diffuse_mass` constraint; the sharper `sharp_phase_volume`
+constraint is kept for static/equilibrium gates where the sharp area and
+diffuse profile targets are compatible without moving the interface.
 
 The five production configs emit periodic snapshots with `psi`, `velocity`,
 and pressure-family figures. The runner stores raw fields in `data.npz` under

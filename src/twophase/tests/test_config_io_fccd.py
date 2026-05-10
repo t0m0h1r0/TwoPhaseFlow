@@ -440,6 +440,8 @@ def test_ch14_oscillating_droplet_yaml_uses_signed_deformation_only():
         (0.0, 0.026365165771, 0.052730331541, 0.079095497312, 0.105460663082)
     )
     assert cfg.grid.grid_rebuild_freq == 1
+    assert cfg.run.reinit_every == 1
+    assert cfg.run.reinit_volume_constraint == "diffuse_mass"
     pressure_figs = [
         fig
         for fig in cfg.output.figures
