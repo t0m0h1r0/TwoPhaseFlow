@@ -1,4 +1,4 @@
-# Wiki Index — 366 entries
+# Wiki Index — 367 entries
 
 ## Active Retrieval Gate
 
@@ -362,7 +362,7 @@ without their curation notes.
 | [WIKI-M-030](meta/WIKI-M-030.md) | Meta-Prompt Evolution Needs Telemetry, Skills, and Tool-Trust Gates |
 | [WIKI-M-031](meta/WIKI-M-031.md) | Review Artifacts Close the Loop with Finding, Fix, and Validation |
 
-## Code (41)
+## Code (42)
 
 | REF-ID | Title |
 |--------|-------|
@@ -407,3 +407,4 @@ without their curation notes.
 | [WIKI-L-039](code/WIKI-L-039.md) | GPU Utilization Probes Must Bound Output Without Changing the Route |
 | [WIKI-L-040](code/WIKI-L-040.md) | Remote GPU Runs Must Prove the GPU Route Is Active |
 | [WIKI-L-041](code/WIKI-L-041.md) | YAML Route Flags Make Numerical Contracts Auditable |
+| [WIKI-L-042](code/WIKI-L-042.md) | Single-Core CPU Saturation Does Not Imply CPU-Parallel GPU Relief |
