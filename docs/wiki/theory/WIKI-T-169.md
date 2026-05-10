@@ -9,6 +9,8 @@ sources:
     description: "ResearchArchitect theory artifact for geometric cell fraction reformulation"
   - path: artifacts/A/ch14_reinit_volume_priority_theory_CHK-RA-REINIT-VOLUME-PRIORITY-001.md
     description: "Volume-first reinitialization theory motivating geometric fractions as long-term route"
+  - path: artifacts/A/geometric_cell_fraction_formal_theory_CHK-RA-GEOM-CELL-FRACTION-002.md
+    description: "Formal state-space, operator, invariant, and verification theory; adoption intentionally undecided"
 depends_on:
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-159]]"
@@ -84,7 +86,10 @@ rho_C  = rho_g + (rho_l-rho_g) F_C.
 Capillary, gravity, pressure projection, checkpoint/restart, and visualization
 must read from this same state, or from declared adjoint maps of it.
 
-## Accepted Direction
+## Working Theory Direction
+
+This is not yet an adoption decision.  It is the coherent theory candidate that
+must be developed and tested before production selection.
 
 Use a geometric CLSVOF route:
 
@@ -121,3 +126,42 @@ Do not accept:
 - density from `F_C` but capillary or gravity from diffuse `psi`;
 - CCD/FCCD differentiation of discontinuous `F_C` as a smooth field;
 - visual long-run success before manufactured geometry and one-step flux gates.
+
+## Formal Theory Layer
+
+The theory is governed by a single-owner rule:
+
+```text
+F_C owns material volume and density.
+I_h owns sharp surface and volume geometry.
+phi/psi are derived gauges unless an equivalence proof promotes them.
+```
+
+The core maps are:
+
+```text
+A_h(I_h)_C = |C cap Omega_l(I_h)| / |C|              geometric fraction map
+R_h(F_C,g) -> I_h                                    reconstruction map
+Phi_h(I_h) -> phi                                    gauge reconstruction
+T_h(I_h)w_f -> delta F                               transport linearization
+```
+
+Required identities and contracts:
+
+```text
+sum_C |C| A_h(I_h)_C = |Omega_{l,h}(I_h)|
+A_h(R_h(F,g))_C = F_C
+0 <= F_C <= 1
+Phi_l is a geometric swept-volume flux
+Phi_m = rho_g Phi_V + (rho_l-rho_g) Phi_l
+M_f(F) = Q_f rho_f(F)
+E_sigma = sigma S_h(I_h)
+a_sigma = -M_f(F)^{-1} T_h(I_h)^* dS_h
+```
+
+The largest unresolved theory problem is the capillary-ready reconstruction:
+local volume-exact PLIC is a strong primitive for `F_C` and fluxes, but it does
+not by itself prove a globally smooth or variationally balanced capillary
+surface.  Adoption should remain blocked until static Hodge balance and
+dynamic nonconstant-curvature drive are both proven on the same `I_h/F_C`
+geometry.
