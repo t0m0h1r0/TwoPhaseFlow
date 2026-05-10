@@ -21,6 +21,23 @@ class NSGridRebuildResult:
     momentum_components: tuple[object, ...] | None = None
 
 
+def _sharp_volume_target(reinitializer, psi) -> float | None:
+    if not getattr(reinitializer, "preserves_sharp_volume", False):
+        return None
+    volume_fn = getattr(reinitializer, "sharp_phase_volume", None)
+    if not callable(volume_fn):
+        return None
+    return float(volume_fn(psi))
+
+
+def _set_sharp_volume_target(reinitializer, target: float | None) -> None:
+    if target is None:
+        return
+    setter = getattr(reinitializer, "set_sharp_phase_volume_target", None)
+    if callable(setter):
+        setter(target)
+
+
 def rebuild_ns_grid(
     *,
     backend,
@@ -73,14 +90,11 @@ def rebuild_ns_grid(
         )
 
     old_coords = [coords.copy() for coords in grid.coords]
-    old_h = [widths.copy() for widths in grid.h]
-
     xp = backend.xp
-    dV_old = xp.asarray(old_h[0])
-    for axis in range(1, grid.ndim):
-        dV_old = xp.expand_dims(dV_old, axis=axis) * xp.asarray(old_h[axis])
+    dV_old = xp.asarray(grid.cell_volumes(bc_type=bc_type))
     psi_dev = xp.asarray(psi)
     mass_before = xp.sum(psi_dev * dV_old)
+    sharp_volume_before = _sharp_volume_target(reinitializer, psi_dev)
     conservative_momentum = (
         None
         if conservative_momentum_components is None
@@ -97,8 +111,12 @@ def rebuild_ns_grid(
     remapper = build_grid_remapper(backend, old_coords, grid.coords)
     psi_remapped = xp.clip(xp.asarray(remapper.remap(psi)), 0.0, 1.0)
 
-    dV_new = grid.cell_volumes()
-    if wall_contacts:
+    dV_new = grid.cell_volumes(bc_type=bc_type)
+    reinitializer.update_grid(grid)
+    if sharp_volume_before is not None:
+        _set_sharp_volume_target(reinitializer, sharp_volume_before)
+        psi_remapped = xp.asarray(reinitializer.reinitialize(psi_remapped))
+    elif wall_contacts:
         psi_remapped = wall_contacts.impose_on_wall_trace(xp, grid, psi_remapped)
         pinned = wall_contacts.constraint_mask(xp, grid, tuple(psi_remapped.shape))
         free_mask = xp.logical_not(pinned)
@@ -149,7 +167,6 @@ def rebuild_ns_grid(
     if use_local_eps:
         curvature_operator.eps = make_eps_field()
 
-    reinitializer.update_grid(grid)
     ppe_solver.update_grid(grid)
     ppe_solver.invalidate_cache()
     if fccd_div_op is not None:

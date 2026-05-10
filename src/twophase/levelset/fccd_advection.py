@@ -81,7 +81,7 @@ class FCCDLevelSetAdvection(ILevelSetAdvection):
         self._fccd = fccd
         self._mode = mode
         self._mass_correction = mass_correction
-        self._dV = grid.cell_volumes() if mass_correction else None
+        self._dV = grid.cell_volumes(bc_type=fccd.bc_type) if mass_correction else None
 
     def advance(
         self,

@@ -54,7 +54,7 @@ class ConservativeCommonFluxTransport:
         self._fccd = fccd
         self._divergence_operator = divergence_operator
         self._min_density_floor = float(min_density_floor)
-        self._dV = grid.cell_volumes()
+        self._dV = grid.cell_volumes(bc_type=fccd.bc_type)
 
     def advance(
         self,

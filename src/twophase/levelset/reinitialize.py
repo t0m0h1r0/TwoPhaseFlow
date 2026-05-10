@@ -305,5 +305,5 @@ class ReinitializerWENO5(IReinitializer):
         return xp.concatenate([pad, div_interior, pad], axis=axis)
 
     def volume_monitor(self, psi) -> float:
-        dV = self.grid.cell_volumes()
+        dV = self.grid.cell_volumes(bc_type=self._bc)
         return float(self.xp.sum(psi * (1.0 - psi) * dV))

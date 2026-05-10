@@ -46,11 +46,10 @@ interface:
     profile:
       eps_scale: 1.4
       ridge_sigma_0: 3.0
-      # Every-step dynamic profile restoration preserves the transported CLS
-      # mass.  The sharper static-area constraint is reserved for equilibrium
-      # gates because it can be incompatible with diffuse mass at moving
-      # closed interfaces.
-      volume_constraint: diffuse_mass
+      # Closed incompressible droplets preserve the sharp P1 phase area.
+      # Diffuse CLS mass is a profile coordinate and is not a second hard
+      # invariant for the fixed-stratum Ridge-Eikonal projection.
+      volume_constraint: sharp_phase_volume
 
 physics:
   phases:

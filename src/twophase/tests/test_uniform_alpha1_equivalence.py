@@ -16,6 +16,7 @@ from twophase.backend import Backend
 from twophase.config import GridConfig
 from twophase.core.grid import Grid
 from twophase.ccd.ccd_solver import CCDSolver
+from twophase.ccd.fccd import FCCDSolver
 from twophase.levelset.advection import DissipativeCCDAdvection
 from twophase.levelset.heaviside import heaviside
 
@@ -58,15 +59,54 @@ class TestGridEquivalence:
 
     def test_cell_volumes_constant(self, backend):
         grid, _ = _make_grid_and_solver(backend, 32, alpha=1.0)
-        xp = backend.xp
         dV = grid.cell_volumes()
         h = 1.0 / 32
         expected = h * h
         np.testing.assert_allclose(
             np.asarray(backend.to_host(dV)),
             expected,
-            rtol=0, atol=1e-16,
+            rtol=0,
+            atol=1e-16,
         )
+
+    def test_periodic_cell_volumes_live_on_quotient(self, backend):
+        grid, _ = _make_grid_and_solver(backend, 32, alpha=1.0)
+        grid.set_boundary_type("periodic")
+        dV = np.asarray(backend.to_host(grid.cell_volumes()))
+        h = 1.0 / 32
+
+        np.testing.assert_allclose(dV[:-1, :-1], h * h)
+        np.testing.assert_allclose(dV[-1, :], 0.0)
+        np.testing.assert_allclose(dV[:, -1], 0.0)
+        assert float(np.sum(dV)) == pytest.approx(1.0)
+
+    def test_cell_volumes_accept_scalar_periodic_axis_labels(self, backend):
+        grid, _ = _make_grid_and_solver(backend, 32, alpha=1.0)
+        dV = np.asarray(
+            backend.to_host(grid.cell_volumes(bc_type=("periodic", "neumann")))
+        )
+        h = 1.0 / 32
+
+        np.testing.assert_allclose(dV[:-1, :], h * h)
+        np.testing.assert_allclose(dV[-1, :], 0.0)
+        assert float(np.sum(dV)) == pytest.approx(33.0 / 32.0)
+
+    def test_ccd_boundary_topology_updates_grid_control_volumes(self, backend):
+        grid = Grid(GridConfig(ndim=2, N=(32, 32), L=(1.0, 1.0)), backend)
+        CCDSolver(grid, backend, bc_type="periodic")
+        dV = np.asarray(backend.to_host(grid.cell_volumes()))
+
+        assert grid.bc_type == "periodic"
+        np.testing.assert_allclose(dV[-1, :], 0.0)
+        np.testing.assert_allclose(dV[:, -1], 0.0)
+        assert float(np.sum(dV)) == pytest.approx(1.0)
+
+    def test_fccd_rejects_mismatched_ccd_boundary_topology(self, backend):
+        grid = Grid(GridConfig(ndim=2, N=(8, 8), L=(1.0, 1.0)), backend)
+        ccd = CCDSolver(grid, backend, bc_type="wall")
+
+        with pytest.raises(ValueError, match="same boundary topology"):
+            FCCDSolver(grid, backend, bc_type="periodic", ccd_solver=ccd)
 
     def test_metrics_constant(self, backend):
         grid, _ = _make_grid_and_solver(backend, 32, alpha=1.0)

@@ -64,6 +64,7 @@ def build_ns_geometry_runtime(options) -> NSGeometryRuntimeState:
         ),
         backend,
     )
+    grid.set_boundary_type(options.bc_type)
     ccd = CCDSolver(grid, backend, bc_type=options.bc_type)
     return NSGeometryRuntimeState(
         NX=options.NX,

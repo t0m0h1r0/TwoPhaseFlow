@@ -588,6 +588,7 @@ class TwoPhaseNSSolver:
             fccd_div_op=self._fccd_div_op,
             reprojector=self._reprojector,
             wall_contacts=self._wall_contacts,
+            bc_type=self.bc_type,
         )
         self._finalize_grid_rebuild(result)
         return result.psi, result.u, result.v

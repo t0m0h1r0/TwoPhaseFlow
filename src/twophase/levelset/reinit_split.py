@@ -68,7 +68,7 @@ class SplitReinitializer(IReinitializer):
             self._cn_factors.append(
                 build_cn_factors(grid, eps, self.dtau, ax, backend))
 
-        self._dV = grid.cell_volumes()
+        self._dV = grid.cell_volumes(bc_type=self._bc)
 
     def reinitialize(self, psi):
         xp = self.xp

@@ -69,7 +69,7 @@ class DGRReinitializer(IReinitializer):
         xp = self.xp
         psi = xp.asarray(psi)  # Ensure device-native (no-op on CPU).
         sync_periodic_image_nodes(psi, self._bc_axes)
-        dV = self.grid.cell_volumes()
+        dV = self.grid.cell_volumes(bc_type=self._bc_axes)
         M_old = xp.sum(psi * dV)
 
         # Compute |∇ψ| via CCD

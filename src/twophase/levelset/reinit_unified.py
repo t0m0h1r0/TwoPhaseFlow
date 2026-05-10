@@ -38,7 +38,7 @@ class UnifiedDCCDReinitializer(IReinitializer):
         self._eps_d_comp = float(eps_d_comp)
         self._mass_correction = mass_correction
         self.dtau = compute_dtau(grid, eps)
-        self._dV = grid.cell_volumes()
+        self._dV = grid.cell_volumes(bc_type=self._bc)
 
     def reinitialize(self, psi):
         xp = self.xp
@@ -116,7 +116,7 @@ class UnifiedDCCDReinitializer(IReinitializer):
         """Pre-CuPy-sync-removal reference. DO NOT DELETE — CHK-102 baseline."""
         xp = self.xp
         q = xp.copy(psi)
-        dV = self.grid.cell_volumes()
+        dV = self.grid.cell_volumes(bc_type=self._bc)
         M_old = float(xp.sum(q * dV))
 
         for _ in range(self.n_steps):

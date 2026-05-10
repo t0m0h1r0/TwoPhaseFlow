@@ -70,7 +70,8 @@ class RidgeEikonalReinitializer(IReinitializer):
         hy = xp.asarray(grid.h[1]).reshape(1, -1)
         self._h_field = xp.sqrt(hx * hy)
         self._eps_local = _eps_local_kernel(self._h_field, self._eps_scale, self._eps_xi)
-        self._dV = grid.cell_volumes()
+        self._dV = grid.cell_volumes(bc_type=self._bc_axes)
+        self._sharp_volume_target: float | None = None
 
         self._extractor = RidgeExtractor(
             backend, grid, sigma_0=sigma_0, h_ref=self._h_ref,
@@ -85,6 +86,16 @@ class RidgeEikonalReinitializer(IReinitializer):
         """Whether reinitialization applies a sharp P1 phase-volume constraint."""
         return self._mass_correction and self._volume_constraint == "sharp_phase_volume"
 
+    def sharp_phase_volume(self, psi) -> float:
+        """Return the geometric P1 phase volume used as the hard invariant."""
+        return self._sharp_phase_volume(psi)
+
+    def set_sharp_phase_volume_target(self, target_volume: float | None) -> None:
+        """Set a one-shot sharp-volume target from the pre-transport state."""
+        self._sharp_volume_target = (
+            None if target_volume is None else float(target_volume)
+        )
+
     def update_grid(self, grid) -> None:
         self._grid = grid
         xp = self._xp
@@ -95,7 +106,7 @@ class RidgeEikonalReinitializer(IReinitializer):
         hy = xp.asarray(grid.h[1]).reshape(1, -1)
         self._h_field = xp.sqrt(hx * hy)
         self._eps_local = _eps_local_kernel(self._h_field, self._eps_scale, self._eps_xi)
-        self._dV = grid.cell_volumes()
+        self._dV = grid.cell_volumes(bc_type=self._bc_axes)
         self._extractor.update_grid(grid)
         self._fmm.update_grid(grid)
 
@@ -111,10 +122,15 @@ class RidgeEikonalReinitializer(IReinitializer):
         psi = xp.asarray(psi)
         sync_periodic_image_nodes(psi, self._bc_axes)
         dV = self._dV
-        M_old = xp.sum(psi * dV)
         V_old = None
         if self.preserves_sharp_volume:
-            V_old = self._sharp_phase_volume(psi)
+            V_old = self._sharp_volume_target
+            self._sharp_volume_target = None
+            if V_old is None:
+                V_old = self._sharp_phase_volume(psi)
+            M_old = None
+        else:
+            M_old = xp.sum(psi * dV)
 
         phi = invert_heaviside(xp, psi, self._eps_local)
         sync_periodic_image_nodes(phi, self._bc_axes)
@@ -170,8 +186,6 @@ class RidgeEikonalReinitializer(IReinitializer):
                     phi_sdf,
                     free_mask=free_mask,
                     target_volume=V_old,
-                    target_mass=M_old,
-                    dV=dV,
                 )
             else:
                 w = psi_new * (1.0 - psi_new) / self._eps_local
@@ -247,17 +261,15 @@ class RidgeEikonalReinitializer(IReinitializer):
         *,
         free_mask,
         target_volume: float | None,
-        target_mass,
-        dV,
     ):
         """Apply the Lagrange multiplier shift enforcing ``V_Gamma``.
 
         A constant signed-distance shift is the discrete volume multiplier for
         the fixed-topology reinitialization projection: it preserves
         ``|grad(phi)|=1`` away from explicitly pinned wall-contact bands while
-        solving the sharp P1 constraint ``V_h(phi + lambda)=V_target``.  A
-        second scalar profile-width multiplier then restores the diffuse CLS
-        mass without moving that zero level.
+        solving the sharp P1 constraint ``V_h(phi + lambda)=V_target``.  The
+        diffuse CLS mass is not a second hard invariant in this mode; imposing
+        both would overconstrain the fixed-stratum projection.
         """
         xp = self._xp
         if target_volume is None:
@@ -277,11 +289,8 @@ class RidgeEikonalReinitializer(IReinitializer):
             psi_zero = self._psi_from_shifted_phi(phi_sdf, 0.0, free_mask)
             volume_zero = self._sharp_phase_volume(psi_zero)
         if abs(volume_zero - target) <= tol:
-            psi_zero = self._apply_diffuse_mass_profile_constraint(
-                phi_sdf,
-                target_mass=target_mass,
-                dV=dV,
-            )
+            if psi_zero is None:
+                psi_zero = self._psi_from_shifted_phi(phi_sdf, 0.0, free_mask)
             return phi_sdf, psi_zero
         if target < -tol or target > domain_volume + tol:
             raise ValueError(
@@ -340,11 +349,7 @@ class RidgeEikonalReinitializer(IReinitializer):
                 right = mid
         phi_shifted = phi_sdf + float(mid) * free_mask
         sync_periodic_image_nodes(phi_shifted, self._bc_axes)
-        psi_mid = self._apply_diffuse_mass_profile_constraint(
-            phi_shifted,
-            target_mass=target_mass,
-            dV=dV,
-        )
+        psi_mid = self._psi_from_shifted_phi(phi_shifted, 0.0, free_mask)
         return phi_shifted, psi_mid
 
     def _apply_diffuse_mass_profile_constraint(self, phi_sdf, *, target_mass, dV):
