@@ -287,8 +287,8 @@ $\sigma=0.0728\,\mathrm{N/m}$ を用いる．
         $\sigma=0.0728\,\mathrm{N/m}$，$g=0$
   \item 時間：$T=0.105460663082\,\mathrm{s}$，理論 CFL multiplier $1.0$
   \item 再初期化：Ridge--Eikonal profile restoration を毎 step 適用し，
-        動的閉界面では transported CLS の
-        \texttt{diffuse\_mass} constraint を用いる
+        動的閉界面では P1 sharp-phase 面積を
+        \texttt{sharp\_phase\_volume} constraint の目標量とする
   \item 時系列診断：符号付き変形量，変形量，体積ドリフト，運動エネルギー
   \item snapshot：
         $0,\frac14T_\mathrm{RL},\frac12T_\mathrm{RL},
@@ -297,22 +297,20 @@ $\sigma=0.0728\,\mathrm{N/m}$ を用いる．
 
 \subsubsection{結果と判定}
 
-N=32 の 1 周期 run は $3658$ samples で
+N=32 の 1 周期 run は remote GPU 上で完走し，$3452$ samples で
 $t=0.105460663082\,\mathrm{s}$ に到達し，
 すべての snapshot field は有限値を保った．
 CFL は全区間で毛管制限が支配し，$dt$ は
-$2.65\times10^{-5}$--$2.93\times10^{-5}\,\mathrm{s}$ の範囲に留まった．
+$2.65\times10^{-5}$--$3.14\times10^{-5}\,\mathrm{s}$ の範囲に留まった．
 \texttt{signed\_deformation} は初期離散値
-$7.6175\times10^{-2}$ から負側最小値
-$-3.5155\times10^{-2}$ へ進み，
-1 周期終端で $1.6193\times10^{-2}$ へ戻った．
-したがって粗い非一様格子・毎 step 再初期化込みでも，
-静止解へ凍結せず，2 回の符号反転を含む Rayleigh--Lamb 型の往復運動を作る．
-一方で，この N=32 run の振幅を
-$D_0\cos(\omega_0t)$ と量的一致させることは主張しない．
-$D_0\cos(\omega_0t)$ は位相と復元向きの第一基準であり，
-振幅誤差には粗格子の界面表現，Ridge--Eikonal 再初期化，
-および粘性散逸が含まれるためである．
+$7.5535\times10^{-2}$ から負側最小値
+$-3.4572\times10^{-2}$ へ進み，
+1 周期終端で $2.1808\times10^{-2}$ となった．
+しかし Rayleigh--Lamb 基準
+$D_0\cos(\omega_0T_\mathrm{RL})=1.0\times10^{-1}$ には戻らず，
+この run は閉界面振動の受入結果ではない．
+これは単なる位相・粘性減衰の問題ではなく，
+下の体積診断が示すように閉じた液相領域そのものが長時間で増加しているためである．
 
 \begin{figure}[!htbp]
 \centering
@@ -324,19 +322,27 @@ $D_0\cos(\omega_0t)$ は位相と復元向きの第一基準であり，
 \label{fig:ch14_osc_droplet_histories}
 \end{figure}
 
-sharp 体積ドリフトは最大 $1.13\times10^{-2}$，
-終端 $1.12\times10^{-2}$ であった．
-これは毎 step の動的 Ridge--Eikonal restoration で
-transported CLS の \texttt{diffuse\_mass} を制約した結果であり，
-静止液滴 gate のような sharp-phase volume 保存をこの run の判定軸には置かない．
+保存量 gate は不合格である．
+既存の \texttt{volume\_conservation} 診断は終端で
+$3.5495\times10^{-1}$ に達した．
+さらに saved snapshot と各時刻の非一様格子座標から P1 marching-squares
+sharp area を再構成すると，
+最初の snapshot の
+$7.7395\times10^{-5}\,\mathrm{m^2}$ から終端
+$9.7435\times10^{-5}\,\mathrm{m^2}$ へ増え，
+相対ドリフトは $+25.8919\%$ であった．
+\texttt{sharp\_phase\_volume} 制約を短時間 probe で満たしていても，
+1 周期では transport，dynamic grid rebuild/remap，profile retraction の
+合成写像が閉界面体積を保存していない．
 \texttt{kinetic\_energy} は
 $4.76\times10^{-11}$ から立ち上がって最大
-$4.03\times10^{-5}$，終端
-$2.07\times10^{-5}$ の有界な交換として現れた．
-snapshot の速度最大値は $1.19\times10^{-1}\,\mathrm{m/s}$ であり，
+$4.2813\times10^{-5}$，終端
+$3.2758\times10^{-5}$ の有界な交換として現れた．
+ただし，この有界性は体積保存 gate の失敗を相殺しない．
+snapshot の速度最大値は $1.06\times10^{-1}\,\mathrm{m/s}$ であり，
 保存された圧力代表も有限範囲に収まった．
-この run の判定は，sharp 体積を完全に固定することではなく，
-実スケール水--空気の閉界面が毎 step 再初期化込みで有限な往復運動を作ることである．
+したがって，この run の判定は
+「有限値で完走したが，閉界面保存量の受入基準を満たさない」である．
 2 次元場としては，\autoref{fig:ch14_osc_droplet_psi_snapshots} に界面形状の
 1 周期推移を示し，
 \autoref{fig:ch14_osc_droplet_velocity_pressure_snapshots} に速度場と
@@ -378,12 +384,14 @@ $t\approx0,\frac14T_\mathrm{RL},\frac12T_\mathrm{RL},
 \label{fig:ch14_osc_droplet_velocity_pressure_snapshots}
 \end{figure}
 
-本ケースの判定は，
-「閉じた界面の有限速度運動において，FCCD 界面移流，
-UCCD6 対流，CCD 粘性，pressure-jump 仕事が同じ時間履歴として閉じる」
-である．
+本ケースから得る結論は成功主張ではなく，fail-close された残課題である．
 毛管波が平坦界面の符号検証なら，振動液滴は移流・粘性項を含む
-閉界面エネルギー交換のベンチマークである．
+閉界面エネルギー交換と保存量整合のベンチマークである．
+現状の production stack は，1 周期の楕円液滴に対して
+bounded run を作る一方で，sharp 体積を保存する離散写像としては閉じていない．
+したがって次の修正対象は，P1 area を状態変数として持つ
+transport/remap/retraction の同一 cochain 化であり，
+拡散質量や見た目の楕円振幅で代用してはならない．
 
 % ═══════════════════════════════════════════════════════════════════
 \subsection{単一気泡上昇：浮力残差と projection の共有}
@@ -520,9 +528,10 @@ Rayleigh--Taylor は浮力主導の成長問題であり，
 振動液滴 &
   $32^2$，$T=0.105460663082\,\mathrm{s}$，水--空気，
   periodic，$D_0=0.10$ &
-  \texttt{signed\_deformation} の Rayleigh--Lamb 位相，
-  粘性減衰包絡，運動エネルギー交換，sharp 体積ドリフト &
-  \checkmark \\
+  \texttt{signed\_deformation}，
+  \texttt{volume\_conservation}，
+  P1 sharp area，運動エネルギー交換 &
+  未合格 \\
 単一気泡上昇 &
   $128\times256$，$T=70$，水--空気，$g=10^{-3}$ &
   $y_c(t)$，\texttt{mean\_rise\_velocity}，
@@ -540,12 +549,13 @@ Rayleigh--Taylor &
 4 本のベンチマークは，同じ production stack を
 異なる物理機構へ置いたときの成功条件を分担している．
 毛管波は pressure-jump の符号と毛管復元力を確認した．
-振動液滴は，閉じた界面の運動によって対流項・粘性項・表面張力仕事が
-同じ時間履歴として閉じることを示した．
+振動液滴は，有限値で 1 周期完走する一方，
+P1 sharp area が終端で $+25.9\%$ 増えるため，
+閉界面保存量の同一 cochain 化がまだ不足していることを示した．
 単一気泡上昇は，浮力残差と projection の face-space 共有を確認した．
 Rayleigh--Taylor は，復元ではなく不安定成長を起こす配置でも
 同じ閉包が形状発展を支えることを示した．
 したがって本章の結論は，個別部品が単体で正しいだけでなく，
-移動界面二相流の代表的な安定振動・閉界面振動・浮力上昇・不安定成長に対して，
-FCCD/UCCD6/pressure-jump/Ridge--Eikonal/IMEX--BDF2 stack が
-一貫した物理応答を与える，という点にある．
+移動界面二相流の代表的な安定振動・浮力上昇・不安定成長に対して
+同じ stack が有効に働く範囲と，閉界面振動でなお破れている
+保存量契約の境界を同時に示した，という点にある．
