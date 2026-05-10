@@ -1,4 +1,4 @@
-# Wiki Index — 367 entries
+# Wiki Index — 368 entries
 
 ## Active Retrieval Gate
 
@@ -9,7 +9,7 @@ recent research findings.  Older cards remain listed for provenance, but cards
 marked SUPERSEDED or REFERENCE must not be used as current algorithm policy
 without their curation notes.
 
-## Theory (166)
+## Theory (167)
 
 | REF-ID | Title |
 |--------|-------|
@@ -182,6 +182,7 @@ without their curation notes.
 | [WIKI-T-167](theory/WIKI-T-167.md) | Discrete Boundary-Constrained Face Hodge Operator |
 | [WIKI-T-168](theory/WIKI-T-168.md) | Constrained Face-State Space Reformulation |
 | [WIKI-T-169](theory/WIKI-T-169.md) | Geometric Cell Fraction State-Space Reformulation |
+| [WIKI-T-170](theory/WIKI-T-170.md) | Residual-Minimizing Defect Correction for PPE |
 
 ## Cross-Domain (48)
 

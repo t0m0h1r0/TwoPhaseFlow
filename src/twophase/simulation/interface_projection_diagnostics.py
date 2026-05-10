@@ -494,17 +494,17 @@ def capillary_external_component_saddle_projection(
     else:
         matrix = xp.zeros((component_count, component_count), dtype=xp.asarray(rho).dtype)
         rhs = xp.zeros((component_count,), dtype=xp.asarray(rho).dtype)
-        for row, component in enumerate(component_faces):
+        for row, component_hodge in enumerate(component_hodge_faces):
             rhs[row] = _face_components_weighted_dot(
                 xp,
-                component,
+                component_hodge,
                 raw_hodge,
                 face_weights,
             )
             for column, hodge_component in enumerate(component_hodge_faces):
                 matrix[row, column] = _face_components_weighted_dot(
                     xp,
-                    component,
+                    component_hodge,
                     hodge_component,
                     face_weights,
                 )
@@ -549,7 +549,7 @@ def capillary_external_component_saddle_projection(
     )
     constraint_residual = _component_constraint_linf(
         xp=xp,
-        component_faces=component_faces,
+        component_faces=component_hodge_faces,
         hodge_faces=augmented_hodge_faces,
         face_weight_components=face_weights,
         dtype=xp.asarray(rho).dtype,

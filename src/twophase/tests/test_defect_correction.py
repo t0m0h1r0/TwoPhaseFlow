@@ -15,6 +15,19 @@ class _BackendStub:
         return np.asarray(value)
 
 
+class _TrackingGpuBackendStub(_BackendStub):
+    def __init__(self):
+        self.transfer_shapes = []
+
+    def is_gpu(self):
+        return True
+
+    def asnumpy(self, value):
+        array = np.asarray(value)
+        self.transfer_shapes.append(array.shape)
+        return array
+
+
 class _SameOperatorStub(IPPESolver):
     def __init__(self, grid, *, coefficient_scheme="phase_separated"):
         self.grid = grid
@@ -48,6 +61,13 @@ class _SameOperatorStub(IPPESolver):
 
 class _DifferentOperatorStub(_SameOperatorStub):
     pass
+
+
+class _OverScaledBaseStub(_SameOperatorStub):
+    def solve(self, rhs, rho, dt, p_init=None):
+        self.solve_calls += 1
+        self.seen_tolerances.append(self.tol)
+        return 10.0 * np.asarray(rhs, dtype=float)
 
 
 def test_same_operator_defect_correction_is_rejected():
@@ -109,6 +129,49 @@ def test_different_operator_defect_correction_keeps_residual_loop():
     assert solver.last_diagnostics["ppe_dc_converged"] == 1.0
     assert solver.last_diagnostics["ppe_dc_final_residual_l2"] == 0.0
     assert solver.last_diagnostics["ppe_dc_iterations"] == 0.0
+
+
+def test_defect_correction_uses_residual_minimising_step_length():
+    grid = object()
+    base = _OverScaledBaseStub(grid)
+    operator = _DifferentOperatorStub(grid)
+    solver = PPESolverDefectCorrection(
+        _BackendStub(),
+        grid,
+        base,
+        operator,
+        max_corrections=1,
+        tolerance=1.0e-12,
+        relaxation=1.0,
+    )
+
+    pressure = solver.solve(np.ones((2, 2)), np.ones((2, 2)), dt=1.0)
+
+    expected = np.ones((2, 2))
+    expected[0, 0] = 0.0
+    np.testing.assert_allclose(pressure, expected)
+    assert operator.apply_calls == 3
+    assert solver.last_diagnostics["ppe_dc_converged"] == 1.0
+    assert solver.last_diagnostics["ppe_dc_final_residual_l2"] == pytest.approx(0.0)
+
+
+def test_defect_correction_line_search_keeps_gpu_transfers_scalar_sized():
+    grid = object()
+    backend = _TrackingGpuBackendStub()
+    solver = PPESolverDefectCorrection(
+        backend,
+        grid,
+        _OverScaledBaseStub(grid),
+        _DifferentOperatorStub(grid),
+        max_corrections=1,
+        tolerance=1.0e-12,
+        relaxation=1.0,
+    )
+
+    solver.solve(np.ones((4, 4)), np.ones((4, 4)), dt=1.0)
+
+    assert backend.transfer_shapes
+    assert max(int(np.prod(shape or (1,))) for shape in backend.transfer_shapes) <= 2
 
 
 def test_defect_correction_collapse_branch_fails_closed():

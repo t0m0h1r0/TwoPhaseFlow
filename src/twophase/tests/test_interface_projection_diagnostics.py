@@ -326,6 +326,44 @@ def test_external_component_saddle_projection_removes_reaction_row():
     assert not hasattr(solver, "invalidated")
 
 
+def test_external_component_saddle_projection_uses_positive_hodge_metric():
+    xp = np
+    rho = xp.ones(1)
+    raw = [xp.asarray([2.0, 0.0])]
+    reaction = [[xp.asarray([1.0, 0.0])]]
+
+    class ObliqueRangeFaces:
+        def divergence_from_faces(self, face_components):
+            return xp.asarray([xp.sum(face_components[0])])
+
+        def pressure_fluxes(self, pressure, rho, **kwargs):
+            return [2.0 * xp.asarray(pressure)[0] * xp.asarray([1.0, 0.0])]
+
+    class ObliqueRangeSolver:
+        def set_interface_jump_context(self, **kwargs):
+            self.context = kwargs
+
+        def solve(self, rhs, rho, dt=0.0, p_init=None):
+            return xp.asarray(rhs)
+
+    projection = capillary_external_component_saddle_projection(
+        xp=xp,
+        div_op=ObliqueRangeFaces(),
+        ppe_solver=ObliqueRangeSolver(),
+        rho=rho,
+        pressure_flux_kwargs={},
+        raw_components=raw,
+        component_reaction_components=reaction,
+        face_weight_components=[xp.ones_like(raw[0])],
+    )
+
+    assert projection["component_hodge_denominator"] == pytest.approx(1.0)
+    np.testing.assert_allclose(projection["component_hodge_coefficients"], 2.0)
+    np.testing.assert_allclose(projection["corrected_jump_components"][0], 0.0)
+    np.testing.assert_allclose(projection["hodge_residual_components"][0], 0.0)
+    assert projection["contract_saddle_constraint_linf"] == pytest.approx(0.0)
+
+
 def test_psi_direct_transport_records_reinit_projection_pair():
     backend = Backend(use_gpu=False)
     xp = backend.xp
