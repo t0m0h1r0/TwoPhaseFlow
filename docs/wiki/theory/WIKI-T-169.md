@@ -15,6 +15,8 @@ sources:
     description: "Residual task analysis, idea matrix, and deeper verification probes for capillary-ready reconstruction"
   - path: artifacts/A/geometric_cell_fraction_notation_CHK-RA-GEOM-CELL-FRACTION-004.md
     description: "Notation refinement from F_C/I_h to theta_C/Gamma_h"
+  - path: artifacts/A/geometric_cell_fraction_bridge_projection_CHK-RA-GEOM-CELL-FRACTION-005.md
+    description: "Theta-constrained continuous P1 trace bundle and capillary-work lift candidate"
 depends_on:
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-159]]"
@@ -236,3 +238,72 @@ nonuniform/periodic/wall quotient geometry,
 gauge-retraction surface-work accounting,
 checkpoint state for restart equivalence.
 ```
+
+## Bridge Projection Candidate
+
+The current best bridge theory is a compatibility bundle:
+
+```text
+B_h = { (theta,phi) :
+        theta_C = A_h(Gamma(phi))_C on active mixed cells,
+        full/empty sign and topology constraints hold }.
+```
+
+Here `theta_C` is the material coordinate and `phi` is the continuous P1 gauge.
+The interface is not independent cellwise PLIC:
+
+```text
+Gamma_h = Gamma(phi).
+```
+
+This solves the continuity defect of independent PLIC while preserving local
+cell fractions.
+
+A local solvability probe computed the mixed-cell Jacobian
+
+```text
+J_A(phi) = d A_h(Gamma(phi)) / d phi_nodes
+```
+
+for manufactured ellipses.  The Jacobian had full row rank for N=8,12,16,24,32
+with mixed constraints 16,24,32,48,64 respectively.  This supports a local
+implicit-function theorem: for regular nondegenerate traces, nearby `theta`
+fields can be represented by a continuous P1 gauge.
+
+The proposed projection after transport is:
+
+```text
+min_phi  1/2 ||phi-phi^-||_W^2 + eta/2 ||Lphi-Lphi^-||^2
+subject to A_h(Gamma(phi))_C = theta^-_C.
+```
+
+Capillary virtual work is defined by a bundle lift.  For a face virtual
+velocity `w_f`,
+
+```text
+delta theta = T_theta(Gamma_h) w_f,
+delta phi_pred = T_phi(phi) w_f,
+
+L_B(w_f)
+  = argmin_delta_phi ||delta_phi-delta_phi_pred||_W^2
+    subject to J_A(phi) delta_phi = T_theta(Gamma_h) w_f,
+
+r_sigma(w_f) = -sigma dS_h(phi)[L_B(w_f)],
+a_sigma      = M_f(theta)^(-1) r_sigma.
+```
+
+This is the first concrete capillary-ready bridge candidate:
+
+```text
+theta_C supplies local material volume,
+phi supplies continuous capillary geometry,
+the compatibility constraint prevents two independent phases.
+```
+
+Projection surface-work must be recorded separately:
+
+```text
+Delta S_Pi = S_h(Gamma(phi^+)) - S_h(Gamma(phi^-_transported)).
+```
+
+It is not physical capillary work.
