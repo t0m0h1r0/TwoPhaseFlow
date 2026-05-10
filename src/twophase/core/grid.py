@@ -25,7 +25,7 @@ import math
 import numpy as np
 from typing import TYPE_CHECKING, Tuple
 
-from .boundary import boundary_axes
+from .boundary import periodic_axis_flags
 from .metrics import compute_metrics
 
 if TYPE_CHECKING:
@@ -442,7 +442,9 @@ class Grid:
         self.J, self.dJ_dxi = compute_metrics(
             self.coords, self.h, self.N, self.ndim, self.uniform, ccd,
         )
-        self._cell_volumes = self._build_cell_volume_field()
+        axes = self._cell_volume_axes_from_bc(self.bc_type)
+        self._cell_volumes = self._build_cell_volume_field(axes)
+        self._cell_volume_axes = axes
 
     # ── Convenience ──────────────────────────────────────────────────────
 
@@ -457,7 +459,7 @@ class Grid:
 
     def set_boundary_type(self, bc_type) -> None:
         """Set the topology used by physical nodal control volumes."""
-        axes = boundary_axes(bc_type, self.ndim)
+        axes = self._cell_volume_axes_from_bc(bc_type)
         if axes == self._cell_volume_axes:
             self.bc_type = bc_type
             return
@@ -474,17 +476,24 @@ class Grid:
         plane is an image of node 0 and carries zero independent measure, while
         node 0 receives the wrapped half cell.
         """
-        axes = boundary_axes(self.bc_type if bc_type is None else bc_type, self.ndim)
+        axes = self._cell_volume_axes_from_bc(
+            self.bc_type if bc_type is None else bc_type
+        )
         if self._cell_volumes is not None and self._cell_volume_axes == axes:
             return self._cell_volumes
         self._cell_volumes = self._build_cell_volume_field(axes)
         self._cell_volume_axes = axes
         return self._cell_volumes
 
+    def _cell_volume_axes_from_bc(self, bc_type) -> tuple[str, ...]:
+        """Reduce boundary labels to physical quotient axes for integration."""
+        flags = periodic_axis_flags(bc_type, self.ndim)
+        return tuple("periodic" if flag else "wall" for flag in flags)
+
     def _build_cell_volume_field(self, axes=None):
         """Materialize the physical control-volume field for this grid build."""
         if axes is None:
-            axes = boundary_axes(self.bc_type, self.ndim)
+            axes = self._cell_volume_axes_from_bc(self.bc_type)
         xp = self.xp
         vol = xp.asarray(self._axis_control_widths(0, axes[0]))
         for ax in range(1, self.ndim):

@@ -53,7 +53,7 @@ from .fccd_advection_helpers import (
     compute_fccd_flux_contribution,
 )
 from .ccd_solver import CCDSolver
-from ..core.boundary import is_periodic_axis
+from ..core.boundary import boundary_axes, is_periodic_axis
 from .fccd_helpers import (
     build_axis_weights,
     build_node_H_over_16,
@@ -173,6 +173,15 @@ class FCCDSolver:
         self.xp = backend.xp
         self.ndim = grid.ndim
         self.bc_type = bc_type
+        if ccd_solver is not None:
+            ccd_axes = boundary_axes(getattr(ccd_solver, "bc_type", bc_type), self.ndim)
+            fccd_axes = boundary_axes(bc_type, self.ndim)
+            if ccd_axes != fccd_axes:
+                raise ValueError(
+                    "FCCD and CCD solvers must share the same boundary topology"
+                )
+        if hasattr(grid, "set_boundary_type"):
+            grid.set_boundary_type(bc_type)
         self._ccd = ccd_solver if ccd_solver is not None else CCDSolver(
             grid, backend, bc_type
         )

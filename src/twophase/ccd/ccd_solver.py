@@ -101,6 +101,8 @@ class CCDSolver:
         self.xp = backend.xp
         self.ndim = grid.ndim
         self.bc_type = bc_type
+        if hasattr(grid, "set_boundary_type"):
+            grid.set_boundary_type(bc_type)
 
         # Wall-BC solvers are built lazily per used axis. This avoids
         # constructing a lower-order closure for thin batch axes that are never

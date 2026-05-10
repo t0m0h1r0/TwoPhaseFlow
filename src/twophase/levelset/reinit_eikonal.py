@@ -133,7 +133,7 @@ class EikonalReinitializer(IReinitializer):
         xp = self._xp
         psi = xp.asarray(psi)
         sync_periodic_image_nodes(psi, self._bc_axes)
-        dV = self._grid.cell_volumes()
+        dV = self._grid.cell_volumes(bc_type=self._bc_axes)
         # Device scalar — no GPU sync forced here.
         M_old = xp.sum(psi * dV)
 
