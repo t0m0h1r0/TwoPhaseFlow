@@ -1,10 +1,10 @@
 # SP-AO: Geometric Cell-Fraction State Space
 
 **Status**: ACTIVE theory and implementation specification
-**Date**: 2026-05-10
+**Date**: 2026-05-11
 **Scope**: volume-first two-phase interface state space, geometric
 cell-fraction discretization, compatibility projection, bundle capillarity,
-common-flux integration, GPU-first implementation, and YAML contract
+common-flux integration, GPU-first fast implementation, and YAML contract
 **Companion papers**: SP-AF, SP-AI, SP-AJ, SP-AK, SP-AN
 
 ## Abstract
@@ -554,6 +554,66 @@ line search against sign/case margins.
 
 CPU reference routines are allowed for manufactured tests, but they must not
 be the only route if the feature is promoted to production.
+
+### AO-Fast production route
+
+The direct reading of the equations is too expensive for production if every
+time step rebuilds full-grid cut geometry, full-grid Jacobian tables, and a
+full-cell Schur solve.  The accepted production route is therefore a certified
+active-stratum method:
+
+```text
+A = mixed/cut cells plus a one-face halo,
+Q_A, S_A, J_A, dS_A, T_A, M_A on compact active tables,
+full/empty cells as state flags,
+periodic quotient and wall ownership resolved while building A.
+```
+
+The theory split from Section 9 remains binding.  CCD/DCCD/FCCD/UCCD are
+valuable on smooth objects such as the gauge predictor `phi^-`, the screened
+metric `W_eta`, face-state reconstruction, pressure-adjoint work pairs, and
+smooth residual diagnostics.  They must not be used to differentiate the
+discontinuous cell fraction `theta_C` or to replace the geometric maps
+`Q_h`, `J_q`, `T_q`, and `dS_h`.
+
+Within a fixed regular stratum, fast kernels may use frozen linearized
+geometry:
+
+```text
+Q_h(phi + delta phi) = Q_h(phi) + J_q delta phi + O(delta phi^2),
+dS_h(phi + delta phi) = dS_h(phi) + local secant/Hessian candidate,
+T_q(phi + delta phi) = T_q(phi) + higher-order remainder.
+```
+
+These approximations are candidate generators, not the contract.  Acceptance
+must recompute the exact active-stratum `Q_h` and `S_h` and check the physical
+residual, sign/case margins, and projection-work ledger before committing the
+state.  A failed exact check refreshes the stratum once; a repeated failure
+fails closed or enters an explicit topology route.
+
+The compatibility projection is solved on the active interface graph:
+
+```text
+S_A lambda = J_A W_eta^{-1} J_A^T lambda,
+```
+
+using matrix-free PCG, previous-step warm starts, diagonal plus component-block
+Jacobi preconditioning, and optional connected-component deflation.  The
+iteration tolerance is inexact-Newton style and is bounded by the downstream
+exact gate, e.g.
+
+```text
+tau_cg <= min(0.1 tau_q, c_work tau_surface, c_round sqrt(|A|) eps).
+```
+
+The target complexity is `O(k |A|)` per Newton update, where `|A|` is the
+number of active interface-band cells.  The rejected production complexity is
+`O(k |C_h|)` full-domain cut-geometry and Schur work per line-search trial.
+
+GPU execution must keep all active tables and Krylov vectors on device.  Host
+transfer is limited to explicit ledger scalars after an accepted outer
+iteration.  In particular, no `.get()`, `asnumpy`, Python list materialization,
+or scalar D2H synchronization belongs inside CG iteration control.
 
 ## 12. YAML Contract
 

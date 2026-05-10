@@ -25,6 +25,8 @@ sources:
     description: "Implementation layering, GPU-first route, and UX/YAML contract for geometric cell fractions"
   - path: docs/memo/short_paper/SP-AO_geometric_cell_fraction_state_space.md
     description: "Implementation-ready short paper compiling the geometric cell-fraction state-space theory"
+  - path: artifacts/A/ch14_ao_fast_volume_route_CHK-RA-CH14-AO-FASTVOL-001.md
+    description: "AO-Fast active-stratum, approximate-candidate, GPU-PCG route for making SP-AO computationally viable"
 depends_on:
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-159]]"
@@ -511,6 +513,21 @@ sparse row tables for J_q and dS_h,
 matrix-free Schur solve S_q lambda = J_q W_eta^{-1} J_q^T lambda,
 no host/device transfer except explicit diagnostics.
 ```
+
+The production route is AO-Fast, not dense direct AO.  It keeps compact
+active-stratum tables for mixed/cut cells plus a one-face halo, uses frozen
+linearized geometry only as a candidate generator, and accepts a step only
+after exact active-stratum `Q_h/S_h` residual, sign-margin, and
+projection-work gates pass.  Compatibility projection is solved on the active
+interface graph by matrix-free PCG with warm starts, diagonal/component-block
+Jacobi preconditioning, and optional connected-component deflation, targeting
+`O(k |A|)` work rather than full-domain `O(k |C_h|)` geometry and Schur work.
+
+CCD/DCCD/FCCD/UCCD remain useful on the smooth side of the split: gauge
+prediction, screened gauge metric `W_eta`, face-state reconstruction,
+pressure-adjoint work pairs, and smooth residual diagnostics.  They remain
+forbidden as derivatives of the discontinuous `theta_C` carrier or as
+substitutes for `Q_h`, `J_q`, `T_q`, and `dS_h`.
 
 The YAML front door should declare a state-space contract:
 
