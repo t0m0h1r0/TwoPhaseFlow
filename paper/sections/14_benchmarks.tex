@@ -19,7 +19,8 @@
 毛管波では，平坦界面の小振幅復元力が pressure-jump の符号と面勾配に正しく入るかを見る．
 振動液滴では，閉じた界面が往復運動することで，表面エネルギー，運動エネルギー，
 移流項，粘性項の交換を読む．
-単一気泡上昇では，表面張力に加えて浮力残差と pressure projection の共有 face locus を確認する．
+単一気泡上昇では，表面張力に加えて浮力残差と pressure projection の共有 face locus を読むが，
+本稿では形状破綻が現れる前の初期窓 $0\le t\le0.03\,\mathrm{s}$ に掲載範囲を限定する．
 Rayleigh--Taylor では，浮力が安定化ではなく不安定成長を作る配置で，
 線形増幅から非線形形状形成までを追う．
 静止円形液滴は production-stack static gate を含めて第~\ref{sec:verification}章で扱ったため，
@@ -400,10 +401,11 @@ transport/remap/retraction の同一 cochain 化であり，
 
 \subsubsection{設定と理論的焦点}
 
-単一気泡上昇ベンチマークでは，気相円を液相中に置き，
-弱い重力下で上昇させる．
+単一気泡上昇ベンチマークでは，水中に空気円を置き，
+実重力下で上昇させる．
 幾何は Hysing 型の単一気泡配置~\cite{Hysing2009}を参照するが，
-物性は水--空気級の高密度比に戻し，目的を「終端速度表の再現」だけに置かない．
+物性と長さは $10\,\mathrm{mm}$ 級の水--空気系へ戻し，
+目的を「終端速度表の再現」だけに置かない．
 本ケースの焦点は，表面張力の pressure-jump 閉包と，
 浮力分解
 \[
@@ -415,13 +417,15 @@ projection で消えるべき力が非ソレノイダル速度として残る．
 したがって浮力残差は，PPE と同じ $A_f,G_f,D_f$ 上で評価する．
 
 \begin{itemize}[noitemsep,leftmargin=2em]
-  \item グリッド：$[0,1]\times[0,2]$，$128\times256$，
-        壁面境界，interface-fitted $\alpha=2$
-  \item 初期界面：中心 $(0.5,0.5)$，半径 $R=0.25$ の気泡
+  \item グリッド：$[0,0.01]\times[0,0.02]\,\mathrm{m}$，
+        $32\times64$，$x$ 周期/$y$ 壁面，static interface-fitted $\alpha=2$
+  \item 初期界面：中心 $(0.005,0.005)\,\mathrm{m}$，
+        半径 $R=0.0025\,\mathrm{m}$ の気泡
   \item 物性：$\rho_l=1000$，$\rho_g=1.2$，
         $\mu_l=10^{-3}$，$\mu_g=1.8\times10^{-5}$，
-        $\sigma=0.072$，$g=10^{-3}$
-  \item 時間：$T=70.0$，理論 CFL multiplier $1.0$
+        $\sigma=0.072$，$g=9.81$
+  \item 時間：掲載窓 $0\le t\le0.03\,\mathrm{s}$，
+        snapshot は $0.005\,\mathrm{s}$ 刻み，理論 CFL multiplier $1.0$
   \item 出力：\texttt{bubble\_centroid}，
         \texttt{mean\_rise\_velocity}，\texttt{deformation}，
         \texttt{volume\_conservation}，$\psi$/速度/圧力 snapshot
@@ -429,17 +433,47 @@ projection で消えるべき力が非ソレノイダル速度として残る．
 
 \subsubsection{結果と判定}
 
-結果は，気泡重心 $y_c(t)$ が上昇し，平均上昇速度が過渡応答を経て
-有界な値へ近づくことを示した．
-弱重力条件では変形量は急激な振動を起こさず，
-圧力場と速度場の snapshot は，浮力残差が projection と整合していることを示した．
-体積保存が同時に保たれるため，重心上昇は相体積の漏れではなく，
-浮力と粘性抵抗の釣合いから生じる運動として読める．
+図~\ref{fig:ch14_rising_bubble_initial_snapshots}に，
+現在の論文に掲載する初期窓の $\psi$ snapshot を示す．
+$t=0.0299956\,\mathrm{s}$ では，重心は
+$y_c=7.350\times10^{-3}\,\mathrm{m}$，
+平均上昇速度は $9.57\times10^{-2}\,\mathrm{m/s}$，
+変形量は $D=0.343$ であり，
+diffuse phase-volume drift は $8.99\times10^{-6}$ に留まる．
+したがって $0\le t\le0.03\,\mathrm{s}$ の範囲では，
+相体積の漏れではなく，浮力残差と粘性抵抗・表面張力閉包の釣合いとして
+初期上昇と変形を読むことができる．
+
+\begin{figure}[!htbp]
+\centering
+\includegraphics[width=0.23\linewidth]{figures/ch14_rising_bubble_psi_t000.pdf}
+\includegraphics[width=0.23\linewidth]{figures/ch14_rising_bubble_psi_t005.pdf}
+\includegraphics[width=0.23\linewidth]{figures/ch14_rising_bubble_psi_t010.pdf}
+\includegraphics[width=0.23\linewidth]{figures/ch14_rising_bubble_psi_t015.pdf}\\[-0.2em]
+\includegraphics[width=0.23\linewidth]{figures/ch14_rising_bubble_psi_t020.pdf}
+\includegraphics[width=0.23\linewidth]{figures/ch14_rising_bubble_psi_t025.pdf}
+\includegraphics[width=0.23\linewidth]{figures/ch14_rising_bubble_psi_t030.pdf}
+\caption{単一気泡上昇の掲載 snapshot．
+左上から $t=0,0.005,\ldots,0.03\,\mathrm{s}$ の $\psi$ 場を示す．
+本稿では形状破綻が顕在化する前の初期窓だけを掲載対象とする．}
+\label{fig:ch14_rising_bubble_initial_snapshots}
+\end{figure}
+
+一方，継続計算では $t\simeq0.04\,\mathrm{s}$ 以降に
+下側界面の停滞と $\psi=0.5$ 形状の分裂が見え始める．
+この破れは，diffuse phase-volume diagnostic が小さいままでも
+sharp gas geometry と連結性が保存されないという，
+保存すべき不変量の取り違えを示している．
+したがって長時間の気泡形状・終端速度ベンチマークとしては採用せず，
+幾何 cell-fraction state space で
+material volume と gauge profile の互換性を同一 cochain に戻す課題として扱う．
 
 本ケースの判定は，
-「surface-tension pressure-jump と hydrostatic-balanced buoyancy が
-同じ face-space projection に入り，高密度比・非一様格子でも
-早期発散なしに上昇運動を作る」
+「$0\le t\le0.03\,\mathrm{s}$ の初期窓では
+surface-tension pressure-jump と hydrostatic-balanced buoyancy が
+同じ face-space projection に入り，上昇応答を作る．
+ただし $t\simeq0.04\,\mathrm{s}$ 以降の形状保存は未解決であり，
+本章の合格 claim には含めない」
 である．
 
 % ═══════════════════════════════════════════════════════════════════
@@ -533,10 +567,12 @@ Rayleigh--Taylor は浮力主導の成長問題であり，
   P1 sharp area，運動エネルギー交換 &
   未合格 \\
 単一気泡上昇 &
-  $128\times256$，$T=70$，水--空気，$g=10^{-3}$ &
+  $32\times64$，掲載窓 $0\le t\le0.03\,\mathrm{s}$，
+  $10\,\mathrm{mm}\times20\,\mathrm{mm}$，水--空気，$g=9.81$ &
   $y_c(t)$，\texttt{mean\_rise\_velocity}，
-  \texttt{deformation}，体積保存，速度/圧力 snapshot &
-  \checkmark \\
+  \texttt{deformation}，diffuse 体積保存，$\psi$ snapshot，
+  $t\simeq0.04\,\mathrm{s}$ 以降の形状破綻 &
+  初期窓のみ \\
 Rayleigh--Taylor &
   $128\times512$，$T=7$，水/シリコーン油，$g=9.81$ &
   \texttt{interface\_amplitude} の線形成長率，
@@ -552,10 +588,12 @@ Rayleigh--Taylor &
 振動液滴は，有限値で 1 周期完走する一方，
 P1 sharp area が終端で $+25.9\%$ 増えるため，
 閉界面保存量の同一 cochain 化がまだ不足していることを示した．
-単一気泡上昇は，浮力残差と projection の face-space 共有を確認した．
+単一気泡上昇は，$0\le t\le0.03\,\mathrm{s}$ の初期窓で
+浮力残差と projection の face-space 共有を確認したが，
+後続時刻の形状保存は未解決として合格 claim から外した．
 Rayleigh--Taylor は，復元ではなく不安定成長を起こす配置でも
 同じ閉包が形状発展を支えることを示した．
 したがって本章の結論は，個別部品が単体で正しいだけでなく，
-移動界面二相流の代表的な安定振動・浮力上昇・不安定成長に対して
+移動界面二相流の代表的な安定振動・初期浮力上昇・不安定成長に対して
 同じ stack が有効に働く範囲と，閉界面振動でなお破れている
-保存量契約の境界を同時に示した，という点にある．
+保存量契約および気泡長時間形状保存の境界を同時に示した，という点にある．
