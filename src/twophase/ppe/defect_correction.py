@@ -246,52 +246,6 @@ class PPESolverDefectCorrection(IPPESolver):
 
         self._pin_dofs = getattr(self.operator, "_pin_dofs", (self._pin_dof,))
         rhs_flat = rhs_dev.ravel()
-        if self.backend.is_gpu():
-            initial_residual_norm_dev = None
-            for iteration in range(self.max_corrections):
-                residual = rhs_dev - self.operator.apply(pressure)
-                residual = self._enforce_rhs_compatibility(
-                    residual,
-                    record_stats=False,
-                )
-                if iteration == 0:
-                    initial_residual_norm_dev = xp.linalg.norm(residual.ravel())
-                correction = xp.asarray(
-                    self.base_solver.solve(residual, rho, dt=dt, p_init=None)
-                )
-                correction = self._enforce_pressure_gauge(correction)
-                pressure = pressure + self.relaxation * correction
-                pressure = self._enforce_pressure_gauge(pressure)
-            final_residual = rhs_dev - self.operator.apply(pressure)
-            final_residual = self._enforce_rhs_compatibility(
-                final_residual,
-                record_stats=False,
-            )
-            norm_pair = xp.stack([
-                xp.linalg.norm(rhs_flat),
-                initial_residual_norm_dev,
-                xp.linalg.norm(final_residual.ravel()),
-                xp.max(xp.abs(final_residual.ravel())),
-            ])
-            rhs_norm, initial_residual_norm, residual_norm, residual_linf = [
-                float(value) for value in self.backend.asnumpy(norm_pair)
-            ]
-            scale = max(rhs_norm, 1.0)
-            self.last_residual_history = [initial_residual_norm, residual_norm]
-            self.last_stalled = residual_norm > self.tolerance * scale
-            self.last_base_pressure = xp.copy(pressure)
-            self._record_dc_diagnostics(
-                initial_diagnostics,
-                rhs_norm=rhs_norm,
-                initial_residual_norm=initial_residual_norm,
-                final_residual_norm=residual_norm,
-                final_residual_linf=residual_linf,
-                corrections_applied=self.max_corrections,
-            )
-            if hasattr(self.operator, "apply_interface_jump"):
-                pressure = self.operator.apply_interface_jump(pressure)
-            return self._enforce_periodic_pressure(pressure)
-
         rhs_norm = float(self.backend.asnumpy(xp.linalg.norm(rhs_flat)))
         scale = max(rhs_norm, 1.0)
         history: list[float] = []
@@ -313,9 +267,46 @@ class PPESolverDefectCorrection(IPPESolver):
                 self.base_solver.solve(residual, rho, dt=dt, p_init=None)
             )
             correction = self._enforce_pressure_gauge(correction)
-            pressure = pressure + self.relaxation * correction
-            pressure = self._enforce_pressure_gauge(pressure)
-            corrections_applied += 1
+            accepted = False
+            correction_image = self._enforce_rhs_compatibility(
+                self.operator.apply(correction),
+                record_stats=False,
+            )
+            numerator = float(
+                self.backend.asnumpy(xp.sum(residual * correction_image))
+            )
+            denominator = float(
+                self.backend.asnumpy(xp.sum(correction_image * correction_image))
+            )
+            candidates: list[float] = []
+            if denominator > 0.0:
+                alpha_opt = numerator / denominator
+                if alpha_opt > 0.0:
+                    candidates.append(alpha_opt)
+            alpha = float(self.relaxation)
+            for _line_search in range(12):
+                candidates.append(alpha)
+                alpha *= 0.5
+            for alpha in candidates:
+                trial_pressure = pressure + alpha * correction
+                trial_pressure = self._enforce_pressure_gauge(trial_pressure)
+                trial_residual = rhs_dev - self.operator.apply(trial_pressure)
+                trial_residual = self._enforce_rhs_compatibility(
+                    trial_residual,
+                    record_stats=False,
+                )
+                trial_norm = float(
+                    self.backend.asnumpy(xp.linalg.norm(trial_residual.ravel()))
+                )
+                if trial_norm < residual_norm:
+                    pressure = trial_pressure
+                    accepted = True
+                    corrections_applied += 1
+                    break
+            if not accepted:
+                final_residual = residual
+                final_residual_norm = residual_norm
+                break
         if not broke:
             final_residual = rhs_dev - self.operator.apply(pressure)
             final_residual = self._enforce_rhs_compatibility(

@@ -50,6 +50,13 @@ class _DifferentOperatorStub(_SameOperatorStub):
     pass
 
 
+class _OverScaledBaseStub(_SameOperatorStub):
+    def solve(self, rhs, rho, dt, p_init=None):
+        self.solve_calls += 1
+        self.seen_tolerances.append(self.tol)
+        return 10.0 * np.asarray(rhs, dtype=float)
+
+
 def test_same_operator_defect_correction_is_rejected():
     grid = object()
     base = _SameOperatorStub(grid)
@@ -109,6 +116,29 @@ def test_different_operator_defect_correction_keeps_residual_loop():
     assert solver.last_diagnostics["ppe_dc_converged"] == 1.0
     assert solver.last_diagnostics["ppe_dc_final_residual_l2"] == 0.0
     assert solver.last_diagnostics["ppe_dc_iterations"] == 0.0
+
+
+def test_defect_correction_uses_residual_minimising_step_length():
+    grid = object()
+    base = _OverScaledBaseStub(grid)
+    operator = _DifferentOperatorStub(grid)
+    solver = PPESolverDefectCorrection(
+        _BackendStub(),
+        grid,
+        base,
+        operator,
+        max_corrections=1,
+        tolerance=1.0e-12,
+        relaxation=1.0,
+    )
+
+    pressure = solver.solve(np.ones((2, 2)), np.ones((2, 2)), dt=1.0)
+
+    expected = np.ones((2, 2))
+    expected[0, 0] = 0.0
+    np.testing.assert_allclose(pressure, expected)
+    assert solver.last_diagnostics["ppe_dc_converged"] == 1.0
+    assert solver.last_diagnostics["ppe_dc_final_residual_l2"] == pytest.approx(0.0)
 
 
 def test_defect_correction_collapse_branch_fails_closed():
