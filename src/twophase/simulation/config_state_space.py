@@ -22,17 +22,6 @@ from .config_sections import validate_choice
 
 _ACTIVE_GEOMETRY_CAPILLARY_SCHEME = "active_geometry_capillary"
 
-_ACTIVE_GEOMETRY_CAPILLARY_SCHEME_ALIASES = {
-    _ACTIVE_GEOMETRY_CAPILLARY_SCHEME,
-    "active-geometry-capillary",
-    "active_geometry_capillary_decomposition",
-    "active-geometry-capillary-decomposition",
-    "geometric_cell_fraction",
-    "ao_fast",
-    "ao-fast",
-    "ao_fast_geometric_cell_fraction",
-}
-
 
 def _active_geometry_capillary_state_space_defaults() -> dict[str, Any]:
     """Return the internal preset selected by the active-geometry scheme."""
@@ -84,21 +73,16 @@ def _active_geometry_capillary_state_space_defaults() -> dict[str, Any]:
 
 
 def parse_interface_state_space(interface: dict, numerics: dict) -> InterfaceStateSpaceCfg:
-    """Parse ``interface.state_space`` and fail-close on ambiguous AO contracts."""
+    """Parse ``interface.state_space`` and fail-close on ambiguous contracts."""
     raw = interface.get("state_space")
     if raw is None:
         _validate_legacy_diffuse_stack(numerics)
         return InterfaceStateSpaceCfg()
 
     if isinstance(raw, str):
-        token = str(raw).strip().lower()
-        raw = (
-            {"scheme": _ACTIVE_GEOMETRY_CAPILLARY_SCHEME}
-            if token in _ACTIVE_GEOMETRY_CAPILLARY_SCHEME_ALIASES
-            else {"kind": raw}
-        )
+        raw = {"scheme": raw}
     if not isinstance(raw, dict):
-        raise ValueError("interface.state_space must be a mapping or kind string")
+        raise ValueError("interface.state_space must be a mapping or scheme string")
     if "kind" not in raw and "scheme" in raw:
         scheme = _normalize_state_space_scheme(raw["scheme"])
         if scheme == _ACTIVE_GEOMETRY_CAPILLARY_SCHEME:
@@ -106,7 +90,7 @@ def parse_interface_state_space(interface: dict, numerics: dict) -> InterfaceSta
         elif scheme == "diffuse_cls":
             raw = {**raw, "kind": "diffuse_cls"}
     if "kind" not in raw:
-        raise ValueError("interface.state_space.kind is required")
+        raise ValueError("interface.state_space.scheme is required")
 
     kind = validate_choice(
         raw["kind"],
@@ -118,6 +102,12 @@ def parse_interface_state_space(interface: dict, numerics: dict) -> InterfaceSta
         _validate_legacy_diffuse_stack(numerics)
         return InterfaceStateSpaceCfg()
 
+    if "scheme" not in raw:
+        raise ValueError(
+            "active-geometry capillary YAML must select "
+            "interface.state_space.scheme='active_geometry_capillary'; "
+            "kind='geometric_cell_fraction' is an internal expanded kind"
+        )
     raw = _merge_defaults(_active_geometry_capillary_state_space_defaults(), raw)
     return _parse_geometric_cell_fraction_state_space(raw, interface, numerics)
 
@@ -264,7 +254,7 @@ def _parse_geometric_cell_fraction_state_space(
 
 def _normalize_state_space_scheme(value: Any) -> str:
     normalized = str(value).strip().lower()
-    if normalized in _ACTIVE_GEOMETRY_CAPILLARY_SCHEME_ALIASES:
+    if normalized == _ACTIVE_GEOMETRY_CAPILLARY_SCHEME:
         return _ACTIVE_GEOMETRY_CAPILLARY_SCHEME
     if normalized == "diffuse_cls":
         return "diffuse_cls"
@@ -565,7 +555,8 @@ def _validate_legacy_diffuse_stack(numerics: dict[str, Any]) -> None:
 
 def _require_geometric_state_space(reason: str) -> None:
     raise ValueError(
-        f"{reason} requires interface.state_space.kind='geometric_cell_fraction'"
+        f"{reason} requires "
+        "interface.state_space.scheme='active_geometry_capillary'"
     )
 
 

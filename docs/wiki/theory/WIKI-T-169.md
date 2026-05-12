@@ -702,14 +702,15 @@ tables remain device arrays; the temporary unfused PCG control loop is
 intentionally disabled on GPU rather than silently syncing inside the loop.
 
 C8 moves the fail-close boundary from config construction to solver
-construction.  A complete `geometric_cell_fraction` YAML may now build an
-`ExperimentConfig` if it uses `q_cell_fraction` tracking, `geometric_swept_volume`
-transport, `bundle_virtual_work`, `endpoint: geometric_cell_fraction`,
-`constraints: [cell_volume]`, `algorithm: none`, and the active-cached GPU
-projection contract.  `NSSolverBuilder` still rejects that config before
-building runtime options, so the UX can validate the intended AO-Fast YAML while
-chapter-14 execution remains blocked until the runtime adapter/checkpoint/smoke
-gates pass.
+construction.  A Chapter 14 YAML now names only
+`interface.state_space.scheme: active_geometry_capillary`; the parser expands
+the internal `geometric_cell_fraction` kind, `q_cell_fraction` tracking,
+`geometric_swept_volume` transport, `bundle_virtual_work`,
+`endpoint: geometric_cell_fraction`, `constraints: [cell_volume]`,
+`algorithm: none`, and the active-cached GPU projection contract.
+`NSSolverBuilder` still rejects that config before building runtime options, so
+the UX can validate the intended active-geometry YAML while chapter-14 execution
+remains blocked until the runtime adapter/checkpoint/smoke gates pass.
 
 C9 introduces the disabled runtime contract adapter.  Before raising the
 fail-close runtime error, `NSSolverBuilder` now validates that the parsed config
@@ -781,64 +782,17 @@ pressure-adjoint work pairs, and smooth residual diagnostics.  They remain
 forbidden as derivatives of the discontinuous `theta_C` carrier or as
 substitutes for `Q_h`, `J_q`, `T_q`, and `dS_h`.
 
-The YAML front door should declare a state-space contract:
+The YAML front door should select only the active-geometry capillary scheme:
 
 ```yaml
 interface:
   state_space:
-    kind: geometric_cell_fraction
-    conserved_variable: q
-    normalized_view: theta
-    gauge:
-      variable: phi
-      trace: p1_levelset
-    compatibility:
-      constraint: hard_cell_volume
-      units: physical_volume
-      projection:
-        implementation: active_cached
-        dense_reference: test_only
-        gpu_contract:
-          required: true
-          active_storage: struct_of_arrays
-          inner_host_transfers: forbidden
-          dense_runtime_fallback: forbidden
-          record_kernel_counters: true
-        method: fixed_stratum_schur
-        metric: screened_gauge_hodge
-        fail_close: true
-        trust_region: sign_margin
-        residual_tolerance: 1.0e-11
-        condition_gate: fail_close
-        support_budget:
-          max_active_ratio: 0.25
-          max_support_stream_ratio: 0.25
-          max_epoch_growth_ratio: 1.5
-          on_overrun: fail_close
-        solver:
-          primary: active_pcg_newton
-          accelerators:
-            dc_candidate:
-              enabled: true
-              role: proposal_only
-              on_reject: discard_candidate
-          fallback:
-            policy: none
+    scheme: active_geometry_capillary
 ```
 
-Fallback may be enabled only as an explicit solver chain:
-
-```yaml
-solver:
-  primary: residual_monotone_dc
-  fallback:
-    policy: explicit_chain
-    chain:
-      - from: residual_monotone_dc
-        to: active_pcg_newton
-        triggers: [no_exact_residual_decrease, trust_region_exhausted]
-        record_as: dc_to_pcg_declared_fallback
-```
+The parser expands this single scheme to the fixed active-cached projection,
+proposal-only DC candidate, GPU storage, and `fallback.policy: none` contract.
+Those are not Chapter 14 YAML knobs.
 
 The numerical stack must then be internally consistent:
 
@@ -983,18 +937,16 @@ All required GPU non-static rows ran and fail-closed.
 
 ## Chapter 14 Production YAML Contract
 
-The checked-in Chapter 14 YAMLs are AO-Fast `geometric_cell_fraction`
-experiments.  They must declare the full q/theta/phi state-space contract,
-GPU-required active storage, no dense runtime fallback,
-`geometric_swept_volume` q transport, and `bundle_virtual_work` capillary
-coupling:
+The checked-in Chapter 14 YAMLs are active-geometry capillary experiments.
+They must declare only the scheme at the state-space front door; the parser
+owns the fixed q/theta/phi contract, GPU-required active storage, no dense
+runtime fallback, `geometric_swept_volume` q transport, and
+`bundle_virtual_work` capillary coupling:
 
 ```yaml
 interface:
   state_space:
-    kind: geometric_cell_fraction
-    conserved_variable: q
-    normalized_view: theta
+    scheme: active_geometry_capillary
 numerics:
   interface:
     transport:
@@ -1014,7 +966,7 @@ Chapter 14 routes are now unified at the YAML front door:
 
 ```text
 capillary wave / Rayleigh--Taylor / static droplet / oscillating droplet / rising bubble:
-  interface.state_space.kind = geometric_cell_fraction
+  interface.state_space.scheme = active_geometry_capillary
   interface.transport.variable = q
   interface.transport.spatial = geometric_swept_volume
   surface_tension.source = bundle_virtual_work
@@ -1022,18 +974,18 @@ capillary wave / Rayleigh--Taylor / static droplet / oscillating droplet / risin
 ```
 
 This correction prevents any Chapter 14 experiment from silently running the
-diffuse-CLS route when the intended object is AO-Fast q transport.
+diffuse-CLS route when the intended object is active-geometry q transport.
 
 ## Experiment And Paper Routing
 
 Do not revive the stale V11 common-flux admissibility experiment as evidence
-for AO-Fast capillary admission.  That script answered an older transport
+for active-geometry capillary admission.  That script answered an older transport
 ledger question.  The current paper route is:
 
 ```text
-Chapter 12 U12: algebraic AO-Fast capillary split gate
-Chapter 13 V11: integration pre-gate separating AO-Fast from production
-Chapter 14: all checked-in YAMLs declare AO-Fast q transport and bundle
+Chapter 12 U12: algebraic active-geometry capillary split gate
+Chapter 13 V11: integration pre-gate separating active geometry from production
+Chapter 14: all checked-in YAMLs declare active-geometry q transport and bundle
             virtual-work capillarity
 ```
 

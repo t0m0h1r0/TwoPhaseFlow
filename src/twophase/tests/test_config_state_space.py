@@ -101,50 +101,7 @@ def _minimal(patch: dict | None = None) -> dict:
 def _geometric_patch() -> dict:
     return {
         "interface": {
-            "state_space": {
-                "kind": "geometric_cell_fraction",
-                "conserved_variable": "q",
-                "normalized_view": "theta",
-                "gauge": {"variable": "phi", "trace": "p1_levelset"},
-                "compatibility": {
-                    "constraint": "hard_cell_volume",
-                    "units": "physical_volume",
-                    "projection": {
-                        "implementation": "active_cached",
-                        "dense_reference": "test_only",
-                        "gpu_contract": {
-                            "required": True,
-                            "active_storage": "struct_of_arrays",
-                            "inner_host_transfers": "forbidden",
-                            "dense_runtime_fallback": "forbidden",
-                            "record_kernel_counters": True,
-                        },
-                        "method": "fixed_stratum_schur",
-                        "metric": "screened_gauge_hodge",
-                        "fail_close": True,
-                        "trust_region": "sign_margin",
-                        "residual_tolerance": 1.0e-11,
-                        "condition_gate": "fail_close",
-                        "support_budget": {
-                            "max_active_ratio": 0.25,
-                            "max_support_stream_ratio": 0.25,
-                            "max_epoch_growth_ratio": 1.5,
-                            "on_overrun": "fail_close",
-                        },
-                        "solver": {
-                            "primary": "active_pcg_newton",
-                            "accelerators": {
-                                "dc_candidate": {
-                                    "enabled": True,
-                                    "role": "proposal_only",
-                                    "on_reject": "discard_candidate",
-                                },
-                            },
-                            "fallback": {"policy": "none"},
-                        },
-                    },
-                },
-            },
+            "state_space": {"scheme": "active_geometry_capillary"},
             "reinitialization": {
                 "algorithm": "none",
                 "schedule": {"every_steps": 0},
@@ -227,14 +184,14 @@ def test_legacy_diffuse_state_space_still_parses():
 
 
 def test_q_transport_without_geometric_state_space_fails_closed():
-    with pytest.raises(ValueError, match="requires interface.state_space.kind"):
+    with pytest.raises(ValueError, match="requires interface.state_space.scheme"):
         ExperimentConfig.from_dict(
             _minimal({"numerics": {"interface": {"transport": {"variable": "q"}}}})
         )
 
 
 def test_q_tracking_without_geometric_state_space_fails_closed():
-    with pytest.raises(ValueError, match="requires interface.state_space.kind"):
+    with pytest.raises(ValueError, match="requires interface.state_space.scheme"):
         ExperimentConfig.from_dict(
             _minimal({"numerics": {"interface": {"tracking": {"primary": "q"}}}})
         )
@@ -290,7 +247,7 @@ def test_q_tracking_without_geometric_state_space_fails_closed():
     ],
 )
 def test_geometric_capillary_without_geometric_state_space_fails_closed(patch):
-    with pytest.raises(ValueError, match="requires interface.state_space.kind"):
+    with pytest.raises(ValueError, match="requires interface.state_space.scheme"):
         ExperimentConfig.from_dict(_minimal(patch))
 
 
@@ -346,6 +303,22 @@ def test_active_geometry_capillary_scheme_preset_expands_defaults():
     solver = TwoPhaseNSSolver.from_config(cfg)
     assert solver._interface_tracking_method == "q_cell_fraction"
     assert solver._capillary_force_source == "bundle_virtual_work"
+
+
+def test_active_geometry_capillary_rejects_legacy_ao_scheme_names():
+    raw = _geometric_raw()
+    raw["interface"]["state_space"] = {"scheme": "ao_fast"}
+
+    with pytest.raises(ValueError, match="active_geometry_capillary"):
+        ExperimentConfig.from_dict(raw)
+
+
+def test_active_geometry_capillary_rejects_kind_only_front_door():
+    raw = _geometric_raw()
+    raw["interface"]["state_space"] = {"kind": "geometric_cell_fraction"}
+
+    with pytest.raises(ValueError, match="scheme='active_geometry_capillary'"):
+        ExperimentConfig.from_dict(raw)
 
 
 def test_geometric_runtime_rejects_active_projection_schedule():

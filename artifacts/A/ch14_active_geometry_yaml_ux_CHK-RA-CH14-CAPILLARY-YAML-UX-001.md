@@ -47,16 +47,14 @@ This keeps the YAML UX aligned with the theory: users select the state-space
 scheme, while the active-geometry capillary decomposition front door stays
 paper-fixed and fail-closed.
 
-## Compatibility
+## Legacy Names
 
-The old `ao_fast` spelling is retained only as a parser alias so existing local
-draft configs fail less abruptly.  It is not the canonical name in checked-in
-Chapter 14 YAMLs, README text, or the short-paper memo prose.
+The old `ao_fast` spelling is not accepted as a parser alias.  The old
+`kind: geometric_cell_fraction` front door is also rejected unless it is the
+parser's internal expansion from the canonical scheme.
 
-Internal module and test names that still contain `ao_fast` are compatibility
-or historical runtime-contract identifiers.  They were not renamed in this
-slice because doing so would be a wider API migration unrelated to the YAML/UX
-front door.
+Internal module and test names that still contain `ao_fast` are historical
+runtime-contract identifiers.  They are not user-facing YAML or UX names.
 
 ## Files Changed
 
