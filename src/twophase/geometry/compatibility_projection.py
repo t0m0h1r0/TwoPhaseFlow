@@ -19,6 +19,7 @@ import math
 from dataclasses import dataclass
 
 from .cell_complex import MetricCellComplex
+from .gpu_runtime_guard import reject_device_value, reject_gpu_namespace
 from .p1_cut_geometry import P1CutGeometry, cut_geometry_2d
 from .p1_cut_jacobian import cut_geometry_derivatives_2d, scatter_local_to_nodes
 
@@ -60,6 +61,7 @@ def project_cell_volume_compatibility_2d(
     """Project ``phi`` so that ``Q_h(phi)=target_q`` in the current stratum."""
     if grid.ndim != 2:
         raise ValueError("project_cell_volume_compatibility_2d supports 2D grids")
+    reject_gpu_namespace(grid.xp, context="project_cell_volume_compatibility_2d")
     tolerance = float(tolerance)
     if not (math.isfinite(tolerance) and tolerance > 0.0):
         raise ValueError("tolerance must be positive")
@@ -277,6 +279,7 @@ def _solve_schur_cg(
     max_iterations: int,
 ):
     xp = grid.xp
+    reject_gpu_namespace(xp, context="compatibility projection Schur CG")
     solution = xp.zeros_like(rhs)
     residual = xp.where(active, rhs, xp.zeros_like(rhs))
     z = _precondition(xp, row_norm, residual, active)
@@ -360,12 +363,10 @@ def _norm_l2(xp, value) -> float:
 
 
 def _scalar_bool(xp, value) -> bool:
-    if hasattr(value, "get"):
-        value = value.get()
+    reject_device_value(value, context="compatibility projection scalar reduction")
     return bool(value)
 
 
 def _scalar_float(xp, value) -> float:
-    if hasattr(value, "get"):
-        value = value.get()
+    reject_device_value(value, context="compatibility projection scalar reduction")
     return float(value)

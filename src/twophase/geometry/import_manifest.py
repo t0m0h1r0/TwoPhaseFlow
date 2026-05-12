@@ -21,6 +21,7 @@ class ImportClassification(str, Enum):
     """Closed production classification enum for imported AO symbols."""
 
     ORACLE_ONLY = "oracle_only"
+    CPU_EXACT_RUNTIME = "cpu_exact_runtime"
     GPU_PRODUCTION = "gpu_production"
     REJECT = "reject"
 
@@ -61,6 +62,12 @@ class ImportedSymbol:
                 raise ValueError(
                     f"{self.source_symbol}: gpu_production requires pending/pass "
                     "no-D2H audit"
+                )
+        if self.classification is ImportClassification.CPU_EXACT_RUNTIME:
+            if self.no_d2h_audit != "gpu_fail_closed":
+                raise ValueError(
+                    f"{self.source_symbol}: cpu_exact_runtime requires "
+                    "no_d2h_audit='gpu_fail_closed'"
                 )
         if self.classification is ImportClassification.ORACLE_ONLY:
             if not self.forbidden_runtime_callers:
@@ -129,33 +136,64 @@ DEFAULT_IMPORT_MANIFEST: tuple[ImportedSymbol, ...] = validate_manifest(
     (
         ImportedSymbol(
             source_symbol="geometry.p1_cut_geometry.cut_geometry_2d",
-            classification=ImportClassification.ORACLE_ONLY,
-            migration_status=MigrationStatus.DIAGNOSTIC_ORACLE,
-            allowed_import_module="twophase.geometry.dense_reference",
-            forbidden_runtime_callers=("simulation", "experiment", "runtime"),
-            required_tests=("test_dense_reference_q_sum_matches_p1_area",),
-            no_d2h_audit="not_applicable",
-            rationale="Dense full-grid Q_h/S_h oracle for C1 parity tests.",
+            classification=ImportClassification.CPU_EXACT_RUNTIME,
+            migration_status=MigrationStatus.PENDING_GPU_AUDIT,
+            allowed_import_module="twophase.geometry",
+            required_tests=(
+                "test_dense_reference_q_sum_matches_p1_area",
+                "test_direct_dense_geometry_rejects_gpu_backend",
+            ),
+            no_d2h_audit="gpu_fail_closed",
+            rationale=(
+                "Dense exact Q_h/S_h CPU runtime and oracle; CUDA arrays fail closed."
+            ),
         ),
         ImportedSymbol(
             source_symbol="geometry.cell_complex.MetricCellComplex",
-            classification=ImportClassification.ORACLE_ONLY,
-            migration_status=MigrationStatus.DIAGNOSTIC_ORACLE,
-            allowed_import_module="twophase.geometry.dense_reference",
-            forbidden_runtime_callers=("simulation", "experiment", "runtime"),
-            required_tests=("test_metric_cell_complex_cache_invalidates_on_new_coords",),
-            no_d2h_audit="not_applicable",
-            rationale="Dense metric-cell oracle; active GPU metric cache lands in C2/C3.",
+            classification=ImportClassification.CPU_EXACT_RUNTIME,
+            migration_status=MigrationStatus.PENDING_GPU_AUDIT,
+            allowed_import_module="twophase.geometry",
+            required_tests=(
+                "test_metric_cell_complex_cache_invalidates_on_new_coords",
+                "test_direct_dense_geometry_rejects_gpu_backend",
+            ),
+            no_d2h_audit="gpu_fail_closed",
+            rationale=(
+                "Dense exact metric-cell CPU runtime; active GPU metric cache is separate."
+            ),
         ),
         ImportedSymbol(
             source_symbol="geometry.compatibility_projection.project_cell_volume_compatibility_2d",
-            classification=ImportClassification.ORACLE_ONLY,
-            migration_status=MigrationStatus.DIAGNOSTIC_ORACLE,
-            allowed_import_module="none",
-            forbidden_runtime_callers=("simulation", "experiment", "runtime"),
-            required_tests=("test_manifest_forbids_dense_projection_runtime_fallback",),
-            no_d2h_audit="not_applicable",
-            rationale="Dense projection remains reference knowledge, not a runtime fallback.",
+            classification=ImportClassification.CPU_EXACT_RUNTIME,
+            migration_status=MigrationStatus.PENDING_GPU_AUDIT,
+            allowed_import_module="twophase.geometry",
+            required_tests=(
+                "test_geometric_runtime_rejects_active_projection_schedule",
+                "test_direct_dense_geometry_rejects_gpu_backend",
+            ),
+            no_d2h_audit="gpu_fail_closed",
+            rationale=(
+                "Dense exact projection is CPU-only; active projection schedule is "
+                "blocked until the fused path is wired."
+            ),
+        ),
+        ImportedSymbol(
+            source_symbol="geometry.swept_flux.construct_p1_swept_flux_2d",
+            classification=ImportClassification.CPU_EXACT_RUNTIME,
+            migration_status=MigrationStatus.PENDING_GPU_AUDIT,
+            allowed_import_module="twophase.geometry",
+            required_tests=("test_direct_dense_geometry_rejects_gpu_backend",),
+            no_d2h_audit="gpu_fail_closed",
+            rationale="Dense exact swept-volume CPU runtime; CUDA arrays fail closed.",
+        ),
+        ImportedSymbol(
+            source_symbol="geometry.bundle_capillary.geometric_pressure_capillary_hodge_2d",
+            classification=ImportClassification.CPU_EXACT_RUNTIME,
+            migration_status=MigrationStatus.PENDING_GPU_AUDIT,
+            allowed_import_module="twophase.geometry",
+            required_tests=("test_direct_dense_geometry_rejects_gpu_backend",),
+            no_d2h_audit="gpu_fail_closed",
+            rationale="Dense exact capillary Hodge CPU runtime; CUDA arrays fail closed.",
         ),
     )
 )

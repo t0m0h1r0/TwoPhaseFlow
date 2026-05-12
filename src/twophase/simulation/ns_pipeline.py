@@ -963,6 +963,13 @@ class TwoPhaseNSSolver:
 
     def _advance_geometric_phase_stage(self, state: NSStepState) -> NSStepState:
         """Advance typed AO q transport, then fail closed before NS coupling."""
+        if self._backend.is_gpu():
+            raise ValueError(
+                "geometric_cell_fraction GPU runtime requires active fused "
+                "AO-Fast transport/capillary/projection kernels. The dense "
+                "exact AO runtime is CPU-only and is disabled by "
+                "gpu_contract.inner_host_transfers=forbidden."
+            )
         self._last_geometric_common_flux_transport = None
         self._last_geometric_runtime_material = None
         self._last_geometric_runtime_capillary = None

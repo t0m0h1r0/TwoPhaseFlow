@@ -176,8 +176,8 @@ class InterfaceStateSpaceCfg:
     """Parsed front-door state-space contract.
 
     Geometric cell-fraction config construction is allowed after AO-Fast C8.
-    Solver runtime activation still fails closed until the C9 runtime adapter
-    and C10 chapter-14 smoke gates pass.
+    The dense exact runtime is CPU-only; GPU execution remains fail-closed
+    until active fused AO-Fast kernels satisfy this front-door contract.
     """
 
     kind: str = "diffuse_cls"

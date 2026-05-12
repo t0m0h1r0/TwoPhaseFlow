@@ -25,6 +25,7 @@ from contextlib import nullcontext
 from dataclasses import dataclass
 
 from .cell_complex import MetricCellComplex
+from .gpu_runtime_guard import reject_device_value, reject_gpu_namespace
 from .p1_cut_geometry import (
     _case_field,
     _edge_crossing,
@@ -102,6 +103,7 @@ def construct_p1_swept_flux_2d(
     """
     if grid.ndim != 2:
         raise ValueError("construct_p1_swept_flux_2d supports 2D grids")
+    reject_gpu_namespace(grid.xp, context="construct_p1_swept_flux_2d")
     dt = float(dt)
     tolerance = float(tolerance)
     if not (math.isfinite(dt) and dt > 0.0):
@@ -184,6 +186,7 @@ def apply_certified_swept_flux_2d(
     """Apply ``q^{n+1}=q^n-dt B Phi_l`` after fail-closed certification."""
     if grid.ndim != 2:
         raise ValueError("apply_certified_swept_flux_2d supports 2D grids")
+    reject_gpu_namespace(grid.xp, context="apply_certified_swept_flux_2d")
     dt = float(dt)
     tolerance = float(tolerance)
     if not (math.isfinite(dt) and dt > 0.0):
@@ -268,6 +271,7 @@ def face_volume_fluxes_2d(
     """
     if grid.ndim != 2:
         raise ValueError("face_volume_fluxes_2d supports 2D grids")
+    reject_gpu_namespace(grid.xp, context="face_volume_fluxes_2d")
     tolerance = float(tolerance)
     if not (math.isfinite(tolerance) and tolerance >= 0.0):
         raise ValueError("tolerance must be finite and non-negative")
@@ -315,6 +319,7 @@ def common_mass_fluxes_2d(
     """Return ``Phi_m`` from the exact same ``Phi_l`` face arrays."""
     if grid.ndim != 2:
         raise ValueError("common_mass_fluxes_2d supports 2D grids")
+    reject_gpu_namespace(grid.xp, context="common_mass_fluxes_2d")
     rho_l = float(rho_l)
     rho_g = float(rho_g)
     if not (math.isfinite(rho_l) and math.isfinite(rho_g)):
@@ -1007,12 +1012,10 @@ def _errstate(xp):
 
 
 def _scalar_bool(xp, value) -> bool:
-    if hasattr(value, "get"):
-        value = value.get()
+    reject_device_value(value, context="P1 swept-flux scalar reduction")
     return bool(value)
 
 
 def _scalar_float(xp, value) -> float:
-    if hasattr(value, "get"):
-        value = value.get()
+    reject_device_value(value, context="P1 swept-flux scalar reduction")
     return float(value)

@@ -3,9 +3,9 @@
 The package exposes AO-Fast active compact geometry primitives plus the
 runtime-facing geometric phase, swept-flux, checkpoint, and capillary adapters
 salvaged from the direct AO implementation.  Production projection work should
-prefer active tables; the dense geometric modules remain the exact runtime
-state/capillary contract and oracle layer, not a hidden fallback for active
-solver failures.
+prefer active tables; the dense geometric modules remain the exact CPU runtime
+state/capillary contract and oracle layer.  They fail closed on CUDA arrays
+instead of becoming a hidden fallback for missing active fused GPU kernels.
 """
 
 from __future__ import annotations
@@ -37,6 +37,7 @@ from .checkpoint import (
     has_geometric_phase_checkpoint,
     restore_geometric_phase_checkpoint_2d,
 )
+from .gpu_runtime_guard import reject_device_value, reject_gpu_namespace
 from .compatibility_projection import (
     CompatibilityProjectionLedger,
     CompatibilityProjectionResult,
@@ -120,6 +121,8 @@ __all__ = [
     "P1CutGeometry",
     "P1SweptFluxCertificate",
     "P1SweptFluxResult",
+    "reject_device_value",
+    "reject_gpu_namespace",
     "SweptFluxCertificate",
     "SweptFluxTransportResult",
     "TargetStateCode",

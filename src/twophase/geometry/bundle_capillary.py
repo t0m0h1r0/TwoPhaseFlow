@@ -48,6 +48,7 @@ from .compatibility_projection import (
     _solve_schur_cg,
 )
 from .cell_complex import MetricCellComplex
+from .gpu_runtime_guard import reject_device_value, reject_gpu_namespace
 from .p1_cut_jacobian import (
     P1CutDerivatives,
     cut_geometry_derivatives_2d,
@@ -263,6 +264,7 @@ def geometric_face_volume_variation_2d(
     """
     if grid.ndim != 2:
         raise ValueError("geometric_face_volume_variation_2d supports 2D grids")
+    reject_gpu_namespace(grid.xp, context="geometric_face_volume_variation_2d")
     tolerance = _validate_tolerance(tolerance)
     boundary = _normalize_boundary(boundary)
     complex_h = MetricCellComplex.from_grid(grid)
@@ -1113,6 +1115,7 @@ def _compatible_state(
     tolerance: float,
     context: str,
 ) -> GeometricPhaseState:
+    reject_gpu_namespace(grid.xp, context=f"{context} dense exact AO runtime")
     try:
         return type(state).from_q_phi(
             grid,
@@ -1431,18 +1434,15 @@ def _nodal_dot(xp, left, right) -> float:
 
 
 def _host_numpy(value):
-    if hasattr(value, "get"):
-        value = value.get()
+    reject_device_value(value, context="component-volume mask host boundary")
     return np.asarray(value)
 
 
 def _scalar_bool(value) -> bool:
-    if hasattr(value, "get"):
-        value = value.get()
+    reject_device_value(value, context="bundle capillary scalar reduction")
     return bool(value)
 
 
 def _scalar_float(xp, value) -> float:
-    if hasattr(value, "get"):
-        value = value.get()
+    reject_device_value(value, context="bundle capillary scalar reduction")
     return float(value)

@@ -19,6 +19,7 @@ from typing import Any
 
 import numpy as np
 
+from ..backend import is_device_array
 from ..geometry import (
     GeometricCommonFluxTransportResult,
     GeometricFaceMassHodge,
@@ -100,6 +101,11 @@ def materialise_geometric_common_flux_state(
     tolerance: float = 1.0e-11,
 ) -> GeometricRuntimeCommonFluxState:
     """Validate and expose q-derived density plus AO common mass fluxes."""
+    if getattr(grid.xp, "__name__", "").split(".", 1)[0] == "cupy":
+        raise ValueError(
+            "geometric runtime GPU execution requires active fused AO-Fast "
+            "kernels; dense exact AO materialisation is CPU-only"
+        )
     if not isinstance(result, GeometricCommonFluxTransportResult):
         raise TypeError("result must be a GeometricCommonFluxTransportResult")
     tolerance = _validate_tolerance(tolerance)
@@ -181,6 +187,11 @@ def materialise_geometric_runtime_capillary_state(
     max_cg_iterations: int | None = None,
 ) -> GeometricRuntimeCapillaryState:
     """Validate pressure/capillary Hodge diagnostics for an AO material state."""
+    if getattr(grid.xp, "__name__", "").split(".", 1)[0] == "cupy":
+        raise ValueError(
+            "geometric runtime GPU execution requires active fused AO-Fast "
+            "kernels; dense exact AO capillary materialisation is CPU-only"
+        )
     if not isinstance(material, GeometricRuntimeCommonFluxState):
         raise TypeError("material must be a GeometricRuntimeCommonFluxState")
     tolerance = _validate_tolerance(tolerance)
@@ -544,16 +555,22 @@ def _mass_flux_scale(
 
 
 def _scalar_bool(value) -> bool:
-    if hasattr(value, "get"):
-        value = value.get()
+    if is_device_array(value):
+        raise ValueError(
+            "geometric runtime scalar reduction would synchronize a CUDA "
+            "value; active fused AO-Fast GPU kernels are required"
+        )
     if hasattr(value, "item"):
         value = value.item()
     return bool(value)
 
 
 def _scalar_float(value) -> float:
-    if hasattr(value, "get"):
-        value = value.get()
+    if is_device_array(value):
+        raise ValueError(
+            "geometric runtime scalar reduction would synchronize a CUDA "
+            "value; active fused AO-Fast GPU kernels are required"
+        )
     if hasattr(value, "item"):
         value = value.item()
     return float(value)

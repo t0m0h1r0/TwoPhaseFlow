@@ -24,6 +24,7 @@ from .compatibility_projection import (
     CompatibilityProjectionLedger,
     project_cell_volume_compatibility_2d,
 )
+from .gpu_runtime_guard import reject_device_value, reject_gpu_namespace
 from .p1_cut_geometry import (
     P1CutGeometry,
     _case_field,
@@ -223,6 +224,7 @@ def transport_geometric_phase_state_2d(
     """
     if not isinstance(state, GeometricPhaseState):
         raise TypeError("state must be a GeometricPhaseState")
+    reject_gpu_namespace(grid.xp, context="transport_geometric_phase_state_2d")
     _validate_tolerance(tolerance)
     try:
         state = type(state).from_q_phi(
@@ -312,6 +314,7 @@ def transport_geometric_phase_common_flux_2d(
     min_step_fraction: float = 1.0e-8,
 ) -> GeometricCommonFluxTransportResult:
     """Advance geometric phase and form ``Phi_m`` from the same ``Phi_l``."""
+    reject_gpu_namespace(grid.xp, context="transport_geometric_phase_common_flux_2d")
     phase_transport = transport_geometric_phase_state_2d(
         grid,
         state,
@@ -442,14 +445,12 @@ def _norm_l2(xp, value) -> float:
 
 
 def _scalar_bool(xp, value) -> bool:
-    if hasattr(value, "get"):
-        value = value.get()
+    reject_device_value(value, context="GeometricPhaseState scalar reduction")
     return bool(value)
 
 
 def _scalar_float(xp, value) -> float:
-    if hasattr(value, "get"):
-        value = value.get()
+    reject_device_value(value, context="GeometricPhaseState scalar reduction")
     return float(value)
 
 

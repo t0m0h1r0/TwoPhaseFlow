@@ -63,6 +63,14 @@ Result:
   `make test`
   PASS: `907 passed, 3 skipped`.
 
+## Supersession Note
+
+CHK-RA-CH14-AO-FASTVOL-023 supersedes the GPU interpretation of this smoke
+result.  The CHK-022 short remote run proved that the dense exact runtime could
+advance a tiny case, but the GPU review found that it did so through
+unoptimized dense host-control paths.  That path is now fail-closed on GPU until
+active fused AO-Fast kernels are connected.
+
 ## SOLID / Negative Knowledge
 
 - [SOLID-S] Solver-contract validation, phase-state runtime, step force and

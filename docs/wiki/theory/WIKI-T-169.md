@@ -67,6 +67,8 @@ sources:
     description: "AO-Fast GPU review loop: duplicate coordinate transfer removal, scalar-sync inner guards, compact bincount reduction, and unused metric-key allocation removal"
   - path: artifacts/A/ch14_ao_fast_runtime_activation_CHK-RA-CH14-AO-FASTVOL-022.md
     description: "AO-Fast runtime activation: geometric q/common-flux/capillary path, fail-closed swept-volume gate, and short capillary smoke validation"
+  - path: artifacts/A/ch14_ao_fast_runtime_gpu_review_CHK-RA-CH14-AO-FASTVOL-023.md
+    description: "AO-Fast runtime GPU review: dense exact runtime made CPU-only, GPU fail-close guards, active-projection schedule rejection, and manifest hardening"
 depends_on:
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-159]]"

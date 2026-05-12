@@ -1,4 +1,4 @@
-"""Disabled AO-Fast runtime contract adapters.
+"""AO-Fast runtime contract adapters.
 
 Symbol mapping
 --------------
@@ -11,9 +11,9 @@ Symbol mapping
 ``Gamma_h``:
     Fixed-stratum trace encoded by ``state/stratum/case_code``.
 
-The adapters in this module are intentionally contract-only.  They validate the
-handoff that the future C10 runtime must satisfy, then keep solver construction
-disabled so geometric cell-fraction YAML cannot enter the legacy diffuse path.
+The adapters in this module validate the handoff that the geometric runtime
+must satisfy before it can enter the Navier--Stokes pipeline.  Unsupported
+active-projection/GPU cases fail closed here or at the runtime boundary.
 """
 
 from __future__ import annotations
@@ -111,10 +111,11 @@ def build_ao_fast_runtime_contract(cfg: Any) -> AOFastRuntimeContract:
         )
     if reinit_method is None and reinit_every != 0:
         raise ValueError("AO-Fast runtime contract requires reinit_every=0")
-    if reinit_method == "compatibility_projection" and reinit_every <= 0:
+    if reinit_method == "compatibility_projection":
         raise ValueError(
-            "AO-Fast runtime contract requires reinit_every>0 for "
-            "compatibility_projection"
+            "AO-Fast active compatibility_projection runtime is not wired; "
+            "use algorithm='none' with schedule.every_steps=0 until the fused "
+            "active projection path is connected"
         )
 
     return AOFastRuntimeContract(

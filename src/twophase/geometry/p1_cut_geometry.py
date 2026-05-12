@@ -18,6 +18,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from .cell_complex import MetricCellComplex
+from .gpu_runtime_guard import reject_device_value, reject_gpu_namespace
 
 
 _EDGE_CORNERS = ((0, 1), (1, 2), (2, 3), (3, 0))
@@ -38,6 +39,7 @@ def cut_geometry_2d(grid, phi, *, level: float = 0.0) -> P1CutGeometry:
     """Return ``Q_h``, ``A_h``, and ``S_h`` for a 2D P1/Q1 trace."""
     if grid.ndim != 2:
         raise ValueError("cut_geometry_2d currently supports 2D grids")
+    reject_gpu_namespace(grid.xp, context="cut_geometry_2d")
     complex_h = MetricCellComplex.from_grid(grid)
     xp = complex_h.xp
     phi_dev = xp.asarray(phi)
@@ -232,12 +234,10 @@ def _segment_length(xp, left, right):
 
 
 def _scalar_float(xp, value) -> float:
-    if hasattr(value, "get"):
-        value = value.get()
+    reject_device_value(value, context="P1 cut geometry scalar reduction")
     return float(value)
 
 
 def _scalar_bool(xp, value) -> bool:
-    if hasattr(value, "get"):
-        value = value.get()
+    reject_device_value(value, context="P1 cut geometry scalar reduction")
     return bool(value)

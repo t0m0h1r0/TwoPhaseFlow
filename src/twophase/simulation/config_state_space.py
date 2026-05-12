@@ -5,10 +5,9 @@ A3 chain:
   physical cell volume ``q_C`` with normalized view ``theta_C``.
   Discretization: geometric AO requires hard cell-volume compatibility,
   active-cached projection, GPU-resident active storage, and explicit fallback.
-  Code: this parser validates the front-door contract before runtime wiring.
-
-C1 intentionally validates and then blocks geometric runtime construction.
-Actual active AO-Fast runtime adapters land only after the C2-C8 gates pass.
+Code: this parser validates the front-door contract before runtime wiring.
+Dense exact CPU runtime is allowed only behind this contract; GPU execution
+remains fail-closed until active fused AO-Fast kernels are connected.
 """
 
 from __future__ import annotations

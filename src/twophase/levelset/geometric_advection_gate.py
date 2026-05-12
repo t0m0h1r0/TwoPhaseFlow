@@ -24,9 +24,9 @@ class GeometricSweptVolumeAdvectionGate(ILevelSetAdvection):
         del name, ctx
         return cls()
 
-    def advance(self, psi, velocity_components, dt):
+    def advance(self, psi, velocity_components, dt, **kwargs):
         """Fail closed until solver dispatches to typed AO q transport."""
-        del psi, velocity_components, dt
+        del psi, velocity_components, dt, kwargs
         raise ValueError(
             "geometric_swept_volume must advance GeometricPhaseState.q via "
             "transport_geometric_phase_state_2d, not the legacy psi advection API"

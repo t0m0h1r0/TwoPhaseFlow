@@ -14,6 +14,7 @@ from twophase.simulation.ao_fast_runtime_contract import (
 from twophase.simulation.config_io import ExperimentConfig
 from twophase.simulation.config_state_space import parse_interface_state_space
 from twophase.simulation.ns_pipeline import TwoPhaseNSSolver
+from twophase.simulation.ns_step_state import NSStepRequest, NSStepState
 
 
 def _deep_update(base: dict, patch: dict) -> dict:
@@ -326,6 +327,56 @@ def test_valid_geometric_contract_builds_config_and_solver_runtime():
     assert solver._advection_scheme == "geometric_swept_volume"
     assert solver._interface_tracking_method == "q_cell_fraction"
     assert solver._capillary_force_source == "bundle_virtual_work"
+
+
+def test_geometric_runtime_rejects_active_projection_schedule():
+    raw = _geometric_raw(
+        {
+            "interface": {
+                "reinitialization": {
+                    "algorithm": "compatibility_projection",
+                    "schedule": {"every_steps": 1},
+                }
+            }
+        }
+    )
+    experiment_cfg = ExperimentConfig.from_dict(raw)
+    with pytest.raises(ValueError, match="active compatibility_projection"):
+        build_ao_fast_runtime_contract(experiment_cfg)
+
+
+def test_geometric_runtime_gpu_backend_fails_closed_before_dense_runtime():
+    try:
+        import cupy  # noqa: F401
+    except Exception:
+        pytest.skip("CuPy is not importable")
+
+    raw = _geometric_raw()
+    experiment_cfg = ExperimentConfig.from_dict(raw)
+    try:
+        solver = TwoPhaseNSSolver.from_config(experiment_cfg)
+    except RuntimeError as exc:
+        pytest.skip(f"GPU backend unavailable: {exc}")
+    if not solver.backend.is_gpu():
+        pytest.skip("TWOPHASE_USE_GPU is not active")
+
+    xp = solver.backend.xp
+    zeros = xp.zeros((9, 9))
+    state = NSStepState.from_inputs(
+        NSStepRequest(
+            psi=zeros,
+            u=zeros,
+            v=zeros,
+            dt=1.0e-4,
+            rho_l=1.0,
+            rho_g=1.0,
+            sigma=0.0,
+            mu=0.01,
+        ),
+        backend=solver.backend,
+    )
+    with pytest.raises(ValueError, match="active fused AO-Fast"):
+        solver._advance_geometric_phase_stage(state)
 
 
 def test_ao_fast_checkpoint_contract_validates_handoff_and_face_histories():

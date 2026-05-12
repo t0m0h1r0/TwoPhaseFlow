@@ -16,6 +16,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from .gpu_runtime_guard import reject_device_value, reject_gpu_namespace
+
 
 _CACHE_ATTR = "_twophase_metric_cell_complex_cache"
 
@@ -39,6 +41,7 @@ class MetricCellComplex:
         """Build physical 2D cell measures from grid node coordinates."""
         if grid.ndim != 2:
             raise ValueError("MetricCellComplex currently supports 2D grids")
+        reject_gpu_namespace(grid.xp, context="MetricCellComplex.from_grid")
         cache_key = _grid_cache_key(grid)
         cached = getattr(grid, _CACHE_ATTR, None)
         if cached is not None and cached[0] == cache_key:
@@ -103,6 +106,5 @@ def _coord_cache_token(coord):
 
 
 def _scalar_bool(xp, value) -> bool:
-    if hasattr(value, "get"):
-        value = value.get()
+    reject_device_value(value, context="MetricCellComplex scalar reduction")
     return bool(value)
