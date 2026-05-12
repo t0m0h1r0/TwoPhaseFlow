@@ -25,6 +25,68 @@ sources:
     description: "Implementation layering, GPU-first route, and UX/YAML contract for geometric cell fractions"
   - path: docs/memo/short_paper/SP-AO_geometric_cell_fraction_state_space.md
     description: "Implementation-ready short paper compiling the geometric cell-fraction state-space theory"
+  - path: artifacts/A/ch14_ao_fast_volume_route_CHK-RA-CH14-AO-FASTVOL-001.md
+    description: "AO-Fast active-stratum, approximate-candidate, GPU-PCG route for making SP-AO computationally viable"
+  - path: artifacts/A/ch14_ao_dc_accuracy_theory_CHK-RA-CH14-AO-FASTVOL-002.md
+    description: "AO-Fast fixed-stratum approximation-order contract and residual-monotone DC theory"
+  - path: artifacts/A/paper_ch9_ao_fast_theory_CHK-RA-CH14-AO-FASTVOL-003.md
+    description: "Paper Chapter 9 insertion of active-stratum approximation accuracy and residual-monotone DC conditions"
+  - path: artifacts/A/ch14_ao_fast_algorithm_contract_CHK-RA-CH14-AO-FASTVOL-004.md
+    description: "Implementation-ready AO-Fast active geometry acceleration contract, GPU kernel plan, ledger counters, and proof obligations"
+  - path: artifacts/A/ch14_ao_yaml_fallback_policy_CHK-RA-CH14-AO-FASTVOL-005.md
+    description: "AO-Fast explicit fallback YAML/UX policy preserving fail-close semantics"
+  - path: artifacts/A/ch14_ao_fast_design_policy_CHK-RA-CH14-AO-FASTVOL-006.md
+    description: "AO-Fast implementation design policy and reuse plan for the direct AO branch"
+  - path: artifacts/A/ch14_ao_gpu_import_gate_CHK-RA-CH14-AO-FASTVOL-007.md
+    description: "GPU admission gate for importing direct-AO components into AO-Fast"
+  - path: artifacts/A/ch14_ao_direct_branch_knowledge_salvage_CHK-RA-CH14-AO-FASTVOL-008.md
+    description: "Knowledge salvage packet for retiring the direct dense-AO branch"
+  - path: artifacts/A/ch14_ao_fast_preimplementation_design_CHK-RA-CH14-AO-FASTVOL-009.md
+    description: "AO-Fast preimplementation design gate: module blueprint, active data shapes, GPU contract, fail-close state machine, validation ladder, and first coding ticket"
+  - path: artifacts/A/review_ch14_ao_fast_preimplementation_design_CHK-RA-CH14-AO-FASTVOL-010.md
+    description: "Contrarian review of AO-Fast preimplementation design; identifies blockers before production implementation"
+  - path: artifacts/A/ch14_ao_fast_design_repair_CHK-RA-CH14-AO-FASTVOL-011.md
+    description: "Repair of all contrarian-review findings before AO-Fast implementation"
+  - path: artifacts/A/ch14_ao_fast_complexity_audit_CHK-RA-CH14-AO-FASTVOL-012.md
+    description: "Complexity audit ensuring AO-Fast repairs do not reintroduce full-grid runtime work"
+  - path: artifacts/A/ch14_ao_fast_precode_contrarian_loop_CHK-RA-CH14-AO-FASTVOL-013.md
+    description: "Pre-code adversarial review loop and repairs until no major findings remain"
+  - path: artifacts/A/ch14_ao_fast_c1_implementation_CHK-RA-CH14-AO-FASTVOL-014.md
+    description: "AO-Fast C1 dense oracle, manifest, governance, parser skeleton, and remote validation"
+  - path: artifacts/A/ch14_ao_fast_active_core_CHK-RA-CH14-AO-FASTVOL-016.md
+    description: "AO-Fast C2-C7 active table, active kernels, matrix-free Schur, PCG floor, and exact active projection core"
+  - path: artifacts/A/ch14_ao_fast_runtime_ux_gate_CHK-RA-CH14-AO-FASTVOL-017.md
+    description: "AO-Fast C8 YAML/UX gate: valid geometric configs build, solver runtime remains fail-closed"
+  - path: artifacts/A/ch14_ao_fast_runtime_contract_adapter_CHK-RA-CH14-AO-FASTVOL-018.md
+    description: "AO-Fast C9 disabled runtime contract adapter for q/theta/phi handoff, checkpoint arrays, and bundle capillary contract"
+  - path: artifacts/A/ch14_ao_fast_review_hardening_CHK-RA-CH14-AO-FASTVOL-019.md
+    description: "AO-Fast review hardening: checkpoint cell/node split, mixed-state YAML rejection, support-stream budget enforcement, and empty-support no-op ledger"
+  - path: artifacts/A/ch14_ao_fast_gpu_hardening_CHK-RA-CH14-AO-FASTVOL-020.md
+    description: "AO-Fast GPU hardening: compact Schur active-node matvecs, no dense metric cache in compact table construction, and stricter GPU host-control fail-close"
+  - path: artifacts/A/ch14_ao_fast_gpu_review_loop_CHK-RA-CH14-AO-FASTVOL-021.md
+    description: "AO-Fast GPU review loop: duplicate coordinate transfer removal, scalar-sync inner guards, compact bincount reduction, and unused metric-key allocation removal"
+  - path: artifacts/A/ch14_ao_fast_runtime_activation_CHK-RA-CH14-AO-FASTVOL-022.md
+    description: "AO-Fast runtime activation: geometric q/common-flux/capillary path, fail-closed swept-volume gate, and short capillary smoke validation"
+  - path: artifacts/A/ch14_ao_fast_runtime_gpu_review_CHK-RA-CH14-AO-FASTVOL-023.md
+    description: "AO-Fast runtime GPU review: dense exact runtime made CPU-only, GPU fail-close guards, active-projection schedule rejection, and manifest hardening"
+  - path: artifacts/A/ch14_ao_fast_gpu_runtime_completion_CHK-RA-CH14-AO-FASTVOL-024.md
+    description: "AO-Fast GPU runtime completion: device-resident geometric packet, nodal material bridge, pressure-coordinate coupling, and capillary smoke"
+  - path: artifacts/A/ch14_ao_fast_quarter_failure_theory_rca_CHK-RA-CH14-AO-FASTVOL-025.md
+    description: "Theory-first RCA of failed AO-Fast capillary quarter-period run; identifies zero non-static drive and undefined pressure-coordinate history"
+  - path: artifacts/A/ch14_ao_gpu_fail_close_fix_CHK-RA-CH14-AO-FASTVOL-026.md
+    description: "Production fail-close gate for uncertified GPU AO capillarity"
+  - path: artifacts/A/ch14_ao_nonstatic_pressure_split_proof_CHK-RA-CH14-AO-FASTVOL-027.md
+    description: "Proof of active Schur pressure split, scalar AO pressure coordinate, non-static balanced drive, and residual-certified accuracy"
+  - path: artifacts/A/ch14_ao_blowup_assumed_experiment_strategy_CHK-RA-CH14-AO-FASTVOL-028.md
+    description: "Blow-up-assumed experiment ladder for AO-Fast: algebraic certificate, one-step impulse, two-step history replay, short horizon, pre-blowup replay"
+  - path: artifacts/A/ch14_ao_rung0_algebraic_rca_CHK-RA-CH14-AO-FASTVOL-029.md
+    description: "Rung-0 algebraic AO split RCA: CPU exact zero-drive defect, component-volume residual probe, and GPU flat fail-close classification fix"
+  - path: artifacts/A/ch14_capillary_mainline_rerun_CHK-RA-CH14-AO-FASTVOL-030.md
+    description: "Mainline Chapter 14 capillary-wave rerun separating production FCCD/UCCD6/pressure-jump success from AO-Fast admission"
+  - path: artifacts/A/paper_ch12_13_ao_gate_experiments_CHK-RA-CH14-AO-FASTVOL-031.md
+    description: "Executable U12/V11 AO-Fast capillary split gates, stale V11 common-flux deletion, and paper-facing figures"
+  - path: artifacts/A/ch14_yaml_state_space_update_CHK-RA-CH14-AO-FASTVOL-032.md
+    description: "Chapter 14 YAML state-space contract: production configs declare diffuse_cls and do not admit AO-Fast implicitly"
 depends_on:
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-159]]"
@@ -512,6 +574,209 @@ matrix-free Schur solve S_q lambda = J_q W_eta^{-1} J_q^T lambda,
 no host/device transfer except explicit diagnostics.
 ```
 
+The production route is AO-Fast, not dense direct AO.  It keeps compact
+active-stratum tables for mixed/cut cells plus a one-face halo, uses frozen
+linearized geometry only as a candidate generator, and accepts a step only
+after exact active-stratum `Q_h/S_h` residual, sign-margin, and
+projection-work gates pass.  Compatibility projection is solved on the active
+interface graph by matrix-free PCG with warm starts, diagonal/component-block
+Jacobi preconditioning, and optional connected-component deflation, targeting
+`O(k |A|)` work rather than full-domain `O(k |C_h|)` geometry and Schur work.
+
+Approximation accuracy must be declared locally.  With
+`beta_C=||delta phi||_{infty,C}/min(gamma_C,m_C)` on a fixed regular stratum,
+first-order frozen geometry has `O(beta_C^2)` local `Q_h/S_h` remainders, and
+any second-order secant/Hessian candidate must demonstrate `O(beta_C^3)` before
+promotion.  Approximation order never replaces exact acceptance in physical
+`q` units.
+
+DC is admissible as a geometry compatibility iteration only when it is
+residual-monotone for the exact residual `R(phi)=Q_h^S(phi)-q^-`.  The frozen
+active Schur inverse may be used as a cheap defect-correction operator, with
+the step length chosen by an on-device residual decrease test.  Fixed-count DC,
+clipping, or relaxed volume constraints remain forbidden.
+
+The implementation contract is an active-geometry acceleration route: detect
+dirty sign/case/crossing/metric/ownership rows, reuse compact active-table rows
+outside the dirty halo, recompute exact `Q/S/J/dS` only on the active graph,
+and expose `|A|`, `|dirty|`, refreshed-cell count, kernel-launch count, and
+host-transfer count in the ledger.  The YAML must name the primary active
+solver.  Frozen active linearization or residual-monotone DC may be
+proposal-only accelerators, but rejection discards the proposal and does not
+change solver family.  PCG/Newton is either the declared primary solver or a
+declared `explicit_chain` fallback target.  There is no implicit DC-to-PCG
+recovery.  The speedup is credited to active geometry, incremental cache
+refresh, and device-resident fused kernels, not to DC itself.
+
+The direct AO branch `codex/ra-ch14-osc-sharp-volume-20260510` should be used
+as a dense reference implementation and source of formulas, not as the
+production compute loop.  Reusable pieces are the P1 cut geometry algebra,
+fixed-stratum derivative formulas, `MetricCellComplex` cache, q/theta/phi phase
+state, fail-close parser gates, capillary face-Hodge runtime contracts, and
+manufactured tests.  The dense compatibility projection and dense line search
+remain oracle/debug code; AO-Fast rewrites them into `ActiveGeometryTable`
+rows, dirty plus one-face halo refresh, and device-resident active Schur
+operators.  Dense reference mode is an oracle/debug path, not a runtime
+fallback; default production stays `active_cached` plus fail-close.
+
+Importing from the direct AO branch is GPU-gated.  Each imported symbol must be
+classified as `oracle_only`, `gpu_production`, or `reject`.  Production
+admission requires backend-native arrays, struct-of-arrays active storage,
+fused active-row kernels, device-side reductions for residuals and acceptance,
+metric-cache reuse, preallocated work buffers, and no inner-loop host transfer
+inside CG/Newton/DC/line search.  A component that fails this gate remains an
+oracle/test helper; it is not a dense runtime fallback.
+
+The direct branch also contributed non-code knowledge that must survive branch
+retirement.  Parser gates require explicit `state_space.kind` and reject
+diffuse routes carrying `q/theta`.  Geometry gates preserve complement volume,
+physical nonuniform-cell measures, periodic quotient semantics, and reject
+degenerate nodal sign strata.  Projection gates operate in physical `q` units
+with sign-margin line search and fail close on full/empty-cell target changes.
+Swept transport gates require bounded q flux, declared wall/periodic closure,
+and common mass flux from the same `Phi_l/Phi_V` arrays.  Capillary gates are
+face-Hodge/Riesz work identities with periodic seam splitting and component
+reaction orthogonality.  Runtime gates prevent legacy `psi` transport after
+geometric parser acceptance and validate checkpoint face-history shapes at load
+time.  Diagnostic knowledge also matters: `pressure_hodge` is stricter than a
+scalar pressure plot and may fail closed; canonical plots should use the scalar
+gauge pressure unless the Hodge representation is explicitly under test.
+Finally, the sharp-volume Ridge-Eikonal rerun showed a real two-measure
+obstruction: P1 sharp area and nodal diffuse mass can have no simultaneous
+solution under a fixed interface, so that route is not an AO fallback.
+
+Before code development, AO-Fast has a preimplementation design gate.  The gate
+fixes module boundaries (`dense_reference`, `active_table`, `active_kernels`,
+`active_projection`, import manifest, parser, runtime adapters), exact active
+SoA array shapes, direct-branch symbol classifications, GPU no-inner-D2H
+requirements, numerical tolerance ownership, fail-close state transitions, and
+the validation ladder from dense oracle import through chapter-14 smoke YAML.
+The first coding ticket is therefore dense oracle plus import manifest only;
+runtime activation waits until active geometry, GPU, projection, parser, and
+adapter gates pass.
+
+A contrarian review of that gate found blockers, now repaired before
+production implementation.  AO-Fast uses the constraint support `A_q`, the union
+of current mixed cells, previous mixed cells, swept-flux-touched cells,
+target-mixed cells with `0<q^-_C<|C|`, and the required halo.  Active rows own
+`q_target_A`, `cell_measure_A`, target-state codes, flux-touched masks, and
+origin masks.  The import manifest uses only the closed classification enum
+`oracle_only/gpu_production/reject` plus a separate migration status.  Physical
+q tolerances are unit-invariant, PCG gates record rank/conditioning/stop reason,
+topology changes use bounded active-set epochs or fail close, and GPU speed
+gates have pass/fail thresholds, not counters alone.
+
+A complexity audit then clarified that the repaired `A_q` design is acceptable
+only if target and flux support are compact streams.  Production AO-Fast must
+not scan all cells each timestep to discover `target_mixed_cells`, must not
+define `flux_touched_cells` from every nonzero velocity face, and must keep
+rank/conditioning gates as cheap active-row or Krylov/Ritz estimates.  Dense
+oracle comparison, full-grid scans, and dense Schur eigensolves remain
+initialization, validation, debug, or declared-degenerate work, not ordinary
+runtime.
+
+The final pre-code contrarian pass tightened the remaining hidden-heavy paths:
+support compaction is device-side over compact state-changing candidate
+streams, not full-grid `where/nonzero`; `flux_touched_cells` excludes irrelevant
+bulk full/full phase exchange; active/support buffers require declared capacity
+and fail-close on overrun; PCG separates `tau_cg_target` from the attainable
+roundoff floor; production conditioning gates are fail-close, not
+diagnostic-only.
+
+The C2-C7 implementation now materializes that active core without enabling
+chapter-14 runtime YAMLs.  `ActiveGeometryTable` stores compact SoA rows for
+`cell_ids_A`, `node_ids_A`, current `Q_h/S_h`, `q_target_A`, `target_theta_A`,
+target-state codes, halo/dirty/flux/origin masks, owner epochs, and metric
+keys.  `refresh_active_geometry_2d` computes active P1 `Q_h`, `S_h`, `J_q`, and
+`dS_h` directly from supplied active cell ids, with dense scans confined to
+ledgered debug/oracle builders.  The matrix-free active Schur layer applies
+`J`, `J^T`, and `J J^T` without dense Schur assembly, checks adjointness, and
+keeps PCG floor semantics fail-closed.  The active projection loop accepts only
+exact recomputed active `Q_h` residuals on a fixed sign stratum; active-set
+epoch changes remain an outer fail-close/runtime-adapter responsibility.  GPU
+tables remain device arrays; the temporary unfused PCG control loop is
+intentionally disabled on GPU rather than silently syncing inside the loop.
+
+C8 moves the fail-close boundary from config construction to solver
+construction.  A complete `geometric_cell_fraction` YAML may now build an
+`ExperimentConfig` if it uses `q_cell_fraction` tracking, `geometric_swept_volume`
+transport, `bundle_virtual_work`, `endpoint: geometric_cell_fraction`,
+`constraints: [cell_volume]`, `algorithm: none`, and the active-cached GPU
+projection contract.  `NSSolverBuilder` still rejects that config before
+building runtime options, so the UX can validate the intended AO-Fast YAML while
+chapter-14 execution remains blocked until the runtime adapter/checkpoint/smoke
+gates pass.
+
+C9 introduces the disabled runtime contract adapter.  Before raising the
+fail-close runtime error, `NSSolverBuilder` now validates that the parsed config
+still carries the intended q/theta/phi handoff, `q_cell_fraction` tracking,
+`geometric_swept_volume` transport, `bundle_virtual_work` with
+`endpoint: geometric_cell_fraction`, `constraints: [cell_volume]`, and
+`pressure_component_hodge`.  The same module defines the continuation
+checkpoint array contract (`state/q`, `state/theta`, `state/phi`,
+`state/stratum/case_code`, transport/projection ledger epochs) and validates
+pressure/projected face-history component shapes as a test-only gate.  This
+found and fixed a C8 parser gap: `bundle_virtual_work` must parse and preserve
+the closed-interface contract, not fall back to the legacy `conservative_psi`
+default.
+
+The C9 review hardening fixes four contract holes before runtime activation.
+Continuation checkpoints distinguish cell cochains from node gauges:
+`state/q`, `state/theta`, and `state/stratum/case_code` have cell shape
+`(nx, ny)`, `state/phi` has P1 node shape `(nx+1, ny+1)`, and pressure/projected
+face histories have staggered shapes `(nx, ny+1)` and `(nx+1, ny)`.  The
+legacy/default diffuse front door now rejects geometric capillary declarations
+such as `bundle_virtual_work`, `endpoint: geometric_cell_fraction`, or
+`constraints: [cell_volume]` unless the geometric state space is explicit.
+Compact support construction enforces `max_support_stream_ratio` before halo
+expansion, enforces active capacity after halo expansion, and rejects device
+streams in the temporary host compactor so there is no hidden D2H path under a
+GPU contract.  Empty active support is a valid no-op projection state with an
+explicit `empty_active_support` ledger, not an empty reduction crash.
+
+C9 GPU hardening removes the next reviewed bottlenecks before runtime
+activation.  Active Schur matvecs now use a compact unique active-node support:
+`J^T` scatters into this compact node set and `J` gathers from it, so PCG
+candidate iterations no longer allocate or zero the full nodal grid.  The
+full-grid scatter retained for explicit gauge updates uses direct assignment
+because active node ids are unique.  Compact GPU `J^T` accumulation uses backend
+`bincount`, and a backend without that device reduction fails closed rather than
+falling back to atomic scatter.  Compact active-table construction consumes the
+active refresh's `cell_measure_A`, avoiding a second coordinate-axis device
+conversion, and does not touch the dense metric-complex cache, whose device
+cache tokens are oracle/debug territory.  `metric_key_A` aliases
+`cell_measure_A` until a real cache key is admitted.  For GPU tables, ledger
+fields that would require a scalar device sync are explicitly deferred and
+`host_transfer_count=0` is recorded.  Nonempty GPU diagnostics/PCG/projection
+paths have no host-control escape hatch; scalar helpers also reject device
+reductions before `.get()`.  These paths fail closed until fused device-side
+solver, reduction, and line-search kernels are implemented.  Remaining GPU work
+is the final fused active-row `Q/S/J/dS` and exact-acceptance kernels with
+kernel and transfer counters; the current vectorized active geometry remains
+pre-runtime.
+
+The first GPU runtime packet is now connected.  CUDA `geometric_cell_fraction`
+initialization and timesteps use `geometric_phase_runtime_gpu` instead of
+dense exact AO helpers: P1 `Q_h/S_h/J_q/dS_h` rows are evaluated by the active
+geometry formulas over the runtime lattice, q transport and common fluxes stay
+face-native, and bundle-capillary packets remain backend arrays.  The
+capillary pressure-range solve uses the explicit diagonal active-Schur
+approximation
+`lambda_D=diag(J_qJ_q^T)^{-1}J_q(-sigma dS_h)`, with Schur and
+Young-Laplace residuals exposed as the accuracy certificate; there is no
+hidden PCG/DC fallback.  q-owned cell theta/density are bridged to the nodal
+NS material lattice only at the solver boundary, while AO face Hodge work
+continues to use the cell cochain.  Non-static AO pressure reaction is admitted
+through the existing `pressure_coordinate` history path.  A 3-step remote GPU
+capillary-wave smoke completed with finite kinetic energy and volume drift
+below `1.4e-16`; dense exact AO remains CPU oracle/runtime only.
+
+CCD/DCCD/FCCD/UCCD remain useful on the smooth side of the split: gauge
+prediction, screened gauge metric `W_eta`, face-state reconstruction,
+pressure-adjoint work pairs, and smooth residual diagnostics.  They remain
+forbidden as derivatives of the discontinuous `theta_C` carrier or as
+substitutes for `Q_h`, `J_q`, `T_q`, and `dS_h`.
+
 The YAML front door should declare a state-space contract:
 
 ```yaml
@@ -527,11 +792,48 @@ interface:
       constraint: hard_cell_volume
       units: physical_volume
       projection:
+        implementation: active_cached
+        dense_reference: test_only
+        gpu_contract:
+          required: true
+          active_storage: struct_of_arrays
+          inner_host_transfers: forbidden
+          dense_runtime_fallback: forbidden
+          record_kernel_counters: true
         method: fixed_stratum_schur
         metric: screened_gauge_hodge
         fail_close: true
         trust_region: sign_margin
         residual_tolerance: 1.0e-11
+        condition_gate: fail_close
+        support_budget:
+          max_active_ratio: 0.25
+          max_support_stream_ratio: 0.25
+          max_epoch_growth_ratio: 1.5
+          on_overrun: fail_close
+        solver:
+          primary: active_pcg_newton
+          accelerators:
+            dc_candidate:
+              enabled: true
+              role: proposal_only
+              on_reject: discard_candidate
+          fallback:
+            policy: none
+```
+
+Fallback may be enabled only as an explicit solver chain:
+
+```yaml
+solver:
+  primary: residual_monotone_dc
+  fallback:
+    policy: explicit_chain
+    chain:
+      - from: residual_monotone_dc
+        to: active_pcg_newton
+        triggers: [no_exact_residual_decrease, trust_region_exhausted]
+        record_as: dc_to_pcg_declared_fallback
 ```
 
 The numerical stack must then be internally consistent:
@@ -542,12 +844,17 @@ numerics:
     transport:
       variable: q
       spatial: geometric_swept_volume
+      time_integrator: tvd_rk3
       boundedness: certified
       fail_close: true
+    tracking:
+      primary: q
   momentum:
     form: conservative_common_flux
     terms:
       surface_tension:
+        gradient: none
+        formulation: pressure_jump
         source: bundle_virtual_work
         closed_interface:
           endpoint: geometric_cell_fraction
@@ -555,6 +862,15 @@ numerics:
             metric: pressure_adjoint
             constraints: [cell_volume]
             fail_close: true
+  projection:
+    poisson:
+      operator:
+        discretization: fccd
+        coefficient: phase_separated
+        interface_coupling: affine_jump
+        pressure_force_contract: variational_adjoint
+        scalar_operator_pairing: variational_operator
+        capillary_reaction_projection: pressure_component_hodge
 ```
 
 Parser gates must reject mixed-state configurations:
@@ -565,6 +881,13 @@ q transport without conservative_common_flux,
 bundle_virtual_work with endpoint other than geometric_cell_fraction,
 geometric_cell_fraction with old Ridge-Eikonal volume reinitialization,
 fail_close=false,
+dense_reference/reference_dense used as an implicit runtime fallback,
+gpu_contract.required=false for production geometric_cell_fraction,
+active_cached with inner_host_transfers other than forbidden,
+condition_gate diagnostic-only in production geometric_cell_fraction,
+implicit fallback such as auto, try_next, best_effort, or on_failure,
+fallback.policy=explicit_chain without from/to/triggers/record_as,
+accelerator rejection that switches primary solver family,
 boundedness repaired by clipping,
 capillary from incompatible diffuse psi.
 ```
@@ -613,3 +936,95 @@ bundle capillary Hodge gates,
 restart equivalence gates,
 then ch14 YAML activation.
 ```
+
+## Capillary Split Admission Findings
+
+The AO-Fast capillary blocker is algebraic, not a CFL or time-step symptom.
+For a fixed active stratum, building the capillary Riesz representative and
+the full cell-pressure reaction from the same Schur image can cancel the
+face-balanced drive exactly.  Therefore
+
+```text
+e = g + J_q^T pi != 0
+```
+
+is not by itself a certificate that the capillary covector performs physical
+work in the face velocity space.  A production AO-Fast path must first define
+the admissible pressure-reaction subspace `R_p(q_T)` in the same face work
+metric, then compute the non-pressure capillary drive:
+
+```text
+r_sigma_bal = r_sigma - Pi^{M_f}_{R_p(q_T)} r_sigma.
+```
+
+Consequences:
+
+- CPU exact full-pressure AO split is a counterexample when it returns zero
+  balanced drive for a non-static capillary wave.
+- Component-volume Hodge residual is only a non-staticity probe until it is
+  proven to equal the final `R_p` complement.
+- A non-static AO packet with diagonal active-Schur residual and zero balanced
+  drive must fail close; it must not switch to hidden PCG, DC, dense CPU, or
+  component-Hodge fallback.
+- Flat/static interfaces are a separate zero-drive control.  A flat interface
+  should not be rejected merely because a fail-close gate exists.
+
+The executable U12/V11 gates recorded the same pattern.  U12 flat N32 gives
+CPU exact/component balanced drive `0/0`; capillary wave N32 gives
+`0/2.117576`, and N64 gives `0/2.305484`.  V11 repeats the result with
+pressure-coordinate and face-acceleration histories: flat pressure-coordinate
+component drive is `0`, while wave pressure-coordinate, wave face-acceleration,
+and wave N64 component probes give `2.117576`, `2.117576`, and `2.305484`.
+All required GPU non-static rows ran and fail-closed.
+
+## Chapter 14 Production YAML Contract
+
+The checked-in Chapter 14 benchmark YAMLs are production diffuse-CLS configs,
+not AO-Fast `geometric_cell_fraction` configs.  Each canonical YAML now
+declares:
+
+```yaml
+interface:
+  state_space:
+    kind: diffuse_cls
+```
+
+This is a retrieval and parser contract, not a physical parameter change.  It
+prevents `geometric_cell_fraction` from being read as an implicit fallback for
+the validated Chapter 14 route.
+
+Chapter 14 capillary routes are now separated at the YAML front door:
+
+```text
+capillary wave / Rayleigh--Taylor:
+  surface_tension.source = curvature_jump
+
+static droplet / oscillating droplet / rising bubble:
+  surface_tension.source = closed_interface_riesz
+  poisson.operator.capillary_reaction_projection = pressure_component_hodge
+
+AO-Fast geometric_cell_fraction:
+  separate YAML contract only; not admitted by production ch14 YAMLs
+```
+
+The mainline capillary-wave rerun belongs to the first category.  Its
+FCCD/UCCD6/pressure-jump/component-Hodge production stack completed the
+snapshot window with small volume drift, but that result is not evidence that
+the AO-Fast packet passed the capillary split gate.  Conversely, AO-Fast
+fail-close does not falsify the standard Chapter 14 capillary benchmark.
+
+## Experiment And Paper Routing
+
+Do not revive the stale V11 common-flux admissibility experiment as evidence
+for AO-Fast capillary admission.  That script answered an older transport
+ledger question.  The current paper route is:
+
+```text
+Chapter 12 U12: algebraic AO-Fast capillary split gate
+Chapter 13 V11: integration pre-gate separating AO-Fast from production
+Chapter 14: standard production benchmark unless a separate AO-Fast YAML
+            passes the U12/V11 pressure-reaction gates
+```
+
+This keeps the paper from claiming success for an unresolved pressure-reaction
+split while preserving the useful AO-Fast theory and GPU implementation work.

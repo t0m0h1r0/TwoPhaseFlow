@@ -108,6 +108,16 @@ def run_simulation(
 
     if solver._alpha_grid > 1.0 and not resume_state:
         psi, u, v = solver._rebuild_grid(psi, u, v, ph.rho_l, ph.rho_g)
+        if getattr(solver, "_geometric_phase_state", None) is not None:
+            psi = solver.build_ic(cfg)
+            u, v = solver.build_velocity(cfg, psi)
+            psi_initial_host = np.asarray(solver._backend.to_host(psi))
+            wall_contacts = WallContactSet.detect_from_psi(
+                psi_initial_host,
+                solver._grid,
+                bc_type=solver.bc_type,
+            )
+            solver.set_wall_contacts(wall_contacts)
         mode = "static" if solver._rebuild_freq == 0 else f"dynamic/{solver._rebuild_freq}"
         print(f"  [{mode} non-uniform] grid built from IC, h_min={solver.h_min:.4e}")
 
@@ -238,6 +248,7 @@ def run_simulation(
             ),
             return_host_pressure=False,
         )
+        psi = _geometric_phase_diagnostic_psi(solver, psi)
         t += dt
         step += 1
 
@@ -248,7 +259,19 @@ def run_simulation(
                 diag.X = solver.X
                 diag.Y = solver.Y
                 diag.retain_device_geometry(_bk.xp, solver.X, solver.Y, psi.shape)
-        diag.collect(t, psi, u, v, _bk.xp.asarray(p), dV=control_volumes)
+        liquid_volume = _geometric_liquid_volume(solver)
+        if liquid_volume is None:
+            diag.collect(t, psi, u, v, _bk.xp.asarray(p), dV=control_volumes)
+        else:
+            diag.collect(
+                t,
+                psi,
+                u,
+                v,
+                _bk.xp.asarray(p),
+                dV=control_volumes,
+                liquid_volume=liquid_volume,
+            )
         dbg_entry = solver._step_diag.last
         if dbg_entry or (cfg.run.debug_diagnostics and dt_budget is not None):
             merged_diag = {"t": t, "step": step, **dbg_entry}
@@ -470,6 +493,13 @@ def _capture_runtime_snapshot(solver, ph, t: float, psi, u, v, p) -> dict:
         "p": p_h.copy(),
         "rho": (ph.rho_l * psi_h + ph.rho_g * (1.0 - psi_h)).copy(),
     }
+    phase_state = getattr(solver, "_geometric_phase_state", None)
+    if phase_state is not None:
+        snap_entry["geometric_q"] = to_host_array(phase_state.q).copy()
+        snap_entry["geometric_phi"] = to_host_array(phase_state.phi).copy()
+    material = getattr(solver, "_last_geometric_runtime_material", None)
+    if material is not None:
+        snap_entry["geometric_density"] = to_host_array(material.density).copy()
     if solver._p_prev_accel_face_components is not None:
         snap_entry["pressure_accel_faces"] = [
             to_host_array(component).copy()
@@ -483,6 +513,37 @@ def _capture_runtime_snapshot(solver, ph, t: float, psi, u, v, p) -> dict:
     if solver._alpha_grid > 1.0:
         snap_entry["grid_coords"] = [c.copy() for c in solver._grid.coords]
     return snap_entry
+
+
+def _geometric_liquid_volume(solver):
+    """Return the AO-owned q-volume for diagnostics when available."""
+    phase_state = getattr(solver, "_geometric_phase_state", None)
+    if phase_state is None:
+        return None
+    return solver._backend.xp.sum(phase_state.q)
+
+
+def _geometric_phase_diagnostic_psi(solver, psi):
+    """Return a current ψ view of the AO gauge when geometric q owns phase."""
+    phase_state = getattr(solver, "_geometric_phase_state", None)
+    if phase_state is None:
+        return psi
+    context_factory = getattr(solver, "_runtime_setup_context", None)
+    if callable(context_factory):
+        context = context_factory()
+        reconstruct = getattr(context, "reconstruct_base", None)
+        psi_from_phi = getattr(reconstruct, "psi_from_phi", None)
+        if callable(psi_from_phi):
+            return psi_from_phi(phase_state.phi)
+    psi_from_phi = getattr(solver, "psi_from_phi", None)
+    if not callable(psi_from_phi):
+        return psi
+    psi_view = psi_from_phi(phase_state.phi)
+    backend = getattr(solver, "_backend", None)
+    xp = getattr(backend, "xp", None)
+    if xp is None:
+        return psi_view
+    return xp.asarray(psi_view)
 
 
 def _snapshot_needs_projection_fields(cfg: "ExperimentConfig") -> bool:

@@ -1,0 +1,158 @@
+"""Geometric cell-fraction AO-Fast support package.
+
+The package exposes AO-Fast active compact geometry primitives plus the
+runtime-facing geometric phase, swept-flux, checkpoint, and capillary adapters
+salvaged from the direct AO implementation.  Production projection work should
+prefer active tables; the dense geometric modules remain the exact CPU runtime
+state/capillary contract and oracle layer.  They fail closed on CUDA arrays
+instead of becoming a hidden fallback for missing active fused GPU kernels.
+"""
+
+from __future__ import annotations
+
+from .bundle_capillary import (
+    GeometricBundleLift,
+    GeometricCapillaryBundleWork,
+    GeometricCapillaryRieszRepresentative,
+    GeometricComponentVolumeReactionHodge,
+    GeometricFaceMassHodge,
+    GeometricFaceVolumeVariation,
+    GeometricPressureCapillaryHodge,
+    GeometricSurfaceEnergyCovector,
+    GeometricYoungLaplaceResidual,
+    geometric_bundle_lift_2d,
+    geometric_capillary_bundle_work_2d,
+    geometric_capillary_riesz_2d,
+    geometric_component_volume_reaction_hodge_2d,
+    geometric_face_mass_hodge_2d,
+    geometric_face_volume_variation_2d,
+    geometric_pressure_capillary_hodge_2d,
+    geometric_surface_energy_covector_2d,
+    geometric_young_laplace_residual_2d,
+)
+from .cell_complex import MetricCellComplex
+from .checkpoint import (
+    GEOMETRIC_PHASE_CHECKPOINT_PREFIX,
+    capture_geometric_phase_checkpoint,
+    has_geometric_phase_checkpoint,
+    restore_geometric_phase_checkpoint_2d,
+)
+from .gpu_runtime_guard import reject_device_value, reject_gpu_namespace
+from .compatibility_projection import (
+    CompatibilityProjectionLedger,
+    CompatibilityProjectionResult,
+    project_cell_volume_compatibility_2d,
+)
+from .active_kernels import P1ActiveGeometry, refresh_active_geometry_2d
+from .active_projection import (
+    ActiveProjectionLedger,
+    ActiveProjectionResult,
+    ActiveSchurOperator,
+    project_active_cell_volume_compatibility_2d,
+    solve_active_pcg,
+)
+from .active_table import (
+    ActiveGeometryLedger,
+    ActiveGeometryTable,
+    ActiveSupportBudget,
+    TargetStateCode,
+    build_active_table_for_cell_ids,
+    build_debug_active_table_from_dense,
+    compact_active_cell_ids_from_streams,
+)
+from .dense_reference import (
+    MetricCellComplex as ActiveMetricCellComplex,
+    P1CutGeometry as ActiveP1CutGeometry,
+    cut_geometry_2d as active_cut_geometry_2d,
+)
+from .p1_cut_geometry import P1CutGeometry, cut_geometry_2d
+from .p1_cut_jacobian import (
+    P1CutDerivatives,
+    cut_geometry_derivatives_2d,
+    scatter_local_to_nodes,
+)
+from .phase_state import (
+    GeometricCommonFluxTransportResult,
+    GeometricPhaseState,
+    GeometricPhaseStratum,
+    GeometricPhaseTransportResult,
+    transport_geometric_phase_common_flux_2d,
+    transport_geometric_phase_state_2d,
+)
+from .swept_flux import (
+    P1SweptFluxCertificate,
+    P1SweptFluxResult,
+    SweptFluxCertificate,
+    SweptFluxTransportResult,
+    apply_certified_swept_flux_2d,
+    common_mass_fluxes_2d,
+    construct_p1_swept_flux_2d,
+    face_volume_fluxes_2d,
+)
+
+__all__ = [
+    "ActiveMetricCellComplex",
+    "ActiveP1CutGeometry",
+    "ActiveGeometryLedger",
+    "ActiveGeometryTable",
+    "ActiveProjectionLedger",
+    "ActiveProjectionResult",
+    "ActiveSchurOperator",
+    "ActiveSupportBudget",
+    "CompatibilityProjectionLedger",
+    "CompatibilityProjectionResult",
+    "GEOMETRIC_PHASE_CHECKPOINT_PREFIX",
+    "GeometricBundleLift",
+    "GeometricCapillaryBundleWork",
+    "GeometricCapillaryRieszRepresentative",
+    "GeometricCommonFluxTransportResult",
+    "GeometricComponentVolumeReactionHodge",
+    "GeometricFaceMassHodge",
+    "GeometricFaceVolumeVariation",
+    "GeometricPhaseState",
+    "GeometricPhaseStratum",
+    "GeometricPhaseTransportResult",
+    "GeometricPressureCapillaryHodge",
+    "GeometricSurfaceEnergyCovector",
+    "GeometricYoungLaplaceResidual",
+    "MetricCellComplex",
+    "P1ActiveGeometry",
+    "P1CutDerivatives",
+    "P1CutGeometry",
+    "P1SweptFluxCertificate",
+    "P1SweptFluxResult",
+    "reject_device_value",
+    "reject_gpu_namespace",
+    "SweptFluxCertificate",
+    "SweptFluxTransportResult",
+    "TargetStateCode",
+    "active_cut_geometry_2d",
+    "apply_certified_swept_flux_2d",
+    "build_active_table_for_cell_ids",
+    "build_debug_active_table_from_dense",
+    "capture_geometric_phase_checkpoint",
+    "compact_active_cell_ids_from_streams",
+    "common_mass_fluxes_2d",
+    "construct_p1_swept_flux_2d",
+    "cut_geometry_2d",
+    "cut_geometry_derivatives_2d",
+    "face_volume_fluxes_2d",
+    "geometric_bundle_lift_2d",
+    "geometric_capillary_bundle_work_2d",
+    "geometric_capillary_riesz_2d",
+    "geometric_component_volume_reaction_hodge_2d",
+    "geometric_face_mass_hodge_2d",
+    "geometric_face_volume_variation_2d",
+    "geometric_pressure_capillary_hodge_2d",
+    "geometric_surface_energy_covector_2d",
+    "geometric_young_laplace_residual_2d",
+    "has_geometric_phase_checkpoint",
+    "project_cell_volume_compatibility_2d",
+    "project_active_cell_volume_compatibility_2d",
+    "refresh_active_geometry_2d",
+    "restore_geometric_phase_checkpoint_2d",
+    "scatter_local_to_nodes",
+    "solve_active_pcg",
+    "transport_geometric_phase_common_flux_2d",
+    "transport_geometric_phase_state_2d",
+]

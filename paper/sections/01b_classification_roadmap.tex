@@ -116,6 +116,23 @@ $\Ord{h}$（風上差分）から大幅に向上させる：1D では $\Ord{h^6}
 （§~\ref{sec:U6_split_ppe_dc_hfe} では完全テンソル実装で 2D 低次化が解消する）．
 以上により，界面近傍の場延長，圧力補正，速度補正を同じ離散構造で読める定式化を実現する．
 
+本稿の毛管閉包は，標準の圧力ジャンプ経路と，鋭い界面極限へ向かう
+AO-Fast 幾何毛管分解経路を明確に分けて扱う．
+標準経路では $j_{gl}=-\sigma\kappa_{lg}$ を切断面ジャンプとして PPE と補正段へ渡す．
+一方，AO-Fast 経路は表面エネルギーの仮想仕事を
+節点曲率ではなく面速度空間上の共変量として直接構成し，
+そのうち圧力反力で吸収できない成分だけを毛管加速度として残すことを狙う．
+ただし，この高速化は単に Young--Laplace 残差を計算するだけでは成立しない．
+全 cell-pressure image を圧力反力として許すと，表面エネルギー Riesz 代表と
+圧力反力が同じ Schur 系に落ち，非平衡波であっても面上駆動が代数的に消える．
+したがって本稿では，圧力反力部分空間 $R_p$ を PPE と同じ面計量・同じ圧力代表・同じ境界制約から先に定義し，
+$r_\sigma-\Pi^{M_f}_{R_p}r_\sigma$ を物理的な毛管駆動として読む
+（§~\ref{sec:capillary_pressure_reaction_subspace}）．
+この条件を満たさない AO-Fast 実装は，PCG/DC への暗黙 fallback や
+ゼロ駆動継続ではなく，事前ゲートで fail-close させる．
+標準経路の統合実験は第~\ref{sec:verification}章と第~\ref{sec:benchmarks}章で扱い，
+AO-Fast 経路は U12/V11 の事前ゲートを通過するまで発展的構成として扱う．
+
 なお，寄生流れ低減に対しては Height-Function 曲率推定~\cite{Popinet2009}%
 （VOF 法で $\Ord{h^2}$ の曲率精度を達成），CLSVOF 法~\cite{Sussman2000}，
 PROST 法~\cite{Renardy2002}%

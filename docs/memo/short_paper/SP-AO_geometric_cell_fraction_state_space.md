@@ -1,10 +1,10 @@
 # SP-AO: Geometric Cell-Fraction State Space
 
 **Status**: ACTIVE theory and implementation specification
-**Date**: 2026-05-10
+**Date**: 2026-05-11
 **Scope**: volume-first two-phase interface state space, geometric
 cell-fraction discretization, compatibility projection, bundle capillarity,
-common-flux integration, GPU-first implementation, and YAML contract
+common-flux integration, GPU-first fast implementation, and YAML contract
 **Companion papers**: SP-AF, SP-AI, SP-AJ, SP-AK, SP-AN
 
 ## Abstract
@@ -408,6 +408,95 @@ for zero projected capillary drive.
 If the condition does not hold, the interface has physical nonzero capillary
 drive.  No code path may branch on "circle", "ellipse", or benchmark name.
 
+### Certified non-static pressure split
+
+On a fixed regular stratum, restrict `J_q` to the active mixed-cell rows and
+let `W` be the SPD gauge metric used by the bundle lift.  The pressure
+component of the capillary covector is not a diagonal row-norm heuristic; it
+is the Schur projection
+
+```text
+S pi = - J_q W^{-1} g,
+S = J_q W^{-1} J_q^T,
+g = sigma dS_h.
+```
+
+If `J_q` has full row rank, then `S` is SPD because
+
+```text
+lambda^T S lambda
+  = (J_q^T lambda)^T W^{-1} (J_q^T lambda) > 0.
+```
+
+The solution `pi` is therefore unique up to the declared pressure gauge and is
+the scalar AO pressure coordinate.  Extending `pi` to the full cell pressure
+space by the configured gauge gives
+
+```text
+pressure_reaction(w) = pi^T T_q w = (T_q^T pi)^T w,
+```
+
+so `pressure_history.form: pressure_coordinate` may store and extrapolate this
+cell scalar coordinate only after this Schur solve is certified.
+
+The residual
+
+```text
+e = g + J_q^T pi
+```
+
+is the non-pressure part of the surface covector in nodal gauge space.  Rung-0
+algebraic diagnostics in CHK-RA-CH14-AO-FASTVOL-029 refine the certification
+condition: nonzero `e` alone is not a face-drive certificate.  If the runtime
+pressure-reaction space is the full `T_q^T` image of the same active cell
+Schur system used to assemble the capillary Riesz covector, then
+
+```text
+S lambda = J_q(-g),        r_sigma = T_q^T lambda,
+S pi     = -J_q g,         pressure_face = T_q^T pi,
+```
+
+are the same linear system.  Hence `lambda=pi` and
+`r_sigma-pressure_face=0` by construction, even while `e` is nonzero.  In that
+case `e` is orthogonal to the implemented bundle-lift range and the
+face-space drive has been over-projected away.
+
+The physical non-static drive must therefore be defined after the admissible
+pressure-reaction subspace `R_p` is fixed:
+
+```text
+balanced_drive = r_sigma - Pi_{R_p}^{M_f} r_sigma.
+```
+
+`R_p` must be a certified physical reaction space, not automatically the full
+cell-pressure image.  Component-volume reaction removal is useful as an
+algebraic diagnostic because it gives zero drive for flat/static states and
+nonzero drive for capillary waves, but it is not by itself the final runtime
+pressure-coordinate proof.  The final route must provide a scalar,
+PPE-compatible AO pressure coordinate plus an `M_f`-metric face residual.
+A runtime packet that sets `capillary_face == pressure_reaction_face` for a
+non-static wave is not a low-order approximation; it deletes the drive.
+
+For an approximate solve `pi_k`, with Schur residual
+
+```text
+rho_k = -J_q W^{-1} g - S pi_k,
+```
+
+the certified error is
+
+```text
+||pi - pi_k||_S <= ||rho_k||_{S^{-1}},
+||balanced_k - balanced||_{M_f^{-1}}
+  <= C_L ||rho_k||_{S^{-1}},
+```
+
+where `C_L` bounds the lift `||L_B(w)||_W <= C_L ||w||_{M_f}`.  PCG/Newton/DC
+may be used only when this residual, rank, conditioning, sign-margin, and
+exact `Q_h(phi)=q` gates certify the result.  DC is a residual-monotone
+proposal; rejected DC does not imply an implicit fallback unless the YAML
+declares the solver-chain edge explicitly.
+
 ## 9. CCD/FCCD/UCCD Orthogonality
 
 The geometric phase variable is discontinuous by construction:
@@ -555,6 +644,307 @@ line search against sign/case margins.
 CPU reference routines are allowed for manufactured tests, but they must not
 be the only route if the feature is promoted to production.
 
+### AO-Fast production route
+
+The direct reading of the equations is too expensive for production if every
+time step rebuilds full-grid cut geometry, full-grid Jacobian tables, and a
+full-cell Schur solve.  The accepted production route is therefore a certified
+active-stratum method:
+
+```text
+A = mixed/cut cells plus a one-face halo,
+Q_A, S_A, J_A, dS_A, T_A, M_A on compact active tables,
+full/empty cells as state flags,
+periodic quotient and wall ownership resolved while building A.
+```
+
+The theory split from Section 9 remains binding.  CCD/DCCD/FCCD/UCCD are
+valuable on smooth objects such as the gauge predictor `phi^-`, the screened
+metric `W_eta`, face-state reconstruction, pressure-adjoint work pairs, and
+smooth residual diagnostics.  They must not be used to differentiate the
+discontinuous cell fraction `theta_C` or to replace the geometric maps
+`Q_h`, `J_q`, `T_q`, and `dS_h`.
+
+Within a fixed regular stratum, fast kernels may use frozen linearized
+geometry:
+
+```text
+Q_h(phi + delta phi) = Q_h(phi) + J_q delta phi + O(delta phi^2),
+dS_h(phi + delta phi) = dS_h(phi) + local secant/Hessian candidate,
+T_q(phi + delta phi) = T_q(phi) + higher-order remainder.
+```
+
+The accuracy claim is part of the contract.  On a fixed stratum, let
+
+```text
+gamma_C = min crossing-edge |phi_b - phi_a|,
+m_C     = min node |phi_v|,
+beta_C  = ||delta phi||_{infty,C} / min(gamma_C, m_C).
+```
+
+For `beta_C <= beta_* < 1`, the P1 cut maps are smooth in the local nodal
+values and the first-order frozen candidate satisfies
+
+```text
+|Q_h^S(phi+delta phi)_C - Q_h^S(phi)_C - J_q,C delta phi_C|
+  <= C_Q |C| beta_C^2,
+
+|S_h^S(phi+delta phi)_C - S_h^S(phi)_C - dS_C delta phi_C|
+  <= C_S |Gamma_C| beta_C^2.
+```
+
+The constants depend only on the fixed case table, aspect-ratio bounds, and
+the lower crossing margin; they must not depend on the global grid size.  If a
+second-order local secant/Hessian candidate is implemented, its advertised
+accuracy is `O(beta_C^3)` on the same stratum and must be verified against the
+exact active-stratum recomputation.  These are proposal accuracies only; the
+committed state is judged by exact physical-volume residuals in `q` units.
+
+These approximations are candidate generators, not the contract.  Acceptance
+must recompute the exact active-stratum `Q_h` and `S_h` and check the physical
+residual, sign/case margins, and projection-work ledger before committing the
+state.  A failed exact check refreshes the stratum once; a repeated failure
+fails closed or enters an explicit topology route.
+
+The compatibility projection is solved on the active interface graph:
+
+```text
+S_A lambda = J_A W_eta^{-1} J_A^T lambda,
+```
+
+using matrix-free PCG, previous-step warm starts, diagonal plus component-block
+Jacobi preconditioning, and optional connected-component deflation.  The
+iteration tolerance is inexact-Newton style and is bounded by the downstream
+exact gate, e.g.
+
+```text
+tau_cg_target = min(0.1 tau_q, c_work tau_surface, c_cond tau_q/kappa_est),
+tau_cg_floor = c_round sqrt(|A|) eps Q_ref.
+```
+
+If the estimated floor exceeds the target, the step is conditioning/roundoff
+limited and fails closed or follows only a declared solver-chain transition.
+PCG must not spin below the floor, and exact active residual recomputation
+remains the only commit gate.
+
+Defect correction is admissible when it is a residual-monotone nonlinear
+compatibility iteration.  Define the exact active residual
+
+```text
+R(phi) = Q_h^S(phi) - q^-.
+```
+
+Let `P_0` be a cheap frozen active-Schur inverse or preconditioned approximate
+inverse.  A DC candidate is
+
+```text
+delta phi_DC = - P_0 R(phi_k),
+phi_trial(alpha) = phi_k + alpha delta phi_DC.
+```
+
+The accepted `alpha` is chosen by an on-device line search or scalar quadratic
+model to decrease the exact residual ledger:
+
+```text
+||R(phi_trial(alpha))||_{H_C^{-1}} < ||R(phi_k)||_{H_C^{-1}},
+```
+
+while also preserving sign/case margins and projection-work gates.  Fixed-count
+DC without residual decrease is not an AO-Fast method.  DC stagnation is a
+rejected candidate by default.  The solver may switch from DC to active
+PCG/Newton only when the YAML declares that exact fallback edge and its
+trigger; otherwise the step fails closed.  It must not repair the state by
+clipping `q`, relaxing the hard volume constraint, or silently changing solver
+families.
+
+The target complexity is `O(k |A|)` per Newton update, where `|A|` is the
+number of active interface-band cells.  The rejected production complexity is
+`O(k |C_h|)` full-domain cut-geometry and Schur work per line-search trial.
+
+GPU execution must keep all active tables and Krylov vectors on device.  Host
+transfer is limited to explicit ledger scalars after an accepted outer
+iteration.  In particular, no `.get()`, `asnumpy`, Python list materialization,
+or scalar D2H synchronization belongs inside CG iteration control.
+
+### AO-Fast acceleration contract
+
+The production target is not a different compatibility iteration.  It is to
+avoid rebuilding and scanning the full cell complex when only the interface
+stratum has changed.  Inputs are the conservative transported volume `q^-`, the
+predicted gauge `phi^-`, the previous active table, cached metric arrays, and
+the face-Hodge state needed by capillary work.
+
+```text
+1. build the constraint support A_q from compact state-changing support
+   streams: current active rows, previous active rows, swept-flux-touched cells
+   emitted by transport, target-mixed cells emitted by target-state transitions
+   where 0<q^-_C<|C|, and the one-face halo needed for sign/case/ownership
+   detection.
+2. attach q_target_A, cell_measure_A, target_state_code_A, and origin_mask_A;
+   reject out-of-bounds targets before solving.
+3. detect dirty cells from sign/case changes, moved crossing intervals,
+   changed boundary/periodic ownership, changed target support, swept-flux
+   support, or changed grid metric identity.
+4. reuse previous active rows outside the dirty set and halo; rebuild compact
+   SoA rows only on dirty A_q rows.
+5. compute exact Q_h^S(phi^-), S_h^S(phi^-), R=Q_h^S(phi^-)-q^- on A_q, not C_h.
+6. if exact residual, sign/case, and projection-work gates pass, accept.
+7. otherwise run the declared primary active solver.  Frozen-stratum linear
+   updates and residual-monotone DC may be proposal-only accelerators when the
+   YAML says so; rejection discards the proposal and does not change solver
+   family.
+8. recompute exact active Q/S before commit; if active support expands, advance
+   a bounded active-set epoch and recheck.
+9. if topology is required or the epoch limit is exceeded, fail close or enter
+   a declared topology route.  Solver fallback is not a topology recovery.
+10. if exact active recomputation still fails for solver-family reasons, apply
+    the declared fallback policy: `none` means fail close; `explicit_chain`
+    allows only the listed solver transition and then records it in the ledger.
+```
+
+`A_q` construction is not a license to scan `q^-` over `C_h` every timestep.
+Full-grid target support scans are allowed only for initialization, restart
+validation, dense-oracle comparison, explicit debug diagnostics, or a declared
+degenerate exact step.  Ordinary runtime receives compact support from
+swept-volume transport and previous active tables, so the target cost remains
+`O(|A_q|+|dirty|+k matvec(|A_q|))`.  Conditioning/rank gates are likewise cheap
+active-row or Krylov/Ritz estimates; dense Schur eigensolves are oracle/debug
+only.
+
+Here, `swept-flux-touched` means state-changing transported phase-volume
+support.  It does not mean every nonzero velocity face or bulk full-liquid to
+full-liquid exchange.  Support compaction is a device operation over compact
+candidate streams; full-grid `where/nonzero` masks are oracle/debug-only.
+Production YAML/test fixtures must declare active/support capacity and epoch
+growth budgets.  Capacity overrun fails closed unless a diagnostic degenerate
+exact step is explicitly declared and ledgered as not-fast.
+
+The asymptotic objective is:
+
+```text
+direct AO:  O(k |C_h|) geometry work per candidate,
+AO-Fast:    O(|dirty| + k |A|) active geometry/solve work,
+```
+
+where `A` is the compact interface-band graph and `dirty` is the subset whose
+case, metric, or ownership cache changed.  The implementation must expose this
+cost model in diagnostics; if `|dirty|` grows to `|C_h|`, the ledger should say
+so instead of pretending the step was an active-band update.
+
+The committed output is:
+
+```text
+(q^-, phi^+, active_table^+, geometry_cache^+, projection_ledger^+)
+```
+
+with `Q_h(phi^+)=q^-` certified to tolerance in physical volume units.  The
+ledger must record evaluated active cells, dirty cells, refreshed cells,
+proposal family, exact residual norms before and after, maximum `beta_C`,
+minimum sign/case margin, `Delta S_Pi`, GPU kernel launches, and host-transfer
+count.  DC is therefore an optional cheap candidate inside AO-Fast; the speedup
+comes from compact active geometry, incremental cache refresh, fused GPU
+kernels, and avoiding full-grid cut-geometry recomputation.
+
+### Direct AO branch adoption policy
+
+The branch `codex/ra-ch14-osc-sharp-volume-20260510` is the dense direct-AO
+reference, not the production fast path.  Its usable assets are the exact P1
+case algebra for `Q_h/S_h/J_q/dS_h`, `MetricCellComplex` metric caching,
+q/theta/phi phase-state separation, fail-close parser gates, capillary
+face-Hodge runtime contracts, and manufactured tests.
+
+The production route must rewrite the storage and iteration domain:
+
+```text
+dense reference:  (Nx, Ny, 4) local derivative arrays and full-grid line search,
+AO-Fast:          ActiveGeometryTable rows on A plus one-face halo.
+```
+
+`project_cell_volume_compatibility_2d` from the dense branch may be imported as
+`DenseReferenceGeometry` / debug oracle only.  It is not an implicit fallback.
+The dense branch's scalar host residual checks inside CG are also not
+production GPU control; active PCG/Newton must keep Krylov reductions on device
+and transfer only outer ledger scalars.
+
+Imports from that branch are gated by GPU readiness.  Each symbol must be
+classified as `oracle_only`, `gpu_production`, or `reject`.  Production
+admission requires backend-native arrays, struct-of-arrays active storage,
+fused active-row kernels, device-side residual/acceptance reductions,
+preallocated work buffers, metric-cache reuse, and no `.get()`, `asnumpy`,
+`float(...)`, `bool(...)`, or Python list materialization inside
+CG/Newton/DC/line-search loops.  If a candidate import fails this gate, it
+remains dense oracle code; the runtime must not call it as a fallback.
+
+Knowledge from that branch must also be retained before branch retirement:
+
+```text
+parser gates: explicit state_space.kind, no diffuse q/theta transport,
+geometry gates: complement volume, nonuniform physical coordinates, degenerate
+  sign strata rejected,
+projection gates: physical q residual, sign-margin line search, full/empty-cell
+  target changes fail closed,
+transport gates: bounded swept q flux, wall/periodic closure, common mass flux
+  uses the same Phi_l/Phi_V arrays,
+capillary gates: face-Hodge Riesz work identity, periodic seam quotient,
+  component-volume reaction orthogonality,
+runtime gates: no legacy psi transport after geometric parser acceptance,
+  checkpoint face-history shape validation at load time,
+diagnostic gates: pressure_hodge may fail when the face cochain is not scalar
+  pressure integrable; scalar gauge pressure is the canonical plot field,
+negative knowledge: Ridge-Eikonal sharp-volume repair can have no simultaneous
+  P1-sharp-area / nodal-diffuse-mass solution under a fixed interface.
+```
+
+The first implementation slices should therefore be:
+
+```text
+1. import dense direct-AO formulas/tests as oracle code,
+2. build ActiveGeometryTable over `A_q`, not current mixed cells alone,
+3. prove active-vs-dense equality on manufactured regular strata,
+4. add dirty/flux-touched/target-mixed plus one-face halo refresh tests,
+5. add device-resident active J/J^T/Schur operators with conditioning gates,
+6. then connect runtime/capillary gates and chapter-14 YAMLs.
+```
+
+### Pre-code implementation gate
+
+Code development starts only after the AO-Fast preimplementation gate is
+recorded.  The gate freezes the first implementation boundary:
+
+```text
+dense direct-AO code is oracle/test-only,
+production storage is ActiveGeometryTable struct-of-arrays over A_q,
+A_q includes current/previous mixed, flux-touched, target-mixed, and halo rows,
+q_target_A, cell_measure_A, target state, and origin masks are first-class,
+all imported symbols use closed classification oracle_only, gpu_production, or reject,
+migration status is separate from classification,
+GPU production forbids inner-loop host transfers,
+ordinary runtime forbids full-grid target-support scans,
+support compaction is over compact state-changing streams only,
+active/support capacities and overrun behavior are declared,
+default fallback policy is none,
+exact active Q_h/S_h recomputation owns acceptance,
+physical-volume tolerances are unit-invariant and declared before tests,
+condition gates fail closed in production,
+PCG/Newton gates record cheap rank/conditioning estimates, target/floor
+tolerances, and stop reason,
+active-set topology changes use bounded epochs or fail-close,
+GPU performance gates have pass/fail thresholds,
+runtime/capillary/chapter-14 YAML adapters wait for active geometry gates.
+```
+
+The intended commit ladder is: dense oracle plus manifest/governance/parser
+skeleton, active `A_q` table skeleton, GPU active storage, dirty/flux/target
+plus one-face halo refresh, active Q/S/J/dS kernels, device-resident J/J^T/Schur
+with rank/conditioning gates, active PCG/Newton line search with active-set
+epochs, YAML/UX runtime construction, runtime/checkpoint/capillary adapters,
+then chapter-14 smoke YAMLs.
+Each slice is a separate checkpoint; if any slice introduces dense fallback,
+hidden D2H synchronization, approximate residual acceptance, current-phi-only
+constraint support, full-grid support compaction, diagnostic-only production
+condition gates, dimensioned tolerance shortcuts, or implicit solver fallback,
+the implementation fails closed at that slice.
+
 ## 12. YAML Contract
 
 The front door is a state-space declaration:
@@ -572,12 +962,34 @@ interface:
       constraint: hard_cell_volume
       units: physical_volume
       projection:
+        implementation: active_cached
+        dense_reference: test_only
+        gpu_contract:
+          required: true
+          active_storage: struct_of_arrays
+          inner_host_transfers: forbidden
+          dense_runtime_fallback: forbidden
+          record_kernel_counters: true
         method: fixed_stratum_schur
         metric: screened_gauge_hodge
         fail_close: true
         trust_region: sign_margin
         residual_tolerance: 1.0e-11
-        condition_gate: diagnostic
+        condition_gate: fail_close
+        support_budget:
+          max_active_ratio: 0.25
+          max_support_stream_ratio: 0.25
+          max_epoch_growth_ratio: 1.5
+          on_overrun: fail_close
+        solver:
+          primary: active_pcg_newton
+          accelerators:
+            dc_candidate:
+              enabled: true
+              role: proposal_only
+              on_reject: discard_candidate
+          fallback:
+            policy: none
       ledger:
         record_delta_surface: true
         record_residuals: true
@@ -624,6 +1036,64 @@ interface:
 
 If the block is absent, parse as `diffuse_cls` for backward compatibility.
 
+### YAML/UX solver policy
+
+The UX must separate three choices:
+
+```text
+primary solver      the only solver family that owns convergence by default,
+accelerator         a proposal generator whose rejection changes no state,
+fallback            an explicitly declared solver transition after failure.
+```
+
+The default is fail-close:
+
+```yaml
+interface:
+  state_space:
+    compatibility:
+      projection:
+        solver:
+          primary: active_pcg_newton
+          accelerators:
+            dc_candidate:
+              enabled: true
+              role: proposal_only
+              on_reject: discard_candidate
+          fallback:
+            policy: none
+```
+
+In this mode, DC can reduce cost only by proposing an accepted step before the
+primary active solver needs work.  A rejected DC candidate is discarded.  If the
+declared primary solver fails, the compatibility projection fails closed.
+
+An implementation may opt into fallback only with a complete chain:
+
+```yaml
+interface:
+  state_space:
+    compatibility:
+      projection:
+        solver:
+          primary: residual_monotone_dc
+          fallback:
+            policy: explicit_chain
+            chain:
+              - from: residual_monotone_dc
+                to: active_pcg_newton
+                triggers:
+                  - no_exact_residual_decrease
+                  - trust_region_exhausted
+                record_as: dc_to_pcg_declared_fallback
+```
+
+This is not an automatic recovery rule.  It is a user-visible numerical
+contract.  The UI should present the transition as an opt-in solver policy,
+show the trigger list, and require the ledger label.  The run ledger must record
+`solver.primary`, `accelerator.accepted`, `fallback.policy`,
+`fallback.transition`, and the exact residuals before and after the transition.
+
 ### Reinitialization
 
 Compatibility projection is not reinitialization.  For the geometric route:
@@ -649,6 +1119,13 @@ transport.variable=q with momentum.form != conservative_common_flux,
 bundle_virtual_work with endpoint != geometric_cell_fraction,
 geometric_cell_fraction with ridge_eikonal reinitialization,
 fail_close=false,
+dense_reference/reference_dense used as an implicit runtime fallback,
+gpu_contract.required=false for geometric_cell_fraction production,
+inner_host_transfers other than forbidden in active_cached production,
+condition_gate diagnostic-only in production geometric_cell_fraction,
+implicit solver fallback such as auto, try_next, or on_failure without chain,
+fallback.policy=explicit_chain with missing from/to/triggers/record_as,
+accelerator on_reject that switches primary solver family,
 boundedness repaired by clipping,
 capillary from curvature_jump on incompatible psi,
 normalized J_A used as the hard physical projection operator.

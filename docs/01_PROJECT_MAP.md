@@ -8,8 +8,8 @@
 |---|---|
 | Codex config | `.codex/config.toml`: `model = "gpt-5.5"`, `model_reasoning_effort = "high"` |
 | Sandbox | `sandbox_mode = "workspace-write"` + `sandbox_workspace_write.network_access = true` |
-| Shell env | `inherit = "core"`; `ENABLE_TOOL_SEARCH=true`; Claude compatibility vars retained |
-| Execution | Remote-first via `make run` / `make test`; local fallback only when SSH unavailable |
+| Shell env | `inherit = "core"`; `ENABLE_TOOL_SEARCH=true`; Claude compatibility vars retained; `remote.sh` auto-discovers a usable ssh-agent socket when `SSH_AUTH_SOCK` is unset |
+| Execution | Remote-first via `make run` / `make test`; local fallback only when SSH unavailable after ssh-agent autodiscovery |
 | Work isolation | Git worktrees + `docs/locks/*.lock.json`; no main merge without explicit user instruction |
 
 ────────────────────────────────────────────────────────
@@ -29,6 +29,9 @@ src/twophase/
 │   ├── metrics.py              # compute_metrics() — CCD/FD metric computation (SRP extraction)
 │   ├── boundary.py             # BCType enum, BoundarySpec, pad_ghost_cells
 │   └── components.py           # SimulationComponents dataclass (17 fields)
+├── geometry/                   # AO-Fast geometric cell-fraction C1 contracts
+│   ├── dense_reference.py      # Dense P1 Q_h/S_h oracle; test/debug only, no runtime fallback
+│   └── import_manifest.py      # Closed direct-AO import enum + migration-status manifest
 ├── hfe/                        # Hermite Field Extension (§08d)
 │   ├── hermite_interp.py       # hermite5_coeffs / hermite5_eval — O(h⁶) Hermite polynomial
 │   └── field_extension.py      # HermiteFieldExtension — 2-D tensor-product extension via CCD
@@ -95,6 +98,7 @@ src/twophase/
 │       └── richardson_cn.py    # RichardsonCNAdvance — Richardson extrapolation
 ├── simulation/                 # Simulation orchestration
 │   ├── _core.py                # TwoPhaseSimulation — step_forward() 7-step loop
+│   ├── ao_fast_runtime_contract.py # AO-Fast disabled runtime/checkpoint contract gate
 │   ├── boundary_condition.py   # BoundaryConditionHandler (BCType enum)
 │   ├── builder.py              # SimulationBuilder — SOLE construction path (ASM-001)
 │   ├── simulation/viscous_helmholtz_dc.py # ViscousHelmholtzDCSolver — implicit-BDF2 DC (§07)
@@ -176,6 +180,77 @@ IReinitializer.reinitialize(psi) → psi_new
 ICurvatureCalculator.compute(psi) → kappa
 ```
 All inputs/outputs shaped `grid.shape`. `velocity_components = [u, v]` (2D).
+
+### AO-Fast Geometry C1-C9 (`geometry/`, `simulation/config_*`)
+
+`geometry/dense_reference.py` owns only the dense P1 oracle:
+
+```python
+cut_geometry_2d(grid, phi) -> P1CutGeometry(q, theta, surface_length, ...)
+MetricCellComplex.from_grid(grid).cell_measures
+```
+
+Status: oracle/test-only.  It is allowed for active-vs-dense tests and debug
+comparison, but must not be called from simulation runtime, experiment YAML
+activation, or fallback paths.  `geometry/import_manifest.py` is the closed
+direct-branch import registry; every imported AO symbol must be classified as
+`oracle_only`, `gpu_production`, or `reject`, with migration status recorded
+separately.
+
+`geometry/active_kernels.py` and `geometry/active_table.py` own compact
+active-row P1 geometry:
+
+```python
+refresh_active_geometry_2d(grid, phi, cell_ids) -> P1ActiveGeometry
+build_active_table_for_cell_ids(grid, phi, cell_ids, q_target=...) -> ActiveGeometryTable
+```
+
+The compact path consumes explicit `cell_ids_A` streams and does not discover
+support by a full-grid dense oracle scan.  Dense support scans are confined to
+`build_debug_active_table_from_dense(..., allowed_context=...)` and are ledgered
+as initialization/oracle/debug work.  The temporary host compactor enforces
+`max_support_stream_ratio` before halo expansion, enforces the final active
+support capacity after halo expansion, and rejects CUDA/device streams until the
+fused GPU support-compaction path is admitted.  Compact active-table
+construction consumes `cell_measure_A` from the active geometry refresh, avoiding
+duplicate coordinate-axis device conversions, and does not call the dense
+metric-complex cache.  `metric_key_A` aliases `cell_measure_A` until a real cache
+key is admitted, so compact construction does not allocate an unused float64
+device vector.  GPU ledgers report
+`device_resident=True`, `host_transfer_count=0`, and defer count fields that
+would require synchronization instead of calling `.get()`.
+`geometry/active_projection.py` owns matrix-free active `J`, `J^T`, Schur
+matvecs, CPU-control PCG with `tau_cg_floor` fail-close, and exact active-row
+residual acceptance.  Schur matvecs operate on compact unique active nodes, so
+PCG iterations do not allocate or zero a full nodal grid.  Full nodal scatter is
+kept only for explicit gauge updates and uses direct assignment on unique active
+nodes.  Compact GPU `J^T` accumulation uses backend `bincount`; a missing GPU
+`bincount` fails closed rather than falling back to atomic scatter.  GPU active
+tables stay device-resident;
+nonempty GPU diagnostics/PCG/projection fail closed until fused device-side
+solver, reduction, and line-search kernels are admitted.  Empty active support returns
+an explicit no-op ledger rather than reducing an empty residual.  After C8,
+`geometric_cell_fraction` YAML may build an `ExperimentConfig` when it declares
+the closed AO-Fast contract (`q` transport, `geometric_swept_volume`,
+`bundle_virtual_work`, `cell_volume`, `algorithm: none`).  Solver construction
+still fails closed in `NSSolverBuilder` until the runtime adapter,
+checkpoint, and chapter-14 smoke gates pass; no chapter-14 runtime path is
+silently activated.  Conversely, the legacy/default diffuse front door rejects
+geometric capillary declarations (`bundle_virtual_work`,
+`endpoint=geometric_cell_fraction`, or `constraints=[cell_volume]`) unless
+`interface.state_space.kind=geometric_cell_fraction` is explicit.
+
+`simulation/ao_fast_runtime_contract.py` owns the disabled C9 runtime contract
+adapter.  It validates the parsed q/theta/phi handoff, the
+`bundle_virtual_work` capillary contract, required continuation checkpoint
+arrays, and pressure/projected face-history shapes, then raises
+`AOFastRuntimeDisabledError` before `build_solver_init_options` can enter the
+legacy diffuse runtime.  Checkpoint continuation distinguishes cell cochains
+(`state/q`, `state/theta`, `state/stratum/case_code`) from P1 node gauges
+(`state/phi`); for cell shape `(nx, ny)`, the node shape is `(nx+1, ny+1)` and
+the face histories are `(nx, ny+1)` / `(nx+1, ny)`.  This is a
+test-only/disabled gate until bounded swept-volume transport, bundle capillary
+runtime, and chapter-14 smoke gates are implemented.
 
 ### FlowState (`core/flow_state.py`)
 Pure data class — no logic.

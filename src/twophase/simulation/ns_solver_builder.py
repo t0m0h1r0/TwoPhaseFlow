@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import TYPE_CHECKING
 
+from .ao_fast_runtime_contract import build_ao_fast_runtime_contract
 from .ns_solver_options import (
     NSSolverInitOptions,
     SolverGridOptions,
@@ -23,6 +24,10 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
     g = cfg.grid
     run = getattr(cfg, "run", g)
     physics = getattr(cfg, "physics", g)
+    state_space = getattr(cfg, "interface_state_space", None)
+    is_geometric = (
+        getattr(state_space, "kind", "diffuse_cls") == "geometric_cell_fraction"
+    )
     fitting_axes = getattr(g, "fitting_axes", (True, True))
     alpha_grid = getattr(g, "alpha_grid", 1.0)
     return NSSolverInitOptions(
@@ -75,7 +80,11 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             reinit_every=getattr(run, "reinit_every", 0),
             reinit_trigger_mode=getattr(run, "reinit_trigger_mode", "adaptive"),
             reinit_threshold=getattr(run, "reinit_threshold", 1.10),
-            reinit_method=(getattr(run, "reinit_method", None) or "ridge_eikonal"),
+            reinit_method=(
+                "none"
+                if is_geometric and getattr(run, "reinit_method", None) is None
+                else (getattr(run, "reinit_method", None) or "ridge_eikonal")
+            ),
             reproject_variable_density=getattr(run, "reproject_variable_density", False),
             reproject_mode=getattr(run, "reproject_mode", "legacy"),
             phi_primary_transport=bool(getattr(run, "phi_primary_transport", True)),
@@ -241,6 +250,9 @@ class NSSolverBuilder:
     """Builder adapter for the modern ``TwoPhaseNSSolver`` pipeline."""
 
     def __init__(self, cfg: "ExperimentConfig") -> None:
+        state_space = getattr(cfg, "interface_state_space", None)
+        if getattr(state_space, "kind", "diffuse_cls") == "geometric_cell_fraction":
+            build_ao_fast_runtime_contract(cfg)
         self._options = build_solver_init_options(cfg)
 
     def with_debug_diagnostics(self, enabled: bool) -> "NSSolverBuilder":

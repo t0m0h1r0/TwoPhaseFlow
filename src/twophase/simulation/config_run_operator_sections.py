@@ -76,9 +76,9 @@ _GRAVITY_FORMULATION_ALIASES = {
 _GRAVITY_TRANSPORT_ADJOINTS = ("legacy", "common_flux")
 _GRAVITY_METRICS = ("legacy", "transported_face_mass")
 _GRAVITY_GATES = ("off", "diagnostic", "fail_close")
-_CLOSED_INTERFACE_ENDPOINTS = ("conservative_psi",)
+_CLOSED_INTERFACE_ENDPOINTS = ("conservative_psi", "geometric_cell_fraction")
 _CLOSED_INTERFACE_METRICS = ("pressure_adjoint",)
-_CLOSED_INTERFACE_CONSTRAINTS = ("component_volume",)
+_CLOSED_INTERFACE_CONSTRAINTS = ("component_volume", "cell_volume")
 
 
 def _parse_surface_tension_settings(
@@ -184,7 +184,7 @@ def _parse_surface_tension_settings(
             "'face_implicit' until the P2 ALE pressure-jump range projection "
             "is implemented and verified."
         )
-    if capillary_force_source == "closed_interface_riesz":
+    if capillary_force_source in {"closed_interface_riesz", "bundle_virtual_work"}:
         closed_interface_contract = _parse_closed_interface_contract(
             surface_tension=surface_tension,
             path=(
@@ -194,23 +194,36 @@ def _parse_surface_tension_settings(
         )
         if surface_tension_scheme != "pressure_jump":
             raise ValueError(
-                f"{layout['paths']['surface_tension_source']}='closed_interface_riesz' "
+                f"{layout['paths']['surface_tension_source']}="
+                f"'{capillary_force_source}' "
                 "requires capillary_force.formulation='pressure_jump'."
             )
         if "curvature" in surface_tension:
             raise ValueError(
-                f"{layout['paths']['surface_tension_source']}='closed_interface_riesz' "
+                f"{layout['paths']['surface_tension_source']}="
+                f"'{capillary_force_source}' "
                 "must not be combined with capillary_force.curvature."
+            )
+        if (
+            capillary_force_source == "bundle_virtual_work"
+            and closed_interface_contract["capillary_closed_interface_endpoint"]
+            != "geometric_cell_fraction"
+        ):
+            raise ValueError(
+                f"{layout['paths']['surface_tension_source']}='bundle_virtual_work' "
+                "requires closed_interface.endpoint='geometric_cell_fraction'."
             )
         if "capillary_range_projection" in projection["poisson"].get("operator", {}):
             raise ValueError(
-                f"{layout['paths']['surface_tension_source']}='closed_interface_riesz' "
+                f"{layout['paths']['surface_tension_source']}="
+                f"'{capillary_force_source}' "
                 "uses poisson.operator.capillary_reaction_projection, not "
                 "capillary_range_projection."
             )
         if poisson_settings["capillary_reaction_projection"] != "pressure_component_hodge":
             raise ValueError(
-                f"{layout['paths']['surface_tension_source']}='closed_interface_riesz' "
+                f"{layout['paths']['surface_tension_source']}="
+                f"'{capillary_force_source}' "
                 "requires poisson.operator.capillary_reaction_projection="
                 "'pressure_component_hodge'."
             )
@@ -635,9 +648,12 @@ def _parse_closed_interface_contract(*, surface_tension: dict, path: str) -> dic
         raise ValueError(
             f"{path}.residual_contract.constraints must be a sequence."
         ) from exc
-    if constraint_tuple != ("component_volume",):
+    expected_constraints = (
+        ("cell_volume",) if endpoint == "geometric_cell_fraction" else ("component_volume",)
+    )
+    if constraint_tuple != expected_constraints:
         raise ValueError(
-            f"{path}.residual_contract.constraints must be ['component_volume']."
+            f"{path}.residual_contract.constraints must be {list(expected_constraints)!r}."
         )
     fail_close = residual_contract.get("fail_close", True)
     if fail_close is not True:

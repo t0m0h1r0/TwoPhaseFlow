@@ -87,6 +87,17 @@ class NSStepState:
     conservative_momentum_components: list[Any] | None = None
     conservative_transport_ledger: Any = None
     conservative_transport_certificate: dict[str, Any] | None = None
+    geometric_common_flux_transport: Any = None
+    geometric_runtime_material: Any = None
+    geometric_runtime_capillary: Any = None
+    geometric_runtime_capillary_application: Any = None
+    geometric_capillary_predictor_applied: bool = False
+    geometric_capillary_pressure_reaction_prepared: bool = False
+    geometric_capillary_pressure_reaction_face_increment: list[Any] | None = None
+    geometric_capillary_pressure_reaction_face_acceleration: list[Any] | None = None
+    geometric_capillary_pressure_reaction_rhs: Any = None
+    geometric_capillary_pressure_residual_rhs: Any = None
+    geometric_capillary_scalar_pressure_face_components: list[Any] | None = None
 
     @classmethod
     def from_inputs(cls, inputs: NSStepInputs | NSStepRequest, *, backend) -> "NSStepState":

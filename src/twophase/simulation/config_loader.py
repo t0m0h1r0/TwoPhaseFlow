@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .config_output_sections import parse_output
+from .config_state_space import parse_interface_state_space
 from .ns_option_canonicalizer import (
     validate_local_epsilon_surface_tension_compatibility,
 )
@@ -38,6 +39,7 @@ def parse_raw(raw: dict):
 
     interface = raw["interface"]
     numerics = raw["numerics"]
+    interface_state_space = parse_interface_state_space(interface, numerics)
     grid = parse_grid(raw["grid"], interface)
     physics = parse_physics(raw["physics"])
     output = parse_output(raw.get("output", {}))
@@ -57,4 +59,5 @@ def parse_raw(raw: dict):
         initial_velocity=raw.get("initial_velocity") or None,
         boundary_condition=raw.get("boundary_condition") or None,
         sweep=raw.get("sweep") or None,
+        interface_state_space=interface_state_space,
     )

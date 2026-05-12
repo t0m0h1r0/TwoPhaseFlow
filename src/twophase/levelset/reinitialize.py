@@ -96,6 +96,8 @@ class Reinitializer(IReinitializer):
         if method == 'split':
             from .reinit_split import SplitReinitializer
             self._strategy = SplitReinitializer(**common)
+        elif method in {'none', 'compatibility_projection'}:
+            self._strategy = _NoOpReinitializer()
         elif method == 'unified':
             from .reinit_unified import UnifiedDCCDReinitializer
             self._strategy = UnifiedDCCDReinitializer(**common)
@@ -169,6 +171,17 @@ class Reinitializer(IReinitializer):
         """Propagate optional no-slip contact constraints to strategies."""
         if hasattr(self._strategy, "set_wall_contacts"):
             self._strategy.set_wall_contacts(wall_contacts)
+
+
+class _NoOpReinitializer:
+    """Identity reinitializer used by geometric-cell-fraction runtime gates."""
+
+    def reinitialize(self, psi):
+        return psi
+
+    def update_grid(self, grid) -> None:
+        del grid
+        return None
 
 
 # ── Legacy WENO5 implementation (retained for comparison / validation) ────────

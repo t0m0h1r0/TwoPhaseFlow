@@ -36,6 +36,7 @@ help:
 	@echo "  CH=<chN>                    Chapter name (ch12, ch13, ...)"
 	@echo "  PYTEST_ARGS=<args>          Extra pytest arguments"
 	@echo "  TWOPHASE_FORCE_LOCAL=1      Skip remote check, always run locally"
+	@echo "  TWOPHASE_SSH_AUTH_SOCK=<p>  Preferred ssh-agent socket for new sessions"
 
 check:
 	./remote.sh check

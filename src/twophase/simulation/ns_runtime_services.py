@@ -8,6 +8,7 @@ import numpy as np
 
 from .runtime_setup import (
     build_initial_condition,
+    build_initial_phi,
     build_initial_velocity,
     make_boundary_condition_hook,
 )
@@ -79,6 +80,18 @@ def build_runtime_initial_condition(
     return build_initial_condition(
         context.grid,
         context.eps,
+        initial_condition,
+        return_host=not context.backend.is_gpu(),
+    )
+
+
+def build_runtime_initial_phi(
+    context: NSRuntimeSetupContext,
+    initial_condition: dict,
+):
+    """Build the initial gauge field used by geometric-cell-fraction state."""
+    return build_initial_phi(
+        context.grid,
         initial_condition,
         return_host=not context.backend.is_gpu(),
     )

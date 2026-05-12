@@ -40,6 +40,12 @@ sources:
     description: "Ch14 capillary Hodge trial ledger for knowledge, failures, and falsified routes"
   - path: docs/wiki/paper/WIKI-P-018.md
     description: "Recent Chapters 1-13 paper-theory contract digest"
+  - path: docs/wiki/theory/WIKI-T-169.md
+    description: "Geometric cell-fraction / AO-Fast theory and YAML state-space contract"
+  - path: docs/wiki/experiment/WIKI-E-063.md
+    description: "U12/V11 AO-Fast capillary split gate results"
+  - path: docs/wiki/cross-domain/WIKI-X-049.md
+    description: "AO-Fast capillary admission and Chapter 14 YAML boundary"
 depends_on:
   - "[[WIKI-X-037]]"
   - "[[WIKI-X-040]]"
@@ -61,13 +67,16 @@ depends_on:
   - "[[WIKI-T-166]]"
   - "[[WIKI-T-167]]"
   - "[[WIKI-T-168]]"
+  - "[[WIKI-T-169]]"
   - "[[WIKI-X-048]]"
   - "[[WIKI-P-018]]"
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-157]]"
   - "[[WIKI-E-062]]"
+  - "[[WIKI-E-063]]"
   - "[[WIKI-X-045]]"
   - "[[WIKI-X-046]]"
+  - "[[WIKI-X-049]]"
 consumers:
   - domain: theory
     usage: "Start here before using older theory cards for derivations"
@@ -102,6 +111,7 @@ algorithm policy.
 | Reinit-aware capillary Hodge | [[WIKI-T-162]], [[WIKI-X-048]], [[WIKI-T-159]], [[WIKI-T-160]], [[WIKI-T-155]], [[WIKI-T-157]], [[WIKI-T-161]], [[WIKI-T-163]] | Build capillary work from the labelled physical transport endpoint; for the current solver use [[WIKI-T-162]] first because it fixes the risk-closed conservative theorem: endpoint-closed `q_c=q_T`, pressure-adjoint active `G_A=pressure_fluxes` range, component-constrained saddle projection `h=s-G_Ap-Bmu`, GPU-native P1 geometry, reinit endpoint ledger, CCD/FCCD/UCCD coupling contract, and fail-close gates.  Read [[WIKI-X-048]] before proposing a new fix because it records the zero-drive theorem, `none`/component-Hodge limits, reinit contamination, pressure-representative RCA, trace-Riesz endpoint mismatch, static-critical residual, and falsified shortcut routes.  Treat endpoint/material time-level mismatch, corrector cochain loss, host-loop geometry, and trace aliasing as implementation blockers.  Treat trace-vertex `C_K` as future trace-primary redesign work only; read [[WIKI-T-163]] for reinit-free/profile-control candidate routes and [[WIKI-T-161]] only as the retired fixed-stratum candidate, not as a current route. |
 | ALE/remap energy | [[WIKI-T-162]], [[WIKI-T-160]], [[WIKI-T-155]], [[WIKI-T-157]], [[WIKI-T-159]], [[WIKI-T-161]], [[WIKI-T-163]] | Variational curvature work needs shared pressure-work pairing, labelled transport/reinit endpoints, named reinit residuals/defects, and step-local energy accounting; [[WIKI-T-162]] is the current closed-interface discretization policy, [[WIKI-T-163]] is the current reinit-free survey, and [[WIKI-T-161]] is negative knowledge about an abandoned retraction surface. |
 | Chapters 1-13 paper contract | [[WIKI-P-018]], [[WIKI-P-015]], [[WIKI-P-014]] | Current paper edits should preserve the failure-mode to contract to discretization to algorithm to V-series trace.  The standard route is per-variable: FCCD face-flux CLS transport, UCCD6 interior momentum, pressure-jump PPE/HFE/DC, capillary virtual-work face cochain, pressure-adjoint representative, and integrated V6/V7/V9 evidence. |
+| AO-Fast capillary admission | [[WIKI-X-049]], [[WIKI-T-169]], [[WIKI-E-063]] | Treat AO-Fast `geometric_cell_fraction` as a separate state-space candidate, not as an implicit Chapter 14 fallback.  Full pressure-image splitting can cancel non-static capillary drive exactly; U12/V11 therefore require a pressure-reaction subspace `R_p(q_T)` and residual-certified `r_sigma-Pi^{M_f}_{R_p}r_sigma`.  Chapter 14 production YAMLs explicitly declare `diffuse_cls`; graph/open-interface cases use `curvature_jump`, closed-interface cases use `closed_interface_riesz` plus `pressure_component_hodge`. |
 | Paper/wiki split | [[WIKI-X-046]], [[WIKI-X-048]], [[WIKI-E-061]] | Put successful contracts in the paper; preserve failed controls, falsified hypotheses, and trial variants in the wiki. |
 | Negative shortcuts | [[WIKI-X-045]] | Damping/CFL/smoothing/caps/hyperviscosity are retained as rejected detours, not paper success claims. |
 | Verification reading | [[WIKI-E-040]], [[WIKI-X-040]] | V-series labels encode what was certified; stale FFT/CCD-LU/CN readings are historical only. |
@@ -174,6 +184,11 @@ They are retained with a bounded reading:
   remain negative knowledge;
 - pre-projection-native nonuniform density-ratio limits remain experiment
   history, not the current solver envelope.
+- AO-Fast non-static zero-drive packets are retained as fail-close evidence;
+  do not reinterpret them as CFL failures or silently repair them by PCG, DC,
+  dense direct AO, component-Hodge, or host-controlled GPU fallback.
+- the old V11 common-flux admissibility experiment is stale for AO-Fast
+  capillary admission; use [[WIKI-E-063]] instead.
 
 ## Index Rule
 

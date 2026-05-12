@@ -37,11 +37,14 @@ members inside the `.npz`, preserving array dtype bytes losslessly; JSON is used
 only for non-numerical metadata such as the manifest and debug key names.
 
 The five production configs share the chapter-14 execution contract introduced
-for the rising-bubble route: conservative common-flux momentum transport,
-`predictor.assembly: none`, projected-face preservation, pressure-coordinate
-BDF2 history, and an explicit fail-closed boundary-Hodge state-space contract.
-The physical force source remains experiment-specific: closed droplet and
-bubble interfaces use the closed-interface Riesz pressure-jump route, while
+for the rising-bubble route: explicit `interface.state_space.kind: diffuse_cls`,
+conservative common-flux momentum transport, `predictor.assembly: none`,
+projected-face preservation, pressure-coordinate BDF2 history, and an explicit
+fail-closed boundary-Hodge state-space contract.  AO-Fast
+`geometric_cell_fraction` is not an implicit production fallback; it requires
+its own YAML contract and is fail-closed until the pressure-reaction split gate
+passes.  The physical force source remains experiment-specific: closed droplet
+and bubble interfaces use the closed-interface Riesz pressure-jump route, while
 graph/open-interface benchmarks keep their validated curvature-jump route.
 
 `ch14_capillary.yaml` and `ch14_oscillating_droplet.yaml` are SI water-air

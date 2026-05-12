@@ -1,13 +1,16 @@
-# Wiki Index — 368 entries
+# Wiki Index — 370 entries
 
 ## Active Retrieval Gate
 
 Start with [WIKI-X-041](cross-domain/WIKI-X-041.md) for the curated active
 contract map, [WIKI-P-018](paper/WIKI-P-018.md) for the recent Chapters 1-13
 paper-theory contract digest, then [WIKI-X-040](cross-domain/WIKI-X-040.md) for
-recent research findings.  Older cards remain listed for provenance, but cards
-marked SUPERSEDED or REFERENCE must not be used as current algorithm policy
-without their curation notes.
+recent research findings.  For AO-Fast capillary admission and Chapter 14 YAML
+state-space boundaries, use [WIKI-X-049](cross-domain/WIKI-X-049.md),
+[WIKI-T-169](theory/WIKI-T-169.md), and
+[WIKI-E-063](experiment/WIKI-E-063.md).  Older cards remain listed for
+provenance, but cards marked SUPERSEDED or REFERENCE must not be used as current
+algorithm policy without their curation notes.
 
 ## Theory (167)
 
@@ -184,7 +187,7 @@ without their curation notes.
 | [WIKI-T-169](theory/WIKI-T-169.md) | Geometric Cell Fraction State-Space Reformulation |
 | [WIKI-T-170](theory/WIKI-T-170.md) | Residual-Minimizing Defect Correction for PPE |
 
-## Cross-Domain (48)
+## Cross-Domain (49)
 
 | REF-ID | Title |
 |--------|-------|
@@ -236,8 +239,9 @@ without their curation notes.
 | [WIKI-X-046](cross-domain/WIKI-X-046.md) | Paper Success Narrative and Wiki Trial Ledger Have Different Filters |
 | [WIKI-X-047](cross-domain/WIKI-X-047.md) | Static-Droplet RCA Consolidates Projection, Geometry, and Output Contracts |
 | [WIKI-X-048](cross-domain/WIKI-X-048.md) | Ch14 Capillary Hodge Trial Ledger: Knowledge, Failures, and Falsified Routes |
+| [WIKI-X-049](cross-domain/WIKI-X-049.md) | AO-Fast Capillary Admission and Chapter 14 YAML Boundary |
 
-## Experiment (62)
+## Experiment (63)
 
 | REF-ID | Title |
 |--------|-------|
@@ -304,6 +308,7 @@ without their curation notes.
 | [WIKI-E-060](experiment/WIKI-E-060.md) | Pressure Oscillation RCA Must Separate Force Cochains from Plot Representatives |
 | [WIKI-E-061](experiment/WIKI-E-061.md) | N64 Non-DC Trial Matrix Separates Contracts from Probes |
 | [WIKI-E-062](experiment/WIKI-E-062.md) | Static Droplet Pressure Images Must Use Hodge Representatives |
+| [WIKI-E-063](experiment/WIKI-E-063.md) | U12/V11 AO-Fast Capillary Split Gates |
 
 ## Paper (18)
 

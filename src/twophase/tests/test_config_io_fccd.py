@@ -490,6 +490,7 @@ def test_ch14_canonical_yamls_share_base_numerical_stack():
 
     for path in sorted(p for p in config_dir.glob("*.yaml") if not p.name.startswith("_")):
         cfg = ExperimentConfig.from_yaml(path)
+        assert cfg.interface_state_space.kind == "diffuse_cls", path.name
         assert cfg.run.advection_scheme == "fccd_flux", path.name
         assert cfg.run.curvature_method == "face_implicit", path.name
         expected_reinit = (

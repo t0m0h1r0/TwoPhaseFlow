@@ -41,9 +41,11 @@ def parse_tracking_method(
         return "phi_primary"
     if primary == "psi":
         return "psi_direct"
+    if primary == "q":
+        return "q_cell_fraction"
     if primary == "none":
         return "none"
-    raise ValueError(f"{path} must be phi|psi|none, got {primary!r}")
+    raise ValueError(f"{path} must be phi|psi|q|none, got {primary!r}")
 
 
 def parse_tracking_enabled(tracking: dict) -> bool:
