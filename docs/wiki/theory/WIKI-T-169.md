@@ -43,6 +43,8 @@ sources:
     description: "Knowledge salvage packet for retiring the direct dense-AO branch"
   - path: artifacts/A/ch14_ao_fast_preimplementation_design_CHK-RA-CH14-AO-FASTVOL-009.md
     description: "AO-Fast preimplementation design gate: module blueprint, active data shapes, GPU contract, fail-close state machine, validation ladder, and first coding ticket"
+  - path: artifacts/A/review_ch14_ao_fast_preimplementation_design_CHK-RA-CH14-AO-FASTVOL-010.md
+    description: "Contrarian review of AO-Fast preimplementation design; identifies blockers before production implementation"
 depends_on:
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-159]]"
@@ -610,6 +612,15 @@ the validation ladder from dense oracle import through chapter-14 smoke YAML.
 The first coding ticket is therefore dense oracle plus import manifest only;
 runtime activation waits until active geometry, GPU, projection, parser, and
 adapter gates pass.
+
+A contrarian review of that gate found it is not yet safe to start production
+implementation unchanged.  The blockers are: the active constraint set must be
+defined from transported `q^-` support as well as current `phi` mixed cells;
+the import manifest must use a closed classification enum; active rows need
+explicit `q_target_A`/capacity/target-state metadata; physical-volume
+tolerances must be unit-invariant; PCG gates need conditioning/rank ownership;
+topology changes need an active-set epoch policy rather than a one-refresh
+shortcut; GPU speed gates need pass/fail thresholds, not counters alone.
 
 CCD/DCCD/FCCD/UCCD remain useful on the smooth side of the split: gauge
 prediction, screened gauge metric `W_eta`, face-state reconstruction,
