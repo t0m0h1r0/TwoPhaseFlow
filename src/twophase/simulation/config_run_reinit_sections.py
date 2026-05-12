@@ -12,7 +12,7 @@ from .config_run_tracking_sections import (
 
 _REINIT_METHODS = (
     "split", "unified", "dgr", "hybrid",
-    "eikonal", "eikonal_xi", "eikonal_fmm", "ridge_eikonal",
+    "eikonal", "eikonal_xi", "eikonal_fmm", "ridge_eikonal", "none",
 )
 
 
@@ -38,12 +38,19 @@ def parse_run_reinit_projection(
         ),
         projection_mode_path,
     )
-    reinit_method = reinit["algorithm"]
+    raw_reinit_method = reinit["algorithm"]
+    reinit_method = (
+        None
+        if raw_reinit_method is None
+        else str(raw_reinit_method).strip().lower()
+    )
     if reinit_method is not None and reinit_method not in _REINIT_METHODS:
         raise ValueError(
             f"interface.reinitialization.algorithm must be one of {_REINIT_METHODS}, "
-            f"got {reinit_method!r}"
+            f"got {raw_reinit_method!r}"
         )
+    if reinit_method == "none":
+        reinit_method = None
     ridge_sigma_0 = float(reinit_profile.get("ridge_sigma_0", 3.0))
     if ridge_sigma_0 <= 0.0:
         raise ValueError(

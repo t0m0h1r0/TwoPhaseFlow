@@ -40,11 +40,6 @@ def parse_raw(raw: dict):
     interface = raw["interface"]
     numerics = raw["numerics"]
     interface_state_space = parse_interface_state_space(interface, numerics)
-    if interface_state_space.kind == "geometric_cell_fraction":
-        raise ValueError(
-            "geometric_cell_fraction runtime construction is disabled until "
-            "AO-Fast C8; C1 parser gates are validation-only"
-        )
     grid = parse_grid(raw["grid"], interface)
     physics = parse_physics(raw["physics"])
     output = parse_output(raw.get("output", {}))

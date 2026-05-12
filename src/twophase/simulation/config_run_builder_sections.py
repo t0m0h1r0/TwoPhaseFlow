@@ -214,6 +214,11 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
     if reinit_threshold <= 1.0:
         raise ValueError("interface.reinitialization.schedule.threshold must be > 1.0")
     reinit_every = int(reinit_schedule.get("every_steps", 0))
+    if options.reinit_method is None and reinit_every != 0:
+        raise ValueError(
+            "interface.reinitialization.algorithm='none' requires "
+            "interface.reinitialization.schedule.every_steps=0"
+        )
     reinit_volume_constraint = str(
         options.reinit_profile.get("volume_constraint", "diffuse_mass")
     ).strip().lower().replace("-", "_")

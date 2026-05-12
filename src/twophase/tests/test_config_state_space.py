@@ -8,6 +8,7 @@ import pytest
 
 from twophase.simulation.config_io import ExperimentConfig
 from twophase.simulation.config_state_space import parse_interface_state_space
+from twophase.simulation.ns_pipeline import TwoPhaseNSSolver
 
 
 def _deep_update(base: dict, patch: dict) -> dict:
@@ -156,6 +157,7 @@ def _geometric_patch() -> dict:
                 "form": "conservative_common_flux",
                 "terms": {
                     "surface_tension": {
+                        "gradient": "none",
                         "formulation": "pressure_jump",
                         "source": "bundle_virtual_work",
                         "closed_interface": {
@@ -172,6 +174,9 @@ def _geometric_patch() -> dict:
             "projection": {
                 "poisson": {
                     "operator": {
+                        "discretization": "fccd",
+                        "coefficient": "phase_separated",
+                        "interface_coupling": "affine_jump",
                         "pressure_force_contract": "variational_adjoint",
                         "scalar_operator_pairing": "variational_operator",
                         "capillary_reaction_projection": "pressure_component_hodge",
@@ -200,15 +205,44 @@ def test_q_transport_without_geometric_state_space_fails_closed():
         )
 
 
-def test_valid_geometric_contract_parses_but_runtime_is_disabled_until_c8():
+def test_q_tracking_without_geometric_state_space_fails_closed():
+    with pytest.raises(ValueError, match="requires interface.state_space.kind"):
+        ExperimentConfig.from_dict(
+            _minimal({"numerics": {"interface": {"tracking": {"primary": "q"}}}})
+        )
+
+
+def test_reinitialization_none_requires_zero_schedule():
+    with pytest.raises(ValueError, match="algorithm='none' requires"):
+        ExperimentConfig.from_dict(
+            _minimal(
+                {
+                    "interface": {
+                        "reinitialization": {
+                            "algorithm": "none",
+                            "schedule": {"every_steps": 1},
+                        },
+                    },
+                }
+            )
+        )
+
+
+def test_valid_geometric_contract_builds_config_but_solver_runtime_fails_closed():
     raw = _geometric_raw()
     cfg = parse_interface_state_space(raw["interface"], raw["numerics"])
     assert cfg.kind == "geometric_cell_fraction"
     assert cfg.projection_implementation == "active_cached"
     assert cfg.fallback_policy == "none"
 
-    with pytest.raises(ValueError, match="runtime construction is disabled"):
-        ExperimentConfig.from_dict(raw)
+    experiment_cfg = ExperimentConfig.from_dict(raw)
+    assert experiment_cfg.interface_state_space.kind == "geometric_cell_fraction"
+    assert experiment_cfg.run.advection_scheme == "geometric_swept_volume"
+    assert experiment_cfg.run.interface_tracking_method == "q_cell_fraction"
+    assert experiment_cfg.run.capillary_force_source == "bundle_virtual_work"
+
+    with pytest.raises(ValueError, match="runtime adapter is disabled"):
+        TwoPhaseNSSolver.from_config(experiment_cfg)
 
 
 @pytest.mark.parametrize(

@@ -1,6 +1,11 @@
 """Compatibility constants for experiment config parsing."""
 
-_ADVECTION_SCHEMES = ("dissipative_ccd", "fccd_nodal", "fccd_flux")
+_ADVECTION_SCHEMES = (
+    "dissipative_ccd",
+    "fccd_nodal",
+    "fccd_flux",
+    "geometric_swept_volume",
+)
 _ADVECTION_SCHEME_ALIASES = {"fccd": "fccd_flux"}
 _CONVECTION_SCHEMES = ("ccd", "fccd_nodal", "fccd_flux", "uccd6")
 _CONVECTION_SCHEME_ALIASES = {"fccd": "fccd_flux"}
@@ -59,7 +64,11 @@ _CAPILLARY_RANGE_PROJECTION_MODES = (
     "range_projected",
     "component_hodge_augmented",
 )
-_CAPILLARY_FORCE_SOURCES = ("curvature_jump", "closed_interface_riesz")
+_CAPILLARY_FORCE_SOURCES = (
+    "curvature_jump",
+    "closed_interface_riesz",
+    "bundle_virtual_work",
+)
 _CAPILLARY_FORCE_SOURCE_ALIASES = {
     "curvature": "curvature_jump",
     "scalar_jump": "curvature_jump",

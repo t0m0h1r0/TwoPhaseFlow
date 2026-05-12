@@ -180,7 +180,7 @@ ICurvatureCalculator.compute(psi) → kappa
 ```
 All inputs/outputs shaped `grid.shape`. `velocity_components = [u, v]` (2D).
 
-### AO-Fast Geometry C1-C7 (`geometry/`)
+### AO-Fast Geometry C1-C8 (`geometry/`, `simulation/config_*`)
 
 `geometry/dense_reference.py` owns only the dense P1 oracle:
 
@@ -211,9 +211,13 @@ as initialization/oracle/debug work.  `geometry/active_projection.py` owns
 matrix-free active `J`, `J^T`, Schur matvecs, CPU-control PCG with
 `tau_cg_floor` fail-close, and exact active-row residual acceptance.  GPU active
 tables stay device-resident; the unfused PCG host-control loop fails closed on
-GPU until the fused C7/C8 runtime path is admitted.  Runtime
-`geometric_cell_fraction` YAML construction remains disabled until the runtime
-adapter/checkpoint/capillary gates pass.
+GPU until the fused runtime path is admitted.  After C8,
+`geometric_cell_fraction` YAML may build an `ExperimentConfig` when it declares
+the closed AO-Fast contract (`q` transport, `geometric_swept_volume`,
+`bundle_virtual_work`, `cell_volume`, `algorithm: none`).  Solver construction
+still fails closed in `NSSolverBuilder` until the runtime adapter,
+checkpoint, and chapter-14 smoke gates pass; no chapter-14 runtime path is
+silently activated.
 
 ### FlowState (`core/flow_state.py`)
 Pure data class — no logic.

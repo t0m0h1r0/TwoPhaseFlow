@@ -55,6 +55,8 @@ sources:
     description: "AO-Fast C1 dense oracle, manifest, governance, parser skeleton, and remote validation"
   - path: artifacts/A/ch14_ao_fast_active_core_CHK-RA-CH14-AO-FASTVOL-016.md
     description: "AO-Fast C2-C7 active table, active kernels, matrix-free Schur, PCG floor, and exact active projection core"
+  - path: artifacts/A/ch14_ao_fast_runtime_ux_gate_CHK-RA-CH14-AO-FASTVOL-017.md
+    description: "AO-Fast C8 YAML/UX gate: valid geometric configs build, solver runtime remains fail-closed"
 depends_on:
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-159]]"
@@ -665,6 +667,16 @@ epoch changes remain an outer fail-close/runtime-adapter responsibility.  GPU
 tables remain device arrays; the temporary unfused PCG control loop is
 intentionally disabled on GPU rather than silently syncing inside the loop.
 
+C8 moves the fail-close boundary from config construction to solver
+construction.  A complete `geometric_cell_fraction` YAML may now build an
+`ExperimentConfig` if it uses `q_cell_fraction` tracking, `geometric_swept_volume`
+transport, `bundle_virtual_work`, `endpoint: geometric_cell_fraction`,
+`constraints: [cell_volume]`, `algorithm: none`, and the active-cached GPU
+projection contract.  `NSSolverBuilder` still rejects that config before
+building runtime options, so the UX can validate the intended AO-Fast YAML while
+chapter-14 execution remains blocked until the runtime adapter/checkpoint/smoke
+gates pass.
+
 CCD/DCCD/FCCD/UCCD remain useful on the smooth side of the split: gauge
 prediction, screened gauge metric `W_eta`, face-state reconstruction,
 pressure-adjoint work pairs, and smooth residual diagnostics.  They remain
@@ -738,12 +750,17 @@ numerics:
     transport:
       variable: q
       spatial: geometric_swept_volume
+      time_integrator: tvd_rk3
       boundedness: certified
       fail_close: true
+    tracking:
+      primary: q
   momentum:
     form: conservative_common_flux
     terms:
       surface_tension:
+        gradient: none
+        formulation: pressure_jump
         source: bundle_virtual_work
         closed_interface:
           endpoint: geometric_cell_fraction
@@ -751,6 +768,15 @@ numerics:
             metric: pressure_adjoint
             constraints: [cell_volume]
             fail_close: true
+  projection:
+    poisson:
+      operator:
+        discretization: fccd
+        coefficient: phase_separated
+        interface_coupling: affine_jump
+        pressure_force_contract: variational_adjoint
+        scalar_operator_pairing: variational_operator
+        capillary_reaction_projection: pressure_component_hodge
 ```
 
 Parser gates must reject mixed-state configurations:

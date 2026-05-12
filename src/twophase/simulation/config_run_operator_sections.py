@@ -76,9 +76,9 @@ _GRAVITY_FORMULATION_ALIASES = {
 _GRAVITY_TRANSPORT_ADJOINTS = ("legacy", "common_flux")
 _GRAVITY_METRICS = ("legacy", "transported_face_mass")
 _GRAVITY_GATES = ("off", "diagnostic", "fail_close")
-_CLOSED_INTERFACE_ENDPOINTS = ("conservative_psi",)
+_CLOSED_INTERFACE_ENDPOINTS = ("conservative_psi", "geometric_cell_fraction")
 _CLOSED_INTERFACE_METRICS = ("pressure_adjoint",)
-_CLOSED_INTERFACE_CONSTRAINTS = ("component_volume",)
+_CLOSED_INTERFACE_CONSTRAINTS = ("component_volume", "cell_volume")
 
 
 def _parse_surface_tension_settings(
@@ -635,9 +635,12 @@ def _parse_closed_interface_contract(*, surface_tension: dict, path: str) -> dic
         raise ValueError(
             f"{path}.residual_contract.constraints must be a sequence."
         ) from exc
-    if constraint_tuple != ("component_volume",):
+    expected_constraints = (
+        ("cell_volume",) if endpoint == "geometric_cell_fraction" else ("component_volume",)
+    )
+    if constraint_tuple != expected_constraints:
         raise ValueError(
-            f"{path}.residual_contract.constraints must be ['component_volume']."
+            f"{path}.residual_contract.constraints must be {list(expected_constraints)!r}."
         )
     fail_close = residual_contract.get("fail_close", True)
     if fail_close is not True:

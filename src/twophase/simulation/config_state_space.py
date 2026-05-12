@@ -418,6 +418,13 @@ def _validate_legacy_diffuse_stack(numerics: dict[str, Any]) -> None:
             f"numerics.interface.transport.variable={variable!r} requires "
             "interface.state_space.kind='geometric_cell_fraction'"
         )
+    tracking = _optional_interface_tracking(numerics)
+    primary = str(tracking.get("primary", "psi")).strip().lower()
+    if primary in {"q", "theta"}:
+        raise ValueError(
+            f"numerics.interface.tracking.primary={primary!r} requires "
+            "interface.state_space.kind='geometric_cell_fraction'"
+        )
 
 
 def _optional_interface_transport(numerics: dict[str, Any]) -> dict[str, Any]:
@@ -431,6 +438,16 @@ def _optional_interface_transport(numerics: dict[str, Any]) -> dict[str, Any]:
     if isinstance(physical_time, dict):
         transport = physical_time.get("interface_advection", {})
         return transport if isinstance(transport, dict) else {}
+    return {}
+
+
+def _optional_interface_tracking(numerics: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(numerics, dict):
+        return {}
+    interface_num = numerics.get("interface")
+    if isinstance(interface_num, dict):
+        tracking = interface_num.get("tracking", {})
+        return tracking if isinstance(tracking, dict) else {}
     return {}
 
 

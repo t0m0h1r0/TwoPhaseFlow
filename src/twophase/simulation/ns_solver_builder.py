@@ -241,6 +241,12 @@ class NSSolverBuilder:
     """Builder adapter for the modern ``TwoPhaseNSSolver`` pipeline."""
 
     def __init__(self, cfg: "ExperimentConfig") -> None:
+        state_space = getattr(cfg, "interface_state_space", None)
+        if getattr(state_space, "kind", "diffuse_cls") == "geometric_cell_fraction":
+            raise ValueError(
+                "geometric_cell_fraction solver runtime adapter is disabled until "
+                "AO-Fast C9/C10 gates pass"
+            )
         self._options = build_solver_init_options(cfg)
 
     def with_debug_diagnostics(self, enabled: bool) -> "NSSolverBuilder":
