@@ -1,4 +1,4 @@
-# SP-AO: Geometric Cell-Fraction State Space
+# Active-Geometry Capillary Decomposition State Space
 
 **Status**: ACTIVE theory and implementation specification
 **Date**: 2026-05-11
@@ -429,8 +429,8 @@ lambda^T S lambda
 ```
 
 The solution `pi` is therefore unique up to the declared pressure gauge and is
-the scalar AO pressure coordinate.  Extending `pi` to the full cell pressure
-space by the configured gauge gives
+the scalar active-geometry pressure coordinate.  Extending `pi` to the full
+cell pressure space by the configured gauge gives
 
 ```text
 pressure_reaction(w) = pi^T T_q w = (T_q^T pi)^T w,
@@ -473,7 +473,8 @@ cell-pressure image.  Component-volume reaction removal is useful as an
 algebraic diagnostic because it gives zero drive for flat/static states and
 nonzero drive for capillary waves, but it is not by itself the final runtime
 pressure-coordinate proof.  The final route must provide a scalar,
-PPE-compatible AO pressure coordinate plus an `M_f`-metric face residual.
+PPE-compatible active-geometry pressure coordinate plus an `M_f`-metric face
+residual.
 A runtime packet that sets `capillary_face == pressure_reaction_face` for a
 non-static wave is not a low-order approximation; it deletes the drive.
 
@@ -644,7 +645,7 @@ line search against sign/case margins.
 CPU reference routines are allowed for manufactured tests, but they must not
 be the only route if the feature is promoted to production.
 
-### AO-Fast production route
+### Active-geometry capillary production route
 
 The direct reading of the equations is too expensive for production if every
 time step rebuilds full-grid cut geometry, full-grid Jacobian tables, and a
@@ -750,8 +751,8 @@ model to decrease the exact residual ledger:
 ```
 
 while also preserving sign/case margins and projection-work gates.  Fixed-count
-DC without residual decrease is not an AO-Fast method.  DC stagnation is a
-rejected candidate by default.  The solver may switch from DC to active
+DC without residual decrease is not an active-geometry capillary method.  DC
+stagnation is a rejected candidate by default.  The solver may switch from DC to active
 PCG/Newton only when the YAML declares that exact fallback edge and its
 trigger; otherwise the step fails closed.  It must not repair the state by
 clipping `q`, relaxing the hard volume constraint, or silently changing solver
@@ -766,7 +767,7 @@ transfer is limited to explicit ledger scalars after an accepted outer
 iteration.  In particular, no `.get()`, `asnumpy`, Python list materialization,
 or scalar D2H synchronization belongs inside CG iteration control.
 
-### AO-Fast acceleration contract
+### Active-geometry capillary acceleration contract
 
 The production target is not a different compatibility iteration.  It is to
 avoid rebuilding and scanning the full cell complex when only the interface
@@ -822,8 +823,8 @@ exact step is explicitly declared and ledgered as not-fast.
 The asymptotic objective is:
 
 ```text
-direct AO:  O(k |C_h|) geometry work per candidate,
-AO-Fast:    O(|dirty| + k |A|) active geometry/solve work,
+direct active geometry: O(k |C_h|) geometry work per candidate,
+active geometry: O(|dirty| + k |A|) active geometry/solve work,
 ```
 
 where `A` is the compact interface-band graph and `dirty` is the subset whose
@@ -841,15 +842,15 @@ with `Q_h(phi^+)=q^-` certified to tolerance in physical volume units.  The
 ledger must record evaluated active cells, dirty cells, refreshed cells,
 proposal family, exact residual norms before and after, maximum `beta_C`,
 minimum sign/case margin, `Delta S_Pi`, GPU kernel launches, and host-transfer
-count.  DC is therefore an optional cheap candidate inside AO-Fast; the speedup
-comes from compact active geometry, incremental cache refresh, fused GPU
+count.  DC is therefore an optional cheap candidate inside the active-geometry
+capillary route; the speedup comes from compact active geometry, incremental cache refresh, fused GPU
 kernels, and avoiding full-grid cut-geometry recomputation.
 
-### Direct AO branch adoption policy
+### Dense active-geometry branch adoption policy
 
-The branch `codex/ra-ch14-osc-sharp-volume-20260510` is the dense direct-AO
-reference, not the production fast path.  Its usable assets are the exact P1
-case algebra for `Q_h/S_h/J_q/dS_h`, `MetricCellComplex` metric caching,
+The branch `codex/ra-ch14-osc-sharp-volume-20260510` is the dense direct
+active-geometry reference, not the production fast path.  Its usable assets
+are the exact P1 case algebra for `Q_h/S_h/J_q/dS_h`, `MetricCellComplex` metric caching,
 q/theta/phi phase-state separation, fail-close parser gates, capillary
 face-Hodge runtime contracts, and manufactured tests.
 
@@ -857,7 +858,7 @@ The production route must rewrite the storage and iteration domain:
 
 ```text
 dense reference:  (Nx, Ny, 4) local derivative arrays and full-grid line search,
-AO-Fast:          ActiveGeometryTable rows on A plus one-face halo.
+active geometry: ActiveGeometryTable rows on A plus one-face halo.
 ```
 
 `project_cell_volume_compatibility_2d` from the dense branch may be imported as
@@ -898,7 +899,7 @@ negative knowledge: Ridge-Eikonal sharp-volume repair can have no simultaneous
 The first implementation slices should therefore be:
 
 ```text
-1. import dense direct-AO formulas/tests as oracle code,
+1. import dense direct active-geometry formulas/tests as oracle code,
 2. build ActiveGeometryTable over `A_q`, not current mixed cells alone,
 3. prove active-vs-dense equality on manufactured regular strata,
 4. add dirty/flux-touched/target-mixed plus one-face halo refresh tests,
@@ -908,11 +909,11 @@ The first implementation slices should therefore be:
 
 ### Pre-code implementation gate
 
-Code development starts only after the AO-Fast preimplementation gate is
-recorded.  The gate freezes the first implementation boundary:
+Code development starts only after the active-geometry capillary
+preimplementation gate is recorded.  The gate freezes the first implementation boundary:
 
 ```text
-dense direct-AO code is oracle/test-only,
+dense direct active-geometry code is oracle/test-only,
 production storage is ActiveGeometryTable struct-of-arrays over A_q,
 A_q includes current/previous mixed, flux-touched, target-mixed, and halo rows,
 q_target_A, cell_measure_A, target state, and origin masks are first-class,
@@ -947,53 +948,22 @@ the implementation fails closed at that slice.
 
 ## 12. YAML Contract
 
-The front door is a state-space declaration:
+The front door is a state-space scheme selection.  User YAML should not expose
+active-geometry capillary decomposition internals such as active-table layout,
+GPU transfer rules, dense-reference status, solver accelerators, support
+budgets, or fallback chains.  Those are parser-owned preset invariants.
 
 ```yaml
 interface:
   state_space:
-    kind: geometric_cell_fraction
-    conserved_variable: q
-    normalized_view: theta
-    gauge:
-      variable: phi
-      trace: p1_levelset
-    compatibility:
-      constraint: hard_cell_volume
-      units: physical_volume
-      projection:
-        implementation: active_cached
-        dense_reference: test_only
-        gpu_contract:
-          required: true
-          active_storage: struct_of_arrays
-          inner_host_transfers: forbidden
-          dense_runtime_fallback: forbidden
-          record_kernel_counters: true
-        method: fixed_stratum_schur
-        metric: screened_gauge_hodge
-        fail_close: true
-        trust_region: sign_margin
-        residual_tolerance: 1.0e-11
-        condition_gate: fail_close
-        support_budget:
-          max_active_ratio: 0.25
-          max_support_stream_ratio: 0.25
-          max_epoch_growth_ratio: 1.5
-          on_overrun: fail_close
-        solver:
-          primary: active_pcg_newton
-          accelerators:
-            dc_candidate:
-              enabled: true
-              role: proposal_only
-              on_reject: discard_candidate
-          fallback:
-            policy: none
-      ledger:
-        record_delta_surface: true
-        record_residuals: true
+    scheme: active_geometry_capillary
 ```
+
+The `active_geometry_capillary` preset expands internally to
+`kind=geometric_cell_fraction`, `q/theta/phi`, hard physical-volume
+compatibility, `active_cached` projection, GPU-required SoA active storage,
+`dense_reference=test_only`, `fallback.policy=none`, and fail-close gates.
+These values are not experiment knobs.
 
 The compatible numerical stack:
 
@@ -1038,61 +1008,13 @@ If the block is absent, parse as `diffuse_cls` for backward compatibility.
 
 ### YAML/UX solver policy
 
-The UX must separate three choices:
-
-```text
-primary solver      the only solver family that owns convergence by default,
-accelerator         a proposal generator whose rejection changes no state,
-fallback            an explicitly declared solver transition after failure.
-```
-
-The default is fail-close:
-
-```yaml
-interface:
-  state_space:
-    compatibility:
-      projection:
-        solver:
-          primary: active_pcg_newton
-          accelerators:
-            dc_candidate:
-              enabled: true
-              role: proposal_only
-              on_reject: discard_candidate
-          fallback:
-            policy: none
-```
-
-In this mode, DC can reduce cost only by proposing an accepted step before the
-primary active solver needs work.  A rejected DC candidate is discarded.  If the
-declared primary solver fails, the compatibility projection fails closed.
-
-An implementation may opt into fallback only with a complete chain:
-
-```yaml
-interface:
-  state_space:
-    compatibility:
-      projection:
-        solver:
-          primary: residual_monotone_dc
-          fallback:
-            policy: explicit_chain
-            chain:
-              - from: residual_monotone_dc
-                to: active_pcg_newton
-                triggers:
-                  - no_exact_residual_decrease
-                  - trust_region_exhausted
-                record_as: dc_to_pcg_declared_fallback
-```
-
-This is not an automatic recovery rule.  It is a user-visible numerical
-contract.  The UI should present the transition as an opt-in solver policy,
-show the trigger list, and require the ledger label.  The run ledger must record
-`solver.primary`, `accelerator.accepted`, `fallback.policy`,
-`fallback.transition`, and the exact residuals before and after the transition.
+The experiment UX should expose a scheme choice, not solver choreography.  For
+For active-geometry capillary decomposition, the parser owns the primary
+solver, proposal-only accelerators, and fail-close fallback policy.  Expert
+fallback chains are implementation/test fixtures, not production experiment
+controls.  A run ledger may record the internal solver family, accelerator
+acceptance, and fallback status, but the YAML author should not choose them in
+normal experiment configs.
 
 ### Reinitialization
 
@@ -1338,7 +1260,7 @@ After Stage 1:
 [ ] add J_q/dS_h derivative tests,
 [ ] add projection manufactured probes,
 [ ] record Delta S_Pi ledger schema,
-[ ] update WIKI-T-169 and SP-AO with measured gates.
+[ ] update WIKI-T-169 and the short-paper active-geometry memo with measured gates.
 ```
 
 The theory is ready for implementation at the geometry/projection layer.  The

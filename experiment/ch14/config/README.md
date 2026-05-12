@@ -40,11 +40,14 @@ The five production configs share the chapter-14 execution contract introduced
 for the rising-bubble route: conservative common-flux momentum transport,
 `predictor.assembly: none`, projected-face preservation, pressure-coordinate
 BDF2 history, and an explicit fail-closed boundary-Hodge state-space contract.
-All five YAMLs declare the full AO-Fast `geometric_cell_fraction` contract:
+All five YAMLs select the active-geometry capillary decomposition preset with
+`interface.state_space.scheme: active_geometry_capillary`.  The parser expands
+that scheme to the fixed short-paper active-geometry contract internally:
 transported `q`, normalized `theta`, P1 gauge `phi`, active-cached
 compatibility, required GPU storage, no implicit dense runtime fallback,
-`geometric_swept_volume` transport, and `bundle_virtual_work` pressure-jump
-coupling with `pressure_component_hodge` reaction.
+`geometric_swept_volume` transport, and
+`bundle_virtual_work` pressure-jump coupling with
+`pressure_component_hodge` reaction.
 
 `ch14_capillary.yaml` and `ch14_oscillating_droplet.yaml` are SI water-air
 cases at about 20 C.  The capillary wave uses a 20 mm x 20 mm tank with
@@ -56,9 +59,10 @@ two-layer finite-depth dispersion relation because the 10 mm interface sits
 midway between the upper and lower walls of the 20 mm tank; the paper-facing
 snapshot window then follows the signed mode-2 production response over one
 observed cycle.  The oscillating-droplet window follows the Rayleigh-Lamb
-water-air period.  All five Chapter 14 YAMLs use AO-Fast `q` as the interface
-carrier; Ridge--Eikonal reinitialization is disabled because compatibility
-projection is a separate AO contract, not a diffuse-CLS redistance step.
+water-air period.  All five Chapter 14 YAMLs use active-geometry `q` as the
+interface carrier; Ridge--Eikonal reinitialization is disabled because
+compatibility projection is a separate active-geometry capillary contract, not
+a diffuse-CLS redistance step.
 
 The five production configs emit periodic snapshots with `psi`, `velocity`,
 and pressure-family figures. The runner stores raw fields in `data.npz` under
@@ -211,8 +215,8 @@ numerics:
       primary: q
 ```
 
-For AO-Fast Chapter 14 YAMLs, `tracking.primary: q` is part of the explicit
-state-space contract.
+For active-geometry Chapter 14 YAMLs, `tracking.primary: q` follows from the selected
+scheme contract.
 
 Tracking redistance frequency is intentionally separate from reinitialization
 frequency:
@@ -297,8 +301,9 @@ interface transport, momentum terms, and projection/PPE.
   entry in `numerics.time`; all per-equation choices live in their own blocks.
 - `interface.transport`: transported variable, spatial scheme, and physical-time
   integrator co-located in one block.
-- `interface.tracking`: tracking/redistance policy.  Chapter 14 AO-Fast YAMLs
-  declare `primary: q` so the q/theta/phi state-space contract is visible.
+- `interface.tracking`: tracking/redistance policy.  Chapter 14
+  active-geometry capillary YAMLs declare `primary: q` so the q/theta/phi
+  state-space contract is visible.
 - `momentum.terms`: spatial/time choices for physical momentum terms. Pressure
   and surface tension are written as `pressure` and `surface_tension`, not as
   hidden derivative knobs. `pressure.gradient` and `surface_tension.gradient`
@@ -329,8 +334,13 @@ must be independently visible.
 
 The dynamic ch14 YAMLs share the production stack:
 
+- `interface.state_space.scheme: active_geometry_capillary` — the user-facing
+  active-geometry capillary decomposition selection.
+  Internal projection details such as `active_cached`, GPU storage, dense
+  reference policy, support budgets, solver accelerators, and fallback policy
+  are fixed by the parser preset rather than repeated in each experiment YAML.
 - `interface.transport.variable: q` and
-  `interface.transport.spatial: geometric_swept_volume` — AO-Fast owns the
+  `interface.transport.spatial: geometric_swept_volume` — active geometry owns the
   material phase as physical cell volume, while `theta` and `phi` are derived
   views constrained by the explicit state-space contract.
 - `interface.transport.time_integrator: tvd_rk3` — co-located with the spatial
@@ -338,7 +348,7 @@ The dynamic ch14 YAMLs share the production stack:
 - `interface.geometry.curvature.method: face_implicit` — scalar face-native
   Young-Laplace diagnostic geometry on fitted grids.
 - `interface.reinitialization.schedule.every_steps` — Ridge--Eikonal profile
-  restoration is disabled (`0`) for AO-Fast Chapter 14 YAMLs; AO compatibility
+  restoration is disabled (`0`) for active-geometry Chapter 14 YAMLs; geometry compatibility
   projection is not a diffuse redistance fallback.
 - `momentum.terms.convection.spatial: uccd6` + `time_integrator: imex_bdf2` —
   WIKI-T-062 positions UCCD6 as the order-preserving upwind CCD remedy for
@@ -349,7 +359,7 @@ The dynamic ch14 YAMLs share the production stack:
 - `momentum.terms.surface_tension.source: bundle_virtual_work` exposes
   `closed_interface.endpoint: geometric_cell_fraction` and
   `residual_contract: {metric: pressure_adjoint, constraints: [cell_volume],
-  fail_close: true}`. These keys state the AO-Fast theorem contract: the
+  fail_close: true}`. These keys state the active-geometry theorem contract: the
   surface-energy covector, cell-volume reaction, PPE source, and face corrector
   all use the geometric q endpoint and the same pressure-adjoint face metric.
 - `momentum.terms.viscosity.spatial: ccd` + `time_integrator: implicit_bdf2` —

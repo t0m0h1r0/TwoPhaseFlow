@@ -3,11 +3,12 @@
 A3 chain:
   Equation: SP-AO promotes the material carrier from diffuse ``psi`` to the
   physical cell volume ``q_C`` with normalized view ``theta_C``.
-  Discretization: geometric AO requires hard cell-volume compatibility,
-  active-cached projection, GPU-resident active storage, and explicit fallback.
-Code: this parser validates the front-door contract before runtime wiring.
-Dense exact CPU runtime is allowed only behind this contract; GPU execution
-remains fail-closed until active fused AO-Fast kernels are connected.
+  Discretization: user-facing YAML selects a scheme; active geometry capillary
+  decomposition expands to hard cell-volume compatibility, active-cached
+  projection, GPU-resident active storage, and fail-close fallback internally.
+Code: this parser validates the selected scheme before runtime wiring.  Dense
+exact CPU runtime is allowed only behind this contract; GPU execution remains
+fail-closed until active fused geometry kernels are connected.
 """
 
 from __future__ import annotations
@@ -19,6 +20,69 @@ from .config_models import InterfaceStateSpaceCfg
 from .config_sections import validate_choice
 
 
+_ACTIVE_GEOMETRY_CAPILLARY_SCHEME = "active_geometry_capillary"
+
+_ACTIVE_GEOMETRY_CAPILLARY_SCHEME_ALIASES = {
+    _ACTIVE_GEOMETRY_CAPILLARY_SCHEME,
+    "active-geometry-capillary",
+    "active_geometry_capillary_decomposition",
+    "active-geometry-capillary-decomposition",
+    "geometric_cell_fraction",
+    "ao_fast",
+    "ao-fast",
+    "ao_fast_geometric_cell_fraction",
+}
+
+
+def _active_geometry_capillary_state_space_defaults() -> dict[str, Any]:
+    """Return the internal preset selected by the active-geometry scheme."""
+    return {
+        "kind": "geometric_cell_fraction",
+        "scheme": _ACTIVE_GEOMETRY_CAPILLARY_SCHEME,
+        "conserved_variable": "q",
+        "normalized_view": "theta",
+        "gauge": {"variable": "phi", "trace": "p1_levelset"},
+        "compatibility": {
+            "constraint": "hard_cell_volume",
+            "units": "physical_volume",
+            "projection": {
+                "implementation": "active_cached",
+                "dense_reference": "test_only",
+                "gpu_contract": {
+                    "required": True,
+                    "active_storage": "struct_of_arrays",
+                    "inner_host_transfers": "forbidden",
+                    "dense_runtime_fallback": "forbidden",
+                    "record_kernel_counters": True,
+                },
+                "method": "fixed_stratum_schur",
+                "metric": "screened_gauge_hodge",
+                "fail_close": True,
+                "trust_region": "sign_margin",
+                "residual_tolerance": 1.0e-11,
+                "condition_gate": "fail_close",
+                "support_budget": {
+                    "max_active_ratio": 0.25,
+                    "max_support_stream_ratio": 0.25,
+                    "max_epoch_growth_ratio": 1.5,
+                    "on_overrun": "fail_close",
+                },
+                "solver": {
+                    "primary": "active_pcg_newton",
+                    "accelerators": {
+                        "dc_candidate": {
+                            "enabled": True,
+                            "role": "proposal_only",
+                            "on_reject": "discard_candidate",
+                        },
+                    },
+                    "fallback": {"policy": "none"},
+                },
+            },
+        },
+    }
+
+
 def parse_interface_state_space(interface: dict, numerics: dict) -> InterfaceStateSpaceCfg:
     """Parse ``interface.state_space`` and fail-close on ambiguous AO contracts."""
     raw = interface.get("state_space")
@@ -27,9 +91,20 @@ def parse_interface_state_space(interface: dict, numerics: dict) -> InterfaceSta
         return InterfaceStateSpaceCfg()
 
     if isinstance(raw, str):
-        raw = {"kind": raw}
+        token = str(raw).strip().lower()
+        raw = (
+            {"scheme": _ACTIVE_GEOMETRY_CAPILLARY_SCHEME}
+            if token in _ACTIVE_GEOMETRY_CAPILLARY_SCHEME_ALIASES
+            else {"kind": raw}
+        )
     if not isinstance(raw, dict):
         raise ValueError("interface.state_space must be a mapping or kind string")
+    if "kind" not in raw and "scheme" in raw:
+        scheme = _normalize_state_space_scheme(raw["scheme"])
+        if scheme == _ACTIVE_GEOMETRY_CAPILLARY_SCHEME:
+            raw = {**raw, "kind": "geometric_cell_fraction"}
+        elif scheme == "diffuse_cls":
+            raw = {**raw, "kind": "diffuse_cls"}
     if "kind" not in raw:
         raise ValueError("interface.state_space.kind is required")
 
@@ -43,11 +118,19 @@ def parse_interface_state_space(interface: dict, numerics: dict) -> InterfaceSta
         _validate_legacy_diffuse_stack(numerics)
         return InterfaceStateSpaceCfg()
 
+    raw = _merge_defaults(_active_geometry_capillary_state_space_defaults(), raw)
     return _parse_geometric_cell_fraction_state_space(raw, interface, numerics)
 
 
 def _parse_declared_diffuse(raw: dict[str, Any]) -> None:
-    extras = sorted(set(raw) - {"kind"})
+    if "scheme" in raw:
+        scheme = _normalize_state_space_scheme(raw["scheme"])
+        if scheme != "diffuse_cls":
+            raise ValueError(
+                "interface.state_space.scheme conflicts with "
+                "kind='diffuse_cls'"
+            )
+    extras = sorted(set(raw) - {"kind", "scheme"})
     if extras:
         raise ValueError(
             "interface.state_space.kind='diffuse_cls' must not declare "
@@ -60,6 +143,14 @@ def _parse_geometric_cell_fraction_state_space(
     interface: dict[str, Any],
     numerics: dict[str, Any],
 ) -> InterfaceStateSpaceCfg:
+    scheme = _normalize_state_space_scheme(
+        raw.get("scheme", _ACTIVE_GEOMETRY_CAPILLARY_SCHEME)
+    )
+    if scheme != _ACTIVE_GEOMETRY_CAPILLARY_SCHEME:
+        raise ValueError(
+            "interface.state_space.scheme for geometric_cell_fraction must be "
+            f"'{_ACTIVE_GEOMETRY_CAPILLARY_SCHEME}'"
+        )
     gauge = _mapping(raw.get("gauge", {}), "interface.state_space.gauge")
     compatibility = _mapping(
         raw.get("compatibility", {}),
@@ -156,6 +247,7 @@ def _parse_geometric_cell_fraction_state_space(
     _validate_reinitialization(interface)
     _validate_geometric_numerics(numerics)
     return InterfaceStateSpaceCfg(
+        scheme=scheme,
         kind="geometric_cell_fraction",
         conserved_variable=conserved_variable,
         normalized_view=normalized_view,
@@ -168,6 +260,32 @@ def _parse_geometric_cell_fraction_state_space(
         gpu_required=True,
         fallback_policy=fallback_policy,
     )
+
+
+def _normalize_state_space_scheme(value: Any) -> str:
+    normalized = str(value).strip().lower()
+    if normalized in _ACTIVE_GEOMETRY_CAPILLARY_SCHEME_ALIASES:
+        return _ACTIVE_GEOMETRY_CAPILLARY_SCHEME
+    if normalized == "diffuse_cls":
+        return "diffuse_cls"
+    raise ValueError(
+        "interface.state_space.scheme must be "
+        f"'{_ACTIVE_GEOMETRY_CAPILLARY_SCHEME}' or 'diffuse_cls', got {value!r}"
+    )
+
+
+def _merge_defaults(defaults: dict[str, Any], raw: dict[str, Any]) -> dict[str, Any]:
+    merged = dict(defaults)
+    for key, value in raw.items():
+        if (
+            key in merged
+            and isinstance(merged[key], dict)
+            and isinstance(value, dict)
+        ):
+            merged[key] = _merge_defaults(merged[key], value)
+        else:
+            merged[key] = value
+    return merged
 
 
 def _validate_gpu_contract(gpu_contract: dict[str, Any]) -> None:

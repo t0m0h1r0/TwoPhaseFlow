@@ -6,14 +6,14 @@
 # continuum reference omega=134.419859151 and T=0.046742983863 s.  The paper
 # snapshot window is instead the signed mode-2 production response over one
 # observed cycle: upper crest -> flat -> lower crest -> flat -> upper crest.
-# Production numerical stack: AO-Fast geometric cell fraction + FCCD PPE +
+# Production numerical stack: active-geometry capillary decomposition + FCCD PPE +
 # bundle Young-Laplace work + UCCD6.
-# - AO-Fast: q is the transported physical cell volume, theta is its normalized
+# - Active geometry: q is the transported physical cell volume, theta is its normalized
 #   view, and phi is the P1 gauge used only for geometric compatibility.
 # - FCCD: pressure gradient/PPE stay on the variational FCCD route.
-# - Surface tension: `pressure_jump` enters through AO bundle virtual work and
-#   pressure-component Hodge reaction, not as CSF σκ∇ψ or a regular pressure
-#   field.
+# - Surface tension: `pressure_jump` enters through active-geometry bundle
+#   virtual work and pressure-component Hodge reaction, not as CSF σκ∇ψ or a
+#   regular pressure field.
 # - UCCD6: momentum convection uses `uccd6` per WIKI-T-062 / WIKI-X-028.
 # - Grid fitting: both tensor-product axes carry the interface monitor; the
 #   y axis additionally carries wall refinement for the physical upper/lower
@@ -51,50 +51,13 @@ grid:
 
 interface:
   state_space:
-    kind: geometric_cell_fraction
-    conserved_variable: q
-    normalized_view: theta
-    gauge:
-      variable: phi
-      trace: p1_levelset
-    compatibility:
-      constraint: hard_cell_volume
-      units: physical_volume
-      projection:
-        implementation: active_cached
-        dense_reference: test_only
-        gpu_contract:
-          required: true
-          active_storage: struct_of_arrays
-          inner_host_transfers: forbidden
-          dense_runtime_fallback: forbidden
-          record_kernel_counters: true
-        method: fixed_stratum_schur
-        metric: screened_gauge_hodge
-        fail_close: true
-        trust_region: sign_margin
-        residual_tolerance: 1.0e-11
-        condition_gate: fail_close
-        support_budget:
-          max_active_ratio: 0.25
-          max_support_stream_ratio: 0.25
-          max_epoch_growth_ratio: 1.5
-          on_overrun: fail_close
-        solver:
-          primary: active_pcg_newton
-          accelerators:
-            dc_candidate:
-              enabled: true
-              role: proposal_only
-              on_reject: discard_candidate
-          fallback:
-            policy: none
+    scheme: active_geometry_capillary
   thickness:
     mode: local
     base_factor: 1.5
   geometry:
     curvature:
-      # Retained for the phi diagnostic view; AO-Fast capillary force below is
+      # Retained for the phi diagnostic view; active-geometry capillary force below is
       # supplied by bundle_virtual_work, not diffuse curvature_jump.
       method: face_implicit
   reinitialization:

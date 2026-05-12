@@ -175,11 +175,13 @@ class OutputCfg:
 class InterfaceStateSpaceCfg:
     """Parsed front-door state-space contract.
 
-    Geometric cell-fraction config construction is allowed after AO-Fast C8.
+    Geometric cell-fraction config construction is allowed after the active
+    geometry capillary decomposition front-door gate.
     The dense exact runtime is CPU-only; GPU execution remains fail-closed
-    until active fused AO-Fast kernels satisfy this front-door contract.
+    until active fused geometry kernels satisfy this front-door contract.
     """
 
+    scheme: str = "diffuse_cls"
     kind: str = "diffuse_cls"
     conserved_variable: str = "psi"
     normalized_view: str = "psi"

@@ -342,6 +342,7 @@ def test_ch14_capillary_yaml_loads_execution_stack():
         for d in cfg.diagnostics
     )
     assert "deformation" not in cfg.diagnostics
+    assert cfg.interface_state_space.scheme == "active_geometry_capillary"
     assert cfg.interface_state_space.kind == "geometric_cell_fraction"
     assert cfg.interface_state_space.conserved_variable == "q"
     assert cfg.interface_state_space.normalized_view == "theta"
@@ -410,6 +411,7 @@ def test_ch14_static_droplet_yaml_uses_base_dynamic_route():
     assert cfg.run.cfl_policy == "theory_multiplier"
     assert cfg.run.cfl == pytest.approx(1.0)
     assert cfg.run.interface_tracking_enabled is True
+    assert cfg.interface_state_space.scheme == "active_geometry_capillary"
     assert cfg.interface_state_space.kind == "geometric_cell_fraction"
     assert cfg.run.interface_tracking_method == "q_cell_fraction"
     assert cfg.run.advection_scheme == "geometric_swept_volume"
@@ -510,6 +512,7 @@ def test_ch14_canonical_yamls_share_base_numerical_stack():
 
     for path in sorted(p for p in config_dir.glob("*.yaml") if not p.name.startswith("_")):
         cfg = ExperimentConfig.from_yaml(path)
+        assert cfg.interface_state_space.scheme == "active_geometry_capillary", path.name
         assert cfg.interface_state_space.kind == "geometric_cell_fraction", path.name
         assert cfg.interface_state_space.gpu_required is True, path.name
         assert cfg.interface_state_space.fallback_policy == "none", path.name

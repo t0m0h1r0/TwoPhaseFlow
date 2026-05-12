@@ -313,11 +313,13 @@ def test_reinitialization_none_requires_zero_schedule():
 def test_valid_geometric_contract_builds_config_and_solver_runtime():
     raw = _geometric_raw()
     cfg = parse_interface_state_space(raw["interface"], raw["numerics"])
+    assert cfg.scheme == "active_geometry_capillary"
     assert cfg.kind == "geometric_cell_fraction"
     assert cfg.projection_implementation == "active_cached"
     assert cfg.fallback_policy == "none"
 
     experiment_cfg = ExperimentConfig.from_dict(raw)
+    assert experiment_cfg.interface_state_space.scheme == "active_geometry_capillary"
     assert experiment_cfg.interface_state_space.kind == "geometric_cell_fraction"
     assert experiment_cfg.run.advection_scheme == "geometric_swept_volume"
     assert experiment_cfg.run.interface_tracking_method == "q_cell_fraction"
@@ -328,6 +330,20 @@ def test_valid_geometric_contract_builds_config_and_solver_runtime():
 
     solver = TwoPhaseNSSolver.from_config(experiment_cfg)
     assert solver._advection_scheme == "geometric_swept_volume"
+
+
+def test_active_geometry_capillary_scheme_preset_expands_defaults():
+    patch = _geometric_patch()
+    patch["interface"]["state_space"] = {"scheme": "active_geometry_capillary"}
+    raw = _minimal(patch)
+    cfg = ExperimentConfig.from_dict(raw)
+
+    assert cfg.interface_state_space.scheme == "active_geometry_capillary"
+    assert cfg.interface_state_space.kind == "geometric_cell_fraction"
+    assert cfg.interface_state_space.conserved_variable == "q"
+    assert cfg.interface_state_space.projection_implementation == "active_cached"
+    assert cfg.interface_state_space.fallback_policy == "none"
+    solver = TwoPhaseNSSolver.from_config(cfg)
     assert solver._interface_tracking_method == "q_cell_fraction"
     assert solver._capillary_force_source == "bundle_virtual_work"
 

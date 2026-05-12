@@ -1,6 +1,6 @@
 # Rayleigh-Taylor instability: silicone oil (light, BELOW) / water (heavy, ABOVE).
 # Atwood number A = (rho_w - rho_oil) / (rho_w + rho_oil) ≈ 0.0256 — low-Atwood regime.
-# Production numerical stack: AO-Fast geometric cell fraction + FCCD PPE +
+# Production numerical stack: active-geometry capillary decomposition + FCCD PPE +
 # bundle Young-Laplace work + UCCD6 + IMEX-BDF2.
 #
 # Schema convention:
@@ -42,44 +42,7 @@ grid:
 
 interface:
   state_space:
-    kind: geometric_cell_fraction
-    conserved_variable: q
-    normalized_view: theta
-    gauge:
-      variable: phi
-      trace: p1_levelset
-    compatibility:
-      constraint: hard_cell_volume
-      units: physical_volume
-      projection:
-        implementation: active_cached
-        dense_reference: test_only
-        gpu_contract:
-          required: true
-          active_storage: struct_of_arrays
-          inner_host_transfers: forbidden
-          dense_runtime_fallback: forbidden
-          record_kernel_counters: true
-        method: fixed_stratum_schur
-        metric: screened_gauge_hodge
-        fail_close: true
-        trust_region: sign_margin
-        residual_tolerance: 1.0e-11
-        condition_gate: fail_close
-        support_budget:
-          max_active_ratio: 0.25
-          max_support_stream_ratio: 0.25
-          max_epoch_growth_ratio: 1.5
-          on_overrun: fail_close
-        solver:
-          primary: active_pcg_newton
-          accelerators:
-            dc_candidate:
-              enabled: true
-              role: proposal_only
-              on_reject: discard_candidate
-          fallback:
-            policy: none
+    scheme: active_geometry_capillary
   thickness:
     mode: local
     base_factor: 1.5
