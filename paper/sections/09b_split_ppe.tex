@@ -814,33 +814,11 @@ full/empty セルは状態フラグとして保持し，
 \]
 を物理体積単位で検査する．
 
-互換射影の主反復は能動グラフ上の Schur 作用素
-\[
-  S_A\lambda=J_AW_\eta^{-1}J_A^T\lambda
-  \label{eq:ao_fast_active_schur}
-\]
-を matrix-free に解く．前時刻の \(\lambda\) を warm start とし，
-対角または連結成分ブロック前処理を用いることで，
-計算量は能動セル数 \(|A|\) に比例する．
-さらに安価な欠陥補正が有効な場合は，
-\[
-  R_A(\phi)=Q_h^S(\phi)_A-q^-_A,\qquad
-  \delta\phi_{\mathrm{DC}}=-P_0R_A(\phi_k)
-  \label{eq:ao_fast_dc_candidate}
-\]
-を候補とする．ここで \(P_0\) は凍結能動 Schur 逆またはその前処理近似である．
-ステップ長 \(\alpha\) は
-\begin{equation}
-  \|R_A(\phi_k+\alpha\delta\phi_{\mathrm{DC}})\|_{H_C^{-1}}
-  <
-  \|R_A(\phi_k)\|_{H_C^{-1}}
-  \label{eq:ao_fast_dc_acceptance}
-\end{equation}
-を満たすときだけ受理する．
-したがってここでいう DC は固定回数の安定化ではなく，
-厳密な幾何体積残差を単調減少させる互換射影反復である．
-停滞した場合は式~\eqref{eq:ao_fast_active_schur} の能動 PCG/Newton 経路へ戻すか，
-明示的に fail-close する．
+互換射影は，能動 stratum 上で再評価した幾何体積残差，
+符号・交差余裕，および射影仕事を同時に満たす場合だけ受理する．
+どれか一つでも満たさない候補を，別の圧力空間やゼロ駆動継続へ自動的に置き換えてはならない．
+したがって本稿で必要なのは反復手順の細部ではなく，
+受理時に厳密な幾何互換条件と $R_p$ 分解が同時に成立しているという判定である．
 CCD/DCCD/FCCD/UCCD は \(\phi\) 予測，\(W_\eta\)，面状態再構成，
 圧力随伴診断のような滑らかな補助写像には使えるが，
 不連続な \(\theta_C\) を滑らか場として微分したり，
