@@ -784,6 +784,30 @@ The first implementation slices should therefore be:
 6. then connect runtime/capillary gates and chapter-14 YAMLs.
 ```
 
+### Pre-code implementation gate
+
+Code development starts only after the AO-Fast preimplementation gate is
+recorded.  The gate freezes the first implementation boundary:
+
+```text
+dense direct-AO code is oracle/test-only,
+production storage is ActiveGeometryTable struct-of-arrays,
+all imported symbols are classified as oracle_only, gpu_production, or reject,
+GPU production forbids inner-loop host transfers,
+default fallback policy is none,
+exact active Q_h/S_h recomputation owns acceptance,
+tolerances are declared before tests are accepted,
+runtime/capillary/chapter-14 YAML adapters wait for active geometry gates.
+```
+
+The intended commit ladder is: dense oracle import, active table skeleton,
+GPU active storage, dirty plus one-face halo refresh, active Q/S/J/dS kernels,
+device-resident J/J^T/Schur, active PCG/Newton line search, YAML/UX parser
+gates, runtime/checkpoint/capillary adapters, then chapter-14 smoke YAMLs.
+Each slice is a separate checkpoint; if any slice introduces dense fallback,
+hidden D2H synchronization, approximate residual acceptance, or implicit
+solver fallback, the implementation fails closed at that slice.
+
 ## 12. YAML Contract
 
 The front door is a state-space declaration:

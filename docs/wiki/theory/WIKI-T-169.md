@@ -41,6 +41,8 @@ sources:
     description: "GPU admission gate for importing direct-AO components into AO-Fast"
   - path: artifacts/A/ch14_ao_direct_branch_knowledge_salvage_CHK-RA-CH14-AO-FASTVOL-008.md
     description: "Knowledge salvage packet for retiring the direct dense-AO branch"
+  - path: artifacts/A/ch14_ao_fast_preimplementation_design_CHK-RA-CH14-AO-FASTVOL-009.md
+    description: "AO-Fast preimplementation design gate: module blueprint, active data shapes, GPU contract, fail-close state machine, validation ladder, and first coding ticket"
 depends_on:
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-159]]"
@@ -598,6 +600,16 @@ gauge pressure unless the Hodge representation is explicitly under test.
 Finally, the sharp-volume Ridge-Eikonal rerun showed a real two-measure
 obstruction: P1 sharp area and nodal diffuse mass can have no simultaneous
 solution under a fixed interface, so that route is not an AO fallback.
+
+Before code development, AO-Fast has a preimplementation design gate.  The gate
+fixes module boundaries (`dense_reference`, `active_table`, `active_kernels`,
+`active_projection`, import manifest, parser, runtime adapters), exact active
+SoA array shapes, direct-branch symbol classifications, GPU no-inner-D2H
+requirements, numerical tolerance ownership, fail-close state transitions, and
+the validation ladder from dense oracle import through chapter-14 smoke YAML.
+The first coding ticket is therefore dense oracle plus import manifest only;
+runtime activation waits until active geometry, GPU, projection, parser, and
+adapter gates pass.
 
 CCD/DCCD/FCCD/UCCD remain useful on the smooth side of the split: gauge
 prediction, screened gauge metric `W_eta`, face-state reconstruction,
