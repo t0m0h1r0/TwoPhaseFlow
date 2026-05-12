@@ -212,15 +212,21 @@ as initialization/oracle/debug work.  The temporary host compactor enforces
 `max_support_stream_ratio` before halo expansion, enforces the final active
 support capacity after halo expansion, and rejects CUDA/device streams until the
 fused GPU support-compaction path is admitted.  Compact active-table
-construction gathers active cell measures directly from grid coordinates and
-does not call the dense metric-complex cache.  GPU ledgers report
+construction consumes `cell_measure_A` from the active geometry refresh, avoiding
+duplicate coordinate-axis device conversions, and does not call the dense
+metric-complex cache.  `metric_key_A` aliases `cell_measure_A` until a real cache
+key is admitted, so compact construction does not allocate an unused float64
+device vector.  GPU ledgers report
 `device_resident=True`, `host_transfer_count=0`, and defer count fields that
 would require synchronization instead of calling `.get()`.
 `geometry/active_projection.py` owns matrix-free active `J`, `J^T`, Schur
 matvecs, CPU-control PCG with `tau_cg_floor` fail-close, and exact active-row
 residual acceptance.  Schur matvecs operate on compact unique active nodes, so
 PCG iterations do not allocate or zero a full nodal grid.  Full nodal scatter is
-kept only for explicit gauge updates.  GPU active tables stay device-resident;
+kept only for explicit gauge updates and uses direct assignment on unique active
+nodes.  Compact GPU `J^T` accumulation uses backend `bincount`; a missing GPU
+`bincount` fails closed rather than falling back to atomic scatter.  GPU active
+tables stay device-resident;
 nonempty GPU diagnostics/PCG/projection fail closed until fused device-side
 solver, reduction, and line-search kernels are admitted.  Empty active support returns
 an explicit no-op ledger rather than reducing an empty residual.  After C8,

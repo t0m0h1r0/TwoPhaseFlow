@@ -93,7 +93,7 @@ class ActiveSchurOperator:
             (self.table.node_shape[0] * self.table.node_shape[1],),
             dtype=self.table.jq_local_A.dtype,
         )
-        xp.add.at(flat, self.active_node_ids_U, compact)
+        flat[self.active_node_ids_U] = compact
         return flat.reshape(self.table.node_shape)
 
     def apply_j_compact(self, compact_nodal_values):
@@ -111,14 +111,33 @@ class ActiveSchurOperator:
         values = xp.asarray(cell_values)
         if tuple(values.shape) != (self.table.n_active,):
             raise ValueError("cell_values length must match n_active")
-        compact = xp.zeros((self.n_active_nodes,), dtype=self.table.jq_local_A.dtype)
         contribution = self.table.jq_local_A * values[:, None]
-        xp.add.at(compact, self.row_node_ids_U.reshape((-1,)), contribution.reshape((-1,)))
-        return compact
+        return self._compact_accumulate(
+            self.row_node_ids_U.reshape((-1,)),
+            contribution.reshape((-1,)),
+        )
 
     def apply_schur(self, cell_values):
         """Apply ``J J^T`` without materializing a dense Schur matrix."""
         return self.apply_j_compact(self.apply_j_transpose_compact(cell_values))
+
+    def _compact_accumulate(self, indices, weights):
+        xp = self.xp
+        if is_device_array(weights):
+            if not hasattr(xp, "bincount"):
+                raise ValueError(
+                    "GPU compact J^T requires backend bincount; "
+                    "atomic scatter fallback is disabled"
+                )
+            compact = xp.bincount(
+                indices,
+                weights=weights,
+                minlength=self.n_active_nodes,
+            )
+            return compact.astype(self.table.jq_local_A.dtype, copy=False)
+        compact = xp.zeros((self.n_active_nodes,), dtype=self.table.jq_local_A.dtype)
+        xp.add.at(compact, indices, weights)
+        return compact
 
     def diagnostics(self, *, row_norm_tolerance: float = 0.0) -> ActiveSchurDiagnostics:
         """Return cheap row-norm rank and conditioning estimates."""
@@ -451,6 +470,7 @@ def _norm_linf(xp, value) -> float:
 
 
 def _scalar_int(xp, value) -> int:
+    _reject_device_scalar_sync(value)
     if hasattr(value, "get"):
         value = value.get()
     if hasattr(value, "item"):
@@ -459,6 +479,7 @@ def _scalar_int(xp, value) -> int:
 
 
 def _scalar_float(xp, value) -> float:
+    _reject_device_scalar_sync(value)
     if hasattr(value, "get"):
         value = value.get()
     if hasattr(value, "item"):
@@ -467,8 +488,17 @@ def _scalar_float(xp, value) -> float:
 
 
 def _scalar_bool(xp, value) -> bool:
+    _reject_device_scalar_sync(value)
     if hasattr(value, "get"):
         value = value.get()
     if hasattr(value, "item"):
         value = value.item()
     return bool(value)
+
+
+def _reject_device_scalar_sync(value) -> None:
+    if is_device_array(value):
+        raise ValueError(
+            "GPU scalar reduction requires a fused device path; "
+            "host synchronization is disabled"
+        )

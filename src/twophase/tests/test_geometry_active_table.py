@@ -8,6 +8,7 @@ import pytest
 from twophase.backend import Backend, is_device_array
 from twophase.config import GridConfig
 from twophase.core.grid import Grid
+from twophase.geometry import active_projection as active_projection_module
 from twophase.geometry.active_kernels import refresh_active_geometry_2d
 from twophase.geometry.active_projection import (
     ActiveSchurOperator,
@@ -75,6 +76,11 @@ def test_debug_active_table_matches_dense_oracle_rows():
 
     assert table.ledger.dense_scan_used is True
     assert table.n_active < grid.N[0] * grid.N[1]
+    assert table.metric_key_A is table.cell_measure_A
+    np.testing.assert_allclose(
+        table.cell_measure_A,
+        _gather(MetricCellComplex.from_grid(grid).cell_measures, table.cell_ids_A),
+    )
     np.testing.assert_allclose(table.q_A, _gather(dense.q, table.cell_ids_A))
     np.testing.assert_allclose(
         table.s_A,
@@ -209,8 +215,8 @@ def test_gpu_active_table_stays_device_and_pcg_host_control_fails_closed():
         grid = Grid(GridConfig(ndim=2, N=(6, 6), L=(1.0, 1.0)), Backend(use_gpu=True))
     except RuntimeError as exc:
         pytest.skip(str(exc))
-    x = cp.asarray(grid.coords[0], dtype=float)
-    y = cp.asarray(grid.coords[1], dtype=float)
+    x = cp.asarray(grid.coords[0], dtype=cp.float32)
+    y = cp.asarray(grid.coords[1], dtype=cp.float32)
     X, _ = cp.meshgrid(x, y, indexing="ij")
     phi = X - 0.43
     ids = cp.asarray([[2, 0], [2, 1], [2, 2]], dtype=cp.int64)
@@ -225,14 +231,18 @@ def test_gpu_active_table_stays_device_and_pcg_host_control_fails_closed():
     assert table.ledger.n_flux_touched == 0
     assert table.ledger.n_target_mixed == -1
     assert table.ledger.deferred_device_count_fields == ("n_target_mixed",)
+    assert table.metric_key_A is table.cell_measure_A
 
     operator = ActiveSchurOperator(table)
     assert operator.n_active_nodes < (grid.N[0] + 1) * (grid.N[1] + 1)
     compact_jt = operator.apply_j_transpose_compact(cp.ones((table.n_active,), dtype=float))
     assert is_device_array(compact_jt)
     assert compact_jt.shape == (operator.n_active_nodes,)
+    assert compact_jt.dtype == table.jq_local_A.dtype
     rhs = operator.apply_schur(cp.ones((table.n_active,), dtype=float))
     assert is_device_array(rhs)
+    with pytest.raises(ValueError, match="host synchronization"):
+        active_projection_module._norm_linf(cp, rhs)
     with pytest.raises(ValueError, match="fused device reductions"):
         operator.diagnostics()
     with pytest.raises(ValueError, match="fused device solver"):

@@ -35,6 +35,7 @@ class P1ActiveGeometry:
     case_code_A: object
     edge_mask_A: object
     lambda_edge_A: object
+    cell_measure_A: object
     jq_local_A: object
     ds_local_A: object
     row_norm_A: object
@@ -80,6 +81,7 @@ def refresh_active_geometry_2d(grid, phi, cell_ids, *, level: float = 0.0):
         raise ValueError("cell_ids must have shape (n_active, 2)")
 
     values, points = _active_cell_corner_fields(xp, grid, phi_dev - float(level), ids)
+    cell_measure_A = _active_cell_measures_from_points(points)
     crossings = tuple(_edge_crossing(xp, values, points, edge) for edge in range(4))
     case_code = _case_field(xp, values)
     q_A = _local_cut_areas(xp, values, points, crossings, case_code)
@@ -100,6 +102,7 @@ def refresh_active_geometry_2d(grid, phi, cell_ids, *, level: float = 0.0):
         case_code_A=case_code,
         edge_mask_A=edge_mask_A,
         lambda_edge_A=lambda_edge_A,
+        cell_measure_A=cell_measure_A,
         jq_local_A=jq_local_A,
         ds_local_A=ds_local_A,
         row_norm_A=row_norm_A,
@@ -127,6 +130,12 @@ def _active_cell_corner_fields(xp, grid, phi, cell_ids):
         (x[i], y[j + 1]),
     )
     return values, points
+
+
+def _active_cell_measures_from_points(points):
+    dx = points[1][0] - points[0][0]
+    dy = points[2][1] - points[1][1]
+    return dx * dy
 
 
 def _edge_crossing(xp, values, points, edge: int):

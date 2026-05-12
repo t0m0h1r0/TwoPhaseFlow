@@ -63,6 +63,8 @@ sources:
     description: "AO-Fast review hardening: checkpoint cell/node split, mixed-state YAML rejection, support-stream budget enforcement, and empty-support no-op ledger"
   - path: artifacts/A/ch14_ao_fast_gpu_hardening_CHK-RA-CH14-AO-FASTVOL-020.md
     description: "AO-Fast GPU hardening: compact Schur active-node matvecs, no dense metric cache in compact table construction, and stricter GPU host-control fail-close"
+  - path: artifacts/A/ch14_ao_fast_gpu_review_loop_CHK-RA-CH14-AO-FASTVOL-021.md
+    description: "AO-Fast GPU review loop: duplicate coordinate transfer removal, scalar-sync inner guards, compact bincount reduction, and unused metric-key allocation removal"
 depends_on:
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-159]]"
@@ -713,13 +715,19 @@ explicit `empty_active_support` ledger, not an empty reduction crash.
 C9 GPU hardening removes the next reviewed bottlenecks before runtime
 activation.  Active Schur matvecs now use a compact unique active-node support:
 `J^T` scatters into this compact node set and `J` gathers from it, so PCG
-candidate iterations no longer allocate or zero the full nodal grid.  Compact
-active-table construction gathers cell measures directly from active cell ids
-and grid coordinates instead of touching the dense metric-complex cache, whose
-device cache tokens are oracle/debug territory.  For GPU tables, ledger fields
-that would require a scalar device sync are explicitly deferred and
+candidate iterations no longer allocate or zero the full nodal grid.  The
+full-grid scatter retained for explicit gauge updates uses direct assignment
+because active node ids are unique.  Compact GPU `J^T` accumulation uses backend
+`bincount`, and a backend without that device reduction fails closed rather than
+falling back to atomic scatter.  Compact active-table construction consumes the
+active refresh's `cell_measure_A`, avoiding a second coordinate-axis device
+conversion, and does not touch the dense metric-complex cache, whose device
+cache tokens are oracle/debug territory.  `metric_key_A` aliases
+`cell_measure_A` until a real cache key is admitted.  For GPU tables, ledger
+fields that would require a scalar device sync are explicitly deferred and
 `host_transfer_count=0` is recorded.  Nonempty GPU diagnostics/PCG/projection
-paths have no host-control escape hatch; they fail closed until fused device-side
+paths have no host-control escape hatch; scalar helpers also reject device
+reductions before `.get()`.  These paths fail closed until fused device-side
 solver, reduction, and line-search kernels are implemented.  Remaining GPU work
 is the final fused active-row `Q/S/J/dS` and exact-acceptance kernels with
 kernel and transfer counters; the current vectorized active geometry remains

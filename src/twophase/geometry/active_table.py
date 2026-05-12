@@ -154,7 +154,7 @@ def build_active_table_for_cell_ids(
     _check_support_budget(n_active, n_cells, support_budget, "active support")
 
     active_geometry = refresh_active_geometry_2d(grid, phi, ids, level=level)
-    cell_measure_A = _active_cell_measures(grid, ids, dtype=active_geometry.q_A.dtype)
+    cell_measure_A = active_geometry.cell_measure_A
     q_target_A = (
         active_geometry.q_A
         if q_target is None
@@ -176,7 +176,7 @@ def build_active_table_for_cell_ids(
     flux_touched_A = _vector_or_default(xp, flux_touched_mask, n_active, bool, False)
     component_A = _vector_or_default(xp, component, n_active, xp.int32, 0)
     owner_epoch_A = _vector_or_default(xp, owner_epoch, n_active, xp.int32, 0)
-    metric_key_A = _metric_key(xp, cell_measure_A)
+    metric_key_A = _metric_key(cell_measure_A)
     support_stream_limit = _support_stream_limit(n_cells, support_budget)
     n_halo = 0 if halo_mask is None else _host_count(halo_mask_A)
     n_flux_touched = 0 if flux_touched_mask is None else _host_count(flux_touched_A)
@@ -395,15 +395,6 @@ def _gather_cell_values(xp, field, cell_ids):
     return field[cell_ids[:, 0], cell_ids[:, 1]]
 
 
-def _active_cell_measures(grid, cell_ids, *, dtype):
-    xp = grid.xp
-    x = xp.asarray(grid.coords[0], dtype=dtype)
-    y = xp.asarray(grid.coords[1], dtype=dtype)
-    i = cell_ids[:, 0]
-    j = cell_ids[:, 1]
-    return (x[i + 1] - x[i]) * (y[j + 1] - y[j])
-
-
 def _gather_or_vector_values(xp, values, cell_ids, n_active: int):
     arr = xp.asarray(values)
     if arr.ndim == 1:
@@ -437,8 +428,8 @@ def _vector_or_default(xp, value, n_active: int, dtype, default):
     return arr
 
 
-def _metric_key(xp, cell_measure_A):
-    return xp.asarray(cell_measure_A).astype(xp.float64, copy=False)
+def _metric_key(cell_measure_A):
+    return cell_measure_A
 
 
 def _concat_cell_ids(left, right):
