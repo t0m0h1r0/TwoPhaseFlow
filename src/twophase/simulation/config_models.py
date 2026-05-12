@@ -171,6 +171,27 @@ class OutputCfg:
     checkpoint_interval: float | None = None
 
 
+@dataclass(frozen=True)
+class InterfaceStateSpaceCfg:
+    """Parsed front-door state-space contract.
+
+    Geometric cell-fraction runtime construction is still disabled until the
+    AO-Fast active geometry validation ladder reaches C8.
+    """
+
+    kind: str = "diffuse_cls"
+    conserved_variable: str = "psi"
+    normalized_view: str = "psi"
+    gauge_variable: str = "psi"
+    gauge_trace: str = "diffuse_cls"
+    compatibility_constraint: str = "diffuse_mass"
+    compatibility_units: str = "dimensionless_indicator"
+    projection_implementation: str = "legacy"
+    dense_reference: str = "none"
+    gpu_required: bool = False
+    fallback_policy: str = "none"
+
+
 @dataclass
 class ExperimentConfig:
     """Complete experiment configuration."""
@@ -184,6 +205,9 @@ class ExperimentConfig:
     initial_velocity: dict | None = None
     boundary_condition: dict | None = None
     sweep: list | None = None
+    interface_state_space: InterfaceStateSpaceCfg = field(
+        default_factory=InterfaceStateSpaceCfg
+    )
 
     def override(self, **kwargs) -> "ExperimentConfig":
         """Return a shallow copy with top-level or nested fields replaced."""

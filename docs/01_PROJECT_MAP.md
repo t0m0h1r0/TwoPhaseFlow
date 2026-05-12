@@ -29,6 +29,9 @@ src/twophase/
 │   ├── metrics.py              # compute_metrics() — CCD/FD metric computation (SRP extraction)
 │   ├── boundary.py             # BCType enum, BoundarySpec, pad_ghost_cells
 │   └── components.py           # SimulationComponents dataclass (17 fields)
+├── geometry/                   # AO-Fast geometric cell-fraction C1 contracts
+│   ├── dense_reference.py      # Dense P1 Q_h/S_h oracle; test/debug only, no runtime fallback
+│   └── import_manifest.py      # Closed direct-AO import enum + migration-status manifest
 ├── hfe/                        # Hermite Field Extension (§08d)
 │   ├── hermite_interp.py       # hermite5_coeffs / hermite5_eval — O(h⁶) Hermite polynomial
 │   └── field_extension.py      # HermiteFieldExtension — 2-D tensor-product extension via CCD
@@ -176,6 +179,23 @@ IReinitializer.reinitialize(psi) → psi_new
 ICurvatureCalculator.compute(psi) → kappa
 ```
 All inputs/outputs shaped `grid.shape`. `velocity_components = [u, v]` (2D).
+
+### AO-Fast Geometry C1 (`geometry/`)
+
+`geometry/dense_reference.py` owns only the dense P1 oracle:
+
+```python
+cut_geometry_2d(grid, phi) -> P1CutGeometry(q, theta, surface_length, ...)
+MetricCellComplex.from_grid(grid).cell_measures
+```
+
+Status: oracle/test-only.  It is allowed for active-vs-dense tests and debug
+comparison, but must not be called from simulation runtime, experiment YAML
+activation, or fallback paths.  `geometry/import_manifest.py` is the closed
+direct-branch import registry; every imported AO symbol must be classified as
+`oracle_only`, `gpu_production`, or `reject`, with migration status recorded
+separately.  Runtime `geometric_cell_fraction` YAML construction remains
+disabled until AO-Fast C8.
 
 ### FlowState (`core/flow_state.py`)
 Pure data class — no logic.
