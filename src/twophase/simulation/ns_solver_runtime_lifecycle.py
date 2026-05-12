@@ -73,6 +73,15 @@ def initialise_ns_solver_from_options(solver, options) -> None:
     solver._active_projection_solver_scheme = str(
         getattr(options.interface, "active_projection_solver_scheme", "pcg")
     ).strip().lower()
+    solver._active_projection_absolute_tolerance = float(
+        getattr(options.interface, "active_projection_absolute_tolerance", 1.0e-11)
+    )
+    solver._active_projection_relative_tolerance = float(
+        getattr(options.interface, "active_projection_relative_tolerance", 0.0)
+    )
+    solver._active_projection_max_iterations = int(
+        getattr(options.interface, "active_projection_max_iterations", 8)
+    )
     solver._active_projection_pcg_tolerance = float(
         getattr(options.interface, "active_projection_pcg_tolerance", 1.0e-12)
     )

@@ -60,9 +60,11 @@ midway between the upper and lower walls of the 20 mm tank; the paper-facing
 snapshot window then follows the signed mode-2 production response over one
 observed cycle.  The oscillating-droplet window follows the Rayleigh-Lamb
 water-air period.  All five Chapter 14 YAMLs use active-geometry `q` as the
-interface carrier; Ridge--Eikonal reinitialization is disabled because
-compatibility projection is a separate active-geometry capillary contract, not
-a diffuse-CLS redistance step.
+interface carrier; the `interface.reinitialization` block therefore selects
+`compatibility_projection` every step.  This is not diffuse-CLS redistance:
+it is the hard active-geometry constraint solve that restores `Q_h(phi)=q`
+after swept-volume `q` transport and before bundle capillarity evaluates
+surface-energy work.
 
 The five production configs emit periodic snapshots with `psi`, `velocity`,
 and pressure-family figures. The runner stores raw fields in `data.npz` under

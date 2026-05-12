@@ -378,7 +378,7 @@ def test_ch14_capillary_yaml_loads_execution_stack():
     assert cfg.run.boundary_hodge_pressure_pairing == "restricted_variational_adjoint"
     assert cfg.run.pressure_history_mode == "pressure_coordinate"
     assert cfg.run.pressure_history_extrapolation == "bdf2"
-    assert cfg.run.reinit_method is None
+    assert cfg.run.reinit_method == "compatibility_projection"
     assert cfg.run.reproject_mode == "variable_density_only"
     assert cfg.run.ppe_solver == "fccd_iterative"
     assert cfg.run.pressure_scheme == "fccd_matrixfree"
@@ -393,7 +393,7 @@ def test_ch14_capillary_yaml_loads_execution_stack():
     assert cfg.run.capillary_closed_interface_fail_close is True
     assert cfg.run.ppe_defect_correction is True
     assert cfg.grid.grid_rebuild_freq == 1
-    assert cfg.run.reinit_every == 0
+    assert cfg.run.reinit_every == 1
     assert cfg.run.reinit_trigger_mode == "fixed"
     assert cfg.run.interface_tracking_method == "q_cell_fraction"
     assert cfg.run.phi_primary_transport is False
@@ -420,8 +420,8 @@ def test_ch14_static_droplet_yaml_uses_base_dynamic_route():
     assert cfg.run.interface_tracking_method == "q_cell_fraction"
     assert cfg.run.advection_scheme == "geometric_swept_volume"
     assert cfg.run.curvature_method == "face_implicit"
-    assert cfg.run.reinit_method is None
-    assert cfg.run.reinit_every == 0
+    assert cfg.run.reinit_method == "compatibility_projection"
+    assert cfg.run.reinit_every == 1
     assert cfg.run.convection_time_scheme == "imex_bdf2"
     assert cfg.run.viscous_time_scheme == "implicit_bdf2"
     assert cfg.run.viscous_dc_max_iterations == 12
@@ -463,8 +463,8 @@ def test_ch14_oscillating_droplet_yaml_uses_signed_deformation_only():
     assert cfg.interface_state_space.kind == "geometric_cell_fraction"
     assert cfg.run.advection_scheme == "geometric_swept_volume"
     assert cfg.run.interface_tracking_method == "q_cell_fraction"
-    assert cfg.run.reinit_method is None
-    assert cfg.run.reinit_every == 0
+    assert cfg.run.reinit_method == "compatibility_projection"
+    assert cfg.run.reinit_every == 1
     assert cfg.run.capillary_force_source == "bundle_virtual_work"
     assert cfg.run.capillary_closed_interface_endpoint == "geometric_cell_fraction"
     assert cfg.run.capillary_closed_interface_constraints == ("cell_volume",)
@@ -536,8 +536,8 @@ def test_ch14_canonical_yamls_share_base_numerical_stack():
         assert cfg.run.advection_scheme == "geometric_swept_volume", path.name
         assert cfg.run.interface_tracking_method == "q_cell_fraction", path.name
         assert cfg.run.curvature_method == "face_implicit", path.name
-        assert cfg.run.reinit_method is None, path.name
-        assert cfg.run.reinit_every == 0, path.name
+        assert cfg.run.reinit_method == "compatibility_projection", path.name
+        assert cfg.run.reinit_every == 1, path.name
         assert cfg.run.convection_scheme == "uccd6", path.name
         assert cfg.run.convection_time_scheme == "imex_bdf2", path.name
         assert cfg.run.momentum_form == "conservative_common_flux", path.name
@@ -626,7 +626,7 @@ def test_ch14_rising_bubble_yaml_loads_execution_stack():
     assert cfg.output.checkpoint_interval == pytest.approx(0.005)
     assert cfg.run.momentum_form == "conservative_common_flux"
     assert cfg.interface_state_space.kind == "geometric_cell_fraction"
-    assert cfg.run.reinit_every == 0
+    assert cfg.run.reinit_every == 1
     assert cfg.run.reinit_trigger_mode == "fixed"
     assert cfg.run.interface_tracking_method == "q_cell_fraction"
     assert cfg.run.phi_primary_transport is False

@@ -1004,9 +1004,18 @@ class TwoPhaseNSSolver:
                 rho_l=state.rho_l,
                 rho_g=state.rho_g,
                 boundary=boundary,
-                tolerance=1.0e-11,
+                tolerance=self._active_projection_absolute_tolerance,
                 project_every_steps=self._geometric_projection_cadence(),
                 step_index=state.step_index,
+                max_newton_iterations=self._active_projection_max_iterations,
+                relative_tolerance=self._active_projection_relative_tolerance,
+                solver_scheme=self._active_projection_solver_scheme,
+                pcg_tolerance=self._active_projection_pcg_tolerance,
+                pcg_max_iterations=self._active_projection_pcg_max_iterations,
+                pcg_roundoff_floor=self._active_projection_pcg_roundoff_floor,
+                dc_tolerance=self._active_projection_dc_tolerance,
+                dc_max_iterations=self._active_projection_dc_max_iterations,
+                dc_relaxation=self._active_projection_dc_relaxation,
             )
         else:
             result = transport_geometric_phase_common_flux_2d(
@@ -1052,7 +1061,7 @@ class TwoPhaseNSSolver:
                 self._grid,
                 material,
                 sigma=state.sigma,
-                tolerance=1.0e-11,
+                tolerance=self._active_projection_absolute_tolerance,
                 solver_scheme=self._active_projection_solver_scheme,
                 pcg_tolerance=self._active_projection_pcg_tolerance,
                 max_pcg_iterations=self._active_projection_pcg_max_iterations,

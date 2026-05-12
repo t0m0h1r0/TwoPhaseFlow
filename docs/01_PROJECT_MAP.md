@@ -232,10 +232,11 @@ solver, reduction, and line-search kernels are admitted.  Empty active support r
 an explicit no-op ledger rather than reducing an empty residual.  After C8,
 `geometric_cell_fraction` YAML may build an `ExperimentConfig` when it declares
 the closed AO-Fast contract (`q` transport, `geometric_swept_volume`,
-`bundle_virtual_work`, `cell_volume`, `algorithm: none`).  Solver construction
-still fails closed in `NSSolverBuilder` until the runtime adapter,
-checkpoint, and chapter-14 smoke gates pass; no chapter-14 runtime path is
-silently activated.  Conversely, the legacy/default diffuse front door rejects
+`bundle_virtual_work`, `cell_volume`, and either no projection for static
+diagnostics or `algorithm: compatibility_projection` for transported
+production runs).  Solver construction validates the runtime adapter,
+checkpoint, and chapter-14 smoke gates; no chapter-14 runtime path is silently
+activated.  Conversely, the legacy/default diffuse front door rejects
 geometric capillary declarations (`bundle_virtual_work`,
 `endpoint=geometric_cell_fraction`, or `constraints=[cell_volume]`) unless
 `interface.state_space.kind=geometric_cell_fraction` is explicit.

@@ -147,11 +147,10 @@ def build_ao_fast_runtime_contract(cfg: Any) -> AOFastRuntimeContract:
     if reinit_method is None and reinit_every != 0:
         raise ValueError("AO-Fast runtime contract requires reinit_every=0")
     if reinit_method == "compatibility_projection":
-        raise ValueError(
-            "AO-Fast active compatibility_projection runtime is not wired; "
-            "use algorithm='none' with schedule.every_steps=0 until the fused "
-            "active projection path is connected"
-        )
+        if reinit_every <= 0:
+            raise ValueError(
+                "AO-Fast compatibility_projection requires reinit_every > 0"
+            )
 
     return AOFastRuntimeContract(
         state_kind="geometric_cell_fraction",

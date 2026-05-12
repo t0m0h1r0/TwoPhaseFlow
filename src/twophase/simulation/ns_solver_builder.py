@@ -108,6 +108,15 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             active_projection_solver_scheme=str(
                 getattr(state_space, "active_projection_solver_scheme", "pcg")
             ),
+            active_projection_absolute_tolerance=float(
+                getattr(state_space, "active_projection_absolute_tolerance", 1.0e-11)
+            ),
+            active_projection_relative_tolerance=float(
+                getattr(state_space, "active_projection_relative_tolerance", 0.0)
+            ),
+            active_projection_max_iterations=int(
+                getattr(state_space, "active_projection_max_iterations", 8)
+            ),
             active_projection_pcg_tolerance=float(
                 getattr(state_space, "active_projection_pcg_tolerance", 1.0e-12)
             ),

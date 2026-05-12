@@ -87,21 +87,30 @@ def transport_geometric_phase_common_flux_2d_gpu(
     tolerance: float = 1.0e-11,
     project_every_steps: int = 0,
     step_index: int = 0,
+    max_newton_iterations: int = 8,
+    relative_tolerance: float = 0.0,
+    solver_scheme: str = "pcg",
+    pcg_tolerance: float = 1.0e-12,
+    pcg_max_iterations: int = 256,
+    pcg_roundoff_floor: float | None = 1.0e-14,
+    dc_tolerance: float = 1.0e-11,
+    dc_max_iterations: int = 8,
+    dc_relaxation: float = 1.0,
 ) -> GeometricCommonFluxTransportResult:
     """Advance ``q`` and same-face common fluxes on the GPU.
 
-    ``project_every_steps`` is accepted only as ``0``; the active fused
-    projection route remains a separate admission gate.
+    When ``project_every_steps`` selects the current step, the transported
+    physical cell volume is projected back onto the P1 gauge manifold
+    ``Q_h(phi)=q`` before capillarity can consume the state.
     """
-    del step_index
     _require_gpu_array_namespace(grid.xp, "transport_geometric_phase_common_flux_2d_gpu")
-    if project_every_steps != 0:
-        raise ValueError(
-            "GPU geometric q transport requires project_every_steps=0 until "
-            "the fused active compatibility projection is connected"
-        )
     dt = _validate_positive_float(dt, "dt")
     tolerance = _validate_nonnegative_float(tolerance, "tolerance")
+    project_every_steps = _validate_nonnegative_int(
+        project_every_steps,
+        "project_every_steps",
+    )
+    step_index = _validate_nonnegative_int(step_index, "step_index")
     rho_l, rho_g = _validate_densities(rho_l, rho_g)
     boundary = _normalize_boundary(boundary)
 
@@ -127,12 +136,33 @@ def transport_geometric_phase_common_flux_2d_gpu(
         state.phi,
         level=state.stratum.level,
     )
+    should_project = (
+        project_every_steps > 0 and step_index % project_every_steps == 0
+    )
+    final_state = (
+        _project_q_phi_compatibility_fixed_gpu(
+            grid,
+            pre_projection,
+            tolerance=tolerance,
+            relative_tolerance=relative_tolerance,
+            max_newton_iterations=max_newton_iterations,
+            solver_scheme=solver_scheme,
+            pcg_tolerance=pcg_tolerance,
+            pcg_max_iterations=pcg_max_iterations,
+            pcg_roundoff_floor=pcg_roundoff_floor,
+            dc_tolerance=dc_tolerance,
+            dc_max_iterations=dc_max_iterations,
+            dc_relaxation=dc_relaxation,
+        )
+        if should_project
+        else pre_projection
+    )
     phase_transport = GeometricPhaseTransportResult(
-        state=pre_projection,
+        state=final_state,
         pre_projection_state=pre_projection,
         swept_flux=swept_flux,
         transport=transport,
-        projected=False,
+        projected=should_project,
     )
     volume_fluxes = _face_volume_fluxes_gpu(
         grid,
@@ -513,8 +543,11 @@ def validate_geometric_runtime_capillary_fail_close_gpu(
     )
     scalar_packet = [
         (
-            "q/phi compatibility residual",
-            capillary.material.phase_state.compatibility_residual_linf,
+            "active q/phi compatibility residual",
+            _active_interface_compatibility_residual_linf_gpu(
+                backend.xp,
+                capillary,
+            ),
         ),
         (
             "Young-Laplace normal residual",
@@ -539,7 +572,7 @@ def validate_geometric_runtime_capillary_fail_close_gpu(
     scalars = _host_scalar_packet_float(backend, scalar_packet)
 
     violations: list[str] = []
-    compatibility = scalars["q/phi compatibility residual"]
+    compatibility = scalars["active q/phi compatibility residual"]
     normal_residual = scalars["Young-Laplace normal residual"]
     if compatibility > tolerance:
         violations.append(
@@ -581,6 +614,25 @@ def validate_geometric_runtime_capillary_fail_close_gpu(
 
     if violations:
         raise ValueError("GPU AO capillary fail-close: " + "; ".join(violations))
+
+
+def _active_interface_compatibility_residual_linf_gpu(
+    xp,
+    capillary: GeometricRuntimeCapillaryState,
+):
+    """Return compatibility residual on rows that carry capillary geometry."""
+    phase_state = capillary.material.phase_state
+    derivatives = (
+        capillary.pressure_capillary_hodge
+        .capillary_riesz
+        .surface_covector
+        .derivatives
+    )
+    row_norm = xp.sum(derivatives.jq_local * derivatives.jq_local, axis=-1)
+    row_norm_floor = xp.asarray(1.0e-12, dtype=row_norm.dtype) * xp.max(row_norm)
+    active = row_norm > row_norm_floor
+    residual = xp.asarray(phase_state.q) - xp.asarray(phase_state.geometry.q)
+    return xp.max(xp.where(active, xp.abs(residual), xp.zeros_like(residual)))
 
 
 def _geometry_and_derivatives_full(grid, phi, *, level: float):
@@ -630,6 +682,149 @@ def _phase_state_from_q_phi_gpu(grid, q, phi, *, level: float):
         compatibility_residual_l2=_l2(xp, residual),
         ledger=None,
     )
+
+
+def _project_q_phi_compatibility_fixed_gpu(
+    grid,
+    state: GeometricPhaseState,
+    *,
+    tolerance: float,
+    relative_tolerance: float,
+    max_newton_iterations: int,
+    solver_scheme: str,
+    pcg_tolerance: float,
+    pcg_max_iterations: int,
+    pcg_roundoff_floor: float | None,
+    dc_tolerance: float,
+    dc_max_iterations: int,
+    dc_relaxation: float,
+) -> GeometricPhaseState:
+    """Restore the SP-AO hard constraint ``Q_h(phi)=q`` on the GPU.
+
+    A3 mapping:
+      Equation: after swept-volume transport, SP-AO requires
+      ``Q_h(phi^{n+1}) = q^{n+1}`` before the surface-energy variation is
+      evaluated.
+      Discretization: safeguarded active-set Newton solves
+      ``J_q J_q^T lambda = q - Q_h(phi)`` and updates
+      ``delta phi = J_q^T lambda``.  Candidate gauges are accepted only after
+      exact ``Q_h`` recomputation, so near-node topology changes are handled by
+      residual-monotone active-set refresh instead of a coordinate offset.
+      Code: this routine keeps the Schur solve and line-search candidates in
+      the backend namespace; convergence is certified later by the exact
+      active-interface ``q/phi`` residual gate on the returned state.
+    """
+    _require_gpu_array_namespace(grid.xp, "_project_q_phi_compatibility_fixed_gpu")
+    tolerance = _validate_positive_float(tolerance, "tolerance")
+    relative_tolerance = _validate_nonnegative_float(
+        relative_tolerance,
+        "relative_tolerance",
+    )
+    max_newton_iterations = _validate_positive_int(
+        max_newton_iterations,
+        "max_newton_iterations",
+    )
+    xp = grid.xp
+    level = state.stratum.level
+    phi = xp.asarray(state.phi)
+    q_target = xp.asarray(state.q, dtype=phi.dtype)
+    geometry, derivatives = _geometry_and_derivatives_full(grid, phi, level=level)
+    residual = q_target - geometry.q
+    initial_linf = _linf(xp, residual)
+    residual_tolerance = xp.maximum(
+        xp.asarray(tolerance, dtype=phi.dtype),
+        xp.asarray(relative_tolerance, dtype=phi.dtype) * initial_linf,
+    )
+
+    for _ in range(max_newton_iterations):
+        residual_linf = _linf(xp, residual)
+        active_newton = residual_linf > residual_tolerance
+        row_norm = xp.sum(derivatives.jq_local * derivatives.jq_local, axis=-1)
+        row_norm_floor = xp.asarray(1.0e-12, dtype=phi.dtype) * xp.max(row_norm)
+        active_rows = row_norm > row_norm_floor
+        rhs = xp.where(active_rows, residual, xp.zeros_like(residual))
+        lagrange = _solve_schur_for_active_policy_gpu(
+            grid,
+            xp,
+            derivatives.jq_local,
+            rhs,
+            row_norm,
+            active_rows,
+            solver_scheme=solver_scheme,
+            pcg_tolerance=pcg_tolerance,
+            pcg_max_iterations=pcg_max_iterations,
+            pcg_roundoff_floor=pcg_roundoff_floor,
+            dc_tolerance=dc_tolerance,
+            dc_max_iterations=dc_max_iterations,
+            dc_relaxation=dc_relaxation,
+        )
+        delta_phi = _apply_jq_transpose_full(grid, derivatives.jq_local, lagrange)
+        step = _residual_reducing_step_gpu(
+            grid,
+            xp,
+            phi,
+            delta_phi,
+            q_target,
+            level=level,
+            current_residual_linf=residual_linf,
+            step_cap=xp.asarray(1.0, dtype=phi.dtype),
+            active_newton=active_newton,
+        )
+        phi = xp.where(active_newton, phi + step * delta_phi, phi)
+        geometry, derivatives = _geometry_and_derivatives_full(grid, phi, level=level)
+        residual = q_target - geometry.q
+
+    return _phase_state_from_q_phi_gpu(grid, q_target, phi, level=level)
+
+
+def _sign_margin_step_fraction_gpu(xp, phi_rel, delta_phi, *, sign_safety: float):
+    """Return a device scalar limiting Newton updates to the fixed sign stratum."""
+    safety = xp.asarray(sign_safety, dtype=delta_phi.dtype)
+    crossing = phi_rel * delta_phi < 0.0
+    safe_delta = xp.where(crossing, xp.abs(delta_phi), xp.ones_like(delta_phi))
+    ratios = xp.where(crossing, xp.abs(phi_rel) / safe_delta, xp.inf)
+    cap = xp.min(ratios)
+    one = xp.asarray(1.0, dtype=delta_phi.dtype)
+    return xp.minimum(one, safety * cap)
+
+
+def _residual_reducing_step_gpu(
+    grid,
+    xp,
+    phi,
+    delta_phi,
+    q_target,
+    *,
+    level: float,
+    current_residual_linf,
+    step_cap,
+    active_newton,
+):
+    """Pick the first fixed backtracking step that reduces exact ``Q_h`` error."""
+    step = xp.minimum(xp.asarray(1.0, dtype=phi.dtype), step_cap)
+    min_step = xp.asarray(1.0e-8, dtype=phi.dtype)
+    selected = xp.asarray(0.0, dtype=phi.dtype)
+    accepted = xp.asarray(False)
+    for _ in range(6):
+        valid_step = step >= min_step
+        candidate_phi = phi + step * delta_phi
+        candidate_geometry, candidate_derivatives = _geometry_and_derivatives_full(
+            grid,
+            candidate_phi,
+            level=level,
+        )
+        del candidate_derivatives
+        candidate_linf = _linf(xp, q_target - candidate_geometry.q)
+        accept = (
+            active_newton
+            & (~accepted)
+            & valid_step
+            & (candidate_linf < current_residual_linf)
+        )
+        selected = xp.where(accept, step, selected)
+        accepted = accepted | accept
+        step = 0.5 * step
+    return selected
 
 
 def _stratum_from_geometry(grid, phi, geometry: P1CutGeometry, *, level: float):
@@ -1367,6 +1562,13 @@ def _validate_positive_int(value, name):
     converted = int(value)
     if converted < 1 or converted != value:
         raise ValueError(f"{name} must be a positive integer")
+    return converted
+
+
+def _validate_nonnegative_int(value, name):
+    converted = int(value)
+    if converted < 0 or converted != value:
+        raise ValueError(f"{name} must be a non-negative integer")
     return converted
 
 

@@ -814,17 +814,20 @@ def test_ch14_capillary_yaml_builds_solver():
     assert solver._capillary_range_projection == "none"
     assert solver._capillary_reaction_projection == "pressure_component_hodge"
     assert solver._active_projection_solver_scheme == "pcg"
+    assert solver._active_projection_absolute_tolerance == pytest.approx(1.0e-11)
+    assert solver._active_projection_relative_tolerance == pytest.approx(0.0)
+    assert solver._active_projection_max_iterations == 32
     assert solver._active_projection_pcg_tolerance == pytest.approx(1.0e-12)
     assert solver._active_projection_pcg_max_iterations == 256
     assert solver._active_projection_pcg_roundoff_floor == pytest.approx(1.0e-14)
-    assert solver._active_projection_dc_tolerance == pytest.approx(1.0e-11)
-    assert solver._active_projection_dc_max_iterations == 8
-    assert solver._active_projection_dc_relaxation == pytest.approx(1.0)
+    assert cfg.interface_state_space.active_projection_primary == "active_pcg_newton"
+    assert cfg.interface_state_space.active_projection_fallback_policy == "none"
     assert solver._ppe_coefficient_scheme == "phase_separated"
     assert solver._ppe_interface_coupling_scheme == "affine_jump"
     assert isinstance(solver._transport, PsiDirectTransport)
     assert solver._interface_runtime.rebuild_freq == 1
-    assert solver._interface_runtime.reinit_every == 0
+    assert solver._interface_runtime.reinit_method == "compatibility_projection"
+    assert solver._interface_runtime.reinit_every == 1
     assert isinstance(solver._ppe_solver, PPESolverDefectCorrection)
     assert isinstance(solver._ppe_solver.operator, PPESolverFCCDMatrixFree)
     assert isinstance(solver._ppe_solver.base_solver, PPESolverFDDirect)
@@ -893,7 +896,8 @@ def test_ch14_rising_bubble_yaml_builds_solver():
     assert solver._momentum_form == "conservative_common_flux"
     assert solver._transport.mass_correction is False
     assert solver._interface_runtime.rebuild_freq == 0
-    assert solver._interface_runtime.reinit_every == 0
+    assert solver._interface_runtime.reinit_method == "compatibility_projection"
+    assert solver._interface_runtime.reinit_every == 1
     assert cfg.interface_state_space.kind == "geometric_cell_fraction"
     assert solver._advection_scheme == "geometric_swept_volume"
     assert solver._interface_tracking_method == "q_cell_fraction"

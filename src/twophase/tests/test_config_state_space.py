@@ -635,7 +635,7 @@ def test_active_geometry_capillary_rejects_parser_owned_yaml_knobs(extra):
         ExperimentConfig.from_dict(raw)
 
 
-def test_geometric_runtime_rejects_active_projection_schedule():
+def test_geometric_runtime_accepts_active_projection_schedule():
     raw = _geometric_raw(
         {
             "interface": {
@@ -647,8 +647,8 @@ def test_geometric_runtime_rejects_active_projection_schedule():
         }
     )
     experiment_cfg = ExperimentConfig.from_dict(raw)
-    with pytest.raises(ValueError, match="active compatibility_projection"):
-        build_ao_fast_runtime_contract(experiment_cfg)
+    contract = build_ao_fast_runtime_contract(experiment_cfg)
+    assert contract.active_projection_solver_scheme == "pcg"
 
 
 def test_geometric_runtime_gpu_backend_marks_capillary_projection_pending():

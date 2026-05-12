@@ -53,9 +53,9 @@ interface:
       # route is fail-closed for pressure-jump production configs.
       method: face_implicit
   reinitialization:
-    algorithm: none
+    algorithm: compatibility_projection
     schedule:
-      every_steps: 0
+      every_steps: 1
     profile:
       eps_scale: 1.0
       ridge_sigma_0: 3.0
@@ -135,7 +135,7 @@ numerics:
           norm: linf
           absolute_tolerance: 1.0e-11
           relative_tolerance: 0.0
-          max_iterations: 8
+          max_iterations: 32
         pcg:
           tolerance: 1.0e-12
           max_iterations: 256
