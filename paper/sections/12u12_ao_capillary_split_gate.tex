@@ -34,6 +34,8 @@ flat interface では全経路が zero-drive でなければならない．
 駆動を消すこと，component-volume Hodge probe が非静的波を検出すること，
 そして現在の GPU AO-Fast packet が diagonal active-Schur residual と
 zero balanced drive により fail-close することを確認する．
+実験は \texttt{experiment/ch12/exp\_U12\_ao\_capillary\_split\_gate.py} を
+remote GPU 上で \texttt{--require-gpu} により実行した．
 
 \begin{table}[htbp]
 \caption{U12：AO-Fast 幾何毛管分解 gate の観測結果}
@@ -51,6 +53,14 @@ GPU AO-Fast packet & 未解決条件の fail-close & diagonal active-Schur resid
 \bottomrule
 \end{tabularx}
 \end{table}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.78\linewidth]{figures/ch12_u12_ao_capillary_split_gate.pdf}
+\caption{U12：AO-Fast 幾何毛管分解 gate．左は CPU exact full pressure split と
+component-volume Hodge probe の balanced drive，右は GPU packet の gate 状態を示す．}
+\label{fig:U12_ao_gate}
+\end{figure}
 
 \paragraph{出口条件．}
 U12 から第~\ref{sec:verification}章へ渡す結論は次の 3 点である．

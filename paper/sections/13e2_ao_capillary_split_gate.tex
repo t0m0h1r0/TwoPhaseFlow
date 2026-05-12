@@ -27,6 +27,8 @@ V11 は以下を同時に要求する．
   \item GPU gate：アクティブ集合，Krylov ベクトル，Hodge probe は
         \texttt{backend.xp} 上で閉じ，host/device 往復を前提にしない．
 \end{enumerate}
+実験は \texttt{experiment/ch13/exp\_V11\_ao\_capillary\_split\_gate.py} を
+remote GPU 上で \texttt{--require-gpu} により実行した．
 
 \begin{table}[htbp]
 \caption{V11：AO-Fast 統合前 gate の判定}
@@ -44,6 +46,15 @@ GPU AO-Fast packet & 現行 GPU packet は diagonal active-Schur residual と ze
 \bottomrule
 \end{tabularx}
 \end{table}
+
+\begin{figure}[htbp]
+\centering
+\includegraphics[width=0.78\linewidth]{figures/ch13_v11_ao_capillary_split_gate.pdf}
+\caption{V11：AO-Fast 幾何毛管分解の統合前 gate．
+pressure-coordinate と face-acceleration の履歴表現を含め，
+非静的波では GPU packet が fail-close することを確認する．}
+\label{fig:V11_ao_gate}
+\end{figure}
 
 \paragraph{第14章への接続．}
 V11 は AO-Fast packet の失敗をもって標準毛管波の失敗とは読まない．
