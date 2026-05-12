@@ -184,7 +184,7 @@ def _parse_surface_tension_settings(
             "'face_implicit' until the P2 ALE pressure-jump range projection "
             "is implemented and verified."
         )
-    if capillary_force_source == "closed_interface_riesz":
+    if capillary_force_source in {"closed_interface_riesz", "bundle_virtual_work"}:
         closed_interface_contract = _parse_closed_interface_contract(
             surface_tension=surface_tension,
             path=(
@@ -194,23 +194,36 @@ def _parse_surface_tension_settings(
         )
         if surface_tension_scheme != "pressure_jump":
             raise ValueError(
-                f"{layout['paths']['surface_tension_source']}='closed_interface_riesz' "
+                f"{layout['paths']['surface_tension_source']}="
+                f"'{capillary_force_source}' "
                 "requires capillary_force.formulation='pressure_jump'."
             )
         if "curvature" in surface_tension:
             raise ValueError(
-                f"{layout['paths']['surface_tension_source']}='closed_interface_riesz' "
+                f"{layout['paths']['surface_tension_source']}="
+                f"'{capillary_force_source}' "
                 "must not be combined with capillary_force.curvature."
+            )
+        if (
+            capillary_force_source == "bundle_virtual_work"
+            and closed_interface_contract["capillary_closed_interface_endpoint"]
+            != "geometric_cell_fraction"
+        ):
+            raise ValueError(
+                f"{layout['paths']['surface_tension_source']}='bundle_virtual_work' "
+                "requires closed_interface.endpoint='geometric_cell_fraction'."
             )
         if "capillary_range_projection" in projection["poisson"].get("operator", {}):
             raise ValueError(
-                f"{layout['paths']['surface_tension_source']}='closed_interface_riesz' "
+                f"{layout['paths']['surface_tension_source']}="
+                f"'{capillary_force_source}' "
                 "uses poisson.operator.capillary_reaction_projection, not "
                 "capillary_range_projection."
             )
         if poisson_settings["capillary_reaction_projection"] != "pressure_component_hodge":
             raise ValueError(
-                f"{layout['paths']['surface_tension_source']}='closed_interface_riesz' "
+                f"{layout['paths']['surface_tension_source']}="
+                f"'{capillary_force_source}' "
                 "requires poisson.operator.capillary_reaction_projection="
                 "'pressure_component_hodge'."
             )

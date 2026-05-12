@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import replace
 from typing import TYPE_CHECKING
 
+from .ao_fast_runtime_contract import raise_ao_fast_runtime_disabled
 from .ns_solver_options import (
     NSSolverInitOptions,
     SolverGridOptions,
@@ -243,10 +244,7 @@ class NSSolverBuilder:
     def __init__(self, cfg: "ExperimentConfig") -> None:
         state_space = getattr(cfg, "interface_state_space", None)
         if getattr(state_space, "kind", "diffuse_cls") == "geometric_cell_fraction":
-            raise ValueError(
-                "geometric_cell_fraction solver runtime adapter is disabled until "
-                "AO-Fast C9/C10 gates pass"
-            )
+            raise_ao_fast_runtime_disabled(cfg)
         self._options = build_solver_init_options(cfg)
 
     def with_debug_diagnostics(self, enabled: bool) -> "NSSolverBuilder":

@@ -57,6 +57,8 @@ sources:
     description: "AO-Fast C2-C7 active table, active kernels, matrix-free Schur, PCG floor, and exact active projection core"
   - path: artifacts/A/ch14_ao_fast_runtime_ux_gate_CHK-RA-CH14-AO-FASTVOL-017.md
     description: "AO-Fast C8 YAML/UX gate: valid geometric configs build, solver runtime remains fail-closed"
+  - path: artifacts/A/ch14_ao_fast_runtime_contract_adapter_CHK-RA-CH14-AO-FASTVOL-018.md
+    description: "AO-Fast C9 disabled runtime contract adapter for q/theta/phi handoff, checkpoint arrays, and bundle capillary contract"
 depends_on:
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-159]]"
@@ -676,6 +678,19 @@ projection contract.  `NSSolverBuilder` still rejects that config before
 building runtime options, so the UX can validate the intended AO-Fast YAML while
 chapter-14 execution remains blocked until the runtime adapter/checkpoint/smoke
 gates pass.
+
+C9 introduces the disabled runtime contract adapter.  Before raising the
+fail-close runtime error, `NSSolverBuilder` now validates that the parsed config
+still carries the intended q/theta/phi handoff, `q_cell_fraction` tracking,
+`geometric_swept_volume` transport, `bundle_virtual_work` with
+`endpoint: geometric_cell_fraction`, `constraints: [cell_volume]`, and
+`pressure_component_hodge`.  The same module defines the continuation
+checkpoint array contract (`state/q`, `state/theta`, `state/phi`,
+`state/stratum/case_code`, transport/projection ledger epochs) and validates
+pressure/projected face-history component shapes as a test-only gate.  This
+found and fixed a C8 parser gap: `bundle_virtual_work` must parse and preserve
+the closed-interface contract, not fall back to the legacy `conservative_psi`
+default.
 
 CCD/DCCD/FCCD/UCCD remain useful on the smooth side of the split: gauge
 prediction, screened gauge metric `W_eta`, face-state reconstruction,

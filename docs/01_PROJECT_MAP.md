@@ -98,6 +98,7 @@ src/twophase/
 │       └── richardson_cn.py    # RichardsonCNAdvance — Richardson extrapolation
 ├── simulation/                 # Simulation orchestration
 │   ├── _core.py                # TwoPhaseSimulation — step_forward() 7-step loop
+│   ├── ao_fast_runtime_contract.py # AO-Fast disabled runtime/checkpoint contract gate
 │   ├── boundary_condition.py   # BoundaryConditionHandler (BCType enum)
 │   ├── builder.py              # SimulationBuilder — SOLE construction path (ASM-001)
 │   ├── simulation/viscous_helmholtz_dc.py # ViscousHelmholtzDCSolver — implicit-BDF2 DC (§07)
@@ -180,7 +181,7 @@ ICurvatureCalculator.compute(psi) → kappa
 ```
 All inputs/outputs shaped `grid.shape`. `velocity_components = [u, v]` (2D).
 
-### AO-Fast Geometry C1-C8 (`geometry/`, `simulation/config_*`)
+### AO-Fast Geometry C1-C9 (`geometry/`, `simulation/config_*`)
 
 `geometry/dense_reference.py` owns only the dense P1 oracle:
 
@@ -218,6 +219,15 @@ the closed AO-Fast contract (`q` transport, `geometric_swept_volume`,
 still fails closed in `NSSolverBuilder` until the runtime adapter,
 checkpoint, and chapter-14 smoke gates pass; no chapter-14 runtime path is
 silently activated.
+
+`simulation/ao_fast_runtime_contract.py` owns the disabled C9 runtime contract
+adapter.  It validates the parsed q/theta/phi handoff, the
+`bundle_virtual_work` capillary contract, required continuation checkpoint
+arrays, and pressure/projected face-history shapes, then raises
+`AOFastRuntimeDisabledError` before `build_solver_init_options` can enter the
+legacy diffuse runtime.  This is a test-only/disabled gate until bounded
+swept-volume transport, bundle capillary runtime, and chapter-14 smoke gates are
+implemented.
 
 ### FlowState (`core/flow_state.py`)
 Pure data class — no logic.

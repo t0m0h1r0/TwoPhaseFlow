@@ -4,8 +4,14 @@ from __future__ import annotations
 
 from copy import deepcopy
 
+import numpy as np
 import pytest
 
+from twophase.simulation.ao_fast_runtime_contract import (
+    AOFastRuntimeDisabledError,
+    build_ao_fast_runtime_contract,
+    validate_ao_fast_checkpoint_arrays,
+)
 from twophase.simulation.config_io import ExperimentConfig
 from twophase.simulation.config_state_space import parse_interface_state_space
 from twophase.simulation.ns_pipeline import TwoPhaseNSSolver
@@ -192,6 +198,24 @@ def _geometric_raw(patch: dict | None = None) -> dict:
     return _deep_update(raw, deepcopy(patch)) if patch else raw
 
 
+def _ao_fast_checkpoint_arrays(shape: tuple[int, int] = (8, 8)) -> dict:
+    nx, ny = shape
+    return {
+        "state/q": np.full(shape, 0.25),
+        "state/theta": np.full(shape, 0.25),
+        "state/phi": np.zeros(shape),
+        "state/stratum/case_code": np.zeros(shape, dtype=np.int16),
+        "solver/transport_stage_ledger/epoch": np.asarray(3, dtype=np.int64),
+        "solver/compatibility_projection_ledger/epoch": np.asarray(3, dtype=np.int64),
+        "solver/p_prev_accel_face_components/count": np.asarray(2, dtype=np.int64),
+        "solver/p_prev_accel_face_components/0": np.zeros((nx - 1, ny)),
+        "solver/p_prev_accel_face_components/1": np.zeros((nx, ny - 1)),
+        "solver/projected_face_components/count": np.asarray(2, dtype=np.int64),
+        "solver/projected_face_components/0": np.zeros((nx - 1, ny)),
+        "solver/projected_face_components/1": np.zeros((nx, ny - 1)),
+    }
+
+
 def test_legacy_diffuse_state_space_still_parses():
     cfg = ExperimentConfig.from_dict(_minimal())
     assert cfg.interface_state_space.kind == "diffuse_cls"
@@ -240,9 +264,35 @@ def test_valid_geometric_contract_builds_config_but_solver_runtime_fails_closed(
     assert experiment_cfg.run.advection_scheme == "geometric_swept_volume"
     assert experiment_cfg.run.interface_tracking_method == "q_cell_fraction"
     assert experiment_cfg.run.capillary_force_source == "bundle_virtual_work"
+    contract = build_ao_fast_runtime_contract(experiment_cfg)
+    assert contract.capillary_constraints == ("cell_volume",)
+    assert contract.checkpoint_state_phase == "pre_step"
 
-    with pytest.raises(ValueError, match="runtime adapter is disabled"):
+    with pytest.raises(AOFastRuntimeDisabledError, match="validated contract"):
         TwoPhaseNSSolver.from_config(experiment_cfg)
+
+
+def test_ao_fast_checkpoint_contract_validates_handoff_and_face_histories():
+    validation = validate_ao_fast_checkpoint_arrays(
+        _ao_fast_checkpoint_arrays(),
+        grid_shape=(8, 8),
+    )
+    assert validation.required_arrays[0] == "state/q"
+    assert "solver/projected_face_components" in validation.face_history_prefixes
+
+
+def test_ao_fast_checkpoint_contract_rejects_missing_q_state():
+    arrays = _ao_fast_checkpoint_arrays()
+    arrays.pop("state/q")
+    with pytest.raises(ValueError, match="missing required array state/q"):
+        validate_ao_fast_checkpoint_arrays(arrays, grid_shape=(8, 8))
+
+
+def test_ao_fast_checkpoint_contract_rejects_bad_face_history_shape():
+    arrays = _ao_fast_checkpoint_arrays()
+    arrays["solver/projected_face_components/1"] = np.zeros((8, 8))
+    with pytest.raises(ValueError, match="face history"):
+        validate_ao_fast_checkpoint_arrays(arrays, grid_shape=(8, 8))
 
 
 @pytest.mark.parametrize(
