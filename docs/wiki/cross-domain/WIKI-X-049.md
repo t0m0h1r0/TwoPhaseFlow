@@ -47,7 +47,7 @@ WIKI-E-063  U12/V11 executable admission gates
 
 Do not start from Chapter 14 production plots when the question is
 active-geometry capillary admission.  All checked-in Chapter 14 YAMLs now
-declare only `interface.state_space.scheme: active_geometry_capillary` at the
+declare only `interface.state_space: active_geometry_capillary` at the
 state-space front door; the parser expands q transport and
 `bundle_virtual_work` internally through the fixed contract.
 
@@ -55,7 +55,7 @@ state-space front door; the parser expands q transport and
 
 | Route | YAML signature | Accepted reading |
 |---|---|---|
-| Active-geometry Chapter 14 | `interface.state_space.scheme: active_geometry_capillary`, q transport, `bundle_virtual_work`, active GPU contract | Capillary wave, Rayleigh--Taylor, static droplet, oscillating droplet, and rising bubble all use the active-geometry YAML route. |
+| Active-geometry Chapter 14 | `interface.state_space: active_geometry_capillary`, q transport, `bundle_virtual_work`, active GPU contract | Capillary wave, Rayleigh--Taylor, static droplet, oscillating droplet, and rising bubble all use the active-geometry YAML route. |
 
 The boundary is intentionally visible in YAML.  It prevents a stale diffuse-CLS
 configuration from being mistaken for the requested active-geometry run.

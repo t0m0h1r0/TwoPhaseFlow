@@ -101,7 +101,7 @@ def _minimal(patch: dict | None = None) -> dict:
 def _geometric_patch() -> dict:
     return {
         "interface": {
-            "state_space": {"scheme": "active_geometry_capillary"},
+            "state_space": "active_geometry_capillary",
             "reinitialization": {
                 "algorithm": "none",
                 "schedule": {"every_steps": 0},
@@ -184,14 +184,14 @@ def test_legacy_diffuse_state_space_still_parses():
 
 
 def test_q_transport_without_geometric_state_space_fails_closed():
-    with pytest.raises(ValueError, match="requires interface.state_space.scheme"):
+    with pytest.raises(ValueError, match="requires interface.state_space"):
         ExperimentConfig.from_dict(
             _minimal({"numerics": {"interface": {"transport": {"variable": "q"}}}})
         )
 
 
 def test_q_tracking_without_geometric_state_space_fails_closed():
-    with pytest.raises(ValueError, match="requires interface.state_space.scheme"):
+    with pytest.raises(ValueError, match="requires interface.state_space"):
         ExperimentConfig.from_dict(
             _minimal({"numerics": {"interface": {"tracking": {"primary": "q"}}}})
         )
@@ -247,7 +247,7 @@ def test_q_tracking_without_geometric_state_space_fails_closed():
     ],
 )
 def test_geometric_capillary_without_geometric_state_space_fails_closed(patch):
-    with pytest.raises(ValueError, match="requires interface.state_space.scheme"):
+    with pytest.raises(ValueError, match="requires interface.state_space"):
         ExperimentConfig.from_dict(_minimal(patch))
 
 
@@ -326,7 +326,7 @@ def test_active_geometry_capillary_rejects_kind_only_front_door():
     raw = _geometric_raw()
     raw["interface"]["state_space"] = {"kind": "geometric_cell_fraction"}
 
-    with pytest.raises(ValueError, match="scheme='active_geometry_capillary'"):
+    with pytest.raises(ValueError, match="state_space: active_geometry_capillary"):
         ExperimentConfig.from_dict(raw)
 
 
@@ -342,7 +342,10 @@ def test_active_geometry_capillary_rejects_kind_only_front_door():
 )
 def test_active_geometry_capillary_rejects_parser_owned_yaml_knobs(extra):
     raw = _geometric_raw()
-    raw["interface"]["state_space"].update(extra)
+    raw["interface"]["state_space"] = {
+        "scheme": "active_geometry_capillary",
+        **extra,
+    }
 
     with pytest.raises(ValueError, match="only the scheme key"):
         ExperimentConfig.from_dict(raw)

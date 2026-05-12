@@ -50,8 +50,7 @@ grid:
             apply_to: [lower, upper]
 
 interface:
-  state_space:
-    scheme: active_geometry_capillary
+  state_space: active_geometry_capillary
   thickness:
     mode: local
     base_factor: 1.5

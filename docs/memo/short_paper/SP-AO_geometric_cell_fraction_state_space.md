@@ -955,8 +955,7 @@ budgets, or fallback chains.  Those are parser-owned preset invariants.
 
 ```yaml
 interface:
-  state_space:
-    scheme: active_geometry_capillary
+  state_space: active_geometry_capillary
 ```
 
 The `active_geometry_capillary` preset expands internally to
@@ -996,15 +995,8 @@ numerics:
         capillary_reaction_projection: pressure_component_hodge
 ```
 
-Legacy/default state:
-
-```yaml
-interface:
-  state_space:
-    kind: diffuse_cls
-```
-
-If the block is absent, parse as `diffuse_cls` for backward compatibility.
+Legacy/default state omits the active-geometry front door.  If the block is
+absent, parse as `diffuse_cls` for non-active configs.
 
 ### YAML/UX solver policy
 

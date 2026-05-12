@@ -703,7 +703,7 @@ intentionally disabled on GPU rather than silently syncing inside the loop.
 
 C8 moves the fail-close boundary from config construction to solver
 construction.  A Chapter 14 YAML now names only
-`interface.state_space.scheme: active_geometry_capillary`; the parser expands
+`interface.state_space: active_geometry_capillary`; the parser expands
 the internal `geometric_cell_fraction` kind, `q_cell_fraction` tracking,
 `geometric_swept_volume` transport, `bundle_virtual_work`,
 `endpoint: geometric_cell_fraction`, `constraints: [cell_volume]`,
@@ -786,8 +786,7 @@ The YAML front door should select only the active-geometry capillary scheme:
 
 ```yaml
 interface:
-  state_space:
-    scheme: active_geometry_capillary
+  state_space: active_geometry_capillary
 ```
 
 The parser expands this single scheme to the fixed active-cached projection,
@@ -945,8 +944,7 @@ runtime fallback, `geometric_swept_volume` q transport, and
 
 ```yaml
 interface:
-  state_space:
-    scheme: active_geometry_capillary
+  state_space: active_geometry_capillary
 numerics:
   interface:
     transport:
@@ -966,7 +964,7 @@ Chapter 14 routes are now unified at the YAML front door:
 
 ```text
 capillary wave / Rayleigh--Taylor / static droplet / oscillating droplet / rising bubble:
-  interface.state_space.scheme = active_geometry_capillary
+  interface.state_space = active_geometry_capillary
   interface.transport.variable = q
   interface.transport.spatial = geometric_swept_volume
   surface_tension.source = bundle_virtual_work

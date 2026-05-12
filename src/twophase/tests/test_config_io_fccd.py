@@ -505,12 +505,16 @@ def test_ch14_canonical_yamls_use_theory_cfl_not_fixed_dt():
 
 
 def test_ch14_canonical_yamls_share_base_numerical_stack():
+    import yaml
+
     config_dir = (
         Path(__file__).resolve().parents[3]
         / "experiment/ch14/config"
     )
 
     for path in sorted(p for p in config_dir.glob("*.yaml") if not p.name.startswith("_")):
+        raw = yaml.safe_load(path.read_text())
+        assert raw["interface"]["state_space"] == "active_geometry_capillary", path.name
         cfg = ExperimentConfig.from_yaml(path)
         assert cfg.interface_state_space.scheme == "active_geometry_capillary", path.name
         assert cfg.interface_state_space.kind == "geometric_cell_fraction", path.name

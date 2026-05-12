@@ -41,8 +41,8 @@ for the rising-bubble route: conservative common-flux momentum transport,
 `predictor.assembly: none`, projected-face preservation, pressure-coordinate
 BDF2 history, and an explicit fail-closed boundary-Hodge state-space contract.
 All five YAMLs select the active-geometry capillary decomposition preset with
-`interface.state_space.scheme: active_geometry_capillary`.  The parser expands
-that scheme to the fixed short-paper active-geometry contract internally:
+`interface.state_space: active_geometry_capillary`.  The parser expands that
+scheme to the fixed short-paper active-geometry contract internally:
 transported `q`, normalized `theta`, P1 gauge `phi`, active-cached
 compatibility, required GPU storage, no implicit dense runtime fallback,
 `geometric_swept_volume` transport, and
@@ -334,7 +334,7 @@ must be independently visible.
 
 The dynamic ch14 YAMLs share the production stack:
 
-- `interface.state_space.scheme: active_geometry_capillary` — the user-facing
+- `interface.state_space: active_geometry_capillary` — the user-facing
   active-geometry capillary decomposition selection.
   Internal projection details such as `active_cached`, GPU storage, dense
   reference policy, support budgets, solver accelerators, and fallback policy
