@@ -1,24 +1,25 @@
 % paper/sections/13f_error_budget.tex
 %
-% V1-V10 横断の精度バジェット総合
+% V1-V11 横断の精度バジェット総合
 % Hosts labels: sec:error_budget, sec:accuracy_summary
 % (tab:accuracy_summary 09f, sec:time_accuracy_table 07 を authoritative とし
 %  本節からは hosting せず外部参照のみで連結する)
 % ═══════════════════════════════════════════════════════════════════════════════
-\subsection{精度バジェット：V1--V10 誤差寄与の統合評価}
+\subsection{精度バジェット：V1--V11 誤差寄与の統合評価}
 \label{sec:error_budget}
 \label{sec:accuracy_summary}
 
 \paragraph{構成．}
-本節は V1--V10 横断の精度結果を一表に集約し，
+本節は V1--V11 横断の精度結果を一表に集約し，
 \textbf{各誤差源} (空間離散，時間離散，界面表現，曲率推定，CLS 再初期化，射影後面速度，履歴圧力) と
 \textbf{各設定パラメータ} ($\rho_r$, $\alpha$, $\Delta t$, $h$) の関係を整理する
 （観測収束次数の Richardson 外挿運用は~\cite{Roy2003}）．
 本節は，最終スキームについて，
 どの誤差源がどの検証問題で支配的になるかを整理する精度バジェットである．
 U10/U11 は第~\ref{sec:numerical_integrity}章の単体条件として扱い，
-本節の V 系列は V1--V10 の範囲に保つ．保存形共通フラックスの有限振幅物理応答と
-周期壁上昇気泡応答は，第~\ref{sec:benchmarks}章のベンチマークと事前適合性確認で扱う．
+U12/V11 は AO-Fast 幾何毛管分解の統合前 gate として扱う．
+保存形共通フラックスの有限振幅物理応答と周期壁上昇気泡応答は，
+第~\ref{sec:benchmarks}章のベンチマークと事前適合性確認で扱う．
 
 \paragraph{判定基準（§\ref{sec:verification} Type 分類との整合）．}
 本節は §\ref{sec:verification}「判定区分と Type 分類」に基づき
@@ -45,13 +46,15 @@ norm 切替，項別誤差分解，dt/h 独立掃引，時系列解析により
 V9 は Type-A/B/D の分類ではなく，圧力ジャンプ・毛管射影結合系と同時に基準/局所
 $\varepsilon$ 幅を切り替えても有限時間静止液滴を破綻させないことを測る
 \textbf{演算子群条件付き診断}として別枠で扱う．
+V11 も Type-A/B/D ではなく，AO-Fast packet を標準物理経路へ入れる前の
+\textbf{fail-close gate}として別枠で扱う．
 
 \paragraph{統合検証成績一覧．}
 
 \begin{table}[!ht]
-\caption{V1--V10：統合精度まとめ}
+\caption{V1--V11：統合精度まとめ}
 \label{tab:v_accuracy_summary}
-\PaperCaptionNote{収束率は log-log fitting (3 点以上)；単一値はその設定での代表値．本表は Chapter 12 の成果総括表~\ref{tab:verification_summary} と同じ「ID / テスト / 期待・判定基準 / 実測・観測値 / 判定」文法で読む．表~\ref{tab:U_summary} は成果表ではなく U 系列の検証設計マップである．V10-a/V10-b は質量保存軸 (Type-B) と形状軸 (Type-D) に分離するため，表~\ref{tab:V_summary} の V10-a/b から 1:2 に展開される（計 14 行）．補助観測指標および全観測指標の網羅的列挙は表~\ref{tab:V_summary} を参照．}
+\PaperCaptionNote{収束率は log-log fitting (3 点以上)；単一値はその設定での代表値．本表は Chapter 12 の成果総括表~\ref{tab:verification_summary} と同じ「ID / テスト / 期待・判定基準 / 実測・観測値 / 判定」文法で読む．表~\ref{tab:U_summary} は成果表ではなく U 系列の検証設計マップである．V10-a/V10-b は質量保存軸 (Type-B) と形状軸 (Type-D) に分離するため，表~\ref{tab:V_summary} の V10-a/b から 1:2 に展開される（V11 gate を含め計 15 行）．補助観測指標および全観測指標の網羅的列挙は表~\ref{tab:V_summary} を参照．}
 \centering
 \PaperTableExtraDenseSetup
 \begin{tabularx}{\linewidth}{@{}>{\raggedright\arraybackslash}p{0.10\linewidth}>{\raggedright\arraybackslash}p{0.18\linewidth}>{\raggedright\arraybackslash}p{0.23\linewidth}>{\raggedright\arraybackslash}X>{\raggedright\arraybackslash}p{0.15\linewidth}@{}}
@@ -72,6 +75,7 @@ V10-a-mass & Zalesak 質量保存軸 & Olsson--Kreiss 質量補正後 drift $<0.
 V10-a-shape & Zalesak 形状軸 & 固定格子位相/しきい値化誤差 + slot/h$=6.4$ 解像不足と整合 & centroid err $4.911\!\times\!10^{-3}$；shape $L^1=8.307\!\times\!10^{-3}$ & $\triangle$ Type-D \\
 V10-b-mass & 単一渦 reversal 質量保存軸 & Olsson--Kreiss 質量補正後 drift $<0.5\%$ & $0.0428\%$ at $N=128,T=8$ & \checkmark Type-B \\
 V10-b-shape & 単一渦 reversal 形状軸 & 格子幅まで薄くなる folded filament の Eulerian 固定格子下限と整合 & $L^1$ reversal error $=2.248\times10^{-2}$ & $\triangle$ Type-D \\
+V11 & AO-Fast 幾何毛管分解 gate & full-pressure 過射影を棄却し，未解決 GPU packet は fail-close & CPU exact full-pressure split は wave drive $0$；component-volume probe は N32/N64 $2.1176/2.3055$；GPU は fail-close & \checkmark gate \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -116,6 +120,13 @@ V10-b-shape & 単一渦 reversal 形状軸 & 格子幅まで薄くなる folded 
         V6/V7/V9 の圧力ジャンプ/HFE 統合診断はこの単体条件の上で読む．
         ただし U11 は小型代数条件であり，周期壁の有限振幅物理応答を
         第13章に追加するものではない．
+  \item \textbf{AO-Fast 圧力反力分解 gate}．V11 は，
+        式~\eqref{eq:capillary_pressure_reaction_projection} の $R_p$ を定めない
+        full pressure image 分解が，毛管波の面上駆動を代数的に消し得ることを
+        統合前に検出する．component-volume Hodge probe は非静的波の検出器として有用だが，
+        それ自体は最終 $R_p$ の代替証明ではない．したがって現行 GPU AO-Fast packet は
+        fail-close し，標準 pressure-jump 経路の V6/V7/V9 と第~\ref{sec:benchmarks}章の
+        毛管波結果から分離する．
   \item \textbf{曲率推定誤差}．V5 では CSF $\kappa_{lg}$ + CCD 勾配の
         $u_\infty^{\mathrm{end}}$ 絶対値が全表ケースで $2\times10^{-2}$ 以下に保たれ，
         参照として FD 値を全条件で下回る．
@@ -187,7 +198,7 @@ V10-b-shape & 単一渦 reversal 形状軸 & 格子幅まで薄くなる folded 
 \end{itemize}
 
 \paragraph{検証対応の統合．}
-本節は V1--V10 全結果の横断統合点である．各実験が測定した式・離散化・物理指標の対応を
+本節は V1--V11 全結果の横断統合点である．各実験が測定した式・離散化・物理指標の対応を
 以下に集約する：
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item V1 (\autoref{sec:single_phase_ns}) — Navier--Stokes \eqref{eq:NS_onefluid}
@@ -212,6 +223,8 @@ V10-b-shape & 単一渦 reversal 形状軸 & 格子幅まで薄くなる folded 
         質量ドリフトと centroid 追跡精度（質量保存軸 / 形状軸の二軸構造）．
   \item V10-b (\autoref{sec:single_vortex_reversal}) — 単一渦 deformation
         reversal に対する $L^1$ 誤差と質量ドリフト（同二軸構造）．
+  \item V11 (\autoref{sec:ao_fast_capillary_gate}) — AO-Fast 幾何毛管分解の
+        full-pressure 過射影反例，component-volume Hodge probe，GPU fail-close gate．
 \end{itemize}
 本節 \autoref{tab:v_accuracy_summary} はこの全対応の精度結果を一表に集約する
 唯一の総合表であり，他章 (\autoref{sec:conclusion}) からの参照は

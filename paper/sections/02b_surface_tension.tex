@@ -135,6 +135,80 @@ $C_ww_f=0$ を満たす許容空間へ制限される．
 表面エネルギー・圧力・体積制約の仮想仕事と同じ面速度状態空間を定義する
 制約力である．
 
+\subsubsection{圧力反力部分空間と AO-Fast 毛管分解}
+\label{sec:capillary_pressure_reaction_subspace}
+AO-Fast 幾何毛管分解で高速化する対象は，曲率値そのものではなく，
+表面エネルギー仮想仕事の面速度空間上の Riesz 代表である．
+許容面速度空間を $F_h$，その SPD 計量を $M_f$ とし，
+表面エネルギーの離散第一変分を共変量 $r_\sigma\in F_h^\ast$ で
+\begin{equation}
+  \delta E_{\Gamma,h}[w_f]
+  =
+  -\langle r_\sigma,w_f\rangle
+  \qquad (w_f\in F_h)
+  \label{eq:capillary_face_covector}
+\end{equation}
+と表す．圧力で吸収できる反力は，全ての cell-pressure 勾配像ではなく，
+作用中の PPE，境界制約，圧力代表，および履歴圧力面加速度と同じ契約で許容される
+部分空間
+\begin{equation}
+  R_p(q_T)\subset F_h^\ast
+  \label{eq:pressure_reaction_subspace}
+\end{equation}
+として先に定義する．このとき物理的に速度を変える毛管駆動は
+\begin{equation}
+  a_{\sigma,\mathrm{bal}}
+  =
+  M_f^{-1}\left(r_\sigma-\Pi_{R_p}^{M_f}r_\sigma\right),
+  \qquad
+  \Pi_{R_p}^{M_f}r_\sigma
+  =
+  \arg\min_{r\in R_p(q_T)}
+  \|r_\sigma-r\|_{M_f^{-1}}^2 .
+  \label{eq:capillary_pressure_reaction_projection}
+\end{equation}
+である．平坦界面や静的円形液滴では式~\eqref{eq:capillary_pressure_reaction_projection} が
+丸め誤差まで 0 になることを要求し，毛管波や非定曲率界面では
+$R_p$ に落ちない成分が復元向きの面加速度として残ることを要求する．
+
+ここで $R_p$ の定義を省略し，節点 Young--Laplace 残差
+$e=g+J_q^T\pi$ の非零性だけを非静的駆動の証明としてはならない．
+固定アクティブ集合上で capillary Riesz 代表と full cell-pressure reaction を
+同じ Schur 系
+\begin{equation}
+  S=J_qW^{-1}J_q^T,\qquad
+  S\lambda=J_q(-g),\qquad
+  S\pi=-J_qg
+  \label{eq:ao_full_pressure_cancellation}
+\end{equation}
+から作ると $\lambda=\pi$ となり，$r_\sigma-T_q^T\pi=0$ が代数的に成立する．
+これは非零の節点残差が存在しても，full cell-pressure image への過射影では
+面上の毛管仕事を全て圧力反力として消してしまうことを意味する．
+したがって AO-Fast の正しい高速化単位は，
+式~\eqref{eq:capillary_face_covector} の幾何共変量構成，
+式~\eqref{eq:pressure_reaction_subspace} の圧力反力部分空間，
+式~\eqref{eq:capillary_pressure_reaction_projection} の面計量射影の三者である．
+
+近似計算を使う場合，近似誤差は毛管加速度の仕事ノルムで明示する．
+近似共変量 $\widetilde r_\sigma$ と近似射影
+$\widetilde\Pi_{R_p}^{M_f}$ が
+\begin{equation}
+  \|r_\sigma-\widetilde r_\sigma\|_{M_f^{-1}}\le\varepsilon_\sigma,\qquad
+  \|\Pi_{R_p}^{M_f}r_\sigma-\widetilde\Pi_{R_p}^{M_f}\widetilde r_\sigma\|_{M_f^{-1}}
+  \le\varepsilon_p
+  \label{eq:ao_fast_error_budget}
+\end{equation}
+を満たすなら，
+\begin{equation}
+  \|a_{\sigma,\mathrm{bal}}-\widetilde a_{\sigma,\mathrm{bal}}\|_{M_f}
+  \le \varepsilon_\sigma+\varepsilon_p
+  \label{eq:ao_fast_acceleration_error_bound}
+\end{equation}
+である．GPU 実装では，アクティブ面テーブル，Schur/PCG ベクトル，
+component-volume Hodge probe をデバイス上に保持し，
+この誤差境界と flat/static zero-drive，wave nonzero-drive の両ゲートを
+満たした場合にのみ AO-Fast 経路を受理する．
+
 切断面圧力ジャンプでは，このジャンプを節点平均ではなく界面が通過する
 切断面 $f\cap\Gamma_h$ で評価する．
 面の両端値を $\psi^-,\psi^+$，$\kappa^-_{lg},\kappa^+_{lg}$ とすると
