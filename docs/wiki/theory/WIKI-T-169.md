@@ -47,6 +47,8 @@ sources:
     description: "Contrarian review of AO-Fast preimplementation design; identifies blockers before production implementation"
   - path: artifacts/A/ch14_ao_fast_design_repair_CHK-RA-CH14-AO-FASTVOL-011.md
     description: "Repair of all contrarian-review findings before AO-Fast implementation"
+  - path: artifacts/A/ch14_ao_fast_complexity_audit_CHK-RA-CH14-AO-FASTVOL-012.md
+    description: "Complexity audit ensuring AO-Fast repairs do not reintroduce full-grid runtime work"
 depends_on:
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-159]]"
@@ -625,6 +627,15 @@ origin masks.  The import manifest uses only the closed classification enum
 q tolerances are unit-invariant, PCG gates record rank/conditioning/stop reason,
 topology changes use bounded active-set epochs or fail close, and GPU speed
 gates have pass/fail thresholds, not counters alone.
+
+A complexity audit then clarified that the repaired `A_q` design is acceptable
+only if target and flux support are compact streams.  Production AO-Fast must
+not scan all cells each timestep to discover `target_mixed_cells`, must not
+define `flux_touched_cells` from every nonzero velocity face, and must keep
+rank/conditioning gates as cheap active-row or Krylov/Ritz estimates.  Dense
+oracle comparison, full-grid scans, and dense Schur eigensolves remain
+initialization, validation, debug, or declared-degenerate work, not ordinary
+runtime.
 
 CCD/DCCD/FCCD/UCCD remain useful on the smooth side of the split: gauge
 prediction, screened gauge metric `W_eta`, face-state reconstruction,

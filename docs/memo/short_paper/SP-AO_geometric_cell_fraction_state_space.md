@@ -680,9 +680,10 @@ predicted gauge `phi^-`, the previous active table, cached metric arrays, and
 the face-Hodge state needed by capillary work.
 
 ```text
-1. build the constraint support A_q from current mixed cells, previous mixed
-   cells, swept-flux-touched cells, target-mixed cells where 0<q^-_C<|C|, and
-   the one-face halo needed for sign/case/ownership detection.
+1. build the constraint support A_q from compact support streams: current
+   active rows, previous active rows, swept-flux-touched cells emitted by
+   transport, target-mixed cells emitted by target-state transitions where
+   0<q^-_C<|C|, and the one-face halo needed for sign/case/ownership detection.
 2. attach q_target_A, cell_measure_A, target_state_code_A, and origin_mask_A;
    reject out-of-bounds targets before solving.
 3. detect dirty cells from sign/case changes, moved crossing intervals,
@@ -704,6 +705,15 @@ the face-Hodge state needed by capillary work.
     the declared fallback policy: `none` means fail close; `explicit_chain`
     allows only the listed solver transition and then records it in the ledger.
 ```
+
+`A_q` construction is not a license to scan `q^-` over `C_h` every timestep.
+Full-grid target support scans are allowed only for initialization, restart
+validation, dense-oracle comparison, explicit debug diagnostics, or a declared
+degenerate exact step.  Ordinary runtime receives compact support from
+swept-volume transport and previous active tables, so the target cost remains
+`O(|A_q|+|dirty|+k matvec(|A_q|))`.  Conditioning/rank gates are likewise cheap
+active-row or Krylov/Ritz estimates; dense Schur eigensolves are oracle/debug
+only.
 
 The asymptotic objective is:
 
@@ -805,10 +815,11 @@ q_target_A, cell_measure_A, target state, and origin masks are first-class,
 all imported symbols use closed classification oracle_only, gpu_production, or reject,
 migration status is separate from classification,
 GPU production forbids inner-loop host transfers,
+ordinary runtime forbids full-grid target-support scans,
 default fallback policy is none,
 exact active Q_h/S_h recomputation owns acceptance,
 physical-volume tolerances are unit-invariant and declared before tests,
-PCG/Newton gates record rank, conditioning, and stop reason,
+PCG/Newton gates record cheap rank/conditioning estimates and stop reason,
 active-set topology changes use bounded epochs or fail-close,
 GPU performance gates have pass/fail thresholds,
 runtime/capillary/chapter-14 YAML adapters wait for active geometry gates.

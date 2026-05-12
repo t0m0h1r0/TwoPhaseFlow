@@ -44,6 +44,28 @@ This fixes the transported-target counterexample.  A previously full/empty
 cell that receives valid transported liquid volume is now a constraint row,
 not an automatic topology failure and not an unchecked residual.
 
+The repair does not permit a full-grid target scan every step.  `A_q` is built
+from compact support streams emitted by transport and the previous active
+table:
+
+```text
+previous active table -> current/previous phi mixed rows,
+swept-volume transport -> flux_touched_cells,
+swept-volume transport -> target-state transitions,
+compact adjacency -> one-face halo.
+```
+
+Ordinary runtime cost remains:
+
+```text
+O(|A_q| + |dirty| + k * matvec(|A_q|)).
+```
+
+Full-grid scans are initialization/restart/debug/dense-oracle/declared
+degenerate work only.  A support tolerance `tau_support <= tau_q` may classify
+roundoff-near-empty/full rows for support, but it may not clip `q_target_A` or
+replace exact residual acceptance.
+
 Required row metadata:
 
 ```text
@@ -113,8 +135,8 @@ The PCG/Newton gate must record and use conditioning:
 
 ```text
 tau_cg <= min(
-  0.1 * tau_q / max(1, ||J W^{-1/2}||_est),
-  c_cond * tau_q / max(1, kappa(S_q)_est),
+  0.1 * tau_q / max(1, cheap_norm_est(J W^{-1/2})),
+  c_cond * tau_q / max(1, cheap_kappa_est(S_q)),
   c_work * tau_surface_diag,
   c_round * sqrt(n_active) * eps64 * Q_ref
 )
@@ -131,7 +153,8 @@ PCG stop reason.
 ```
 
 Conditioning failure is now a distinct fail-close reason, not an unexplained
-solver failure.
+solver failure.  The estimates are active-row/Krylov/Ritz estimates.  Dense
+SVD/eigendecomposition and full Schur assembly are oracle/debug-only.
 
 ## F6 Repair - Active-Set Epoch Policy
 
@@ -159,7 +182,9 @@ kernel launches, host transfers, and bytes moved.
 ```
 
 Vectorized `xp` is allowed only if it remains active-row compact.  Full-grid
-vectorized masks are oracle/debug code, not production AO-Fast.
+vectorized masks are oracle/debug code, not production AO-Fast.  Benchmarks and
+dense-oracle comparisons are validation gates, not work inside production
+timesteps.
 
 ## F8 Repair - Project-Map Governance
 

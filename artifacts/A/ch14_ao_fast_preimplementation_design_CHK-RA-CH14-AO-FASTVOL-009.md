@@ -110,6 +110,32 @@ topology failure.  Fail-close applies only when the target is out of physical
 bounds, cannot be represented on the declared topology route, or crosses a
 degenerate sign stratum.
 
+The `A_q` union is a compact-support construction.  Production code must not
+find `target_mixed_cells` or `flux_touched_cells` by scanning the full `q`
+array each step.  Instead:
+
+```text
+current_phi_mixed     from previous active table plus dirty/halo refresh,
+previous_phi_mixed    from previous active table,
+flux_touched_cells    emitted as compact support by swept-volume transport,
+target_mixed_cells    emitted from transport target-state transitions,
+one_face_halo         generated from compact row adjacency.
+```
+
+Full-grid support scans are allowed only during initialization, restart
+validation, dense-oracle tests, explicit debug diagnostics, metric-epoch
+rebuilds, or a declared degenerate exact step.  Ordinary AO-Fast runtime must
+remain:
+
+```text
+O(|A_q| + |dirty| + k * matvec(|A_q|)).
+```
+
+Support classification uses a declared `tau_support <= tau_q`: values within
+`tau_support` of `0` or `|C|` may be classified as empty/full for support
+purposes, but the stored `q_target_A` is not clipped and final acceptance still
+uses the exact physical-volume residual.
+
 Required arrays:
 
 ```text
@@ -155,8 +181,10 @@ The production step must follow this order:
 ```text
 1. parse YAML and reject ambiguous state-space/fallback/GPU contracts.
 2. read import manifest and reject unclassified production symbols.
-3. build or reuse metric/cache fingerprints on backend-native arrays.
-4. build `A_q` from current phi, previous active table, flux-touched cells,
+3. build or reuse metric/cache fingerprints on backend-native arrays; for a
+   fixed grid this is a grid-level epoch check, not a per-cell full-grid scan.
+4. build `A_q` from compact support streams: current phi active rows, previous
+   active rows, transport-emitted flux-touched cells, transport-emitted
    target-mixed cells, and boundary/periodic one-face halo.
 5. attach `q_target_A`, `cell_measure_A`, `target_state_code_A`, and
    `origin_mask_A`; reject out-of-bounds targets before solving.
@@ -257,6 +285,8 @@ G11. active refresh launches are bounded by a fixed small constant per refresh
 G12. measured work scales with n_active and n_dirty, not n_cells.
 G13. benchmark gates compare dense oracle and AO-Fast at N=64 and N=128 and
      report speed ratio, kernel launches, host transfers, and bytes moved.
+G14. benchmark and dense-oracle comparisons are validation gates, not runtime
+     work inside production timesteps.
 ```
 
 Recommended implementation discipline:
@@ -319,17 +349,19 @@ PCG tolerance should satisfy:
 
 ```text
 tau_cg <= min(
-  0.1 * tau_q / max(1, ||J W^{-1/2}||_est),
-  c_cond * tau_q / max(1, kappa(S_q)_est),
+  0.1 * tau_q / max(1, cheap_norm_est(J W^{-1/2})),
+  c_cond * tau_q / max(1, cheap_kappa_est(S_q)),
   c_work * tau_surface_diag,
   c_round * sqrt(n_active) * eps64 * Q_ref
 )
 ```
 
 The constants are test configuration, not hidden magic numbers.  The ledger
-must record rank estimate, `kappa(S_q)_est`, row-norm range, component block
-count, and whether PCG stopped by algebraic tolerance, exact residual
-acceptance, conditioning fail-close, or iteration limit.
+must record cheap rank estimate, cheap `kappa(S_q)` estimate, row-norm range,
+component block count, and whether PCG stopped by algebraic tolerance, exact
+residual acceptance, conditioning fail-close, or iteration limit.  These
+estimates must be piggybacked on existing active rows or Krylov/Ritz data; dense
+SVD/eigendecomposition and full-grid matrix assembly are oracle/debug-only.
 
 ## Fail-Close State Machine
 
@@ -378,8 +410,10 @@ C3. GPU active table
     instrumentation tests and target-metadata parity tests.
 
 C4. dirty, flux-touched, target-mixed, plus one-face halo detector
-    Sign/case/crossing/metric/ownership invalidation tests, including
-    flux support, target support, periodic boundaries, and wall boundaries.
+    Sign/case/crossing/metric/ownership invalidation tests, including compact
+    flux support, compact target support, periodic boundaries, and wall
+    boundaries.  Tests must fail if this slice scans all cells in ordinary
+    runtime mode.
 
 C5. active Q/S/J/dS kernels
     CPU/GPU active geometry equality against dense oracle; declared tolerance.
@@ -420,6 +454,8 @@ Before any production code merge:
 [ ] `q_target_A`, `cell_measure_A`, target state, and origin masks are present.
 [ ] No production solver loop contains inner host transfers.
 [ ] No production active kernel materializes full-grid masks.
+[ ] `A_q` construction consumes compact support streams and does not scan all
+    cells in ordinary runtime.
 [ ] Active-vs-dense parity tests pass on regular strata.
 [ ] Dirty/halo tests cover sign, metric, flux, target, boundary, and periodic changes.
 [ ] Exact residual gates use physical q units.
@@ -427,7 +463,10 @@ Before any production code merge:
 [ ] Fallback is `none` by default and explicit-chain only otherwise.
 [ ] Tolerances are unit-invariant, declared, justified, and tested.
 [ ] Rank/conditioning gates and PCG stop reasons are ledgered.
+[ ] Rank/conditioning estimates are cheap active/Krylov estimates, not dense
+    eigensolves.
 [ ] GPU performance thresholds pass or fail explicitly.
+[ ] Dense oracle and benchmark comparisons are outside production timesteps.
 [ ] Runtime/capillary adapters remain disconnected until geometry/projection
     gates pass.
 [ ] Chapter-14 YAMLs are not activated before the validation ladder passes.
@@ -439,6 +478,8 @@ Stop immediately if code tries to:
 use dense projection as a hidden fallback,
 make CPU loops the production GPU design,
 build production residuals only on current-phi mixed cells,
+discover target support by full-grid q scans in ordinary runtime,
+run dense rank/SVD/eigen diagnostics in production,
 accept approximate residuals,
 weaken fail-close by parser default,
 activate chapter-14 YAML before active/gpu tests,
