@@ -13,6 +13,8 @@
 #   experiment.type: capillary_wave  → CapillaryWaveHandler
 #   The shape is identical to the capillary-wave benchmark; what makes this RT
 #   instead of capillary is gravity > 0 with the heavy phase above the interface.
+# YAML ownership: scheme choices, numerical parameters, and initial state are
+# user-owned and explicit below; code only validates and derives internal ledgers.
 
 experiment:
   type: capillary_wave

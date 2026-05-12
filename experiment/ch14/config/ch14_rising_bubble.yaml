@@ -17,6 +17,8 @@
 #   metric as the other active-geometry Chapter 14 YAMLs.
 # - Common flux: q, density, and momentum use the same stage flux ledger.
 # - UCCD6: momentum convection uses `uccd6` per WIKI-T-062 / WIKI-X-028.
+# YAML ownership: scheme choices, numerical parameters, and initial state are
+# user-owned and explicit below; code only validates and derives internal ledgers.
 
 experiment:
   type: circle

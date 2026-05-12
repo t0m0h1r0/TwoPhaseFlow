@@ -40,9 +40,9 @@ The five production configs share the chapter-14 execution contract introduced
 for the rising-bubble route: conservative common-flux momentum transport,
 `predictor.assembly: none`, projected-face preservation, pressure-coordinate
 BDF2 history, and an explicit fail-closed boundary-Hodge state-space contract.
-All five YAMLs select the active-geometry capillary decomposition preset with
-`interface.state_space: active_geometry_capillary`.  The parser expands that
-scheme to the fixed short-paper active-geometry contract internally:
+All five YAMLs select the active-geometry capillary decomposition scheme with
+`interface.state_space: active_geometry_capillary`.  The parser validates that
+scheme against the fixed short-paper active-geometry contract internally:
 transported `q`, normalized `theta`, P1 gauge `phi`, active-cached
 compatibility, required GPU storage, no implicit dense runtime fallback,
 `geometric_swept_volume` transport, and
@@ -91,6 +91,33 @@ representative instead of testing the discrete pressure-work contract.
 
 The schema is organized by *what the setting means*, not by where the current
 Python implementation stores it.
+
+## YAML Ownership Philosophy
+
+The YAML is the experiment contract.  The user should explicitly choose the
+scientific and numerical degrees of freedom:
+
+- Scheme selection: `interface.state_space`, interface transport, momentum
+  term discretizations, gravity formulation, PPE operator/solver, and
+  `projection.active_geometry.solver.scheme`.
+- Parameter selection: grid resolution/distribution, material constants, CFL
+  multiplier, final time, tolerances, iteration limits, relaxation factors, and
+  fallback triggers.
+- Initial and boundary state: `initial_condition`, `initial_velocity`, and
+  `boundary_condition`.
+- Output and diagnostics: result directory, snapshots, figures, checkpoints,
+  and diagnostic names.
+
+Code should not hide those choices behind a broad preset.  The parser may only
+validate combinations, normalize local aliases, and derive internal runtime
+contracts that are not meaningful experiment knobs: for example the
+q/theta/phi handoff fields, active-cache implementation markers, GPU-required
+runtime guard, dense-reference test boundary, and derived geometry ledgers.
+
+When a block affects the mathematical scheme or a convergence parameter, keep
+it visible in YAML.  When a value is merely a consequence of an explicit scheme
+choice, let the parser derive it and fail closed if the surrounding YAML
+contradicts the paper contract.
 
 ## Top-Level Sections
 
@@ -334,11 +361,17 @@ must be independently visible.
 
 The dynamic ch14 YAMLs share the production stack:
 
+The stack is intentionally written out in YAML.  Do not replace it with a
+single broad `numerical_stack` key: that would remove the user's responsibility
+for scheme selection and convergence parameter selection.  The code-side role
+is to reject contradictory combinations, not to choose the experiment for the
+user.
+
 - `interface.state_space: active_geometry_capillary` — the user-facing
   active-geometry capillary decomposition selection.
   Internal projection details such as `active_cached`, GPU storage, dense
-  reference policy, and support budgets are fixed by the parser preset rather
-  than repeated in each experiment YAML.
+  reference policy, and support budgets are derived and validated by the parser
+  rather than exposed as experiment knobs.
 - `interface.transport.variable: q` and
   `interface.transport.spatial: geometric_swept_volume` — active geometry owns the
   material phase as physical cell volume, while `theta` and `phi` are derived

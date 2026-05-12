@@ -4,6 +4,8 @@
 # properties at about 20 C (rho_l=998.2, rho_g=1.204, sigma=0.0728),
 # the area-equivalent radius sqrt(ab)=4.974937 mm gives
 # omega0=59.578473371 and T=0.105460663082 s.
+# YAML ownership: scheme choices, numerical parameters, and initial state are
+# user-owned and explicit below; code only validates and derives internal ledgers.
 
 experiment:
   type: ellipse

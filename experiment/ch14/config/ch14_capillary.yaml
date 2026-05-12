@@ -18,6 +18,8 @@
 # - Grid fitting: both tensor-product axes carry the interface monitor; the
 #   y axis additionally carries wall refinement for the physical upper/lower
 #   walls. The fitted grid is rebuilt every step from the current tracked ψ.
+# YAML ownership: scheme choices, numerical parameters, and initial state are
+# user-owned and explicit below; code only validates and derives internal ledgers.
 
 experiment:
   type: capillary_wave

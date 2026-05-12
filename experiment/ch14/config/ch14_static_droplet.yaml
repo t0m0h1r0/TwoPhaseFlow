@@ -6,6 +6,8 @@
 # - Grid fitting: both tensor-product axes are nonuniform and rebuilt/remapped
 #   every physical step so the fitted grid follows the current interface
 #   geometry.
+# YAML ownership: scheme choices, numerical parameters, and initial state are
+# user-owned and explicit below; code only validates and derives internal ledgers.
 
 experiment:
   type: circle
