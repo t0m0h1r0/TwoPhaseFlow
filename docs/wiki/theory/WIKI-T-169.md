@@ -49,6 +49,8 @@ sources:
     description: "Repair of all contrarian-review findings before AO-Fast implementation"
   - path: artifacts/A/ch14_ao_fast_complexity_audit_CHK-RA-CH14-AO-FASTVOL-012.md
     description: "Complexity audit ensuring AO-Fast repairs do not reintroduce full-grid runtime work"
+  - path: artifacts/A/ch14_ao_fast_precode_contrarian_loop_CHK-RA-CH14-AO-FASTVOL-013.md
+    description: "Pre-code adversarial review loop and repairs until no major findings remain"
 depends_on:
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-159]]"
@@ -637,6 +639,14 @@ oracle comparison, full-grid scans, and dense Schur eigensolves remain
 initialization, validation, debug, or declared-degenerate work, not ordinary
 runtime.
 
+The final pre-code contrarian pass tightened the remaining hidden-heavy paths:
+support compaction is device-side over compact state-changing candidate
+streams, not full-grid `where/nonzero`; `flux_touched_cells` excludes irrelevant
+bulk full/full phase exchange; active/support buffers require declared capacity
+and fail-close on overrun; PCG separates `tau_cg_target` from the attainable
+roundoff floor; production conditioning gates are fail-close, not
+diagnostic-only.
+
 CCD/DCCD/FCCD/UCCD remain useful on the smooth side of the split: gauge
 prediction, screened gauge metric `W_eta`, face-state reconstruction,
 pressure-adjoint work pairs, and smooth residual diagnostics.  They remain
@@ -671,6 +681,12 @@ interface:
         fail_close: true
         trust_region: sign_margin
         residual_tolerance: 1.0e-11
+        condition_gate: fail_close
+        support_budget:
+          max_active_ratio: 0.25
+          max_support_stream_ratio: 0.25
+          max_epoch_growth_ratio: 1.5
+          on_overrun: fail_close
         solver:
           primary: active_pcg_newton
           accelerators:
@@ -730,6 +746,7 @@ fail_close=false,
 dense_reference/reference_dense used as an implicit runtime fallback,
 gpu_contract.required=false for production geometric_cell_fraction,
 active_cached with inner_host_transfers other than forbidden,
+condition_gate diagnostic-only in production geometric_cell_fraction,
 implicit fallback such as auto, try_next, best_effort, or on_failure,
 fallback.policy=explicit_chain without from/to/triggers/record_as,
 accelerator rejection that switches primary solver family,

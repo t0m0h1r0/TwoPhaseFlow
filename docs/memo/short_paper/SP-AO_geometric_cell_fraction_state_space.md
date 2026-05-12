@@ -629,8 +629,14 @@ iteration tolerance is inexact-Newton style and is bounded by the downstream
 exact gate, e.g.
 
 ```text
-tau_cg <= min(0.1 tau_q, c_work tau_surface, c_round sqrt(|A|) eps).
+tau_cg_target = min(0.1 tau_q, c_work tau_surface, c_cond tau_q/kappa_est),
+tau_cg_floor = c_round sqrt(|A|) eps Q_ref.
 ```
+
+If the estimated floor exceeds the target, the step is conditioning/roundoff
+limited and fails closed or follows only a declared solver-chain transition.
+PCG must not spin below the floor, and exact active residual recomputation
+remains the only commit gate.
 
 Defect correction is admissible when it is a residual-monotone nonlinear
 compatibility iteration.  Define the exact active residual
@@ -680,10 +686,11 @@ predicted gauge `phi^-`, the previous active table, cached metric arrays, and
 the face-Hodge state needed by capillary work.
 
 ```text
-1. build the constraint support A_q from compact support streams: current
-   active rows, previous active rows, swept-flux-touched cells emitted by
-   transport, target-mixed cells emitted by target-state transitions where
-   0<q^-_C<|C|, and the one-face halo needed for sign/case/ownership detection.
+1. build the constraint support A_q from compact state-changing support
+   streams: current active rows, previous active rows, swept-flux-touched cells
+   emitted by transport, target-mixed cells emitted by target-state transitions
+   where 0<q^-_C<|C|, and the one-face halo needed for sign/case/ownership
+   detection.
 2. attach q_target_A, cell_measure_A, target_state_code_A, and origin_mask_A;
    reject out-of-bounds targets before solving.
 3. detect dirty cells from sign/case changes, moved crossing intervals,
@@ -714,6 +721,14 @@ swept-volume transport and previous active tables, so the target cost remains
 `O(|A_q|+|dirty|+k matvec(|A_q|))`.  Conditioning/rank gates are likewise cheap
 active-row or Krylov/Ritz estimates; dense Schur eigensolves are oracle/debug
 only.
+
+Here, `swept-flux-touched` means state-changing transported phase-volume
+support.  It does not mean every nonzero velocity face or bulk full-liquid to
+full-liquid exchange.  Support compaction is a device operation over compact
+candidate streams; full-grid `where/nonzero` masks are oracle/debug-only.
+Production YAML/test fixtures must declare active/support capacity and epoch
+growth budgets.  Capacity overrun fails closed unless a diagnostic degenerate
+exact step is explicitly declared and ledgered as not-fast.
 
 The asymptotic objective is:
 
@@ -816,10 +831,14 @@ all imported symbols use closed classification oracle_only, gpu_production, or r
 migration status is separate from classification,
 GPU production forbids inner-loop host transfers,
 ordinary runtime forbids full-grid target-support scans,
+support compaction is over compact state-changing streams only,
+active/support capacities and overrun behavior are declared,
 default fallback policy is none,
 exact active Q_h/S_h recomputation owns acceptance,
 physical-volume tolerances are unit-invariant and declared before tests,
-PCG/Newton gates record cheap rank/conditioning estimates and stop reason,
+condition gates fail closed in production,
+PCG/Newton gates record cheap rank/conditioning estimates, target/floor
+tolerances, and stop reason,
 active-set topology changes use bounded epochs or fail-close,
 GPU performance gates have pass/fail thresholds,
 runtime/capillary/chapter-14 YAML adapters wait for active geometry gates.
@@ -833,8 +852,9 @@ epochs, YAML/UX runtime construction, runtime/checkpoint/capillary adapters,
 then chapter-14 smoke YAMLs.
 Each slice is a separate checkpoint; if any slice introduces dense fallback,
 hidden D2H synchronization, approximate residual acceptance, current-phi-only
-constraint support, dimensioned tolerance shortcuts, or implicit solver
-fallback, the implementation fails closed at that slice.
+constraint support, full-grid support compaction, diagnostic-only production
+condition gates, dimensioned tolerance shortcuts, or implicit solver fallback,
+the implementation fails closed at that slice.
 
 ## 12. YAML Contract
 
@@ -866,7 +886,12 @@ interface:
         fail_close: true
         trust_region: sign_margin
         residual_tolerance: 1.0e-11
-        condition_gate: diagnostic
+        condition_gate: fail_close
+        support_budget:
+          max_active_ratio: 0.25
+          max_support_stream_ratio: 0.25
+          max_epoch_growth_ratio: 1.5
+          on_overrun: fail_close
         solver:
           primary: active_pcg_newton
           accelerators:
@@ -1008,6 +1033,7 @@ fail_close=false,
 dense_reference/reference_dense used as an implicit runtime fallback,
 gpu_contract.required=false for geometric_cell_fraction production,
 inner_host_transfers other than forbidden in active_cached production,
+condition_gate diagnostic-only in production geometric_cell_fraction,
 implicit solver fallback such as auto, try_next, or on_failure without chain,
 fallback.policy=explicit_chain with missing from/to/triggers/record_as,
 accelerator on_reject that switches primary solver family,

@@ -136,6 +136,23 @@ Support classification uses a declared `tau_support <= tau_q`: values within
 purposes, but the stored `q_target_A` is not clipped and final acceptance still
 uses the exact physical-volume residual.
 
+Support streams are state-changing streams, not bulk-flow streams.  In
+particular, `flux_touched_cells` means cells whose transported phase-volume
+flux can change an empty/full/mixed target state or alter the active band.  It
+does not mean every face carrying nonzero velocity, nor every full-liquid to
+full-liquid volume exchange in the bulk.  The swept-volume transport step must
+emit this compact support as a side product of its boundedness certificate or
+from an already compact mixed-band source list.  A second full-grid pass to
+discover the same support is not AO-Fast.
+
+The active table has an explicit capacity contract.  YAML/test fixtures must
+declare `max_active_ratio`, `max_support_stream_ratio`, and
+`max_epoch_growth_ratio` before production activation.  Capacity overrun,
+support-stream overrun, or epoch growth beyond the declared bound is a
+fail-close event unless an explicit diagnostic degenerate-exact policy is
+enabled.  Runtime code must not silently reallocate through host-side lists or
+fall back to a dense grid buffer.
+
 Required arrays:
 
 ```text
@@ -214,7 +231,8 @@ solver family, proposal family, fallback transition or none,
 exact q residual before/after, exact S diagnostic before/after,
 max beta_C, min sign/case margin, Delta S_Pi,
 rank estimate, Schur condition estimate, GPU kernel launches, device bytes,
-host-transfer count, dense-vs-active speed ratio when benchmarked.
+host-transfer count, active/support capacity, capacity-overrun flag,
+dense-vs-active speed ratio when benchmarked.
 ```
 
 If `n_dirty` or `n_refreshed` degenerates to full-grid work, the ledger must
@@ -287,6 +305,11 @@ G13. benchmark gates compare dense oracle and AO-Fast at N=64 and N=128 and
      report speed ratio, kernel launches, host transfers, and bytes moved.
 G14. benchmark and dense-oracle comparisons are validation gates, not runtime
      work inside production timesteps.
+G15. support compaction runs on compact candidate streams.  Production code
+     must not call where/nonzero over a full-grid boolean mask to discover
+     active support.
+G16. active/support buffers are preallocated on device; capacity overrun
+     fails closed or enters an explicitly declared diagnostic degenerate step.
 ```
 
 Recommended implementation discipline:
@@ -345,23 +368,33 @@ active PCG/Newton:
   dominate tau_q.
 ```
 
-PCG tolerance should satisfy:
+PCG uses a target tolerance and an attainable roundoff floor.  First compute
+the requested algebraic target:
 
 ```text
-tau_cg <= min(
+tau_cg_target = min(
   0.1 * tau_q / max(1, cheap_norm_est(J W^{-1/2})),
   c_cond * tau_q / max(1, cheap_kappa_est(S_q)),
-  c_work * tau_surface_diag,
-  c_round * sqrt(n_active) * eps64 * Q_ref
+  c_work * tau_surface_diag
 )
 ```
 
+Then compare it to the estimated attainable floor:
+
+```text
+tau_cg_floor = c_round * sqrt(n_active) * eps64 * Q_ref
+```
+
+If `tau_cg_floor > tau_cg_target`, the step is conditioning/roundoff limited:
+fail closed, or enter only an explicitly declared solver transition.  Do not
+spin PCG below the floor and do not accept a step on algebraic tolerance alone.
 The constants are test configuration, not hidden magic numbers.  The ledger
 must record cheap rank estimate, cheap `kappa(S_q)` estimate, row-norm range,
-component block count, and whether PCG stopped by algebraic tolerance, exact
-residual acceptance, conditioning fail-close, or iteration limit.  These
-estimates must be piggybacked on existing active rows or Krylov/Ritz data; dense
-SVD/eigendecomposition and full-grid matrix assembly are oracle/debug-only.
+component block count, `tau_cg_target`, `tau_cg_floor`, and whether PCG stopped
+by algebraic tolerance, exact residual acceptance, conditioning/roundoff
+fail-close, or iteration limit.  These estimates must be piggybacked on
+existing active rows or Krylov/Ritz data; dense SVD/eigendecomposition and
+full-grid matrix assembly are oracle/debug-only.
 
 ## Fail-Close State Machine
 
@@ -376,7 +409,9 @@ Default outcomes:
 | Previously full/empty cell receives valid mixed `q_target` | include it in `A_q`; do not fail solely for support expansion. |
 | Target q is out of bounds or nonrepresentable on declared topology | fail closed with topology reason. |
 | Dirty set expands to full grid | allow exact step only if YAML declares degenerate exact step; ledger as degenerate, not fast. |
+| Active/support capacity is exceeded | fail closed unless YAML declares diagnostic degenerate exact step. |
 | Active-set epoch exceeds limit | fail closed or enter declared topology route; never solver fallback. |
+| PCG roundoff floor exceeds requested target | fail closed or enter declared solver-chain transition. |
 | Proposal-only DC is rejected | discard candidate; state unchanged. |
 | Primary solver fails and `fallback.policy: none` | fail closed. |
 | Primary solver fails and explicit chain matches | run listed fallback and record transition. |
@@ -407,13 +442,15 @@ C2. active constraint table skeleton
 
 C3. GPU active table
     Move active table arrays to backend-native GPU storage; add no-inner-D2H
-    instrumentation tests and target-metadata parity tests.
+    instrumentation tests, target-metadata parity tests, preallocated capacity
+    tests, and no full-grid where/nonzero support-compaction tests.
 
 C4. dirty, flux-touched, target-mixed, plus one-face halo detector
     Sign/case/crossing/metric/ownership invalidation tests, including compact
     flux support, compact target support, periodic boundaries, and wall
-    boundaries.  Tests must fail if this slice scans all cells in ordinary
-    runtime mode.
+    boundaries.  Tests must prove `flux_touched` is state-changing
+    phase-volume support, not all nonzero velocity faces.  Tests must fail if
+    this slice scans all cells in ordinary runtime mode.
 
 C5. active Q/S/J/dS kernels
     CPU/GPU active geometry equality against dense oracle; declared tolerance.
@@ -465,6 +502,10 @@ Before any production code merge:
 [ ] Rank/conditioning gates and PCG stop reasons are ledgered.
 [ ] Rank/conditioning estimates are cheap active/Krylov estimates, not dense
     eigensolves.
+[ ] `condition_gate` is fail-close for production, not merely diagnostic.
+[ ] PCG tolerance separates target tolerance from attainable roundoff floor.
+[ ] Active/support capacity overrun fails closed or is explicitly diagnostic.
+[ ] Support compaction does not use full-grid where/nonzero in production.
 [ ] GPU performance thresholds pass or fail explicitly.
 [ ] Dense oracle and benchmark comparisons are outside production timesteps.
 [ ] Runtime/capillary adapters remain disconnected until geometry/projection
@@ -480,6 +521,10 @@ make CPU loops the production GPU design,
 build production residuals only on current-phi mixed cells,
 discover target support by full-grid q scans in ordinary runtime,
 run dense rank/SVD/eigen diagnostics in production,
+call where/nonzero over a full-grid mask in production support compaction,
+define flux support from all nonzero velocity faces,
+silently reallocate active/support buffers through host lists,
+set production `condition_gate` to diagnostic-only,
 accept approximate residuals,
 weaken fail-close by parser default,
 activate chapter-14 YAML before active/gpu tests,
@@ -492,8 +537,10 @@ These are bounded design questions, not blockers for the whole route:
 
 ```text
 1. Active compaction primitive:
-   CuPy `where/nonzero` may be enough initially, but prefix-sum compaction
-   should be measured before hot-kernel work.
+   Compaction may use backend-native prefix-sum, segmented compaction, or a
+   small RawKernel over compact candidate streams.  CuPy `where/nonzero` is
+   acceptable only on compact candidate arrays; full-grid masks are
+   oracle/debug-only.
 
 2. RawKernel threshold:
    Begin with vectorized xp for correctness if it stays device-resident.

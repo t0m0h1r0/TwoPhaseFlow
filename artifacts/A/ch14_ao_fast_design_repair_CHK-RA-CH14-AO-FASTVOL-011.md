@@ -66,6 +66,17 @@ degenerate work only.  A support tolerance `tau_support <= tau_q` may classify
 roundoff-near-empty/full rows for support, but it may not clip `q_target_A` or
 replace exact residual acceptance.
 
+The compact streams are state-changing streams.  `flux_touched_cells` means
+transported phase-volume support that can change the target state or active
+band, not all nonzero velocity faces and not bulk full-liquid to full-liquid
+exchange.  Support compaction must run on device over compact candidate
+streams; production full-grid `where/nonzero` masks are forbidden.
+
+The repair also adds a capacity contract.  Active/support buffers are
+preallocated with declared `max_active_ratio`, `max_support_stream_ratio`, and
+`max_epoch_growth_ratio`.  Capacity overrun fails closed, unless a diagnostic
+degenerate exact step is explicitly declared and ledgered as not-fast.
+
 Required row metadata:
 
 ```text
@@ -131,16 +142,27 @@ tau_q_geom = c_geom * eps64 * kappa_geom * V_ref
 tau_q = max(tau_q_abs, tau_q_rel, tau_q_geom)
 ```
 
-The PCG/Newton gate must record and use conditioning:
+The PCG/Newton gate must record and use conditioning.  The requested algebraic
+target is:
 
 ```text
-tau_cg <= min(
+tau_cg_target = min(
   0.1 * tau_q / max(1, cheap_norm_est(J W^{-1/2})),
   c_cond * tau_q / max(1, cheap_kappa_est(S_q)),
-  c_work * tau_surface_diag,
-  c_round * sqrt(n_active) * eps64 * Q_ref
+  c_work * tau_surface_diag
 )
 ```
+
+The attainable roundoff floor is:
+
+```text
+tau_cg_floor = c_round * sqrt(n_active) * eps64 * Q_ref
+```
+
+If `tau_cg_floor > tau_cg_target`, the step is conditioning/roundoff limited
+and fails closed unless an explicit solver-chain transition is declared.  The
+solver must not spin below the floor and must not accept on algebraic tolerance
+without exact residual recomputation.
 
 Ledger additions:
 
@@ -149,6 +171,8 @@ rank estimate,
 kappa(S_q)_est,
 row-norm range,
 component block count,
+tau_cg_target,
+tau_cg_floor,
 PCG stop reason.
 ```
 
@@ -177,6 +201,10 @@ GPU counters now have gate semantics:
 no production full-grid masks,
 active refresh launch count bounded by a fixed small constant per refresh type,
 work scales with n_active and n_dirty rather than n_cells,
+support compaction scales with compact candidate stream length rather than
+n_cells,
+active/support capacity overrun fails closed or enters explicit diagnostic
+degenerate mode,
 N=64 and N=128 dense-oracle-vs-AO-Fast benchmarks report speed ratio,
 kernel launches, host transfers, and bytes moved.
 ```

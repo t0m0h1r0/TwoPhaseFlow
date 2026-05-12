@@ -35,6 +35,15 @@ rank/conditioning diagnostics must be cheap active/Krylov estimates,
 dense oracle/benchmark work must stay outside production timesteps.
 ```
 
+The follow-up contrarian pass also constrains four hidden cost traps:
+
+```text
+support compaction must not use full-grid where/nonzero masks,
+flux support means state-changing transported phase-volume support,
+active/support buffers need declared device capacity and overrun behavior,
+PCG must not iterate below its estimated attainable roundoff floor.
+```
+
 ## Cost Budget
 
 Ordinary AO-Fast runtime target:
@@ -63,6 +72,8 @@ materialize full-grid masks in production active kernels,
 assemble dense/full-grid Schur matrices,
 run dense SVD/eigendecomposition for conditioning,
 run dense oracle comparison inside a production timestep.
+call where/nonzero over a full-grid support mask,
+silently allocate active/support buffers through host lists.
 ```
 
 ## Audit Findings
@@ -113,6 +124,53 @@ Repair: dense oracle and benchmark comparisons are validation gates outside
 production timesteps.  Production ledgers record counters; benchmark jobs
 interpret them.
 
+### C6 - Support compaction can hide a full-grid mask
+
+Risk: a superficially GPU implementation could build a full-grid boolean mask
+and call `where/nonzero` every step.  That is still O(|C_h|) support discovery.
+
+Repair: production support compaction runs over compact candidate streams
+emitted by transport, previous active rows, dirty rows, and adjacency.  Full-grid
+`where/nonzero` is oracle/debug-only.
+
+### C7 - flux_touched can include irrelevant bulk phase flux
+
+Risk: geometric swept-volume transport can move liquid through full cells.  If
+every full-liquid to full-liquid exchange becomes `flux_touched`, the active
+set can approach the whole liquid region.
+
+Repair: `flux_touched_cells` means state-changing transported phase-volume
+support: cells whose transport can change empty/full/mixed target state or
+active-band ownership.  Bulk full/full exchanges are not active constraints
+unless they create a target-state transition.
+
+### C8 - Active capacity can silently become dynamic host allocation
+
+Risk: compact streams with unknown size can tempt implementations to append to
+Python lists, resize arrays, or bounce through host memory.
+
+Repair: production declares active/support capacities and growth ratios.
+Capacity overrun is fail-close or an explicitly ledgered diagnostic degenerate
+step.  It is not an implicit dense fallback.
+
+### C9 - PCG tolerance can be below the attainable floor
+
+Risk: using roundoff as another upper bound in `min(...)` can request an
+unattainable algebraic tolerance and waste iterations.
+
+Repair: separate `tau_cg_target` from `tau_cg_floor`.  If the floor exceeds the
+target, record conditioning/roundoff limited and fail closed or enter a
+declared solver-chain transition.
+
+### C10 - Production condition gates must not be diagnostic-only
+
+Risk: a YAML example with `condition_gate: diagnostic` can encourage continuing
+after a known ill-conditioned active Schur solve.
+
+Repair: production geometric-cell-fraction AO uses `condition_gate:
+fail_close`.  Diagnostic-only conditioning is allowed only for oracle/debug
+runs that cannot commit production state.
+
 ## Implementation Acceptance Rules
 
 Before production AO-Fast code is accepted:
@@ -124,6 +182,11 @@ Before production AO-Fast code is accepted:
 4. Conditioning tests must prove estimates are active/Krylov-only.
 5. Benchmarks must show active work scales with |A_q| and |dirty|, not |C_h|.
 6. Degenerate full-grid steps must be explicit and ledgered as not-fast.
+7. Support compaction tests must fail on full-grid where/nonzero masks.
+8. Capacity-overrun tests must fail closed unless diagnostic degenerate mode is
+   explicitly declared.
+9. PCG tests must distinguish target tolerance from roundoff floor.
+10. Production parser tests must reject diagnostic-only condition gates.
 ```
 
 ## Conclusion
