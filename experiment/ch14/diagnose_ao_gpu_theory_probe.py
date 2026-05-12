@@ -27,6 +27,21 @@ def _face_linf(backend, faces) -> float:
     return max(_scalar(backend, xp.max(xp.abs(face))) for face in faces)
 
 
+def _field_linf(backend, value) -> float:
+    if value is None:
+        return 0.0
+    xp = backend.xp
+    return _scalar(backend, xp.max(xp.abs(xp.asarray(value))))
+
+
+def _face_div_linf(backend, div_op, faces) -> float:
+    if faces is None or not hasattr(div_op, "divergence_from_faces"):
+        return 0.0
+    xp = backend.xp
+    div = div_op.divergence_from_faces([xp.asarray(face) for face in faces])
+    return _scalar(backend, xp.max(xp.abs(div)))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)
@@ -61,7 +76,12 @@ def main() -> None:
     print(
         "step,t,dt,compat_linf,force_l2,reaction_l2,balanced_l2,"
         "force_face_linf,reaction_face_linf,pressure_residual_l2,"
-        "pressure_normal_residual_linf,ppe_rhs,div_u,ke"
+        "pressure_normal_residual_linf,ppe_rhs,div_u,ke,"
+        "app_predictor_l2,app_reaction_l2,app_balanced_l2,"
+        "app_predictor_face_linf,app_reaction_face_linf,app_reaction_div_linf,"
+        "p_linf,p_base_linf,pressure_history_face_linf,"
+        "pressure_history_div_linf,projected_face_linf,projected_div_linf,"
+        "ppe_dc_relative_l2,ppe_dc_converged"
     )
     t = 0.0
     for step in range(args.steps):
@@ -112,6 +132,12 @@ def main() -> None:
         cap = solver._last_geometric_runtime_capillary
         app = solver._last_geometric_runtime_capillary_application
         diag = solver._step_diag.last
+        pressure_history_faces = getattr(
+            solver,
+            "_p_prev_accel_face_components",
+            None,
+        )
+        projected_faces = getattr(solver, "_projected_face_components", None)
         ke = 0.5 * (xp.sum(xp.asarray(u) * xp.asarray(u)) + xp.sum(xp.asarray(v) * xp.asarray(v)))
         print(
             step + 1,
@@ -128,6 +154,20 @@ def main() -> None:
             f"{diag.get('ppe_rhs_max', 0.0):.12e}",
             f"{diag.get('div_u_max', 0.0):.12e}",
             f"{_scalar(backend, ke):.12e}",
+            f"{app.predictor_increment_weighted_l2:.12e}",
+            f"{app.pressure_reaction_increment_weighted_l2:.12e}",
+            f"{app.pressure_balanced_increment_weighted_l2:.12e}",
+            f"{_face_linf(backend, app.predictor_face_acceleration):.12e}",
+            f"{_face_linf(backend, app.pressure_reaction_face_acceleration):.12e}",
+            f"{_face_div_linf(backend, solver._div_op, app.pressure_reaction_face_acceleration):.12e}",
+            f"{_field_linf(backend, p):.12e}",
+            f"{_field_linf(backend, getattr(solver, '_p_base_prev_dev', None)):.12e}",
+            f"{_face_linf(backend, pressure_history_faces) if pressure_history_faces is not None else 0.0:.12e}",
+            f"{_face_div_linf(backend, solver._div_op, pressure_history_faces):.12e}",
+            f"{_face_linf(backend, projected_faces) if projected_faces is not None else 0.0:.12e}",
+            f"{_face_div_linf(backend, solver._div_op, projected_faces):.12e}",
+            f"{diag.get('ppe_dc_final_relative_l2', 0.0):.12e}",
+            f"{diag.get('ppe_dc_converged', 0.0):.12e}",
             sep=",",
         )
 

@@ -96,6 +96,8 @@ class ViscousHelmholtzDCSolver:
         scale = None
         residual_history: list[float] = []
         stopped_by_tolerance = False
+        stalled = False
+        corrections_applied = 0
 
         for correction_index in range(self.max_corrections):
             residual_components = self._residual_components(
@@ -123,17 +125,58 @@ class ViscousHelmholtzDCSolver:
                 break
 
             correction_components = low_solver.solve_components(residual_components)
+            correction_image_components = self._operator_components(
+                correction_components,
+                mu,
+                rho,
+                ccd,
+                psi=psi,
+                dt_effective=dt_effective,
+            )
+            correction_image_components = self._zero_periodic_image_rhs(
+                correction_image_components,
+                ccd,
+            )
+            accepted, alpha = self._residual_minimising_step(
+                residual_components,
+                correction_image_components,
+            )
+            if not accepted:
+                stalled = True
+                break
             solution_components = [
                 solution_components[component_index]
-                + self.relaxation * correction_components[component_index]
+                + alpha * correction_components[component_index]
                 for component_index in range(len(solution_components))
             ]
             self._sync_periodic(solution_components, ccd)
+            corrections_applied += 1
+
+        if not stopped_by_tolerance:
+            final_residual_components = self._residual_components(
+                solution_components,
+                rhs_components,
+                mu,
+                rho,
+                ccd,
+                psi=psi,
+                dt_effective=dt_effective,
+            )
+            final_residual_components = self._zero_periodic_image_rhs(
+                final_residual_components,
+                ccd,
+            )
+            final_residual_norm = self._component_norm(final_residual_components)
+            residual_history.append(final_residual_norm)
+            assert scale is not None
+            stopped_by_tolerance = final_residual_norm <= self.tolerance * scale
 
         self.last_residual_history = residual_history
         self.last_diagnostics = {
-            "viscous_dc_corrections": float(len(residual_history)),
+            "viscous_dc_corrections": float(corrections_applied),
             "viscous_dc_converged": float(stopped_by_tolerance),
+            "viscous_dc_stalled": float(stalled and not stopped_by_tolerance),
+            "viscous_dc_line_search": 1.0,
             "viscous_dc_low_factor_reuse": 1.0,
             "viscous_dc_low_operator_scalar": (
                 1.0 if low_solver.low_operator == "scalar" else 0.0
@@ -145,10 +188,9 @@ class ViscousHelmholtzDCSolver:
         }
         return tuple(solution_components)
 
-    def _residual_components(
+    def _operator_components(
         self,
         solution_components: list,
-        rhs_components: list,
         mu,
         rho,
         ccd: "CCDSolver",
@@ -164,13 +206,69 @@ class ViscousHelmholtzDCSolver:
             psi=psi,
         )
         return [
-            rhs_components[component_index]
-            - (
-                solution_components[component_index]
-                - dt_effective * high_viscous_components[component_index]
-            )
+            solution_components[component_index]
+            - dt_effective * high_viscous_components[component_index]
             for component_index in range(len(solution_components))
         ]
+
+    def _residual_components(
+        self,
+        solution_components: list,
+        rhs_components: list,
+        mu,
+        rho,
+        ccd: "CCDSolver",
+        *,
+        psi,
+        dt_effective: float,
+    ) -> list:
+        operator_components = self._operator_components(
+            solution_components,
+            mu,
+            rho,
+            ccd,
+            psi=psi,
+            dt_effective=dt_effective,
+        )
+        return [
+            rhs_components[component_index] - operator_components[component_index]
+            for component_index in range(len(solution_components))
+        ]
+
+    def _residual_minimising_step(
+        self,
+        residual_components: list,
+        correction_image_components: list,
+    ) -> tuple[bool, float]:
+        xp = self.xp
+        residual_sq, numerator, denominator = self._component_inner_packet(
+            residual_components,
+            correction_image_components,
+        )
+        zero = xp.asarray(0.0, dtype=residual_sq.dtype)
+        one = xp.asarray(1.0, dtype=residual_sq.dtype)
+        denominator_safe = xp.where(denominator > zero, denominator, one)
+        alpha_opt = numerator / denominator_safe
+        line_search = xp.asarray(
+            [self.relaxation * (0.5 ** index) for index in range(12)],
+            dtype=residual_sq.dtype,
+        )
+        candidates = xp.concatenate([xp.reshape(alpha_opt, (1,)), line_search])
+        trial_sq = (
+            residual_sq
+            - 2.0 * candidates * numerator
+            + candidates * candidates * denominator
+        )
+        valid = (candidates > zero) & (trial_sq < residual_sq)
+        first_valid = xp.argmax(valid)
+        selected = xp.stack([
+            xp.asarray(xp.any(valid), dtype=residual_sq.dtype),
+            candidates[first_valid],
+        ])
+        accepted, alpha = [
+            float(value) for value in self.backend.asnumpy(selected)
+        ]
+        return accepted > 0.5, alpha
 
     def _component_norm(self, components: list) -> float:
         flat = self.xp.concatenate([
@@ -191,6 +289,25 @@ class ViscousHelmholtzDCSolver:
             float(value)
             for value in self.backend.asnumpy(self.xp.stack(norms))
         ]
+
+    def _component_inner_packet(
+        self,
+        residual_components: list,
+        correction_image_components: list,
+    ):
+        residual_flat = self.xp.concatenate([
+            self.xp.asarray(component).ravel()
+            for component in residual_components
+        ])
+        image_flat = self.xp.concatenate([
+            self.xp.asarray(component).ravel()
+            for component in correction_image_components
+        ])
+        return (
+            self.xp.sum(residual_flat * residual_flat),
+            self.xp.sum(residual_flat * image_flat),
+            self.xp.sum(image_flat * image_flat),
+        )
 
     def _sync_periodic(self, components: list, ccd: "CCDSolver") -> None:
         sync_periodic_image_nodes_many(components, ccd.bc_type)

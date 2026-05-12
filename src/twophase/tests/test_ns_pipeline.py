@@ -1095,7 +1095,7 @@ def test_implicit_bdf2_viscous_dc_reduces_high_residual():
     )
 
     history = predictor.last_residual_history
-    assert len(history) == 4
+    assert len(history) >= 4
     assert all(after < before for before, after in zip(history, history[1:]))
     assert history[-1] < 0.05 * history[0]
 
@@ -1151,9 +1151,59 @@ def test_implicit_bdf2_viscous_dc_scalar_low_reduces_high_residual():
 
     history = predictor.last_residual_history
     assert predictor.last_diagnostics["viscous_dc_low_operator_scalar"] == pytest.approx(1.0)
-    assert len(history) == 4
+    assert len(history) >= 4
     assert all(after < before for before, after in zip(history, history[1:]))
     assert history[-1] < 0.25 * history[0]
+
+
+def test_viscous_dc_uses_residual_minimising_step_length():
+    """An oversized high/low mismatch must be corrected by alpha_opt, not fixed omega."""
+    from twophase.simulation.ns_pipeline import TwoPhaseNSSolver
+    from twophase.simulation.viscous_helmholtz_dc import ViscousHelmholtzDCSolver
+
+    class _ScaledHighViscous:
+        Re = 1.0
+
+        def __init__(self, operator_scale: float) -> None:
+            self.operator_scale = float(operator_scale)
+
+        def _evaluate(self, velocity_components, mu, rho, ccd, psi=None):
+            del mu, rho, ccd, psi
+            return [
+                (1.0 - self.operator_scale) * component
+                for component in velocity_components
+            ]
+
+    solver_runtime = TwoPhaseNSSolver(4, 4, 1.0, 1.0, use_gpu=False)
+    backend = solver_runtime._backend
+    xp = backend.xp
+    shape = solver_runtime._grid.shape
+    base_u = xp.ones(shape)
+    base_v = 2.0 * xp.ones(shape)
+    zeros = xp.zeros(shape)
+    rho = xp.ones(shape)
+
+    solver = ViscousHelmholtzDCSolver(
+        backend,
+        _ScaledHighViscous(operator_scale=10.0),
+        tolerance=1.0e-12,
+        max_corrections=2,
+        relaxation=1.0,
+    )
+    u_star, v_star = solver.solve(
+        base_velocity=[base_u, base_v],
+        explicit_acceleration=[zeros, zeros],
+        mu=zeros,
+        rho=rho,
+        dt_effective=1.0,
+        ccd=solver_runtime._ccd,
+    )
+
+    np.testing.assert_allclose(backend.asnumpy(u_star), 0.1, atol=1.0e-12)
+    np.testing.assert_allclose(backend.asnumpy(v_star), 0.2, atol=1.0e-12)
+    assert solver.last_diagnostics["viscous_dc_line_search"] == pytest.approx(1.0)
+    assert solver.last_diagnostics["viscous_dc_corrections"] == pytest.approx(1.0)
+    assert solver.last_diagnostics["viscous_dc_converged"] == pytest.approx(1.0)
 
 
 def test_pressure_projection_uses_projection_dt():
