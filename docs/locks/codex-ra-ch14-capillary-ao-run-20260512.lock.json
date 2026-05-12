@@ -1,0 +1,9 @@
+{
+  "branch": "codex/ra-ch14-capillary-ao-run-20260512",
+  "worktree": ".claude/worktrees/codex-ra-ch14-capillary-ao-run-20260512",
+  "session_id": "CHK-RA-CH14-CAPILLARY-AO-RUN-001",
+  "id_prefix": "RA-CH14",
+  "started_at": "2026-05-12T21:35:34+0900",
+  "owner": "ResearchArchitect",
+  "merge_policy": "no main merge without explicit user instruction; main merge must use --no-ff"
+}
