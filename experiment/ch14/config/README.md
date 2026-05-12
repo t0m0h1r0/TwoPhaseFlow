@@ -37,15 +37,19 @@ members inside the `.npz`, preserving array dtype bytes losslessly; JSON is used
 only for non-numerical metadata such as the manifest and debug key names.
 
 The five production configs share the chapter-14 execution contract introduced
-for the rising-bubble route: explicit `interface.state_space.kind: diffuse_cls`,
-conservative common-flux momentum transport, `predictor.assembly: none`,
-projected-face preservation, pressure-coordinate BDF2 history, and an explicit
-fail-closed boundary-Hodge state-space contract.  AO-Fast
-`geometric_cell_fraction` is not an implicit production fallback; it requires
-its own YAML contract and is fail-closed until the pressure-reaction split gate
-passes.  The physical force source remains experiment-specific: closed droplet
-and bubble interfaces use the closed-interface Riesz pressure-jump route, while
-graph/open-interface benchmarks keep their validated curvature-jump route.
+for the rising-bubble route: conservative common-flux momentum transport,
+`predictor.assembly: none`, projected-face preservation, pressure-coordinate
+BDF2 history, and an explicit fail-closed boundary-Hodge state-space contract.
+The capillary-wave YAML is the AO-Fast exception and declares the full
+`geometric_cell_fraction` contract: transported `q`, normalized `theta`, P1
+gauge `phi`, active-cached compatibility, required GPU storage, no implicit
+dense runtime fallback, `geometric_swept_volume` transport, and
+`bundle_virtual_work` pressure-jump coupling.  The remaining Chapter 14 YAMLs
+stay `diffuse_cls`.  The physical force source remains experiment-specific:
+closed droplet and bubble interfaces use the closed-interface Riesz
+pressure-jump route, the Rayleigh--Taylor graph/open-interface benchmark keeps
+the validated curvature-jump route, and the capillary-wave benchmark uses AO
+bundle virtual work with `pressure_component_hodge` reaction.
 
 `ch14_capillary.yaml` and `ch14_oscillating_droplet.yaml` are SI water-air
 cases at about 20 C.  The capillary wave uses a 20 mm x 20 mm tank with
@@ -56,11 +60,14 @@ unit-box scale.  The capillary-wave theory reference uses the rigid-wall
 two-layer finite-depth dispersion relation because the 10 mm interface sits
 midway between the upper and lower walls of the 20 mm tank; the paper-facing
 snapshot window then follows the signed mode-2 production response over one
-observed cycle.  The oscillating-droplet window follows the Rayleigh-Lamb
-water-air period.  Its every-step dynamic Ridge--Eikonal restoration uses the
-transported CLS `diffuse_mass` constraint; the sharper `sharp_phase_volume`
-constraint is kept for static/equilibrium gates where the sharp area and
-diffuse profile targets are compatible without moving the interface.
+observed cycle.  Its interface carrier is AO-Fast `q`; Ridge--Eikonal
+reinitialization is disabled because compatibility projection is a separate AO
+contract, not a diffuse-CLS redistance step.  The oscillating-droplet window
+follows the Rayleigh-Lamb water-air period.  Its every-step dynamic
+Ridge--Eikonal restoration uses the transported CLS `diffuse_mass` constraint;
+the sharper `sharp_phase_volume` constraint is kept for static/equilibrium
+gates where the sharp area and diffuse profile targets are compatible without
+moving the interface.
 
 The five production configs emit periodic snapshots with `psi`, `velocity`,
 and pressure-family figures. The runner stores raw fields in `data.npz` under

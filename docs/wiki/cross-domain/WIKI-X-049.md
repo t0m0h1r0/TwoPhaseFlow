@@ -13,6 +13,8 @@ sources:
     description: "Mainline Chapter 14 capillary rerun on standard production stack"
   - path: artifacts/A/ch14_yaml_state_space_update_CHK-RA-CH14-AO-FASTVOL-032.md
     description: "All Chapter 14 production YAMLs declare diffuse_cls and explicit capillary source"
+  - path: artifacts/A/ch14_capillary_ao_fast_yaml_correction_CHK-RA-CH14-AO-FASTVOL-035.md
+    description: "Correction restoring the checked-in Chapter 14 capillary-wave YAML to AO-Fast"
 depends_on:
   - "[[WIKI-T-169]]"
   - "[[WIKI-E-063]]"
@@ -42,16 +44,17 @@ WIKI-E-063  U12/V11 executable admission gates
 ```
 
 Do not start from Chapter 14 production plots when the question is AO-Fast
-admission.  Chapter 14 production YAMLs are diffuse-CLS benchmarks unless a
-separate YAML explicitly declares `geometric_cell_fraction`.
+admission.  The Chapter 14 capillary-wave YAML is the explicit AO-Fast
+`geometric_cell_fraction` run; the remaining Chapter 14 YAMLs are diffuse-CLS
+benchmarks unless they separately declare the full geometric contract.
 
 ## Boundary Between Three Capillary Meanings
 
 | Route | YAML signature | Accepted reading |
 |---|---|---|
-| Graph/open-interface production | `interface.state_space.kind: diffuse_cls`, `surface_tension.source: curvature_jump` | Standard capillary-wave or Rayleigh--Taylor pressure-jump route. |
+| AO-Fast capillary wave | `interface.state_space.kind: geometric_cell_fraction`, q transport, `bundle_virtual_work`, active GPU contract | Checked-in Chapter 14 capillary-wave route; still governed by U12/V11 pressure-reaction gates. |
+| Graph/open-interface production | `interface.state_space.kind: diffuse_cls`, `surface_tension.source: curvature_jump` | Rayleigh--Taylor pressure-jump route. |
 | Closed-interface production | `interface.state_space.kind: diffuse_cls`, `surface_tension.source: closed_interface_riesz`, `capillary_reaction_projection: pressure_component_hodge` | Static droplet, oscillating droplet, and rising bubble closed-interface route. |
-| AO-Fast candidate | `interface.state_space.kind: geometric_cell_fraction`, q transport, `bundle_virtual_work`, active GPU contract | Research candidate only; requires U12/V11 pressure-reaction gates before production claims. |
 
 The boundary is intentionally visible in YAML.  It prevents a successful
 standard benchmark from being mistaken for AO-Fast success and prevents an
@@ -71,9 +74,9 @@ AO-Fast fail-close from being mistaken for standard benchmark failure.
   PCG, DC, dense direct AO, or CPU/host fallback.
 - Flat/static zero-drive controls must still be accepted; fail-close gates must
   distinguish unresolved non-static packets from exact static cancellation.
-- The standard Chapter 14 capillary-wave rerun completed on the production
-  FCCD/UCCD6/pressure-jump/component-Hodge stack.  That validates the standard
-  route's executability, not AO-Fast capillary admission.
+- The checked-in Chapter 14 capillary-wave YAML must exercise AO-Fast q
+  transport; running the diffuse-CLS curvature-jump route for this case is a
+  configuration error.
 
 ## Experiment Routing
 

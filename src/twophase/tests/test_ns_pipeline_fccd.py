@@ -790,7 +790,7 @@ def test_fccd_solver_is_shared():
 
 
 def test_ch14_capillary_yaml_builds_solver():
-    """Checked-in ch14 capillary YAML is executable: FCCD/HFE stack + UCCD convection."""
+    """Checked-in ch14 capillary YAML enters the AO-Fast q-transport stack."""
     from twophase.ppe.defect_correction import PPESolverDefectCorrection
     from twophase.ppe.fccd_matrixfree import PPESolverFCCDMatrixFree
     from twophase.ppe.fd_direct import PPESolverFDDirect
@@ -802,18 +802,22 @@ def test_ch14_capillary_yaml_builds_solver():
     cfg = ExperimentConfig.from_yaml(path)
     solver = TwoPhaseNSSolver.from_config(cfg)
 
+    assert cfg.interface_state_space.kind == "geometric_cell_fraction"
     assert solver._fccd is not None
-    assert solver._advection_scheme == "fccd_flux"
+    assert solver._advection_scheme == "geometric_swept_volume"
+    assert solver._interface_tracking_method == "q_cell_fraction"
     assert solver._convection_scheme == "uccd6"
     assert solver._pressure_gradient_scheme == "fccd_flux"
     assert solver._surface_tension_gradient_scheme == "none"
     assert solver._surface_tension_scheme == "pressure_jump"
+    assert solver._capillary_force_source == "bundle_virtual_work"
+    assert solver._capillary_range_projection == "none"
+    assert solver._capillary_reaction_projection == "pressure_component_hodge"
     assert solver._ppe_coefficient_scheme == "phase_separated"
     assert solver._ppe_interface_coupling_scheme == "affine_jump"
-    assert solver._hfe is not None
     assert isinstance(solver._transport, PsiDirectTransport)
     assert solver._interface_runtime.rebuild_freq == 1
-    assert solver._interface_runtime.reinit_every == 1
+    assert solver._interface_runtime.reinit_every == 0
     assert isinstance(solver._ppe_solver, PPESolverDefectCorrection)
     assert isinstance(solver._ppe_solver.operator, PPESolverFCCDMatrixFree)
     assert isinstance(solver._ppe_solver.base_solver, PPESolverFDDirect)
@@ -832,6 +836,8 @@ def test_ch14_capillary_wave_yaml_builds_initial_field():
 
     psi = solver.build_ic(cfg)
     assert psi.shape == solver._grid.shape
+    assert solver._geometric_phase_state is not None
+    assert solver._geometric_phase_state.q.shape == tuple(solver._grid.N)
 
     x0 = int(np.argmin(np.abs(np.asarray(solver._grid.coords[0]) - 0.0)))
     y_coords = np.asarray(solver._grid.coords[1])
@@ -841,11 +847,11 @@ def test_ch14_capillary_wave_yaml_builds_initial_field():
     assert psi[x0, y_high] < 0.5
 
 
-def test_ch14_capillary_curvature_is_supported_on_interface_band():
+def test_ch14_rayleigh_taylor_curvature_is_supported_on_interface_band():
     """HFE must not reintroduce pressure-jump curvature in saturation tails."""
     path = (
         Path(__file__).resolve().parents[3]
-        / "experiment/ch14/config/ch14_capillary.yaml"
+        / "experiment/ch14/config/ch14_rayleigh_taylor.yaml"
     )
     cfg = ExperimentConfig.from_yaml(path)
     solver = TwoPhaseNSSolver.from_config(cfg)

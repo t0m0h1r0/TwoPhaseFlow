@@ -6,14 +6,14 @@
 # continuum reference omega=134.419859151 and T=0.046742983863 s.  The paper
 # snapshot window is instead the signed mode-2 production response over one
 # observed cycle: upper crest -> flat -> lower crest -> flat -> upper crest.
-# Production numerical stack: FCCD PPE + face-native Young-Laplace jump + UCCD6.
-# - FCCD: conservative interface transport and pressure gradient use the `fccd`
-#   scheme; flux-locus form is the default option for these terms.
-# - Surface tension: `pressure_jump` enters as an affine interface-stress
-#   closure, not as CSF σκ∇ψ or a regular pressure field.
-# - Curvature: interface geometry uses the scalar face-native Young-Laplace
-#   pressure jump.  The P2 ALE discrete-gradient face-cochain route is not a
-#   validated production pressure-jump path.
+# Production numerical stack: AO-Fast geometric cell fraction + FCCD PPE +
+# bundle Young-Laplace work + UCCD6.
+# - AO-Fast: q is the transported physical cell volume, theta is its normalized
+#   view, and phi is the P1 gauge used only for geometric compatibility.
+# - FCCD: pressure gradient/PPE stay on the variational FCCD route.
+# - Surface tension: `pressure_jump` enters through AO bundle virtual work and
+#   pressure-component Hodge reaction, not as CSF σκ∇ψ or a regular pressure
+#   field.
 # - UCCD6: momentum convection uses `uccd6` per WIKI-T-062 / WIKI-X-028.
 # - Grid fitting: both tensor-product axes carry the interface monitor; the
 #   y axis additionally carries wall refinement for the physical upper/lower
@@ -51,24 +51,58 @@ grid:
 
 interface:
   state_space:
-    # Chapter-14 production benchmarks remain diffuse-CLS configs.  AO-Fast
-    # geometric_cell_fraction requires an explicit separate contract and is
-    # fail-closed before entering these production YAMLs.
-    kind: diffuse_cls
+    kind: geometric_cell_fraction
+    conserved_variable: q
+    normalized_view: theta
+    gauge:
+      variable: phi
+      trace: p1_levelset
+    compatibility:
+      constraint: hard_cell_volume
+      units: physical_volume
+      projection:
+        implementation: active_cached
+        dense_reference: test_only
+        gpu_contract:
+          required: true
+          active_storage: struct_of_arrays
+          inner_host_transfers: forbidden
+          dense_runtime_fallback: forbidden
+          record_kernel_counters: true
+        method: fixed_stratum_schur
+        metric: screened_gauge_hodge
+        fail_close: true
+        trust_region: sign_margin
+        residual_tolerance: 1.0e-11
+        condition_gate: fail_close
+        support_budget:
+          max_active_ratio: 0.25
+          max_support_stream_ratio: 0.25
+          max_epoch_growth_ratio: 1.5
+          on_overrun: fail_close
+        solver:
+          primary: active_pcg_newton
+          accelerators:
+            dc_candidate:
+              enabled: true
+              role: proposal_only
+              on_reject: discard_candidate
+          fallback:
+            policy: none
   thickness:
     mode: local
     base_factor: 1.5
   geometry:
     curvature:
-      # Scalar face-native Young-Laplace jump; the invalid P2 ALE face-cochain
-      # route is fail-closed for pressure-jump production configs.
+      # Retained for the phi diagnostic view; AO-Fast capillary force below is
+      # supplied by bundle_virtual_work, not diffuse curvature_jump.
       method: face_implicit
   reinitialization:
-    algorithm: ridge_eikonal
+    algorithm: none
     schedule:
-      every_steps: 1
+      every_steps: 0
     profile:
-      eps_scale: 1.4
+      eps_scale: 1.0
       ridge_sigma_0: 3.0
 
 physics:
@@ -97,9 +131,13 @@ numerics:
     algorithm: fractional_step
   interface:
     transport:
-      variable: psi
-      spatial: fccd
+      variable: q
+      spatial: geometric_swept_volume
       time_integrator: tvd_rk3
+      boundedness: certified
+      fail_close: true
+    tracking:
+      primary: q
   momentum:
     form: conservative_common_flux
     predictor:
@@ -120,8 +158,15 @@ numerics:
             max_iterations: 12
             relaxation: 0.8
       surface_tension:
+        gradient: none
         formulation: pressure_jump
-        source: curvature_jump
+        source: bundle_virtual_work
+        closed_interface:
+          endpoint: geometric_cell_fraction
+          residual_contract:
+            metric: pressure_adjoint
+            constraints: [cell_volume]
+            fail_close: true
   projection:
     face_flux_projection: true
     canonical_face_state: true
@@ -155,7 +200,7 @@ numerics:
         interface_coupling: affine_jump
         pressure_force_contract: variational_adjoint
         scalar_operator_pairing: variational_operator
-        capillary_range_projection: component_hodge_augmented
+        capillary_reaction_projection: pressure_component_hodge
       solver:
         kind: defect_correction
         corrections:

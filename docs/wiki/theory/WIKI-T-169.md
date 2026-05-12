@@ -87,6 +87,8 @@ sources:
     description: "Executable U12/V11 AO-Fast capillary split gates, stale V11 common-flux deletion, and paper-facing figures"
   - path: artifacts/A/ch14_yaml_state_space_update_CHK-RA-CH14-AO-FASTVOL-032.md
     description: "Chapter 14 YAML state-space contract: production configs declare diffuse_cls and do not admit AO-Fast implicitly"
+  - path: artifacts/A/ch14_capillary_ao_fast_yaml_correction_CHK-RA-CH14-AO-FASTVOL-035.md
+    description: "Correction restoring the checked-in Chapter 14 capillary-wave YAML to the AO-Fast geometric_cell_fraction route"
 depends_on:
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-159]]"
@@ -979,39 +981,54 @@ All required GPU non-static rows ran and fail-closed.
 
 ## Chapter 14 Production YAML Contract
 
-The checked-in Chapter 14 benchmark YAMLs are production diffuse-CLS configs,
-not AO-Fast `geometric_cell_fraction` configs.  Each canonical YAML now
-declares:
+The checked-in capillary-wave YAML is the AO-Fast
+`geometric_cell_fraction` experiment.  It must declare the full q/theta/phi
+state-space contract, GPU-required active storage, no dense runtime fallback,
+`geometric_swept_volume` q transport, and `bundle_virtual_work` capillary
+coupling:
 
 ```yaml
 interface:
   state_space:
-    kind: diffuse_cls
+    kind: geometric_cell_fraction
+    conserved_variable: q
+    normalized_view: theta
+numerics:
+  interface:
+    transport:
+      variable: q
+      spatial: geometric_swept_volume
+  momentum:
+    terms:
+      surface_tension:
+        source: bundle_virtual_work
+  projection:
+    poisson:
+      operator:
+        capillary_reaction_projection: pressure_component_hodge
 ```
 
-This is a retrieval and parser contract, not a physical parameter change.  It
-prevents `geometric_cell_fraction` from being read as an implicit fallback for
-the validated Chapter 14 route.
+The remaining checked-in Chapter 14 YAMLs stay explicit diffuse-CLS configs:
 
 Chapter 14 capillary routes are now separated at the YAML front door:
 
 ```text
-capillary wave / Rayleigh--Taylor:
+capillary wave:
+  interface.state_space.kind = geometric_cell_fraction
+  surface_tension.source = bundle_virtual_work
+
+Rayleigh--Taylor:
+  interface.state_space.kind = diffuse_cls
   surface_tension.source = curvature_jump
 
 static droplet / oscillating droplet / rising bubble:
+  interface.state_space.kind = diffuse_cls
   surface_tension.source = closed_interface_riesz
   poisson.operator.capillary_reaction_projection = pressure_component_hodge
-
-AO-Fast geometric_cell_fraction:
-  separate YAML contract only; not admitted by production ch14 YAMLs
 ```
 
-The mainline capillary-wave rerun belongs to the first category.  Its
-FCCD/UCCD6/pressure-jump/component-Hodge production stack completed the
-snapshot window with small volume drift, but that result is not evidence that
-the AO-Fast packet passed the capillary split gate.  Conversely, AO-Fast
-fail-close does not falsify the standard Chapter 14 capillary benchmark.
+This correction prevents the capillary-wave experiment from silently running
+the diffuse-CLS route when the intended object is AO-Fast q transport.
 
 ## Experiment And Paper Routing
 
@@ -1022,8 +1039,8 @@ ledger question.  The current paper route is:
 ```text
 Chapter 12 U12: algebraic AO-Fast capillary split gate
 Chapter 13 V11: integration pre-gate separating AO-Fast from production
-Chapter 14: standard production benchmark unless a separate AO-Fast YAML
-            passes the U12/V11 pressure-reaction gates
+Chapter 14: capillary-wave AO-Fast YAML; remaining benchmarks use their
+            declared diffuse-CLS routes
 ```
 
 This keeps the paper from claiming success for an unresolved pressure-reaction
