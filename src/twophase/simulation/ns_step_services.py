@@ -30,6 +30,13 @@ from .interface_projection_diagnostics import (
     capillary_pressure_adjoint_face_weights,
     zero_capillary_face_diagnostics,
 )
+from .geometric_capillary_reaction_split import (
+    build_geometric_capillary_reaction_split,
+)
+from .geometric_phase_runtime import (
+    GeometricRuntimeCapillaryApplicationState,
+    validate_geometric_runtime_capillary_application_admitted,
+)
 from .gravity_covector import build_variational_gravity_faces
 from .face_boundary import (
     zero_wall_normal_face_components,
@@ -180,6 +187,205 @@ def _ao_pressure_reaction_increment_for_projection_faces(
         face_pair=application.pressure_reaction_face_increment,
         reference_faces=reference_faces,
         label="pressure reaction",
+    )
+
+
+def _ao_capillary_acceleration_for_projection_faces(
+    *,
+    xp,
+    grid,
+    face_pair,
+    reference_faces: list,
+    label: str,
+) -> tuple[list, str]:
+    return _ao_face_pair_for_projection_faces(
+        xp=xp,
+        grid=grid,
+        face_pair=face_pair,
+        reference_faces=reference_faces,
+        label=label,
+    )
+
+
+def _needs_geometric_pressure_reaction_split(application) -> bool:
+    return (
+        str(
+            getattr(
+                application,
+                "pressure_reaction_projection_status",
+                getattr(application.capillary, "pressure_reaction_projection_status", ""),
+            )
+        ).strip().lower()
+        == "pressure_reaction_projection_pending"
+    )
+
+
+def _split_pending_geometric_capillary_application(
+    state: NSStepState,
+    *,
+    backend,
+    xp,
+    div_op,
+    ppe_solver,
+    ppe_runtime,
+    grid,
+    reference_faces: list,
+    curvature_method: str,
+) -> tuple[GeometricRuntimeCapillaryApplicationState, str]:
+    """Build the pressure-adjoint split before AO predictor application."""
+    application = state.geometric_runtime_capillary_application
+    if application is None:
+        raise ValueError("AO capillary split requires an application packet")
+    if not _needs_geometric_pressure_reaction_split(application):
+        return application, "already_split"
+    if ppe_solver is None:
+        raise RuntimeError("AO pressure-reaction split requires the active PPE solver")
+    raw_acceleration, raw_face_space = _ao_capillary_acceleration_for_projection_faces(
+        xp=xp,
+        grid=grid,
+        face_pair=application.predictor_face_acceleration,
+        reference_faces=reference_faces,
+        label="raw source acceleration",
+    )
+    component_accelerations = tuple(
+        getattr(application.capillary, "component_reaction_accelerations", ())
+    )
+    if not component_accelerations:
+        raise ValueError(
+            "AO pressure_component_hodge split requires at least one "
+            "cell-volume reaction direction"
+        )
+    component_faces = []
+    for index, component in enumerate(component_accelerations):
+        faces, _ = _ao_capillary_acceleration_for_projection_faces(
+            xp=xp,
+            grid=grid,
+            face_pair=component,
+            reference_faces=reference_faces,
+            label=f"component-{index} reaction acceleration",
+        )
+        component_faces.append(faces)
+    pressure_flux_kwargs = _pressure_face_flux_kwargs(
+        xp=xp,
+        state=state,
+        ppe_runtime=ppe_runtime,
+        interface_sigma=0.0,
+        curvature_method=curvature_method,
+    )
+    face_weights = capillary_pressure_adjoint_face_weights(
+        xp=xp,
+        div_op=div_op,
+        rho=state.rho,
+        pressure_flux_kwargs=pressure_flux_kwargs,
+    )
+    if face_weights is None:
+        raise RuntimeError(
+            "AO pressure-reaction split requires pressure-adjoint face weights"
+        )
+    split = build_geometric_capillary_reaction_split(
+        xp=xp,
+        div_op=div_op,
+        ppe_solver=ppe_solver,
+        rho=state.rho,
+        pressure_flux_kwargs=pressure_flux_kwargs,
+        raw_source_face_acceleration=raw_acceleration,
+        component_reaction_face_accelerations=tuple(component_faces),
+        face_weight_components=face_weights,
+    )
+    split_application = _application_from_geometric_capillary_split(
+        application,
+        split,
+        backend=backend,
+        xp=xp,
+    )
+    validate_geometric_runtime_capillary_application_admitted(split_application)
+    state.geometric_runtime_capillary_application = split_application
+    certificate = dict(state.conservative_transport_certificate or {})
+    certificate.update(
+        {
+            "ao_pressure_reaction_projection_status": split.status,
+            "ao_pressure_reaction_projection_face_space": raw_face_space,
+            "ao_pressure_reaction_projection_raw_l2": _scalar_from_backend(
+                backend,
+                xp,
+                split.raw_source_weighted_l2,
+            ),
+            "ao_pressure_reaction_projection_corrected_l2": _scalar_from_backend(
+                backend,
+                xp,
+                split.corrected_source_weighted_l2,
+            ),
+            "ao_pressure_reaction_projection_range_l2": _scalar_from_backend(
+                backend,
+                xp,
+                split.pressure_range_weighted_l2,
+            ),
+            "ao_pressure_reaction_projection_balanced_l2": _scalar_from_backend(
+                backend,
+                xp,
+                split.balanced_weighted_l2,
+            ),
+            "ao_pressure_reaction_projection_pressure_adjoint_residual": (
+                _scalar_from_backend(backend, xp, split.pressure_adjoint_residual)
+            ),
+            "ao_pressure_reaction_projection_saddle_constraint_linf": (
+                _scalar_from_backend(backend, xp, split.saddle_constraint_linf)
+            ),
+        }
+    )
+    state.conservative_transport_certificate = certificate
+    return split_application, raw_face_space
+
+
+def _application_from_geometric_capillary_split(
+    application,
+    split,
+    *,
+    backend,
+    xp,
+) -> GeometricRuntimeCapillaryApplicationState:
+    dt = float(application.dt)
+    predictor_acceleration = tuple(
+        xp.asarray(component) for component in split.corrected_source_face_acceleration
+    )
+    pressure_acceleration = tuple(
+        xp.asarray(component) for component in split.pressure_range_face_acceleration
+    )
+    balanced_acceleration = tuple(
+        xp.asarray(component) for component in split.balanced_face_acceleration
+    )
+    predictor_increment = tuple(dt * component for component in predictor_acceleration)
+    pressure_increment = tuple(dt * component for component in pressure_acceleration)
+    balanced_increment = tuple(dt * component for component in balanced_acceleration)
+    tolerance = float(application.capillary.pressure_range_tolerance)
+    balanced_l2 = dt * _scalar_from_backend(backend, xp, split.balanced_weighted_l2)
+    balanced_max = dt * _scalar_from_backend(
+        backend,
+        xp,
+        split.max_abs_balanced_face_acceleration,
+    )
+    pressure_exact_static = balanced_l2 <= tolerance and balanced_max <= tolerance
+    return GeometricRuntimeCapillaryApplicationState(
+        capillary=application.capillary,
+        dt=dt,
+        predictor_face_acceleration=predictor_acceleration,
+        pressure_reaction_face_acceleration=pressure_acceleration,
+        predictor_face_increment=predictor_increment,
+        pressure_reaction_face_increment=pressure_increment,
+        pressure_balanced_face_increment=balanced_increment,
+        predictor_increment_weighted_l2=(
+            dt
+            * _scalar_from_backend(backend, xp, split.corrected_source_weighted_l2)
+        ),
+        pressure_reaction_increment_weighted_l2=(
+            dt * _scalar_from_backend(backend, xp, split.pressure_range_weighted_l2)
+        ),
+        pressure_balanced_increment_weighted_l2=balanced_l2,
+        max_abs_pressure_balanced_face_increment=balanced_max,
+        pressure_exact_static=pressure_exact_static,
+        capillary_drive_present=not pressure_exact_static,
+        face_hodge_weights=split.face_weight_components,
+        pressure_reaction_projection_status=split.status,
     )
 
 
@@ -840,6 +1046,7 @@ def compute_ns_predictor_stage(
     ppe_coefficient_scheme: str = "phase_separated",
     conservative_momentum_transport: bool = False,
     ppe_runtime=None,
+    ppe_solver=None,
     curvature_method: str = "psi_direct_filtered",
     capillary_force_source: str = "curvature_jump",
     grid=None,
@@ -1187,35 +1394,66 @@ def compute_ns_predictor_stage(
                     "non-static AO capillary predictor requires face-native "
                     "predictor components"
                 )
-            increments, increment_face_space = (
-                _ao_predictor_increment_for_projection_faces(
+            if _needs_geometric_pressure_reaction_split(application):
+                application, _ = _split_pending_geometric_capillary_application(
+                    state,
+                    backend=backend,
                     xp=xp,
+                    div_op=div_op,
+                    ppe_solver=ppe_solver,
+                    ppe_runtime=ppe_runtime,
                     grid=grid,
-                    application=application,
                     reference_faces=state.predictor_face_components,
+                    curvature_method=curvature_method,
                 )
-            )
-            state.predictor_face_components = [
-                predictor_face + increment
-                for predictor_face, increment in zip(
-                    state.predictor_face_components,
-                    increments,
+            if application.pressure_exact_static:
+                certificate = dict(state.conservative_transport_certificate or {})
+                certificate.update(
+                    {
+                        "ao_static_surface_tension_applied": True,
+                        "ao_static_surface_tension_force_source": (
+                            "geometric_pressure_reaction_split"
+                        ),
+                        "ao_static_split_downstream_unblocked": True,
+                        "ao_static_surface_tension_balanced_increment_weighted_l2": (
+                            application.pressure_balanced_increment_weighted_l2
+                        ),
+                        "ao_static_surface_tension_balanced_max_abs_face_increment": (
+                            application.max_abs_pressure_balanced_face_increment
+                        ),
+                    }
                 )
-            ]
-            state.geometric_capillary_predictor_applied = True
-            ao_capillary_predictor_applied = True
-            certificate = dict(state.conservative_transport_certificate or {})
-            certificate.update(
-                {
-                    "ao_capillary_predictor_face_increment_applied": True,
-                    "ao_capillary_predictor_increment_weighted_l2": (
-                        application.predictor_increment_weighted_l2
-                    ),
-                    "ao_capillary_predictor_face_space": increment_face_space,
-                    "ao_pressure_reaction_increment_pending": True,
-                }
-            )
-            state.conservative_transport_certificate = certificate
+                state.conservative_transport_certificate = certificate
+            else:
+                increments, increment_face_space = (
+                    _ao_predictor_increment_for_projection_faces(
+                        xp=xp,
+                        grid=grid,
+                        application=application,
+                        reference_faces=state.predictor_face_components,
+                    )
+                )
+                state.predictor_face_components = [
+                    predictor_face + increment
+                    for predictor_face, increment in zip(
+                        state.predictor_face_components,
+                        increments,
+                    )
+                ]
+                state.geometric_capillary_predictor_applied = True
+                ao_capillary_predictor_applied = True
+                certificate = dict(state.conservative_transport_certificate or {})
+                certificate.update(
+                    {
+                        "ao_capillary_predictor_face_increment_applied": True,
+                        "ao_capillary_predictor_increment_weighted_l2": (
+                            application.predictor_increment_weighted_l2
+                        ),
+                        "ao_capillary_predictor_face_space": increment_face_space,
+                        "ao_pressure_reaction_increment_pending": True,
+                    }
+                )
+                state.conservative_transport_certificate = certificate
         if not is_all_periodic(bc_type, 2) and state.bc_hook is None:
             if face_no_slip_boundary_state:
                 state.predictor_face_components = zero_wall_velocity_face_components(

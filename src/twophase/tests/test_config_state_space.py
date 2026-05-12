@@ -517,6 +517,58 @@ def test_nonstatic_ao_capillary_runtime_rejects_unadmitted_reaction():
         validate_geometric_runtime_capillary_application_admitted(application)
 
 
+def test_nonstatic_ao_capillary_runtime_allows_pending_split_only_at_boundary():
+    zeros = (np.zeros((1, 1)), np.zeros((1, 1)))
+    application = GeometricRuntimeCapillaryApplicationState(
+        capillary=SimpleNamespace(
+            pressure_range_tolerance=1.0e-11,
+            pressure_reaction_projection_status="pressure_reaction_projection_pending",
+        ),
+        dt=1.0,
+        predictor_face_acceleration=zeros,
+        pressure_reaction_face_acceleration=zeros,
+        predictor_face_increment=zeros,
+        pressure_reaction_face_increment=zeros,
+        pressure_balanced_face_increment=zeros,
+        predictor_increment_weighted_l2=1.0,
+        pressure_reaction_increment_weighted_l2=0.0,
+        pressure_balanced_increment_weighted_l2=1.0,
+        max_abs_pressure_balanced_face_increment=1.0,
+        pressure_exact_static=False,
+        capillary_drive_present=True,
+        pressure_reaction_projection_status="pressure_reaction_projection_pending",
+    )
+
+    with pytest.raises(ValueError, match="R_p\\(q_T\\)"):
+        validate_geometric_runtime_capillary_application_admitted(application)
+    validate_geometric_runtime_capillary_application_admitted(
+        application,
+        allow_pending_reaction_projection=True,
+    )
+
+
+def test_nonstatic_ao_capillary_runtime_accepts_completed_split():
+    zeros = (np.zeros((1, 1)), np.zeros((1, 1)))
+    application = GeometricRuntimeCapillaryApplicationState(
+        capillary=SimpleNamespace(pressure_range_tolerance=1.0e-11),
+        dt=1.0,
+        predictor_face_acceleration=zeros,
+        pressure_reaction_face_acceleration=zeros,
+        predictor_face_increment=zeros,
+        pressure_reaction_face_increment=zeros,
+        pressure_balanced_face_increment=zeros,
+        predictor_increment_weighted_l2=1.0,
+        pressure_reaction_increment_weighted_l2=0.0,
+        pressure_balanced_increment_weighted_l2=1.0,
+        max_abs_pressure_balanced_face_increment=1.0,
+        pressure_exact_static=False,
+        capillary_drive_present=True,
+        pressure_reaction_projection_status="pressure_component_hodge_split",
+    )
+
+    validate_geometric_runtime_capillary_application_admitted(application)
+
+
 def test_direct_geometric_runtime_rejects_cpu_backend():
     with pytest.raises(RuntimeError, match="requires a GPU backend"):
         TwoPhaseNSSolver(
@@ -599,7 +651,7 @@ def test_geometric_runtime_rejects_active_projection_schedule():
         build_ao_fast_runtime_contract(experiment_cfg)
 
 
-def test_geometric_runtime_gpu_backend_fail_closes_uncertified_capillary_packet():
+def test_geometric_runtime_gpu_backend_marks_capillary_projection_pending():
     try:
         import cupy  # noqa: F401
     except Exception:
@@ -650,14 +702,17 @@ def test_geometric_runtime_gpu_backend_fail_closes_uncertified_capillary_packet(
         ),
         backend=solver.backend,
     )
-    with pytest.raises(ValueError, match="GPU AO capillary fail-close") as excinfo:
-        solver._advance_geometric_phase_stage(state)
-    assert "pressure_history_mode='pressure_coordinate'" in str(excinfo.value)
+    solver._advance_geometric_phase_stage(state)
     assert solver._last_geometric_runtime_material is not None
     assert solver._last_geometric_runtime_capillary_application is not None
     assert (
         solver._last_geometric_runtime_capillary.pressure_range_status
-        == "gpu_diagonal_active_schur_approximation"
+        == "pressure_reaction_projection_pending"
+    )
+    assert (
+        solver._last_geometric_runtime_capillary_application
+        .pressure_reaction_projection_status
+        == "pressure_reaction_projection_pending"
     )
 
 

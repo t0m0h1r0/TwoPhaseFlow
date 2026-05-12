@@ -6,10 +6,10 @@ slice.  It deliberately bypasses the dense exact AO helpers guarded in
 capillary packet arrays remain in the backend namespace and scalar diagnostics
 are returned as backend scalars rather than Python control values.
 
-The capillary pressure-range solve uses the admitted diagonal active-Schur
-preconditioner as an explicit approximation.  The approximation accuracy is
-reported through the device-resident Schur and Young-Laplace residual fields;
-there is no hidden PCG fallback.
+The capillary Riesz source remains device-resident.  Non-static pressure
+reaction is not represented by the Young-Laplace diagnostic multiplier here;
+it is marked pending until the downstream pressure-adjoint split is built on
+the projection face lattice.
 """
 
 from __future__ import annotations
@@ -204,13 +204,15 @@ def materialise_geometric_runtime_capillary_state_gpu(
     *,
     sigma: float,
     tolerance: float = 1.0e-11,
+    max_pcg_iterations: int = 256,
 ) -> GeometricRuntimeCapillaryState:
-    """Build the GPU AO capillary/pressure packet.
+    """Build the GPU AO capillary source packet.
 
-    Accuracy contract: the pressure-range multiplier is the diagonal
-    active-Schur preconditioner ``lambda_D = diag(JJ^T)^{-1} J(-sigma dS)``.
-    The device-resident ``schur_residual_linf`` and Young-Laplace residuals
-    quantify the approximation error; no hidden DC/PCG fallback is attempted.
+    Accuracy contract: a fixed-iteration device-resident PCG solve constructs
+    the bundle Riesz source ``r_sigma`` from the active Schur equations.
+    It is not admitted as a pressure reaction.  The pressure-reaction fields
+    are zero until the simulation-layer pressure-adjoint split constructs
+    ``Pi^{M_f}_{R_p(q_T)} r_sigma`` on projection faces.
     """
     _require_gpu_array_namespace(grid.xp, "materialise_geometric_runtime_capillary_state_gpu")
     sigma = _validate_sigma(sigma)
@@ -241,8 +243,15 @@ def materialise_geometric_runtime_capillary_state_gpu(
     row_norm = xp.sum(derivatives.jq_local * derivatives.jq_local, axis=-1)
     active = row_norm > 0.0
     rhs = _apply_jq_full(xp, derivatives.jq_local, capillary_nodal)
-    safe_row_norm = xp.where(active, row_norm, xp.ones_like(row_norm))
-    pressure_cell = xp.where(active, rhs / safe_row_norm, xp.zeros_like(rhs))
+    pressure_cell = _solve_schur_pcg_fixed_gpu(
+        grid,
+        xp,
+        derivatives.jq_local,
+        xp.where(active, rhs, xp.zeros_like(rhs)),
+        row_norm,
+        active,
+        max_iterations=max_pcg_iterations,
+    )
     pressure_nodal = _apply_jq_transpose_full(grid, derivatives.jq_local, pressure_cell)
     projected_rhs = _apply_jq_full(xp, derivatives.jq_local, pressure_nodal)
     schur_residual = xp.where(active, projected_rhs - rhs, xp.zeros_like(rhs))
@@ -258,7 +267,7 @@ def materialise_geometric_runtime_capillary_state_gpu(
         pressure_cell,
         boundary=material.face_hodge.boundary,
     )
-    pressure_face = tuple(xp.asarray(face) for face in capillary_face)
+    pressure_face = tuple(xp.zeros_like(face) for face in capillary_face)
     residual_face = tuple(
         cap - press for cap, press in zip(capillary_face, pressure_face, strict=True)
     )
@@ -331,6 +340,12 @@ def materialise_geometric_runtime_capillary_state_gpu(
             material.face_hodge.weights,
         ),
     )
+    component_reaction_accelerations = _single_cell_volume_reaction_accelerations_gpu(
+        grid,
+        phase_state,
+        material.face_hodge.weights,
+        boundary=material.face_hodge.boundary,
+    )
     zero_surface_tension = sigma == 0.0
     return GeometricRuntimeCapillaryState(
         material=material,
@@ -338,7 +353,7 @@ def materialise_geometric_runtime_capillary_state_gpu(
         pressure_range_status=(
             "pressure_exact_static"
             if zero_surface_tension
-            else "gpu_diagonal_active_schur_approximation"
+            else "pressure_reaction_projection_pending"
         ),
         pressure_exact_static=zero_surface_tension,
         capillary_drive_present=not zero_surface_tension,
@@ -367,6 +382,12 @@ def materialise_geometric_runtime_capillary_state_gpu(
         young_laplace_normal_residual_linf=young_laplace.normal_residual_linf,
         weighted_residual_acceleration_l2=hodge.weighted_residual_acceleration_l2,
         max_abs_residual_face_covector=hodge.max_abs_residual_face_covector,
+        component_reaction_accelerations=component_reaction_accelerations,
+        pressure_reaction_projection_status=(
+            "pressure_hodge_diagnostic"
+            if zero_surface_tension
+            else "pressure_reaction_projection_pending"
+        ),
     )
 
 
@@ -425,6 +446,10 @@ def materialise_geometric_runtime_capillary_application_state_gpu(
         ),
         pressure_exact_static=capillary.pressure_exact_static,
         capillary_drive_present=capillary.capillary_drive_present,
+        face_hodge_weights=weights,
+        pressure_reaction_projection_status=(
+            capillary.pressure_reaction_projection_status
+        ),
     )
 
 
@@ -435,18 +460,17 @@ def validate_geometric_runtime_capillary_fail_close_gpu(
     *,
     ppe_runtime=None,
 ) -> None:
-    """Fail-close the admitted GPU AO capillary packet at the solver boundary.
+    """Fail-close the GPU AO capillary source packet at the solver boundary.
 
     A3 mapping:
-      Equation: the AO capillary pressure multiplier must satisfy the
-      Young-Laplace normal equations ``J_q^T lambda = -dS`` on the active
-      stratum before its pressure component may be coupled to PPE.
-      Discretization: the current GPU packet is a diagonal active-Schur
-      approximation, so residual diagnostics certify whether the approximation
-      is admissible.  Non-static application also requires a nonzero
-      pressure-balanced face increment in the same face-mass work metric.
+      Equation: the raw bundle Riesz source must satisfy the active Schur
+      normal equations; the pressure reaction itself is admitted later by
+      ``r_sigma - Pi^{M_f}_{R_p(q_T)} r_sigma`` on projection faces.
+      Discretization: the GPU source packet may be pending pressure-reaction
+      projection, but it must not be a zero-drive packet created by reusing the
+      same pressure face as both source and reaction.
       Code: one outer boundary synchronization converts scalar diagnostics to
-      host values and raises before the packet reaches momentum/PPE slots.
+      host values and raises before invalid packets reach momentum/PPE slots.
     """
     if not backend.is_gpu():
         return
@@ -499,8 +523,7 @@ def validate_geometric_runtime_capillary_fail_close_gpu(
         )
     if normal_residual > tolerance:
         violations.append(
-            "diagonal active-Schur pressure solve violates Young-Laplace "
-            "normal equations "
+            "AO capillary source solve violates Young-Laplace normal equations "
             f"({normal_residual:.6e} > {tolerance:.6e}); a certified active "
             "PCG/Newton/DC solve is required before advancing"
         )
@@ -509,16 +532,20 @@ def validate_geometric_runtime_capillary_fail_close_gpu(
     if declared_drive:
         predictor_l2 = scalars["AO predictor increment weighted l2"]
     nonstatic = declared_drive and predictor_l2 > tolerance
-    if nonstatic and _pressure_history_mode(ppe_runtime) == "pressure_coordinate":
-        violations.append(
-            "pressure_history_mode='pressure_coordinate' requires a scalar AO "
-            "pressure coordinate, but this packet only provides face reaction "
-            "increments"
-        )
     if nonstatic:
         balanced_l2 = scalars["AO pressure-balanced increment weighted l2"]
         balanced_max = scalars["AO pressure-balanced increment max"]
-        if balanced_l2 <= tolerance and balanced_max <= tolerance:
+        pending_projection = (
+            str(
+                getattr(capillary, "pressure_reaction_projection_status", "")
+            ).strip().lower()
+            == "pressure_reaction_projection_pending"
+        )
+        if (
+            not pending_projection
+            and balanced_l2 <= tolerance
+            and balanced_max <= tolerance
+        ):
             violations.append(
                 "non-static packet has zero pressure-balanced drive "
                 f"(weighted_l2={balanced_l2:.6e}, max={balanced_max:.6e}); "
@@ -940,6 +967,35 @@ def _face_incidence_adjoint_gpu(grid, cell_values, *, boundary):
     return covector_x, covector_y
 
 
+def _single_cell_volume_reaction_accelerations_gpu(
+    grid,
+    state: GeometricPhaseState,
+    face_weights,
+    *,
+    boundary,
+    threshold: float = 1.0e-12,
+):
+    """Return the global liquid-cell-volume reaction direction on GPU faces.
+
+    For the geometric-cell-fraction endpoint the YAML contract exposes the
+    cell-volume constraint.  Its face covector is ``T_q^T chi`` with ``chi``
+    the liquid-support cell indicator, and the runtime acceleration is
+    ``M_f^{-1}T_q^T chi`` in the same AO face Hodge used by the raw source.
+    """
+    xp = grid.xp
+    mask = xp.where(
+        xp.asarray(state.theta) > xp.asarray(threshold, dtype=state.q.dtype),
+        xp.asarray(1.0, dtype=state.q.dtype),
+        xp.asarray(0.0, dtype=state.q.dtype),
+    )
+    covectors = _face_incidence_adjoint_gpu(grid, mask, boundary=boundary)
+    acceleration = tuple(
+        covector / weight
+        for covector, weight in zip(covectors, face_weights, strict=True)
+    )
+    return (acceleration,)
+
+
 def _full_cell_ids(grid, xp):
     i = xp.arange(grid.N[0], dtype=xp.int64).reshape((-1, 1))
     j = xp.arange(grid.N[1], dtype=xp.int64).reshape((1, -1))
@@ -986,6 +1042,56 @@ def _apply_jq_full(xp, jq_local, nodal_values):
         axis=-1,
     )
     return xp.sum(jq_local * local, axis=-1)
+
+
+def _solve_schur_pcg_fixed_gpu(
+    grid,
+    xp,
+    jq_local,
+    rhs,
+    row_norm,
+    active,
+    *,
+    max_iterations: int,
+):
+    """Solve ``J J^T x = rhs`` with a fixed device-resident PCG loop.
+
+    The loop count is fixed by the caller so no residual-dependent host
+    synchronization occurs inside the GPU capillary source construction.
+    """
+    iterations = int(max_iterations)
+    if iterations < 1:
+        raise ValueError("max_pcg_iterations must be positive")
+    b = xp.where(active, xp.asarray(rhs), xp.zeros_like(rhs))
+    diagonal = xp.where(active & (row_norm > 0.0), row_norm, xp.ones_like(row_norm))
+    x = xp.zeros_like(b)
+    r = b - _apply_schur_full_gpu(grid, xp, jq_local, x)
+    z = r / diagonal
+    p = z
+    rz_old = xp.sum(r * z)
+    eps = xp.asarray(1.0e-30, dtype=b.dtype)
+    for _ in range(iterations):
+        ap = _apply_schur_full_gpu(grid, xp, jq_local, p)
+        denom = xp.sum(p * ap)
+        safe_denom = xp.where(xp.abs(denom) > eps, denom, xp.ones_like(denom))
+        alpha = rz_old / safe_denom
+        x = x + alpha * p
+        r = r - alpha * ap
+        z = r / diagonal
+        rz_new = xp.sum(r * z)
+        safe_rz_old = xp.where(xp.abs(rz_old) > eps, rz_old, xp.ones_like(rz_old))
+        beta = rz_new / safe_rz_old
+        p = z + beta * p
+        rz_old = rz_new
+    return xp.where(active, x, xp.zeros_like(x))
+
+
+def _apply_schur_full_gpu(grid, xp, jq_local, cell_values):
+    return _apply_jq_full(
+        xp,
+        jq_local,
+        _apply_jq_transpose_full(grid, jq_local, cell_values),
+    )
 
 
 def _apply_jq_transpose_full(grid, jq_local, cell_values):

@@ -1086,7 +1086,10 @@ class TwoPhaseNSSolver:
                 application,
                 ppe_runtime=self._ppe_runtime,
             )
-        validate_geometric_runtime_capillary_application_admitted(application)
+        validate_geometric_runtime_capillary_application_admitted(
+            application,
+            allow_pending_reaction_projection=True,
+        )
         state.conservative_transport_certificate = {
             "status": "geometric_phase_transport_ready",
             "projected": result.phase_transport.projected,
@@ -1611,9 +1614,13 @@ class TwoPhaseNSSolver:
             ppe_coefficient_scheme=self._ppe_coefficient_scheme,
             conservative_momentum_transport=self._conservative_common_flux_enabled(),
             ppe_runtime=self._ppe_runtime,
+            ppe_solver=self._ppe_solver,
             curvature_method=self._curvature_method,
             capillary_force_source=self._capillary_force_source,
             grid=self._grid,
+        )
+        self._last_geometric_runtime_capillary_application = (
+            state.geometric_runtime_capillary_application
         )
         return state
 
@@ -1680,7 +1687,10 @@ class TwoPhaseNSSolver:
         certificate = state.conservative_transport_certificate or {}
         if (
             state.geometric_common_flux_transport is None
-            or certificate.get("ao_nonstatic_velocity_corrector_applied") is not True
+            or (
+                certificate.get("ao_nonstatic_velocity_corrector_applied") is not True
+                and certificate.get("ao_static_split_downstream_unblocked") is not True
+            )
         ):
             return
         self._geometric_phase_state = (
