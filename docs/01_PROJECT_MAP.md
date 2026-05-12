@@ -180,7 +180,7 @@ ICurvatureCalculator.compute(psi) → kappa
 ```
 All inputs/outputs shaped `grid.shape`. `velocity_components = [u, v]` (2D).
 
-### AO-Fast Geometry C1 (`geometry/`)
+### AO-Fast Geometry C1-C7 (`geometry/`)
 
 `geometry/dense_reference.py` owns only the dense P1 oracle:
 
@@ -194,8 +194,26 @@ comparison, but must not be called from simulation runtime, experiment YAML
 activation, or fallback paths.  `geometry/import_manifest.py` is the closed
 direct-branch import registry; every imported AO symbol must be classified as
 `oracle_only`, `gpu_production`, or `reject`, with migration status recorded
-separately.  Runtime `geometric_cell_fraction` YAML construction remains
-disabled until AO-Fast C8.
+separately.
+
+`geometry/active_kernels.py` and `geometry/active_table.py` own compact
+active-row P1 geometry:
+
+```python
+refresh_active_geometry_2d(grid, phi, cell_ids) -> P1ActiveGeometry
+build_active_table_for_cell_ids(grid, phi, cell_ids, q_target=...) -> ActiveGeometryTable
+```
+
+The compact path consumes explicit `cell_ids_A` streams and does not discover
+support by a full-grid dense oracle scan.  Dense support scans are confined to
+`build_debug_active_table_from_dense(..., allowed_context=...)` and are ledgered
+as initialization/oracle/debug work.  `geometry/active_projection.py` owns
+matrix-free active `J`, `J^T`, Schur matvecs, CPU-control PCG with
+`tau_cg_floor` fail-close, and exact active-row residual acceptance.  GPU active
+tables stay device-resident; the unfused PCG host-control loop fails closed on
+GPU until the fused C7/C8 runtime path is admitted.  Runtime
+`geometric_cell_fraction` YAML construction remains disabled until the runtime
+adapter/checkpoint/capillary gates pass.
 
 ### FlowState (`core/flow_state.py`)
 Pure data class — no logic.

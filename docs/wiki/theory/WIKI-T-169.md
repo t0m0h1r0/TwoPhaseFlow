@@ -51,6 +51,10 @@ sources:
     description: "Complexity audit ensuring AO-Fast repairs do not reintroduce full-grid runtime work"
   - path: artifacts/A/ch14_ao_fast_precode_contrarian_loop_CHK-RA-CH14-AO-FASTVOL-013.md
     description: "Pre-code adversarial review loop and repairs until no major findings remain"
+  - path: artifacts/A/ch14_ao_fast_c1_implementation_CHK-RA-CH14-AO-FASTVOL-014.md
+    description: "AO-Fast C1 dense oracle, manifest, governance, parser skeleton, and remote validation"
+  - path: artifacts/A/ch14_ao_fast_active_core_CHK-RA-CH14-AO-FASTVOL-016.md
+    description: "AO-Fast C2-C7 active table, active kernels, matrix-free Schur, PCG floor, and exact active projection core"
 depends_on:
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-159]]"
@@ -646,6 +650,20 @@ bulk full/full phase exchange; active/support buffers require declared capacity
 and fail-close on overrun; PCG separates `tau_cg_target` from the attainable
 roundoff floor; production conditioning gates are fail-close, not
 diagnostic-only.
+
+The C2-C7 implementation now materializes that active core without enabling
+chapter-14 runtime YAMLs.  `ActiveGeometryTable` stores compact SoA rows for
+`cell_ids_A`, `node_ids_A`, current `Q_h/S_h`, `q_target_A`, `target_theta_A`,
+target-state codes, halo/dirty/flux/origin masks, owner epochs, and metric
+keys.  `refresh_active_geometry_2d` computes active P1 `Q_h`, `S_h`, `J_q`, and
+`dS_h` directly from supplied active cell ids, with dense scans confined to
+ledgered debug/oracle builders.  The matrix-free active Schur layer applies
+`J`, `J^T`, and `J J^T` without dense Schur assembly, checks adjointness, and
+keeps PCG floor semantics fail-closed.  The active projection loop accepts only
+exact recomputed active `Q_h` residuals on a fixed sign stratum; active-set
+epoch changes remain an outer fail-close/runtime-adapter responsibility.  GPU
+tables remain device arrays; the temporary unfused PCG control loop is
+intentionally disabled on GPU rather than silently syncing inside the loop.
 
 CCD/DCCD/FCCD/UCCD remain useful on the smooth side of the split: gauge
 prediction, screened gauge metric `W_eta`, face-state reconstruction,
