@@ -63,9 +63,15 @@ class AOFastRuntimeContract:
 class AOFastCheckpointValidation:
     """Summary of a validated AO-Fast continuation checkpoint payload."""
 
-    grid_shape: tuple[int, int]
+    cell_shape: tuple[int, int]
+    node_shape: tuple[int, int]
     required_arrays: tuple[str, ...]
     face_history_prefixes: tuple[str, ...]
+
+    @property
+    def grid_shape(self) -> tuple[int, int]:
+        """Backward-compatible alias for the cell-cochain shape."""
+        return self.cell_shape
 
 
 def build_ao_fast_runtime_contract(cfg: Any) -> AOFastRuntimeContract:
@@ -131,24 +137,45 @@ def raise_ao_fast_runtime_disabled(cfg: Any) -> None:
 def validate_ao_fast_checkpoint_arrays(
     arrays: Mapping[str, Any],
     *,
-    grid_shape: tuple[int, int],
+    cell_shape: tuple[int, int] | None = None,
+    node_shape: tuple[int, int] | None = None,
+    grid_shape: tuple[int, int] | None = None,
 ) -> AOFastCheckpointValidation:
     """Validate test-only AO-Fast continuation checkpoint array contracts."""
-    grid_shape = _validate_grid_shape(grid_shape)
+    if cell_shape is None:
+        if grid_shape is None:
+            raise ValueError("AO-Fast checkpoint validation requires cell_shape")
+        cell_shape = grid_shape
+    elif grid_shape is not None and tuple(cell_shape) != tuple(grid_shape):
+        raise ValueError("AO-Fast checkpoint cell_shape and grid_shape disagree")
+    cell_shape = _validate_cell_shape(cell_shape)
+    node_shape = _validate_node_shape(node_shape, cell_shape=cell_shape)
     for key in GEOMETRIC_CHECKPOINT_REQUIRED_ARRAYS:
         if key not in arrays:
             raise ValueError(f"AO-Fast checkpoint missing required array {key}")
-    for key in ("state/q", "state/theta", "state/phi", "state/stratum/case_code"):
+    for key in ("state/q", "state/theta", "state/stratum/case_code"):
         shape = tuple(getattr(arrays[key], "shape", ()))
-        if shape != grid_shape:
+        if shape != cell_shape:
             raise ValueError(
                 f"AO-Fast checkpoint array {key} shape {shape} "
-                f"does not match grid_shape {grid_shape}"
+                f"does not match cell_shape {cell_shape}"
             )
+    phi_shape = tuple(getattr(arrays["state/phi"], "shape", ()))
+    if phi_shape != node_shape:
+        raise ValueError(
+            f"AO-Fast checkpoint array state/phi shape {phi_shape} "
+            f"does not match node_shape {node_shape}"
+        )
     for prefix in GEOMETRIC_FACE_HISTORY_PREFIXES:
-        _validate_face_history(arrays, prefix=prefix, grid_shape=grid_shape)
+        _validate_face_history(
+            arrays,
+            prefix=prefix,
+            cell_shape=cell_shape,
+            node_shape=node_shape,
+        )
     return AOFastCheckpointValidation(
-        grid_shape=grid_shape,
+        cell_shape=cell_shape,
+        node_shape=node_shape,
         required_arrays=GEOMETRIC_CHECKPOINT_REQUIRED_ARRAYS,
         face_history_prefixes=GEOMETRIC_FACE_HISTORY_PREFIXES,
     )
@@ -158,7 +185,8 @@ def _validate_face_history(
     arrays: Mapping[str, Any],
     *,
     prefix: str,
-    grid_shape: tuple[int, int],
+    cell_shape: tuple[int, int],
+    node_shape: tuple[int, int],
 ) -> None:
     count_key = f"{prefix}/count"
     if count_key not in arrays:
@@ -167,8 +195,8 @@ def _validate_face_history(
     if count != 2:
         raise ValueError(f"AO-Fast checkpoint {prefix} must contain 2 components")
     expected_shapes = (
-        (grid_shape[0] - 1, grid_shape[1]),
-        (grid_shape[0], grid_shape[1] - 1),
+        (cell_shape[0], node_shape[1]),
+        (node_shape[0], cell_shape[1]),
     )
     for axis, expected_shape in enumerate(expected_shapes):
         key = f"{prefix}/{axis}"
@@ -182,12 +210,30 @@ def _validate_face_history(
             )
 
 
-def _validate_grid_shape(grid_shape: tuple[int, int]) -> tuple[int, int]:
-    if len(grid_shape) != 2:
+def _validate_cell_shape(cell_shape: tuple[int, int]) -> tuple[int, int]:
+    if len(cell_shape) != 2:
         raise ValueError("AO-Fast checkpoint validation currently supports 2D only")
-    parsed = tuple(int(value) for value in grid_shape)
+    parsed = tuple(int(value) for value in cell_shape)
     if parsed[0] < 2 or parsed[1] < 2:
-        raise ValueError("AO-Fast checkpoint grid_shape must be at least 2x2")
+        raise ValueError("AO-Fast checkpoint cell_shape must be at least 2x2")
+    return parsed
+
+
+def _validate_node_shape(
+    node_shape: tuple[int, int] | None,
+    *,
+    cell_shape: tuple[int, int],
+) -> tuple[int, int]:
+    expected = (cell_shape[0] + 1, cell_shape[1] + 1)
+    if node_shape is None:
+        return expected
+    if len(node_shape) != 2:
+        raise ValueError("AO-Fast checkpoint node_shape must be 2D")
+    parsed = tuple(int(value) for value in node_shape)
+    if parsed != expected:
+        raise ValueError(
+            f"AO-Fast checkpoint node_shape {parsed} must equal cell_shape+1 {expected}"
+        )
     return parsed
 
 

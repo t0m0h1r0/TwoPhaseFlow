@@ -20,6 +20,8 @@ from typing import Iterable
 
 import numpy as np
 
+from twophase.backend import is_device_array
+
 from .active_kernels import active_cell_node_ids_2d, refresh_active_geometry_2d
 from .dense_reference import MetricCellComplex, cut_geometry_2d
 
@@ -260,6 +262,7 @@ def build_debug_active_table_from_dense(
         previous_cell_ids=previous_cell_ids,
         flux_touched_cell_ids=flux_touched_cell_ids,
         target_cell_ids=_concat_cell_ids(target_mixed_from_q, target_cell_ids),
+        support_budget=support_budget,
         include_halo=include_halo,
         boundary=boundary,
     )
@@ -294,20 +297,35 @@ def compact_active_cell_ids_from_streams(
     previous_cell_ids=None,
     flux_touched_cell_ids=None,
     target_cell_ids=None,
+    support_budget: ActiveSupportBudget | None = None,
     include_halo: bool = True,
     boundary: tuple[str, str] = ("wall", "wall"),
 ):
     """Union compact support streams and optionally add a one-face halo."""
+    grid_shape = (int(grid_shape[0]), int(grid_shape[1]))
+    n_cells = grid_shape[0] * grid_shape[1]
     support: dict[tuple[int, int], int] = {}
     _merge_stream(support, current_cell_ids, int(ORIGIN_CURRENT), grid_shape)
     _merge_stream(support, previous_cell_ids, int(ORIGIN_PREVIOUS), grid_shape)
     _merge_stream(support, target_cell_ids, int(ORIGIN_TARGET), grid_shape)
     _merge_stream(support, flux_touched_cell_ids, int(ORIGIN_FLUX), grid_shape)
+    _check_support_stream_budget(
+        len(support),
+        n_cells,
+        support_budget,
+        "compact support stream",
+    )
     if include_halo:
         core = tuple(support)
         for cell in core:
             for neighbor in _one_face_neighbors(cell, grid_shape, boundary):
                 support[neighbor] = support.get(neighbor, 0) | int(ORIGIN_HALO)
+    _check_support_budget(
+        len(support),
+        n_cells,
+        support_budget,
+        "compact active support",
+    )
     if not support:
         return np.zeros((0, 2), dtype=np.int64), np.zeros((0,), dtype=np.uint16)
     cells = np.asarray(sorted(support), dtype=np.int64)
@@ -318,6 +336,11 @@ def compact_active_cell_ids_from_streams(
 def _merge_stream(support, cell_ids, origin_bit: int, grid_shape: tuple[int, int]) -> None:
     if cell_ids is None:
         return
+    if is_device_array(cell_ids):
+        raise ValueError(
+            "device support streams require fused GPU compaction; "
+            "host compact_active_cell_ids_from_streams would violate the GPU contract"
+        )
     ids = np.asarray(cell_ids, dtype=np.int64)
     if ids.size == 0:
         return
@@ -434,4 +457,17 @@ def _check_support_budget(
     if n_active > limit:
         raise ValueError(
             f"{label} capacity exceeded: n_active={n_active} limit={limit}"
+        )
+
+
+def _check_support_stream_budget(
+    n_stream: int,
+    n_cells: int,
+    support_budget: ActiveSupportBudget | None,
+    label: str,
+) -> None:
+    limit = _support_stream_limit(n_cells, support_budget)
+    if n_stream > limit:
+        raise ValueError(
+            f"{label} capacity exceeded: n_stream={n_stream} limit={limit}"
         )

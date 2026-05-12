@@ -414,17 +414,87 @@ def _validate_legacy_diffuse_stack(numerics: dict[str, Any]) -> None:
     transport = _optional_interface_transport(numerics)
     variable = str(transport.get("variable", "psi")).strip().lower()
     if variable in {"q", "theta"}:
-        raise ValueError(
-            f"numerics.interface.transport.variable={variable!r} requires "
-            "interface.state_space.kind='geometric_cell_fraction'"
+        _require_geometric_state_space(
+            f"numerics.interface.transport.variable={variable!r}"
         )
     tracking = _optional_interface_tracking(numerics)
     primary = str(tracking.get("primary", "psi")).strip().lower()
     if primary in {"q", "theta"}:
-        raise ValueError(
-            f"numerics.interface.tracking.primary={primary!r} requires "
-            "interface.state_space.kind='geometric_cell_fraction'"
+        _require_geometric_state_space(
+            f"numerics.interface.tracking.primary={primary!r}"
         )
+
+    for surface_path, surface in _optional_surface_tension_sections(numerics):
+        source = str(surface.get("source", "")).strip().lower()
+        if source == "bundle_virtual_work":
+            _require_geometric_state_space(f"{surface_path}.source='bundle_virtual_work'")
+        closed_interface = surface.get("closed_interface", {})
+        if isinstance(closed_interface, dict):
+            endpoint = str(closed_interface.get("endpoint", "")).strip().lower()
+            if endpoint == "geometric_cell_fraction":
+                _require_geometric_state_space(
+                    f"{surface_path}.closed_interface."
+                    "endpoint='geometric_cell_fraction'"
+                )
+            residual_contract = closed_interface.get("residual_contract", {})
+            if isinstance(residual_contract, dict):
+                constraints = _constraint_names(residual_contract.get("constraints", ()))
+                if "cell_volume" in constraints:
+                    _require_geometric_state_space(
+                        f"{surface_path}.closed_interface."
+                        "residual_contract.constraints includes 'cell_volume'"
+                    )
+
+
+def _require_geometric_state_space(reason: str) -> None:
+    raise ValueError(
+        f"{reason} requires interface.state_space.kind='geometric_cell_fraction'"
+    )
+
+
+def _constraint_names(value: Any) -> set[str]:
+    if isinstance(value, str):
+        return {value.strip().lower()}
+    if isinstance(value, (list, tuple, set)):
+        return {str(item).strip().lower() for item in value}
+    return set()
+
+
+def _optional_surface_tension_sections(
+    numerics: dict[str, Any],
+) -> list[tuple[str, dict[str, Any]]]:
+    sections: list[tuple[str, dict[str, Any]]] = []
+    if not isinstance(numerics, dict):
+        return sections
+
+    def _add(path: str, value: Any) -> None:
+        if isinstance(value, dict):
+            sections.append((path, value))
+
+    momentum = numerics.get("momentum")
+    if isinstance(momentum, dict):
+        terms = momentum.get("terms", {})
+        if isinstance(terms, dict):
+            _add(
+                "numerics.momentum.terms.surface_tension",
+                terms.get("surface_tension", {}),
+            )
+        _add("numerics.momentum.capillary_force", momentum.get("capillary_force", {}))
+    physical_time = numerics.get("physical_time", {})
+    if isinstance(physical_time, dict):
+        momentum = physical_time.get("momentum", {})
+        if isinstance(momentum, dict):
+            _add(
+                "numerics.physical_time.momentum.capillary_force",
+                momentum.get("capillary_force", {}),
+            )
+            terms = momentum.get("terms", {})
+            if isinstance(terms, dict):
+                _add(
+                    "numerics.physical_time.momentum.terms.surface_tension",
+                    terms.get("surface_tension", {}),
+                )
+    return sections
 
 
 def _optional_interface_transport(numerics: dict[str, Any]) -> dict[str, Any]:

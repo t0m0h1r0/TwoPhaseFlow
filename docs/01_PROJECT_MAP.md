@@ -208,26 +208,36 @@ build_active_table_for_cell_ids(grid, phi, cell_ids, q_target=...) -> ActiveGeom
 The compact path consumes explicit `cell_ids_A` streams and does not discover
 support by a full-grid dense oracle scan.  Dense support scans are confined to
 `build_debug_active_table_from_dense(..., allowed_context=...)` and are ledgered
-as initialization/oracle/debug work.  `geometry/active_projection.py` owns
+as initialization/oracle/debug work.  The temporary host compactor enforces
+`max_support_stream_ratio` before halo expansion, enforces the final active
+support capacity after halo expansion, and rejects CUDA/device streams until the
+fused GPU support-compaction path is admitted.  `geometry/active_projection.py` owns
 matrix-free active `J`, `J^T`, Schur matvecs, CPU-control PCG with
 `tau_cg_floor` fail-close, and exact active-row residual acceptance.  GPU active
 tables stay device-resident; the unfused PCG host-control loop fails closed on
-GPU until the fused runtime path is admitted.  After C8,
+GPU until the fused runtime path is admitted.  Empty active support returns an
+explicit no-op ledger rather than reducing an empty residual.  After C8,
 `geometric_cell_fraction` YAML may build an `ExperimentConfig` when it declares
 the closed AO-Fast contract (`q` transport, `geometric_swept_volume`,
 `bundle_virtual_work`, `cell_volume`, `algorithm: none`).  Solver construction
 still fails closed in `NSSolverBuilder` until the runtime adapter,
 checkpoint, and chapter-14 smoke gates pass; no chapter-14 runtime path is
-silently activated.
+silently activated.  Conversely, the legacy/default diffuse front door rejects
+geometric capillary declarations (`bundle_virtual_work`,
+`endpoint=geometric_cell_fraction`, or `constraints=[cell_volume]`) unless
+`interface.state_space.kind=geometric_cell_fraction` is explicit.
 
 `simulation/ao_fast_runtime_contract.py` owns the disabled C9 runtime contract
 adapter.  It validates the parsed q/theta/phi handoff, the
 `bundle_virtual_work` capillary contract, required continuation checkpoint
 arrays, and pressure/projected face-history shapes, then raises
 `AOFastRuntimeDisabledError` before `build_solver_init_options` can enter the
-legacy diffuse runtime.  This is a test-only/disabled gate until bounded
-swept-volume transport, bundle capillary runtime, and chapter-14 smoke gates are
-implemented.
+legacy diffuse runtime.  Checkpoint continuation distinguishes cell cochains
+(`state/q`, `state/theta`, `state/stratum/case_code`) from P1 node gauges
+(`state/phi`); for cell shape `(nx, ny)`, the node shape is `(nx+1, ny+1)` and
+the face histories are `(nx, ny+1)` / `(nx+1, ny)`.  This is a
+test-only/disabled gate until bounded swept-volume transport, bundle capillary
+runtime, and chapter-14 smoke gates are implemented.
 
 ### FlowState (`core/flow_state.py`)
 Pure data class — no logic.

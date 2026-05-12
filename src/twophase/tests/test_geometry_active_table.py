@@ -149,6 +149,37 @@ def test_active_table_capacity_overrun_fails_closed():
         )
 
 
+def test_compact_support_stream_budget_overrun_fails_closed():
+    grid, _backend = _grid(4)
+    too_many_stream_cells = np.asarray(
+        [[0, 0], [0, 1], [1, 0], [1, 1], [2, 2]],
+        dtype=np.int64,
+    )
+
+    with pytest.raises(ValueError, match="compact support stream capacity exceeded"):
+        compact_active_cell_ids_from_streams(
+            grid_shape=grid.N,
+            current_cell_ids=too_many_stream_cells,
+            support_budget=ActiveSupportBudget(
+                max_active_ratio=1.0,
+                max_support_stream_ratio=0.25,
+                max_epoch_growth_ratio=2.0,
+            ),
+            include_halo=False,
+        )
+
+
+def test_compact_support_stream_rejects_device_arrays_before_host_conversion():
+    class _DeviceStream:
+        __cuda_array_interface__ = {"shape": (1, 2), "typestr": "<i8", "data": (0, False)}
+
+    with pytest.raises(ValueError, match="fused GPU compaction"):
+        compact_active_cell_ids_from_streams(
+            grid_shape=(4, 4),
+            current_cell_ids=_DeviceStream(),
+        )
+
+
 def test_compact_table_construction_does_not_call_dense_oracle(monkeypatch):
     grid, _backend = _grid(6)
     x, _ = _mesh(grid)
@@ -316,3 +347,23 @@ def test_active_projection_accepts_exact_active_residual_without_dense_fallback(
     assert result.ledger.stop_reason == "exact_active_residual"
     assert result.ledger.final_residual_linf <= 1.0e-11
     assert result.table.ledger.dense_scan_used is False
+
+
+def test_active_projection_empty_support_returns_noop_ledger():
+    grid, _backend = _grid(6)
+    x, _ = _mesh(grid)
+    phi = x - 2.0
+    empty_ids = np.zeros((0, 2), dtype=np.int64)
+    table = build_active_table_for_cell_ids(grid, phi, empty_ids)
+
+    result = project_active_cell_volume_compatibility_2d(
+        grid,
+        phi,
+        table,
+        tolerance=1.0e-11,
+        max_pcg_iterations=0,
+    )
+
+    assert result.ledger.stop_reason == "empty_active_support"
+    assert result.ledger.final_residual_linf == 0.0
+    np.testing.assert_allclose(result.phi, phi)

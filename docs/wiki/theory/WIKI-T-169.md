@@ -59,6 +59,8 @@ sources:
     description: "AO-Fast C8 YAML/UX gate: valid geometric configs build, solver runtime remains fail-closed"
   - path: artifacts/A/ch14_ao_fast_runtime_contract_adapter_CHK-RA-CH14-AO-FASTVOL-018.md
     description: "AO-Fast C9 disabled runtime contract adapter for q/theta/phi handoff, checkpoint arrays, and bundle capillary contract"
+  - path: artifacts/A/ch14_ao_fast_review_hardening_CHK-RA-CH14-AO-FASTVOL-019.md
+    description: "AO-Fast review hardening: checkpoint cell/node split, mixed-state YAML rejection, support-stream budget enforcement, and empty-support no-op ledger"
 depends_on:
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-159]]"
@@ -691,6 +693,20 @@ pressure/projected face-history component shapes as a test-only gate.  This
 found and fixed a C8 parser gap: `bundle_virtual_work` must parse and preserve
 the closed-interface contract, not fall back to the legacy `conservative_psi`
 default.
+
+The C9 review hardening fixes four contract holes before runtime activation.
+Continuation checkpoints distinguish cell cochains from node gauges:
+`state/q`, `state/theta`, and `state/stratum/case_code` have cell shape
+`(nx, ny)`, `state/phi` has P1 node shape `(nx+1, ny+1)`, and pressure/projected
+face histories have staggered shapes `(nx, ny+1)` and `(nx+1, ny)`.  The
+legacy/default diffuse front door now rejects geometric capillary declarations
+such as `bundle_virtual_work`, `endpoint: geometric_cell_fraction`, or
+`constraints: [cell_volume]` unless the geometric state space is explicit.
+Compact support construction enforces `max_support_stream_ratio` before halo
+expansion, enforces active capacity after halo expansion, and rejects device
+streams in the temporary host compactor so there is no hidden D2H path under a
+GPU contract.  Empty active support is a valid no-op projection state with an
+explicit `empty_active_support` ledger, not an empty reduction crash.
 
 CCD/DCCD/FCCD/UCCD remain useful on the smooth side of the split: gauge
 prediction, screened gauge metric `W_eta`, face-state reconstruction,

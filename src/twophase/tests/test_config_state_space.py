@@ -198,21 +198,22 @@ def _geometric_raw(patch: dict | None = None) -> dict:
     return _deep_update(raw, deepcopy(patch)) if patch else raw
 
 
-def _ao_fast_checkpoint_arrays(shape: tuple[int, int] = (8, 8)) -> dict:
-    nx, ny = shape
+def _ao_fast_checkpoint_arrays(cell_shape: tuple[int, int] = (8, 8)) -> dict:
+    nx, ny = cell_shape
+    node_shape = (nx + 1, ny + 1)
     return {
-        "state/q": np.full(shape, 0.25),
-        "state/theta": np.full(shape, 0.25),
-        "state/phi": np.zeros(shape),
-        "state/stratum/case_code": np.zeros(shape, dtype=np.int16),
+        "state/q": np.full(cell_shape, 0.25),
+        "state/theta": np.full(cell_shape, 0.25),
+        "state/phi": np.zeros(node_shape),
+        "state/stratum/case_code": np.zeros(cell_shape, dtype=np.int16),
         "solver/transport_stage_ledger/epoch": np.asarray(3, dtype=np.int64),
         "solver/compatibility_projection_ledger/epoch": np.asarray(3, dtype=np.int64),
         "solver/p_prev_accel_face_components/count": np.asarray(2, dtype=np.int64),
-        "solver/p_prev_accel_face_components/0": np.zeros((nx - 1, ny)),
-        "solver/p_prev_accel_face_components/1": np.zeros((nx, ny - 1)),
+        "solver/p_prev_accel_face_components/0": np.zeros((nx, ny + 1)),
+        "solver/p_prev_accel_face_components/1": np.zeros((nx + 1, ny)),
         "solver/projected_face_components/count": np.asarray(2, dtype=np.int64),
-        "solver/projected_face_components/0": np.zeros((nx - 1, ny)),
-        "solver/projected_face_components/1": np.zeros((nx, ny - 1)),
+        "solver/projected_face_components/0": np.zeros((nx, ny + 1)),
+        "solver/projected_face_components/1": np.zeros((nx + 1, ny)),
     }
 
 
@@ -234,6 +235,60 @@ def test_q_tracking_without_geometric_state_space_fails_closed():
         ExperimentConfig.from_dict(
             _minimal({"numerics": {"interface": {"tracking": {"primary": "q"}}}})
         )
+
+
+@pytest.mark.parametrize(
+    "patch",
+    [
+        {
+            "numerics": {
+                "momentum": {
+                    "terms": {
+                        "surface_tension": {"source": "bundle_virtual_work"}
+                    }
+                }
+            }
+        },
+        {
+            "numerics": {
+                "momentum": {
+                    "capillary_force": {"source": "bundle_virtual_work"}
+                }
+            }
+        },
+        {
+            "numerics": {
+                "momentum": {
+                    "terms": {
+                        "surface_tension": {
+                            "closed_interface": {
+                                "endpoint": "geometric_cell_fraction",
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        {
+            "numerics": {
+                "momentum": {
+                    "terms": {
+                        "surface_tension": {
+                            "closed_interface": {
+                                "residual_contract": {
+                                    "constraints": ["cell_volume"],
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+    ],
+)
+def test_geometric_capillary_without_geometric_state_space_fails_closed(patch):
+    with pytest.raises(ValueError, match="requires interface.state_space.kind"):
+        ExperimentConfig.from_dict(_minimal(patch))
 
 
 def test_reinitialization_none_requires_zero_schedule():
@@ -275,8 +330,10 @@ def test_valid_geometric_contract_builds_config_but_solver_runtime_fails_closed(
 def test_ao_fast_checkpoint_contract_validates_handoff_and_face_histories():
     validation = validate_ao_fast_checkpoint_arrays(
         _ao_fast_checkpoint_arrays(),
-        grid_shape=(8, 8),
+        cell_shape=(8, 8),
     )
+    assert validation.cell_shape == (8, 8)
+    assert validation.node_shape == (9, 9)
     assert validation.required_arrays[0] == "state/q"
     assert "solver/projected_face_components" in validation.face_history_prefixes
 
@@ -285,14 +342,21 @@ def test_ao_fast_checkpoint_contract_rejects_missing_q_state():
     arrays = _ao_fast_checkpoint_arrays()
     arrays.pop("state/q")
     with pytest.raises(ValueError, match="missing required array state/q"):
-        validate_ao_fast_checkpoint_arrays(arrays, grid_shape=(8, 8))
+        validate_ao_fast_checkpoint_arrays(arrays, cell_shape=(8, 8))
+
+
+def test_ao_fast_checkpoint_contract_rejects_cell_node_shape_mixup():
+    arrays = _ao_fast_checkpoint_arrays()
+    arrays["state/phi"] = np.zeros((8, 8))
+    with pytest.raises(ValueError, match="state/phi"):
+        validate_ao_fast_checkpoint_arrays(arrays, cell_shape=(8, 8))
 
 
 def test_ao_fast_checkpoint_contract_rejects_bad_face_history_shape():
     arrays = _ao_fast_checkpoint_arrays()
     arrays["solver/projected_face_components/1"] = np.zeros((8, 8))
     with pytest.raises(ValueError, match="face history"):
-        validate_ao_fast_checkpoint_arrays(arrays, grid_shape=(8, 8))
+        validate_ao_fast_checkpoint_arrays(arrays, cell_shape=(8, 8))
 
 
 @pytest.mark.parametrize(

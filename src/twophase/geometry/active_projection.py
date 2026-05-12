@@ -217,6 +217,19 @@ def project_active_cell_volume_compatibility_2d(
     phi_current = xp.asarray(phi)
     if tuple(phi_current.shape) != table.node_shape:
         raise ValueError("phi shape must match active table node_shape")
+    if table.n_active == 0:
+        return ActiveProjectionResult(
+            phi=phi_current,
+            table=table,
+            ledger=ActiveProjectionLedger(
+                iterations=0,
+                initial_residual_linf=0.0,
+                final_residual_linf=0.0,
+                min_step_fraction=1.0,
+                stop_reason="empty_active_support",
+                pcg_stop_reasons=(),
+            ),
+        )
     max_pcg_iterations = (
         4 * max(1, table.n_active)
         if max_pcg_iterations is None
@@ -383,7 +396,10 @@ def _dot(xp, left, right) -> float:
 
 
 def _norm_linf(xp, value) -> float:
-    return _scalar_float(xp, xp.max(xp.abs(value)))
+    arr = xp.asarray(value)
+    if int(arr.size) == 0:
+        return 0.0
+    return _scalar_float(xp, xp.max(xp.abs(arr)))
 
 
 def _scalar_int(xp, value) -> int:
