@@ -46,6 +46,7 @@ from .geometric_phase_runtime_gpu import (
     materialise_geometric_runtime_capillary_application_state_gpu,
     materialise_geometric_runtime_capillary_state_gpu,
     transport_geometric_phase_common_flux_2d_gpu,
+    validate_geometric_runtime_capillary_fail_close_gpu,
 )
 from . import ns_pipeline_registrations as _ns_pipeline_registrations  # noqa: F401
 from .ns_geometry_runtime import build_ns_geometry_runtime
@@ -1077,6 +1078,13 @@ class TwoPhaseNSSolver:
         )
         state.geometric_runtime_capillary_application = application
         self._last_geometric_runtime_capillary_application = application
+        if self._backend.is_gpu():
+            validate_geometric_runtime_capillary_fail_close_gpu(
+                self._backend,
+                capillary,
+                application,
+                ppe_runtime=self._ppe_runtime,
+            )
         state.conservative_transport_certificate = {
             "status": "geometric_phase_transport_ready",
             "projected": result.phase_transport.projected,

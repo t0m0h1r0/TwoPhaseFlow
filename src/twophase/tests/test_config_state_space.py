@@ -348,13 +348,24 @@ def test_geometric_runtime_rejects_active_projection_schedule():
         build_ao_fast_runtime_contract(experiment_cfg)
 
 
-def test_geometric_runtime_gpu_backend_uses_active_packet_not_dense_runtime():
+def test_geometric_runtime_gpu_backend_fail_closes_uncertified_capillary_packet():
     try:
         import cupy  # noqa: F401
     except Exception:
         pytest.skip("CuPy is not importable")
 
-    raw = _geometric_raw()
+    raw = _geometric_raw(
+        {
+            "numerics": {
+                "projection": {
+                    "pressure_history": {
+                        "form": "pressure_coordinate",
+                        "extrapolation": "bdf2",
+                    }
+                }
+            }
+        }
+    )
     experiment_cfg = ExperimentConfig.from_dict(raw)
     try:
         solver = TwoPhaseNSSolver.from_config(experiment_cfg)
@@ -384,12 +395,58 @@ def test_geometric_runtime_gpu_backend_uses_active_packet_not_dense_runtime():
         ),
         backend=solver.backend,
     )
-    state = solver._advance_geometric_phase_stage(state)
-    assert state.geometric_runtime_material is not None
-    assert state.geometric_runtime_capillary_application is not None
+    with pytest.raises(ValueError, match="GPU AO capillary fail-close") as excinfo:
+        solver._advance_geometric_phase_stage(state)
+    assert "pressure_history_mode='pressure_coordinate'" in str(excinfo.value)
+    assert solver._last_geometric_runtime_material is not None
+    assert solver._last_geometric_runtime_capillary_application is not None
     assert (
-        state.geometric_runtime_capillary.pressure_range_status
+        solver._last_geometric_runtime_capillary.pressure_range_status
         == "gpu_diagonal_active_schur_approximation"
+    )
+
+
+def test_geometric_runtime_gpu_backend_sigma_zero_is_static_no_drive():
+    try:
+        import cupy  # noqa: F401
+    except Exception:
+        pytest.skip("CuPy is not importable")
+
+    experiment_cfg = ExperimentConfig.from_dict(_geometric_raw())
+    try:
+        solver = TwoPhaseNSSolver.from_config(experiment_cfg)
+    except RuntimeError as exc:
+        pytest.skip(f"GPU backend unavailable: {exc}")
+    if not solver.backend.is_gpu():
+        pytest.skip("TWOPHASE_USE_GPU is not active")
+
+    xp = solver.backend.xp
+    zeros = xp.zeros((9, 9))
+    x = xp.asarray(solver._grid.coords[0]).reshape((-1, 1))
+    phi = xp.broadcast_to(x - xp.asarray(0.5), zeros.shape)
+    solver._geometric_phase_state = build_geometric_phase_state_gpu(
+        solver._grid,
+        phi,
+    )
+    state = NSStepState.from_inputs(
+        NSStepRequest(
+            psi=zeros,
+            u=zeros,
+            v=zeros,
+            dt=1.0e-4,
+            rho_l=1.0,
+            rho_g=1.0,
+            sigma=0.0,
+            mu=0.01,
+        ),
+        backend=solver.backend,
+    )
+    state = solver._advance_geometric_phase_stage(state)
+    assert state.geometric_runtime_capillary.pressure_exact_static is True
+    assert state.geometric_runtime_capillary.capillary_drive_present is False
+    assert (
+        state.conservative_transport_certificate["ao_static_downstream_unblocked"]
+        is True
     )
 
 

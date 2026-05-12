@@ -17,6 +17,8 @@ from __future__ import annotations
 import math
 from contextlib import nullcontext
 
+import numpy as np
+
 from ..backend import is_device_array
 from ..geometry.active_kernels import refresh_active_geometry_2d
 from ..geometry.bundle_capillary import (
@@ -329,12 +331,17 @@ def materialise_geometric_runtime_capillary_state_gpu(
             material.face_hodge.weights,
         ),
     )
+    zero_surface_tension = sigma == 0.0
     return GeometricRuntimeCapillaryState(
         material=material,
         pressure_capillary_hodge=hodge,
-        pressure_range_status="gpu_diagonal_active_schur_approximation",
-        pressure_exact_static=False,
-        capillary_drive_present=True,
+        pressure_range_status=(
+            "pressure_exact_static"
+            if zero_surface_tension
+            else "gpu_diagonal_active_schur_approximation"
+        ),
+        pressure_exact_static=zero_surface_tension,
+        capillary_drive_present=not zero_surface_tension,
         pressure_range_tolerance=tolerance,
         capillary_force_face_covectors=capillary_face,
         capillary_force_acceleration=acceleration,
@@ -419,6 +426,103 @@ def materialise_geometric_runtime_capillary_application_state_gpu(
         pressure_exact_static=capillary.pressure_exact_static,
         capillary_drive_present=capillary.capillary_drive_present,
     )
+
+
+def validate_geometric_runtime_capillary_fail_close_gpu(
+    backend,
+    capillary: GeometricRuntimeCapillaryState,
+    application: GeometricRuntimeCapillaryApplicationState,
+    *,
+    ppe_runtime=None,
+) -> None:
+    """Fail-close the admitted GPU AO capillary packet at the solver boundary.
+
+    A3 mapping:
+      Equation: the AO capillary pressure multiplier must satisfy the
+      Young-Laplace normal equations ``J_q^T lambda = -dS`` on the active
+      stratum before its pressure component may be coupled to PPE.
+      Discretization: the current GPU packet is a diagonal active-Schur
+      approximation, so residual diagnostics certify whether the approximation
+      is admissible.  Non-static application also requires a nonzero
+      pressure-balanced face increment in the same face-mass work metric.
+      Code: one outer boundary synchronization converts scalar diagnostics to
+      host values and raises before the packet reaches momentum/PPE slots.
+    """
+    if not backend.is_gpu():
+        return
+    _require_gpu_array_namespace(
+        backend.xp,
+        "validate_geometric_runtime_capillary_fail_close_gpu",
+    )
+    tolerance = float(capillary.pressure_range_tolerance)
+    if not (math.isfinite(tolerance) and tolerance > 0.0):
+        raise ValueError("GPU AO capillary fail-close tolerance must be positive")
+
+    violations: list[str] = []
+    compatibility = _host_scalar_float(
+        backend,
+        capillary.material.phase_state.compatibility_residual_linf,
+        "q/phi compatibility residual",
+    )
+    normal_residual = _host_scalar_float(
+        backend,
+        capillary.young_laplace_normal_residual_linf,
+        "Young-Laplace normal residual",
+    )
+    if compatibility > tolerance:
+        violations.append(
+            "q/phi compatibility residual "
+            f"{compatibility:.6e} exceeds tolerance {tolerance:.6e}; "
+            "restore q=Q_h(phi) before capillarity"
+        )
+    if normal_residual > tolerance:
+        violations.append(
+            "diagonal active-Schur pressure solve violates Young-Laplace "
+            "normal equations "
+            f"({normal_residual:.6e} > {tolerance:.6e}); a certified active "
+            "PCG/Newton/DC solve is required before advancing"
+        )
+
+    nonstatic = bool(
+        application.capillary_drive_present and not application.pressure_exact_static
+    )
+    if nonstatic and _pressure_history_mode(ppe_runtime) == "pressure_coordinate":
+        violations.append(
+            "pressure_history_mode='pressure_coordinate' requires a scalar AO "
+            "pressure coordinate, but this packet only provides face reaction "
+            "increments"
+        )
+    if nonstatic:
+        predictor_l2 = _host_scalar_float(
+            backend,
+            application.predictor_increment_weighted_l2,
+            "AO predictor increment weighted l2",
+        )
+        balanced_l2 = _host_scalar_float(
+            backend,
+            application.pressure_balanced_increment_weighted_l2,
+            "AO pressure-balanced increment weighted l2",
+        )
+        balanced_max = _host_scalar_float(
+            backend,
+            application.max_abs_pressure_balanced_face_increment,
+            "AO pressure-balanced increment max",
+        )
+        if predictor_l2 <= tolerance:
+            violations.append(
+                "capillary_drive_present=True but the predictor increment is "
+                f"zero within tolerance ({predictor_l2:.6e})"
+            )
+        elif balanced_l2 <= tolerance and balanced_max <= tolerance:
+            violations.append(
+                "non-static packet has zero pressure-balanced drive "
+                f"(weighted_l2={balanced_l2:.6e}, max={balanced_max:.6e}); "
+                "the current approximation cancels the capillary force by "
+                "construction"
+            )
+
+    if violations:
+        raise ValueError("GPU AO capillary fail-close: " + "; ".join(violations))
 
 
 def _geometry_and_derivatives_full(grid, phi, *, level: float):
@@ -977,6 +1081,19 @@ def _validate_nonnegative_float(value, name):
     if not (math.isfinite(converted) and converted >= 0.0):
         raise ValueError(f"{name} must be finite and non-negative")
     return converted
+
+
+def _host_scalar_float(backend, value, name: str) -> float:
+    converted = float(np.asarray(backend.to_host(value)))
+    if not math.isfinite(converted):
+        raise ValueError(f"{name} must be finite")
+    return converted
+
+
+def _pressure_history_mode(ppe_runtime) -> str:
+    return str(
+        getattr(ppe_runtime, "pressure_history_mode", "face_acceleration")
+    ).strip().lower()
 
 
 def _require_gpu_array_namespace(xp, context):

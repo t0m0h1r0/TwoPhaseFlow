@@ -75,25 +75,38 @@ def main() -> None:
             cfl_viscous=cfg.run.cfl_viscous,
         )
         dt = float(budget.dt)
-        psi, u, v, p = solver.step_request(
-            NSStepRequest(
-                psi=psi,
-                u=u,
-                v=v,
-                dt=dt,
-                rho_l=ph.rho_l,
-                rho_g=ph.rho_g,
-                sigma=ph.sigma,
-                mu=ph.mu,
-                g_acc=ph.g_acc,
-                rho_ref=ph.rho_ref,
-                mu_l=ph.mu_l,
-                mu_g=ph.mu_g,
-                bc_hook=bc_hook,
-                step_index=step,
-            ),
-            return_host_pressure=False,
-        )
+        try:
+            psi, u, v, p = solver.step_request(
+                NSStepRequest(
+                    psi=psi,
+                    u=u,
+                    v=v,
+                    dt=dt,
+                    rho_l=ph.rho_l,
+                    rho_g=ph.rho_g,
+                    sigma=ph.sigma,
+                    mu=ph.mu,
+                    g_acc=ph.g_acc,
+                    rho_ref=ph.rho_ref,
+                    mu_l=ph.mu_l,
+                    mu_g=ph.mu_g,
+                    bc_hook=bc_hook,
+                    step_index=step,
+                ),
+                return_host_pressure=False,
+            )
+        except ValueError as exc:
+            if "GPU AO capillary fail-close" not in str(exc):
+                raise
+            print(
+                "FAIL_CLOSE",
+                step + 1,
+                f"{t:.12e}",
+                f"{dt:.12e}",
+                str(exc),
+                sep=",",
+            )
+            break
         t += dt
         phase = solver._geometric_phase_state
         cap = solver._last_geometric_runtime_capillary
