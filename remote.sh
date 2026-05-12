@@ -4,6 +4,55 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 source "$SCRIPT_DIR/remote.conf"
 
+ssh_agent_socket_usable() {
+    local sock="${1:-}"
+    [ -n "$sock" ] || return 1
+    [ -S "$sock" ] || return 1
+
+    if command -v ssh-add >/dev/null 2>&1; then
+        SSH_AUTH_SOCK="$sock" ssh-add -l >/dev/null 2>&1
+    else
+        return 0
+    fi
+}
+
+resolve_ssh_auth_sock() {
+    local original_sock="${SSH_AUTH_SOCK:-}"
+
+    if ssh_agent_socket_usable "$original_sock"; then
+        return 0
+    fi
+
+    local candidate
+    if ssh_agent_socket_usable "${TWOPHASE_SSH_AUTH_SOCK:-}"; then
+        export SSH_AUTH_SOCK="${TWOPHASE_SSH_AUTH_SOCK}"
+        export TWOPHASE_SSH_AUTH_SOCK_RESOLVED=1
+        return 0
+    fi
+
+    local candidates=()
+    if declare -p SSH_AUTH_SOCK_CANDIDATES >/dev/null 2>&1; then
+        candidates=("${SSH_AUTH_SOCK_CANDIDATES[@]}")
+    fi
+
+    for candidate in "${candidates[@]}" /private/tmp/com.apple.launchd.*/Listeners /tmp/ssh-*/agent.*; do
+        if ssh_agent_socket_usable "$candidate"; then
+            export SSH_AUTH_SOCK="$candidate"
+            export TWOPHASE_SSH_AUTH_SOCK_RESOLVED=1
+            return 0
+        fi
+    done
+
+    if [ -n "$original_sock" ]; then
+        export SSH_AUTH_SOCK="$original_sock"
+    else
+        unset SSH_AUTH_SOCK
+    fi
+    return 1
+}
+
+resolve_ssh_auth_sock || true
+
 usage() {
     cat <<'USAGE'
 Usage: ./remote.sh <command> [args]
@@ -33,6 +82,7 @@ Examples:
 
 Environment:
   TWOPHASE_FORCE_LOCAL=1   Skip remote check, always fail cmd_check
+  TWOPHASE_SSH_AUTH_SOCK   Preferred ssh-agent socket when SSH_AUTH_SOCK is unset
 USAGE
     exit 1
 }
@@ -201,6 +251,9 @@ is_remote_available() {
 cmd_check() {
     if is_remote_available; then
         echo "Remote '${REMOTE_HOST}' is reachable."
+        if [ "${TWOPHASE_SSH_AUTH_SOCK_RESOLVED:-0}" = "1" ]; then
+            echo "Using SSH_AUTH_SOCK=${SSH_AUTH_SOCK}"
+        fi
         return 0
     else
         echo "Remote '${REMOTE_HOST}' is NOT reachable."

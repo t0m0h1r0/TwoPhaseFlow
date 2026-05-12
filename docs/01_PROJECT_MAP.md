@@ -8,8 +8,8 @@
 |---|---|
 | Codex config | `.codex/config.toml`: `model = "gpt-5.5"`, `model_reasoning_effort = "high"` |
 | Sandbox | `sandbox_mode = "workspace-write"` + `sandbox_workspace_write.network_access = true` |
-| Shell env | `inherit = "core"`; `ENABLE_TOOL_SEARCH=true`; Claude compatibility vars retained |
-| Execution | Remote-first via `make run` / `make test`; local fallback only when SSH unavailable |
+| Shell env | `inherit = "core"`; `ENABLE_TOOL_SEARCH=true`; Claude compatibility vars retained; `remote.sh` auto-discovers a usable ssh-agent socket when `SSH_AUTH_SOCK` is unset |
+| Execution | Remote-first via `make run` / `make test`; local fallback only when SSH unavailable after ssh-agent autodiscovery |
 | Work isolation | Git worktrees + `docs/locks/*.lock.json`; no main merge without explicit user instruction |
 
 ────────────────────────────────────────────────────────
