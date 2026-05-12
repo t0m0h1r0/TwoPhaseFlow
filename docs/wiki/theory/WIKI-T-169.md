@@ -39,6 +39,8 @@ sources:
     description: "AO-Fast implementation design policy and reuse plan for the direct AO branch"
   - path: artifacts/A/ch14_ao_gpu_import_gate_CHK-RA-CH14-AO-FASTVOL-007.md
     description: "GPU admission gate for importing direct-AO components into AO-Fast"
+  - path: artifacts/A/ch14_ao_direct_branch_knowledge_salvage_CHK-RA-CH14-AO-FASTVOL-008.md
+    description: "Knowledge salvage packet for retiring the direct dense-AO branch"
 depends_on:
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-159]]"
@@ -578,6 +580,24 @@ fused active-row kernels, device-side reductions for residuals and acceptance,
 metric-cache reuse, preallocated work buffers, and no inner-loop host transfer
 inside CG/Newton/DC/line search.  A component that fails this gate remains an
 oracle/test helper; it is not a dense runtime fallback.
+
+The direct branch also contributed non-code knowledge that must survive branch
+retirement.  Parser gates require explicit `state_space.kind` and reject
+diffuse routes carrying `q/theta`.  Geometry gates preserve complement volume,
+physical nonuniform-cell measures, periodic quotient semantics, and reject
+degenerate nodal sign strata.  Projection gates operate in physical `q` units
+with sign-margin line search and fail close on full/empty-cell target changes.
+Swept transport gates require bounded q flux, declared wall/periodic closure,
+and common mass flux from the same `Phi_l/Phi_V` arrays.  Capillary gates are
+face-Hodge/Riesz work identities with periodic seam splitting and component
+reaction orthogonality.  Runtime gates prevent legacy `psi` transport after
+geometric parser acceptance and validate checkpoint face-history shapes at load
+time.  Diagnostic knowledge also matters: `pressure_hodge` is stricter than a
+scalar pressure plot and may fail closed; canonical plots should use the scalar
+gauge pressure unless the Hodge representation is explicitly under test.
+Finally, the sharp-volume Ridge-Eikonal rerun showed a real two-measure
+obstruction: P1 sharp area and nodal diffuse mass can have no simultaneous
+solution under a fixed interface, so that route is not an AO fallback.
 
 CCD/DCCD/FCCD/UCCD remain useful on the smooth side of the split: gauge
 prediction, screened gauge metric `W_eta`, face-state reconstruction,

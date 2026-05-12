@@ -753,6 +753,26 @@ preallocated work buffers, metric-cache reuse, and no `.get()`, `asnumpy`,
 CG/Newton/DC/line-search loops.  If a candidate import fails this gate, it
 remains dense oracle code; the runtime must not call it as a fallback.
 
+Knowledge from that branch must also be retained before branch retirement:
+
+```text
+parser gates: explicit state_space.kind, no diffuse q/theta transport,
+geometry gates: complement volume, nonuniform physical coordinates, degenerate
+  sign strata rejected,
+projection gates: physical q residual, sign-margin line search, full/empty-cell
+  target changes fail closed,
+transport gates: bounded swept q flux, wall/periodic closure, common mass flux
+  uses the same Phi_l/Phi_V arrays,
+capillary gates: face-Hodge Riesz work identity, periodic seam quotient,
+  component-volume reaction orthogonality,
+runtime gates: no legacy psi transport after geometric parser acceptance,
+  checkpoint face-history shape validation at load time,
+diagnostic gates: pressure_hodge may fail when the face cochain is not scalar
+  pressure integrable; scalar gauge pressure is the canonical plot field,
+negative knowledge: Ridge-Eikonal sharp-volume repair can have no simultaneous
+  P1-sharp-area / nodal-diffuse-mass solution under a fixed interface.
+```
+
 The first implementation slices should therefore be:
 
 ```text
