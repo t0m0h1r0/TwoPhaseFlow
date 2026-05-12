@@ -128,6 +128,8 @@ AO-Fast 幾何毛管分解経路を明確に分けて扱う．
 したがって本稿では，圧力反力部分空間 $R_p$ を PPE と同じ面計量・同じ圧力代表・同じ境界制約から先に定義し，
 $r_\sigma-\Pi^{M_f}_{R_p}r_\sigma$ を物理的な毛管駆動として読む
 （§~\ref{sec:capillary_pressure_reaction_subspace}）．
+その高速化に必要な幾何セル分率状態空間，互換射影，アクティブ集合，
+PCG/DC，GPU 契約，YAML/fail-close は §~\ref{sec:ao_fast_state_space} に分離して述べる．
 この条件を満たさない AO-Fast 実装は，PCG/DC への暗黙 fallback や
 ゼロ駆動継続ではなく，事前ゲートで fail-close させる．
 標準経路の統合実験は第~\ref{sec:verification}章と第~\ref{sec:benchmarks}章で扱い，

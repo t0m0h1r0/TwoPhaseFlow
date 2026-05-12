@@ -88,7 +88,7 @@ Part 2 の手法を依存関係の下流方向にトポロジカル整列し，
   \item[Tier X（AO-Fast 幾何毛管分解の事前ゲート）]
         U12 = $R_p$ を定義しない full pressure reaction split が毛管波の面上駆動を消すこと，
         component-volume Hodge probe が非静的波を検出すること，および GPU 実装が未解決条件で fail-close することを確認する
-        （§\ref{sec:capillary_pressure_reaction_subspace}, §\ref{sec:algorithm}）．
+        （§\ref{sec:capillary_pressure_reaction_subspace}, §\ref{sec:ao_fast_state_space}）．
 \end{description}
 
 各 U-test は独立した単体実験として実施し，表と図には本章で採用する検証値のみを記載する．
@@ -129,7 +129,7 @@ U7 は縮約 BF 1-step と face $\mu$ 補間，U9 は DCCD-on-pressure 禁止を
 分相 PPE，HFE，DC，毛管 Hodge 閉包 (§\ref{sec:ppe_solve}) &
 U2 が滑らかな Poisson/PPE BC，U6 が DC guard と HFE 単体精度を確認する． &
 分相 PPE+HFE+DC，毛管成分の圧力勾配射影，射影後面速度閉包，アフィン圧力履歴面加速度は V6/V7/V9 で読む． \\
-AO-Fast 圧力反力分解 (§\ref{sec:capillary_pressure_reaction_subspace}) &
+AO-Fast 幾何セル分率状態空間 (§\ref{sec:capillary_pressure_reaction_subspace}, §\ref{sec:ao_fast_state_space}) &
 U12 が full pressure image 過射影の反例，component-volume Hodge probe，GPU fail-close を事前ゲートとして確認する． &
 V11 が標準物理ベンチへ混入させる前の統合前受理境界を確認し，第~\ref{sec:benchmarks}章の毛管波結果とは区別する． \\
 非一様格子と同一幾何データ (§\ref{sec:grid}) &
