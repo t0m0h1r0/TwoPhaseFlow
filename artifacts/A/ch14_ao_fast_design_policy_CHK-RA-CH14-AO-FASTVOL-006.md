@@ -73,6 +73,22 @@ Tests:
   Add active-vs-dense equality, dirty-refresh, and no-inner-D2H tests.
 ```
 
+Every imported symbol must pass a GPU admission classification before it can be
+called by production AO-Fast:
+
+```text
+oracle_only       exact dense reference or test helper,
+gpu_production    device-resident active implementation,
+reject            CPU/host-centric implementation not imported.
+```
+
+`gpu_production` requires backend-native arrays, struct-of-arrays active
+storage, no `.get()`/`asnumpy`/`float(...)`/`bool(...)` inside
+CG/Newton/DC/line-search loops, device-side reductions for residual and
+acceptance predicates, fused active Q/S/J/dS refresh, metric-cache reuse, and
+preallocated Krylov/geometry buffers.  Failure of this gate keeps the imported
+code as `oracle_only`; it is not a dense runtime fallback.
+
 Rewrite rather than reuse as production:
 
 ```text
@@ -163,6 +179,12 @@ interface:
       projection:
         implementation: active_cached
         dense_reference: test_only
+        gpu_contract:
+          required: true
+          active_storage: struct_of_arrays
+          inner_host_transfers: forbidden
+          dense_runtime_fallback: forbidden
+          record_kernel_counters: true
         solver:
           primary: active_pcg_newton
           accelerators:
@@ -223,11 +245,14 @@ epsilon and local cell measure; it is not a mass-clipping tolerance.
 4. Add dirty detector and one-face halo refresh tests.
 5. Add active matrix-free `J`, `J^T`, and Schur operators with no inner-loop
    host synchronization.
-6. Extend YAML parser with `implementation: active_cached`, explicit fallback
-   policy, and rejection of dense implicit fallback.
-7. Connect runtime/capillary gates after active ledger counters are present.
-8. Activate chapter-14 AO YAMLs only after the active route passes reference
-   equality and fail-close tests.
+6. Add CUDA no-inner-D2H tests for CG/Newton/DC/line-search control and ledger
+   host-copy counters.
+7. Extend YAML parser with `implementation: active_cached`, explicit fallback
+   policy, `gpu_contract.required=true`, and rejection of dense implicit
+   fallback.
+8. Connect runtime/capillary gates after active ledger counters are present.
+9. Activate chapter-14 AO YAMLs only after the active route passes reference
+   equality, fail-close, and remote GPU tests.
 
 ## SOLID-X
 

@@ -37,6 +37,8 @@ sources:
     description: "AO-Fast explicit fallback YAML/UX policy preserving fail-close semantics"
   - path: artifacts/A/ch14_ao_fast_design_policy_CHK-RA-CH14-AO-FASTVOL-006.md
     description: "AO-Fast implementation design policy and reuse plan for the direct AO branch"
+  - path: artifacts/A/ch14_ao_gpu_import_gate_CHK-RA-CH14-AO-FASTVOL-007.md
+    description: "GPU admission gate for importing direct-AO components into AO-Fast"
 depends_on:
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-159]]"
@@ -569,6 +571,14 @@ rows, dirty plus one-face halo refresh, and device-resident active Schur
 operators.  Dense reference mode is an oracle/debug path, not a runtime
 fallback; default production stays `active_cached` plus fail-close.
 
+Importing from the direct AO branch is GPU-gated.  Each imported symbol must be
+classified as `oracle_only`, `gpu_production`, or `reject`.  Production
+admission requires backend-native arrays, struct-of-arrays active storage,
+fused active-row kernels, device-side reductions for residuals and acceptance,
+metric-cache reuse, preallocated work buffers, and no inner-loop host transfer
+inside CG/Newton/DC/line search.  A component that fails this gate remains an
+oracle/test helper; it is not a dense runtime fallback.
+
 CCD/DCCD/FCCD/UCCD remain useful on the smooth side of the split: gauge
 prediction, screened gauge metric `W_eta`, face-state reconstruction,
 pressure-adjoint work pairs, and smooth residual diagnostics.  They remain
@@ -592,6 +602,12 @@ interface:
       projection:
         implementation: active_cached
         dense_reference: test_only
+        gpu_contract:
+          required: true
+          active_storage: struct_of_arrays
+          inner_host_transfers: forbidden
+          dense_runtime_fallback: forbidden
+          record_kernel_counters: true
         method: fixed_stratum_schur
         metric: screened_gauge_hodge
         fail_close: true
@@ -654,6 +670,8 @@ bundle_virtual_work with endpoint other than geometric_cell_fraction,
 geometric_cell_fraction with old Ridge-Eikonal volume reinitialization,
 fail_close=false,
 dense_reference/reference_dense used as an implicit runtime fallback,
+gpu_contract.required=false for production geometric_cell_fraction,
+active_cached with inner_host_transfers other than forbidden,
 implicit fallback such as auto, try_next, best_effort, or on_failure,
 fallback.policy=explicit_chain without from/to/triggers/record_as,
 accelerator rejection that switches primary solver family,

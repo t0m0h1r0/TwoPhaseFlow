@@ -744,6 +744,15 @@ The dense branch's scalar host residual checks inside CG are also not
 production GPU control; active PCG/Newton must keep Krylov reductions on device
 and transfer only outer ledger scalars.
 
+Imports from that branch are gated by GPU readiness.  Each symbol must be
+classified as `oracle_only`, `gpu_production`, or `reject`.  Production
+admission requires backend-native arrays, struct-of-arrays active storage,
+fused active-row kernels, device-side residual/acceptance reductions,
+preallocated work buffers, metric-cache reuse, and no `.get()`, `asnumpy`,
+`float(...)`, `bool(...)`, or Python list materialization inside
+CG/Newton/DC/line-search loops.  If a candidate import fails this gate, it
+remains dense oracle code; the runtime must not call it as a fallback.
+
 The first implementation slices should therefore be:
 
 ```text
@@ -774,6 +783,12 @@ interface:
       projection:
         implementation: active_cached
         dense_reference: test_only
+        gpu_contract:
+          required: true
+          active_storage: struct_of_arrays
+          inner_host_transfers: forbidden
+          dense_runtime_fallback: forbidden
+          record_kernel_counters: true
         method: fixed_stratum_schur
         metric: screened_gauge_hodge
         fail_close: true
@@ -919,6 +934,8 @@ bundle_virtual_work with endpoint != geometric_cell_fraction,
 geometric_cell_fraction with ridge_eikonal reinitialization,
 fail_close=false,
 dense_reference/reference_dense used as an implicit runtime fallback,
+gpu_contract.required=false for geometric_cell_fraction production,
+inner_host_transfers other than forbidden in active_cached production,
 implicit solver fallback such as auto, try_next, or on_failure without chain,
 fallback.policy=explicit_chain with missing from/to/triggers/record_as,
 accelerator on_reject that switches primary solver family,
