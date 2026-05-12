@@ -161,11 +161,12 @@ def run_simulation(
     dbg_history: list = list(resume_state["debug_history"]) if resume_state else []
     pre_blowup_checkpoint_written = False
     pre_blowup_checkpoint_announced = False
-    last_pre_step_frame = None
+    final_continuation_frame = None
     # Retain per-node control volumes from the current grid build for reuse.
     control_volumes = solver._grid.cell_volumes() if solver._alpha_grid > 1.0 else None
 
     while t < T and (max_steps is None or step < max_steps):
+        current_pre_step_frame = None
         dt_budget = None
         if cfg.run.dt_fixed is not None:
             dt_candidate = float(cfg.run.dt_fixed)
@@ -187,36 +188,47 @@ def run_simulation(
         if dt < 1e-12:
             break
         terminal_clamped = bool(dt < dt_candidate - max(1.0e-15, 1.0e-12 * dt_candidate))
-        pre_step_results = _merge_time_series(
-            previous_results,
-            {**diag.to_arrays()},
-        )
-        p_pre = _checkpoint_pressure(solver, p, psi)
-        last_pre_step_frame = capture_checkpoint_frame(
-            solver=solver,
-            psi=psi,
-            u=u,
-            v=v,
-            p=p_pre,
-            t=t,
-            step=step,
-            config_path=config_path,
-            results=pre_step_results,
-            snapshots=snaps,
-            debug_history=dbg_history,
-            state_phase="pre_step",
-            dt_candidate=dt_candidate,
-            dt_effective=dt,
-            terminal_clamped=terminal_clamped,
-        )
-        if (
+        write_step_continuation = (
             checkpoint_every_steps is not None
             and continuation_path is not None
             and checkpoint_every_steps > 0
             and step > 0
             and step % checkpoint_every_steps == 0
-        ):
-            write_checkpoint_frame(continuation_path, last_pre_step_frame)
+        )
+        will_time_checkpoint = (
+            checkpoint_interval is not None
+            and checkpoint_path is not None
+            and next_time_checkpoint is not None
+            and _time_reached(t + dt, next_time_checkpoint)
+        )
+        needs_final_continuation = continuation_path is not None and terminal_clamped
+        if write_step_continuation or will_time_checkpoint or needs_final_continuation:
+            pre_step_results = _merge_time_series(
+                previous_results,
+                {**diag.to_arrays()},
+            )
+            p_pre = _checkpoint_pressure(solver, p, psi)
+            current_pre_step_frame = capture_checkpoint_frame(
+                solver=solver,
+                psi=psi,
+                u=u,
+                v=v,
+                p=p_pre,
+                t=t,
+                step=step,
+                config_path=config_path,
+                results=pre_step_results,
+                snapshots=snaps,
+                debug_history=dbg_history,
+                state_phase="pre_step",
+                dt_candidate=dt_candidate,
+                dt_effective=dt,
+                terminal_clamped=terminal_clamped,
+            )
+            if needs_final_continuation:
+                final_continuation_frame = current_pre_step_frame
+        if write_step_continuation and current_pre_step_frame is not None:
+            write_checkpoint_frame(continuation_path, current_pre_step_frame)
         will_snapshot = snap_idx < len(snap_times) and t + dt >= snap_times[snap_idx]
         solver._record_interface_projection_fields = bool(
             will_snapshot and _snapshot_needs_projection_fields(cfg)
@@ -292,9 +304,9 @@ def run_simulation(
             and _time_reached(t, next_time_checkpoint)
         ):
             time_path = _time_checkpoint_path(checkpoint_path, next_time_checkpoint)
-            if last_pre_step_frame is not None:
-                write_checkpoint_frame(time_path, last_pre_step_frame)
-                frame_time = float(last_pre_step_frame["manifest"]["time"])
+            if current_pre_step_frame is not None:
+                write_checkpoint_frame(time_path, current_pre_step_frame)
+                frame_time = float(current_pre_step_frame["manifest"]["time"])
                 print(
                     f"  [checkpoint] saved {time_path.name} "
                     f"from pre-step t={frame_time:.8g} "
@@ -327,8 +339,8 @@ def run_simulation(
 
         ke = diag.last("kinetic_energy", 0.0)
         if _is_blowup_kinetic_energy(ke):
-            if pre_blowup_path is not None and last_pre_step_frame is not None:
-                write_checkpoint_frame(pre_blowup_path, last_pre_step_frame)
+            if pre_blowup_path is not None and current_pre_step_frame is not None:
+                write_checkpoint_frame(pre_blowup_path, current_pre_step_frame)
                 pre_blowup_checkpoint_written = True
                 print(
                     "  [pre-blowup] saved input frame "
@@ -336,15 +348,18 @@ def run_simulation(
                 )
             print(f"  BLOWUP at step={step}, t={t:.4f}")
             break
-        if pre_blowup_path is not None and _should_refresh_pre_blowup_checkpoint(ke):
+        if (
+            pre_blowup_path is not None
+            and current_pre_step_frame is not None
+            and _should_refresh_pre_blowup_checkpoint(ke)
+        ):
             if not pre_blowup_checkpoint_announced:
                 print(
                     "  [pre-blowup] refreshing input frame "
                     f"{pre_blowup_path.name} while KE is near the guard limit"
                 )
                 pre_blowup_checkpoint_announced = True
-            if last_pre_step_frame is not None:
-                write_checkpoint_frame(pre_blowup_path, last_pre_step_frame)
+            write_checkpoint_frame(pre_blowup_path, current_pre_step_frame)
             pre_blowup_checkpoint_written = True
         if (
             checkpoint_every_steps is not None
@@ -383,8 +398,8 @@ def run_simulation(
             key: np.array([entry[key] for entry in dbg_history]) for key in dbg_history[0]
         }
     if checkpoint_path is not None:
-        if continuation_path is not None and last_pre_step_frame is not None:
-            write_checkpoint_frame(continuation_path, last_pre_step_frame)
+        if continuation_path is not None and final_continuation_frame is not None:
+            write_checkpoint_frame(continuation_path, final_continuation_frame)
         p_save = p if p is not None else solver._backend.xp.zeros_like(psi)
         save_checkpoint(
             checkpoint_path,

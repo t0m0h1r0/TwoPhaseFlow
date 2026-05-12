@@ -217,6 +217,12 @@ class DiagnosticCollector:
         need_signed_deformation = (
             "signed_deformation" in self.metrics and geometry is not None
         )
+        need_interface_amplitude = (
+            "interface_amplitude" in self.metrics and geometry is not None
+        )
+        need_signed_interface_amplitude = (
+            "signed_interface_amplitude" in self.metrics and geometry is not None
+        )
         need_pressure_contrast = "pressure_contrast" in self.metrics
 
         scalar_names: list[str] = []
@@ -271,6 +277,22 @@ class DiagnosticCollector:
                 xp.sum((X - xc) ** 2 * weight) / volume_safe,
                 xp.sum((Y - yc) ** 2 * weight) / volume_safe,
             ])
+        if need_interface_amplitude:
+            scalar_names.append("interface_amplitude")
+            scalar_values.append(
+                _interface_amplitude_device(psi, geometry.Y, geometry.y_mid)
+            )
+        if need_signed_interface_amplitude:
+            scalar_names.append("signed_interface_amplitude")
+            scalar_values.append(
+                _signed_interface_amplitude_device(
+                    psi,
+                    geometry.X,
+                    geometry.Y,
+                    geometry.y_mid,
+                    **self.metric_options.get("signed_interface_amplitude", {}),
+                )
+            )
         if need_pressure_contrast:
             liquid = psi > 0.5
             gas = psi < 0.5
@@ -354,20 +376,10 @@ class DiagnosticCollector:
                     )
 
             elif m == "interface_amplitude":
-                self._data[m].append(
-                    _interface_amplitude(psi, geometry.Y, geometry.y_mid)
-                )
+                self._data[m].append(scalars.get("interface_amplitude", 0.0))
 
             elif m == "signed_interface_amplitude":
-                self._data[m].append(
-                    _signed_interface_amplitude(
-                        psi,
-                        geometry.X,
-                        geometry.Y,
-                        geometry.y_mid,
-                        **self.metric_options.get(m, {}),
-                    )
-                )
+                self._data[m].append(scalars.get("signed_interface_amplitude", 0.0))
 
             elif m == "symmetry_error":
                 # CHK-161 parity-aware: each sub-key is 0 for 4-fold symmetric flow.
@@ -551,10 +563,15 @@ def _symmetry_errors(psi, u, v) -> tuple[float, float, float, float, float, floa
 
 def _interface_amplitude(psi, Y, y_mid) -> float:
     """Return max deviation of the first ψ=0.5 crossing in each column."""
+    return scalar_value(_interface_amplitude_device(psi, Y, y_mid))
+
+
+def _interface_amplitude_device(psi, Y, y_mid):
+    """Return device scalar for max deviation of the first ψ=0.5 crossing."""
     xp = _xp_of(psi)
     psi_dev = xp.asarray(psi)
     if psi_dev.shape[1] < 2:
-        return 0.0
+        return xp.asarray(0.0)
     Y_dev = xp.asarray(Y)
     below_left = psi_dev[:, :-1] - 0.5
     below_right = psi_dev[:, 1:] - 0.5
@@ -572,7 +589,7 @@ def _interface_amplitude(psi, Y, y_mid) -> float:
     amplitude = xp.max(
         xp.where(has_crossing, xp.abs(y_int - y_mid), 0.0)
     )
-    return scalar_value(amplitude)
+    return amplitude
 
 
 def _signed_interface_amplitude(
@@ -586,10 +603,34 @@ def _signed_interface_amplitude(
     phase: float = 0.0,
 ) -> float:
     """Return the signed cosine-mode coefficient of a graph interface."""
+    return scalar_value(
+        _signed_interface_amplitude_device(
+            psi,
+            X,
+            Y,
+            y_mid,
+            mode=mode,
+            length=length,
+            phase=phase,
+        )
+    )
+
+
+def _signed_interface_amplitude_device(
+    psi,
+    X,
+    Y,
+    y_mid,
+    *,
+    mode: int = 1,
+    length: float | None = None,
+    phase: float = 0.0,
+):
+    """Return device scalar for the signed graph-interface cosine coefficient."""
     xp = _xp_of(psi)
     psi_dev = xp.asarray(psi)
     if psi_dev.shape[0] < 2 or psi_dev.shape[1] < 2:
-        return 0.0
+        return xp.asarray(0.0)
     X_dev = xp.asarray(X)
     Y_dev = xp.asarray(Y)
     below_left = psi_dev[:, :-1] - 0.5
@@ -624,4 +665,4 @@ def _signed_interface_amplitude(
     numerator = xp.sum(weights * eta * basis)
     denominator = xp.sum(weights * basis * basis)
     amplitude = xp.where(denominator > 0.0, numerator / denominator, 0.0)
-    return scalar_value(amplitude)
+    return amplitude

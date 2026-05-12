@@ -93,11 +93,11 @@ class ViscousHelmholtzDCSolver:
         solution_components = low_solver.solve_components(rhs_components)
         self._sync_periodic(solution_components, ccd)
 
-        scale = max(self._component_norm(rhs_components), 1.0)
+        scale = None
         residual_history: list[float] = []
         stopped_by_tolerance = False
 
-        for _correction_index in range(self.max_corrections):
+        for correction_index in range(self.max_corrections):
             residual_components = self._residual_components(
                 solution_components,
                 rhs_components,
@@ -108,8 +108,16 @@ class ViscousHelmholtzDCSolver:
                 dt_effective=dt_effective,
             )
             residual_components = self._zero_periodic_image_rhs(residual_components, ccd)
-            residual_norm = self._component_norm(residual_components)
+            if correction_index == 0:
+                rhs_norm, residual_norm = self._component_norm_packet(
+                    rhs_components,
+                    residual_components,
+                )
+                scale = max(rhs_norm, 1.0)
+            else:
+                residual_norm = self._component_norm(residual_components)
             residual_history.append(residual_norm)
+            assert scale is not None
             if residual_norm <= self.tolerance * scale:
                 stopped_by_tolerance = True
                 break
@@ -170,6 +178,19 @@ class ViscousHelmholtzDCSolver:
             for component in components
         ])
         return float(self.backend.asnumpy(self.xp.linalg.norm(flat)))
+
+    def _component_norm_packet(self, *component_groups: list) -> list[float]:
+        norms = []
+        for components in component_groups:
+            flat = self.xp.concatenate([
+                self.xp.asarray(component).ravel()
+                for component in components
+            ])
+            norms.append(self.xp.linalg.norm(flat))
+        return [
+            float(value)
+            for value in self.backend.asnumpy(self.xp.stack(norms))
+        ]
 
     def _sync_periodic(self, components: list, ccd: "CCDSolver") -> None:
         sync_periodic_image_nodes_many(components, ccd.bc_type)

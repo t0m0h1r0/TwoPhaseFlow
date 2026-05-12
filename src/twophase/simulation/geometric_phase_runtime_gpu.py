@@ -458,17 +458,39 @@ def validate_geometric_runtime_capillary_fail_close_gpu(
     if not (math.isfinite(tolerance) and tolerance > 0.0):
         raise ValueError("GPU AO capillary fail-close tolerance must be positive")
 
+    declared_drive = bool(
+        application.capillary_drive_present and not application.pressure_exact_static
+    )
+    scalar_packet = [
+        (
+            "q/phi compatibility residual",
+            capillary.material.phase_state.compatibility_residual_linf,
+        ),
+        (
+            "Young-Laplace normal residual",
+            capillary.young_laplace_normal_residual_linf,
+        ),
+    ]
+    if declared_drive:
+        scalar_packet.extend([
+            (
+                "AO predictor increment weighted l2",
+                application.predictor_increment_weighted_l2,
+            ),
+            (
+                "AO pressure-balanced increment weighted l2",
+                application.pressure_balanced_increment_weighted_l2,
+            ),
+            (
+                "AO pressure-balanced increment max",
+                application.max_abs_pressure_balanced_face_increment,
+            ),
+        ])
+    scalars = _host_scalar_packet_float(backend, scalar_packet)
+
     violations: list[str] = []
-    compatibility = _host_scalar_float(
-        backend,
-        capillary.material.phase_state.compatibility_residual_linf,
-        "q/phi compatibility residual",
-    )
-    normal_residual = _host_scalar_float(
-        backend,
-        capillary.young_laplace_normal_residual_linf,
-        "Young-Laplace normal residual",
-    )
+    compatibility = scalars["q/phi compatibility residual"]
+    normal_residual = scalars["Young-Laplace normal residual"]
     if compatibility > tolerance:
         violations.append(
             "q/phi compatibility residual "
@@ -483,16 +505,9 @@ def validate_geometric_runtime_capillary_fail_close_gpu(
             "PCG/Newton/DC solve is required before advancing"
         )
 
-    declared_drive = bool(
-        application.capillary_drive_present and not application.pressure_exact_static
-    )
     predictor_l2 = 0.0
     if declared_drive:
-        predictor_l2 = _host_scalar_float(
-            backend,
-            application.predictor_increment_weighted_l2,
-            "AO predictor increment weighted l2",
-        )
+        predictor_l2 = scalars["AO predictor increment weighted l2"]
     nonstatic = declared_drive and predictor_l2 > tolerance
     if nonstatic and _pressure_history_mode(ppe_runtime) == "pressure_coordinate":
         violations.append(
@@ -501,16 +516,8 @@ def validate_geometric_runtime_capillary_fail_close_gpu(
             "increments"
         )
     if nonstatic:
-        balanced_l2 = _host_scalar_float(
-            backend,
-            application.pressure_balanced_increment_weighted_l2,
-            "AO pressure-balanced increment weighted l2",
-        )
-        balanced_max = _host_scalar_float(
-            backend,
-            application.max_abs_pressure_balanced_face_increment,
-            "AO pressure-balanced increment max",
-        )
+        balanced_l2 = scalars["AO pressure-balanced increment weighted l2"]
+        balanced_max = scalars["AO pressure-balanced increment max"]
         if balanced_l2 <= tolerance and balanced_max <= tolerance:
             violations.append(
                 "non-static packet has zero pressure-balanced drive "
@@ -1085,6 +1092,24 @@ def _host_scalar_float(backend, value, name: str) -> float:
     converted = float(np.asarray(backend.to_host(value)))
     if not math.isfinite(converted):
         raise ValueError(f"{name} must be finite")
+    return converted
+
+
+def _host_scalar_packet_float(backend, entries) -> dict[str, float]:
+    xp = backend.xp
+    if not entries:
+        return {}
+    names = [name for name, _ in entries]
+    packet = xp.stack([xp.asarray(value) for _, value in entries])
+    host_values = np.asarray(backend.to_host(packet), dtype=float).reshape(-1)
+    if host_values.size != len(names):
+        raise ValueError("GPU scalar packet transfer changed scalar count")
+    converted: dict[str, float] = {}
+    for name, value in zip(names, host_values, strict=True):
+        scalar = float(value)
+        if not math.isfinite(scalar):
+            raise ValueError(f"{name} must be finite")
+        converted[name] = scalar
     return converted
 
 

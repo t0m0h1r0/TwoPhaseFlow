@@ -131,6 +131,10 @@ def test_run_simulation_saves_restartable_pre_blowup_state(tmp_path, monkeypatch
             "step": kwargs["step"],
             "t": kwargs["t"],
             "state_phase": kwargs["state_phase"],
+            "manifest": {
+                "time": float(kwargs["t"]),
+                "step": int(kwargs["step"]),
+            },
         }
 
     def fake_write_checkpoint_frame(path, frame):
@@ -194,7 +198,7 @@ def test_run_simulation_saves_restartable_pre_blowup_state(tmp_path, monkeypatch
             print_every=100,
             debug_diagnostics=False,
         ),
-        output=SimpleNamespace(figures=[]),
+        output=SimpleNamespace(figures=[], checkpoint_interval=0.5),
         diagnostics=["kinetic_energy"],
         initial_condition={},
     )
@@ -206,12 +210,12 @@ def test_run_simulation_saves_restartable_pre_blowup_state(tmp_path, monkeypatch
         config_path=tmp_path / "cfg.yaml",
     )
 
-    assert saves[0] == {
+    assert {
         "path": tmp_path / "checkpoint_pre_blowup_input.npz",
         "step": 0,
         "t": 0.0,
         "state_phase": "pre_step",
-    }
+    } in saves
     assert saves[-1]["path"] == tmp_path / "checkpoint_final.npz"
     assert saves[-1]["state_phase"] == "post_step"
     assert bool(results["pre_blowup_checkpoint_written"])
@@ -221,6 +225,7 @@ def test_time_checkpoints_do_not_clamp_discrete_timestep(tmp_path, monkeypatch):
     runner = importlib.import_module("twophase.simulation.runner")
     checkpoint = importlib.import_module("twophase.simulation.checkpoint")
     seen_dts = []
+    captures = []
     writes = []
 
     class FakeSolver:
@@ -276,6 +281,7 @@ def test_time_checkpoints_do_not_clamp_discrete_timestep(tmp_path, monkeypatch):
             return {"times": np.asarray(self.times, dtype=float)}
 
     def fake_capture_checkpoint_frame(**kwargs):
+        captures.append((float(kwargs["t"]), int(kwargs["step"])))
         return {
             "arrays": {},
             "manifest": {
@@ -336,6 +342,7 @@ def test_time_checkpoints_do_not_clamp_discrete_timestep(tmp_path, monkeypatch):
     )
 
     np.testing.assert_allclose(seen_dts, [0.2, 0.2, 0.2, 0.2])
+    assert captures == [(0.4, 2)]
     assert ("checkpoint_t0p5.npz", 0.4, 2) in writes
 
 

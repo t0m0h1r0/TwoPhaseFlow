@@ -13,6 +13,7 @@ Tests cover:
 import numpy as np
 import pytest
 
+import twophase.tools.diagnostics.collector as collector_mod
 from twophase.tools.diagnostics.collector import DiagnosticCollector
 from twophase.tools.diagnostics.interface_diagnostics import (
     midband_fraction,
@@ -209,6 +210,46 @@ def test_signed_interface_amplitude_tracks_cosine_sign():
     diag.collect(0.1, psi_flipped, u, v, p)
     assert diag.last("signed_interface_amplitude") == pytest.approx(
         -amplitude, rel=5e-2
+    )
+
+
+def test_capillary_wave_diagnostics_batch_scalar_host_transfer(monkeypatch):
+    """Capillary-wave scalar diagnostics share one host transfer per collect."""
+    X, Y = _make_grid()
+    amplitude = 0.05
+    interface = 0.5 + amplitude * np.cos(4.0 * np.pi * X)
+    psi = 0.5 + (Y - interface) / (2.0 * H)
+    u = v = p = np.zeros_like(psi)
+    calls = []
+    real_host_array = collector_mod.host_array
+
+    def counting_host_array(value, dtype=None):
+        calls.append(np.asarray(value).shape)
+        return real_host_array(value, dtype=dtype)
+
+    def forbidden_scalar_value(value):
+        raise AssertionError("amplitude diagnostics must use the batched scalar path")
+
+    monkeypatch.setattr(collector_mod, "host_array", counting_host_array)
+    monkeypatch.setattr(collector_mod, "scalar_value", forbidden_scalar_value)
+
+    diag = DiagnosticCollector(
+        [
+            "volume_conservation",
+            "kinetic_energy",
+            "interface_amplitude",
+            {"type": "signed_interface_amplitude", "mode": 2, "length": L},
+        ],
+        X,
+        Y,
+        H,
+    )
+    diag.collect(0.0, psi, u, v, p)
+
+    assert calls == [(4,)]
+    assert diag.last("interface_amplitude") > 0.0
+    assert diag.last("signed_interface_amplitude") == pytest.approx(
+        amplitude, rel=5e-2
     )
 
 
