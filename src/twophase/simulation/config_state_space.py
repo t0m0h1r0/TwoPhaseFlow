@@ -79,19 +79,22 @@ def parse_interface_state_space(interface: dict, numerics: dict) -> InterfaceSta
         _validate_legacy_diffuse_stack(numerics)
         return InterfaceStateSpaceCfg()
 
-    if isinstance(raw, str):
+    raw_from_scalar = isinstance(raw, str)
+    if raw_from_scalar:
         raw = {"scheme": raw}
     if not isinstance(raw, dict):
         raise ValueError("interface.state_space must be a mapping or scheme string")
     if "scheme" in raw:
         scheme = _normalize_state_space_scheme(raw["scheme"])
         if scheme == _ACTIVE_GEOMETRY_CAPILLARY_SCHEME:
-            _reject_active_geometry_state_space_overrides(raw)
+            if not raw_from_scalar:
+                _reject_active_geometry_state_space_mapping(raw)
             return _parse_geometric_cell_fraction_state_space(
                 _active_geometry_capillary_state_space_defaults(),
                 interface,
                 numerics,
             )
+        _reject_state_space_scheme_overrides(raw, scheme)
         raw = {**raw, "kind": "diffuse_cls"}
     if "kind" not in raw:
         raise ValueError(
@@ -268,13 +271,26 @@ def _normalize_state_space_scheme(value: Any) -> str:
     )
 
 
-def _reject_active_geometry_state_space_overrides(raw: dict[str, Any]) -> None:
+def _reject_active_geometry_state_space_mapping(raw: dict[str, Any]) -> None:
+    extras = sorted(set(raw) - {"scheme"})
+    message = (
+        "interface.state_space must be scalar 'active_geometry_capillary' "
+        "for active geometry"
+    )
+    if extras:
+        message += (
+            "; parser-owned contract keys are not YAML knobs: "
+            f"{', '.join(extras)}"
+        )
+    raise ValueError(message)
+
+
+def _reject_state_space_scheme_overrides(raw: dict[str, Any], scheme: str) -> None:
     extras = sorted(set(raw) - {"scheme"})
     if extras:
         raise ValueError(
-            "interface.state_space.scheme='active_geometry_capillary' accepts "
-            "only the scheme key; parser-owned contract keys are not YAML "
-            f"knobs: {', '.join(extras)}"
+            f"interface.state_space scheme {scheme!r} must not be combined "
+            f"with explicit keys: {', '.join(extras)}"
         )
 
 

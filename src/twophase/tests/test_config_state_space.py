@@ -183,6 +183,22 @@ def test_legacy_diffuse_state_space_still_parses():
     assert cfg.run.advection_scheme == "dissipative_ccd"
 
 
+def test_state_space_scheme_kind_conflict_fails_closed():
+    raw = _minimal(
+        {
+            "interface": {
+                "state_space": {
+                    "scheme": "diffuse_cls",
+                    "kind": "geometric_cell_fraction",
+                }
+            }
+        }
+    )
+
+    with pytest.raises(ValueError, match="must not be combined"):
+        ExperimentConfig.from_dict(raw)
+
+
 def test_q_transport_without_geometric_state_space_fails_closed():
     with pytest.raises(ValueError, match="requires interface.state_space"):
         ExperimentConfig.from_dict(
@@ -289,10 +305,8 @@ def test_valid_geometric_contract_builds_config_and_solver_runtime():
     assert solver._advection_scheme == "geometric_swept_volume"
 
 
-def test_active_geometry_capillary_scheme_preset_expands_defaults():
-    patch = _geometric_patch()
-    patch["interface"]["state_space"] = {"scheme": "active_geometry_capillary"}
-    raw = _minimal(patch)
+def test_active_geometry_capillary_scalar_preset_expands_defaults():
+    raw = _geometric_raw()
     cfg = ExperimentConfig.from_dict(raw)
 
     assert cfg.interface_state_space.scheme == "active_geometry_capillary"
@@ -303,6 +317,14 @@ def test_active_geometry_capillary_scheme_preset_expands_defaults():
     solver = TwoPhaseNSSolver.from_config(cfg)
     assert solver._interface_tracking_method == "q_cell_fraction"
     assert solver._capillary_force_source == "bundle_virtual_work"
+
+
+def test_active_geometry_capillary_rejects_mapping_form():
+    raw = _geometric_raw()
+    raw["interface"]["state_space"] = {"scheme": "active_geometry_capillary"}
+
+    with pytest.raises(ValueError, match="scalar 'active_geometry_capillary'"):
+        ExperimentConfig.from_dict(raw)
 
 
 @pytest.mark.parametrize(
@@ -347,7 +369,7 @@ def test_active_geometry_capillary_rejects_parser_owned_yaml_knobs(extra):
         **extra,
     }
 
-    with pytest.raises(ValueError, match="only the scheme key"):
+    with pytest.raises(ValueError, match="scalar 'active_geometry_capillary'"):
         ExperimentConfig.from_dict(raw)
 
 
