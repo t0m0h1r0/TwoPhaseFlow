@@ -112,10 +112,27 @@ Result:
 685 passed, 33 skipped.
 ```
 
-Standard `make test` was attempted first, then retried outside the sandbox.  In
-both cases the remote was unavailable and the Makefile local fallback failed
-because this worktree has no `python` executable on PATH.  The shared parent
-venv was therefore used for the full local fallback.
+Standard remote validation was re-run after binding the available SSH agent
+socket:
+
+```text
+SSH_AUTH_SOCK=/private/tmp/codex-ssh-agent-test.sock ssh -o BatchMode=yes \
+  python 'hostname && pwd && command -v python3 && nvidia-smi --query-gpu=name --format=csv,noheader | head -1'
+
+SSH_AUTH_SOCK=/private/tmp/codex-ssh-agent-test.sock make test
+```
+
+Result:
+
+```text
+remote host python reachable,
+NVIDIA GeForce RTX 3080 Ti visible,
+886 passed, 3 skipped in 59.28s.
+```
+
+The earlier standard `make test` failure was due to an empty `SSH_AUTH_SOCK`;
+once the socket above was supplied, the Makefile took the remote path and did
+not need the local fallback.
 
 ## SOLID / Policy Notes
 
