@@ -35,7 +35,7 @@ $\rho_r \in \{2,10,100,833\}$, $N \in \{24,32\}$．
 \begin{table}[!ht]
 \caption{V6：圧力ジャンプ・毛管射影結合系による密度比掃引}
 \label{tab:V6_density_ratio}
-\PaperCaptionNote{全 8 ケースでブローアップなし． $|\Delta V_\psi|/V_{\psi,0}$ は全ケースで round-off floor（$\le 1.2\times10^{-16}$）に留まり，毛管成分の圧力勾配射影後の $u_\infty^{\mathrm{end}}$ は最大でも $1.3\times10^{-9}$ である． $|\Delta p_{\mathrm{corr}}|/(\sigma/r)$ は pressure-jump PPE の補正圧診断であり， Laplace 絶対圧誤差ではない．}
+\PaperCaptionNote{全 8 ケースでブローアップなし． $|\Delta V_\psi|/V_{\psi,0}$ は全ケースで round-off floor（$\le 1.2\times10^{-16}$）に留まり，毛管成分の圧力勾配射影後の $u_\infty^{\mathrm{end}}$ は最大でも $1.3\times10^{-9}$ である． $|\Delta p_{\mathrm{corr}}|/(\sigma/r)$ は圧力ジャンプ PPE の補正圧診断であり， Laplace 絶対圧誤差ではない．}
 \centering\small
 \begin{tabular}{r r r r r}
 \toprule
@@ -80,7 +80,7 @@ $\rho_r$ & $N$ & $u_\infty^{\mathrm{end}}$ & $|\Delta V_\psi|/V_{\psi,0}$ & $|\D
         (c) $u_\infty^{\mathrm{end}}\le 1.3\times10^{-9}$ で毛管面バランスが丸め誤差近傍に閉じる\checkmark．
   \item \textbf{補助指標（scale 確認）}：
         $|\Delta p_{\mathrm{corr}}|/(\sigma/r) \sim 0.74$--$1.01$ は
-        pressure-jump PPE の補正圧 diagnostic（§\ref{sec:verification}「圧力出力の取り扱い」参照；
+        圧力ジャンプ PPE の補正圧診断（§\ref{sec:verification}「圧力出力の取り扱い」参照；
         Laplace 絶対圧誤差ではない）であり，合格基準には含めない．
   \item 本 V6 は通常 CCD/FVM-PPE ではなく
         FCCD, UCCD6, HFE, 圧力ジャンプ付き分相 PPE/DC,
@@ -148,7 +148,7 @@ $n_{\mathrm{step}}$ & $\Delta t$ & $\|e\|_\infty$ & 連続比 \\
         $n_{\mathrm{ref}}=128$ でも収束率は $1.59$ 近傍に留まり，
         界面輸送を止めても同程度の実効次数が残る．一方，$\sigma=0$ では velocity error が
         数桁低下し，最大誤差は $\psi\simeq0.5$ の界面帯に局在する．
-        したがって支配因子は BDF2 係数や reinitialization cadence ではなく，
+        したがって支配因子は BDF2 係数や再初期化間隔ではなく，
         毛管圧力ジャンプ / アフィン FCCD 射影の界面帯誤差である
         （対照実験表は付録~\ref{app:v7_imex_bdf2_rca}）．
   \item \textbf{Type-D 合格 ($\triangle$, 毛管結合系律速)} —

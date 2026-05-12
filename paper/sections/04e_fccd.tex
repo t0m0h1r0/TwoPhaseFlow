@@ -124,7 +124,7 @@ block-circulant LU（周期）で $\Ord{N}$ 計算．
 の適用は 2 段階：
 (i) $\mathbf{q} \leftarrow \mathbf{S}_{\CCD}\mathbf{u}$（CCD 求解器の再利用），
 (ii) $\mathbf{d}^{\FCCD} \leftarrow \mathbf{D}_1\mathbf{u} - \mathbf{D}_2\mathbf{q}$（面上局所ステンシル）．
-全体コスト $\Ord{N}$，追加メモリは $\mathbf{q}$ のみ．
+全体は $\Ord{N}$ の線形演算で閉じ，補助量は共通基盤量 $\mathbf{q}$ に集約される．
 
 % -------------------------------------------------------------------------------
 \subsubsection{周期境界での DFT 解析}

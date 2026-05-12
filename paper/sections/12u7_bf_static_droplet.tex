@@ -2,19 +2,19 @@
 %
 % U7: Balanced-Force static droplet 1-step + face interpolation — Tier V
 % ═══════════════════════════════════════════════════════════════════════════════
-\subsubsection{U7：縮約 BF 静止液滴 1-step + face interp [Tier V]}
+\subsubsection{U7：縮約 BF 静止液滴 1-step + 面補間 [Tier V]}
 \label{sec:U7_bf_static_droplet}
 
 \paragraph{検証対象．}
 第~\ref{sec:balanced_force}章 で導入した縮約 Balanced--Force（BF）結合~\cite{Francois2006}
 （§\ref{sec:bf_p2_adjoint}：表面張力 $\sigma\kappa_{lg}\hat{\bm n}_{lg}$ と圧力勾配の
 離散レベル整合）の \textbf{Young--Laplace 圧力跳び再現精度}と，
-CSF 表面張力モデルの基準実装~\cite{Brackbill1992}・寄生流れの抑制系統解析~\cite{Popinet2009,Renardy2002}を踏まえ，
+CSF 表面張力モデルの基準定式化~\cite{Brackbill1992}・寄生流れの抑制系統解析~\cite{Popinet2009,Renardy2002}を踏まえ，
 セル界面での粘性係数補間（§\ref{sec:mu_face_interpolation}：算術 / 調和 / VoF 重み付け）の
 \textbf{単体検証}を行う．
 本 U7 は V3/V5/V8 の Neumann BF 縮約へ渡す検証であり，
 水--空気級の標準圧力ジャンプ・毛管射影結合系（U6, V6/V7/V9）の代替根拠ではない．
-FD2 mismatch は合格経路ではなく，1-step 圧力跳び指標の判別力不足を示す負対照である．
+FD2 不整合は合格経路ではなく，1-step 圧力跳び指標の判別力不足を示す負対照である．
 
 \paragraph{設定．}
 \begin{description}\setlength{\itemsep}{0pt}
@@ -25,16 +25,16 @@ FD2 mismatch は合格経路ではなく，1-step 圧力跳び指標の判別力
         合格判定は match だけに置き，mismatch は負対照として判別力を評価する．
         密度比は両モードとも $\rho_l/\rho_g = 1000$．
         $N \in \{32,64,128\}$．
-  \item[U7-b] face $\mu$ 補間：3 種（arith / harm / vof-weighted）．
+  \item[U7-b] 面 $\mu$ 補間：3 種（算術平均 / 調和平均 / VoF 重み付け）．
         $N \in \{32,64,128,256,512\}$．$\mu$ ジャンプ $\mu_l/\mu_g = 100$，
         界面非整合グリッドで $L_\infty$ 誤差を測定．
 \end{description}
 
-\paragraph{face $\mu$ 補間の位置づけ．}
+\paragraph{面 $\mu$ 補間の位置づけ．}
 本 U7-b は，『製造解法 + 高ジャンプ条件』下で 3 種補間の
 収束次数（$\Ord{h^2}$）と相互優劣を定量化する比較検証である．
-FCCD face value（§\ref{sec:mu_face_interpolation}）は
-$\mu$ を含む face 量を統一的に扱うため，
+FCCD 面値（§\ref{sec:mu_face_interpolation}）は
+$\mu$ を含む面量を統一的に扱うため，
 3 種いずれかを単独既定にするか，ジャンプ大きさ依存で切替えるかは
 §\ref{sec:mu_face_interpolation} の設計指針に従う．
 
