@@ -77,6 +77,8 @@ sources:
     description: "Production fail-close gate for uncertified GPU AO capillarity"
   - path: artifacts/A/ch14_ao_nonstatic_pressure_split_proof_CHK-RA-CH14-AO-FASTVOL-027.md
     description: "Proof of active Schur pressure split, scalar AO pressure coordinate, non-static balanced drive, and residual-certified accuracy"
+  - path: artifacts/A/ch14_ao_blowup_assumed_experiment_strategy_CHK-RA-CH14-AO-FASTVOL-028.md
+    description: "Blow-up-assumed experiment ladder for AO-Fast: algebraic certificate, one-step impulse, two-step history replay, short horizon, pre-blowup replay"
 depends_on:
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-159]]"
