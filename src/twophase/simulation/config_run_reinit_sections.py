@@ -13,6 +13,7 @@ from .config_run_tracking_sections import (
 _REINIT_METHODS = (
     "split", "unified", "dgr", "hybrid",
     "eikonal", "eikonal_xi", "eikonal_fmm", "ridge_eikonal", "none",
+    "compatibility_projection",
 )
 
 

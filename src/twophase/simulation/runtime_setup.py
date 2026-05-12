@@ -71,6 +71,19 @@ def build_initial_condition(
     return np.asarray(psi) if return_host else psi
 
 
+def build_initial_phi(
+    grid,
+    initial_condition: dict,
+    *,
+    return_host: bool = True,
+):
+    """Build the initial signed-distance gauge for geometric phase state."""
+    ic_norm = normalise_ic_dict(dict(initial_condition))
+    builder = InitialConditionBuilder.from_dict(ic_norm)
+    phi = builder.build_phi(grid, return_host=return_host)
+    return np.asarray(phi) if return_host else phi
+
+
 def build_initial_velocity(
     X,
     Y,

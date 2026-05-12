@@ -19,6 +19,7 @@ from .ns_option_canonicalizer import (
 class NSInterfaceRuntimeState:
     rebuild_freq: int
     reinit_every: int
+    reinit_method: str
     reinit_trigger_mode: str
     reinit_threshold: float
     reproject_variable_density: bool
@@ -89,6 +90,7 @@ class NSSchemeRuntimeState:
 def normalise_ns_interface_runtime(options) -> NSInterfaceRuntimeState:
     rebuild_freq = max(0, int(options.grid_rebuild_freq))
     reinit_every = int(options.reinit_every)
+    reinit_method = str(getattr(options, "reinit_method", "ridge_eikonal")).strip().lower()
     reinit_trigger_mode = str(getattr(options, "reinit_trigger_mode", "adaptive")).strip().lower()
     if reinit_trigger_mode not in {"adaptive", "fixed"}:
         raise ValueError(
@@ -119,15 +121,24 @@ def normalise_ns_interface_runtime(options) -> NSInterfaceRuntimeState:
             interface_tracking_method = "psi_direct"
         elif interface_tracking_method == "none":
             interface_tracking_enabled = False
-    if interface_tracking_method not in {"phi_primary", "psi_direct", "none"}:
+    if interface_tracking_method not in {
+        "phi_primary",
+        "psi_direct",
+        "q_cell_fraction",
+        "none",
+    }:
         raise ValueError(
             "Unsupported interface_tracking_method="
-            f"'{tracking_method}'. Use phi_primary|psi_direct|none."
+            f"'{tracking_method}'. Use phi_primary|psi_direct|q_cell_fraction|none."
         )
 
     phi_primary_transport = (
         bool(options.phi_primary_transport)
-        if interface_tracking_method not in {"phi_primary", "psi_direct"}
+        if interface_tracking_method not in {
+            "phi_primary",
+            "psi_direct",
+            "q_cell_fraction",
+        }
         else interface_tracking_method == "phi_primary"
     )
     phi_primary_redist_every = max(1, int(options.phi_primary_redist_every))
@@ -150,6 +161,7 @@ def normalise_ns_interface_runtime(options) -> NSInterfaceRuntimeState:
     return NSInterfaceRuntimeState(
         rebuild_freq=rebuild_freq,
         reinit_every=reinit_every,
+        reinit_method=reinit_method,
         reinit_trigger_mode=reinit_trigger_mode,
         reinit_threshold=reinit_threshold,
         reproject_variable_density=reproject_variable_density,
@@ -399,18 +411,22 @@ def normalise_ns_scheme_runtime(options) -> NSSchemeRuntimeState:
     capillary_force_source = str(
         getattr(options, "capillary_force_source", "curvature_jump")
     ).strip().lower()
-    if capillary_force_source not in {"curvature_jump", "closed_interface_riesz"}:
+    if capillary_force_source not in {
+        "curvature_jump",
+        "closed_interface_riesz",
+        "bundle_virtual_work",
+    }:
         raise ValueError(
             "Unsupported capillary_force_source="
             f"'{getattr(options, 'capillary_force_source', None)}'. "
-            "Use curvature_jump|closed_interface_riesz."
+            "Use curvature_jump|closed_interface_riesz|bundle_virtual_work."
         )
     if (
-        capillary_force_source == "closed_interface_riesz"
+        capillary_force_source in {"closed_interface_riesz", "bundle_virtual_work"}
         and str(options.surface_tension_scheme).strip().lower() != "pressure_jump"
     ):
         raise ValueError(
-            "capillary_force_source='closed_interface_riesz' requires "
+            f"capillary_force_source='{capillary_force_source}' requires "
             "surface_tension_scheme='pressure_jump'."
         )
     gravity_formulation = str(

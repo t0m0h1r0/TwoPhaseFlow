@@ -15,12 +15,14 @@ from __future__ import annotations
 import numpy as np
 
 from ..ccd.fccd import FCCDSolver
+from ..core.boundary import boundary_axes
 from ..core.grid_remap import build_grid_remapper
 from ..coupling.transport_variational_capillary import p2_trace_surface_energy_2d
 from ..levelset.reinitialize import Reinitializer
 from ..levelset.wall_contact import WallContactSet
 from .ns_step_state import NSStepInputs, NSStepRequest, NSStepState
 from .ns_step_services import (
+    compute_ns_geometric_surface_tension_stage,
     compute_ns_predictor_stage,
     compute_ns_surface_tension_stage,
     correct_ns_velocity_stage,
@@ -32,6 +34,11 @@ from .conservative_transport import ConservativeCommonFluxTransport
 from .interface_projection_diagnostics import (
     reinit_projection_diagnostics,
     zero_reinit_projection_diagnostics,
+)
+from .geometric_phase_runtime import (
+    materialise_geometric_common_flux_state,
+    materialise_geometric_runtime_capillary_application_state,
+    materialise_geometric_runtime_capillary_state,
 )
 from . import ns_pipeline_registrations as _ns_pipeline_registrations  # noqa: F401
 from .ns_geometry_runtime import build_ns_geometry_runtime
@@ -68,6 +75,7 @@ from .ns_runtime_services import (
     NSRuntimeSetupContext,
     NSTimestepEstimateContext,
     build_runtime_initial_condition,
+    build_runtime_initial_phi,
     build_runtime_initial_velocity,
     compute_runtime_dt_max,
     compute_runtime_timestep_budget,
@@ -84,6 +92,7 @@ from .ns_solver_options import (
     SolverPPEOptions,
     SolverSchemeOptions,
 )
+from ..geometry import GeometricPhaseState, transport_geometric_phase_common_flux_2d
 
 
 class TwoPhaseNSSolver:
@@ -687,10 +696,25 @@ class TwoPhaseNSSolver:
                  type: union
                  shapes: [{type: circle, interior_phase: gas, ...}, ...]
         """
-        return build_runtime_initial_condition(
-            self._runtime_setup_context(),
+        self._last_geometric_common_flux_transport = None
+        self._last_geometric_runtime_material = None
+        self._last_geometric_runtime_capillary = None
+        self._last_geometric_runtime_capillary_application = None
+        context = self._runtime_setup_context()
+        psi = build_runtime_initial_condition(
+            context,
             cfg.initial_condition,
         )
+        state_space = getattr(cfg, "interface_state_space", None)
+        if getattr(state_space, "kind", "diffuse_cls") == "geometric_cell_fraction":
+            phi = build_runtime_initial_phi(context, cfg.initial_condition)
+            self._geometric_phase_state = GeometricPhaseState.from_phi(
+                self._grid,
+                phi,
+            )
+        else:
+            self._geometric_phase_state = None
+        return psi
 
     def build_velocity(
         self, cfg: "ExperimentConfig", psi: np.ndarray | None = None
@@ -826,13 +850,21 @@ class TwoPhaseNSSolver:
             and self._projected_face_components is not None
             and hasattr(self._div_op, "reconstruct_nodes")
         ):
-            state.face_velocity_components = self._projected_face_components
-            state.projected_face_components = self._projected_face_components
+            projected_faces = [
+                self._backend.xp.asarray(component)
+                for component in self._projected_face_components
+            ]
+            if not self._geometric_phase_runtime_enabled():
+                state.face_velocity_components = projected_faces
+            state.projected_face_components = projected_faces
             state.u, state.v = self._div_op.reconstruct_nodes(
-                self._projected_face_components
+                projected_faces
             )
             _apply_bc(state.u, state.v, state.bc_hook, self.bc_type)
-        if self._conservative_common_flux_enabled():
+        if (
+            self._conservative_common_flux_enabled()
+            and not self._geometric_phase_runtime_enabled()
+        ):
             density = getattr(self, "_conservative_density", None)
             momentum = getattr(self, "_conservative_momentum_components", None)
             if density is not None:
@@ -848,6 +880,9 @@ class TwoPhaseNSSolver:
             "conservative_common_flux"
         )
 
+    def _geometric_phase_runtime_enabled(self) -> bool:
+        return getattr(self, "_advection_scheme", "") == "geometric_swept_volume"
+
     def _face_velocity_for_common_flux(self, state: NSStepState):
         """Return projection-native face velocities for common-flux transport."""
         xp = self._backend.xp
@@ -861,6 +896,45 @@ class TwoPhaseNSSolver:
         raise RuntimeError(
             "conservative_common_flux requires projection-native face velocities"
         )
+
+    def _geometric_face_velocity_for_common_flux(self, state: NSStepState):
+        """Return geometric cell-face normal velocities for AO swept transport."""
+        xp = self._backend.xp
+        nx, ny = int(self._grid.N[0]), int(self._grid.N[1])
+        geometric_shapes = ((nx + 1, ny), (nx, ny + 1))
+        if state.face_velocity_components is not None:
+            supplied = [
+                xp.asarray(component) for component in state.face_velocity_components
+            ]
+            if all(
+                tuple(component.shape) == shape
+                for component, shape in zip(supplied, geometric_shapes, strict=True)
+            ):
+                return supplied
+            raise RuntimeError(
+                "geometric_cell_fraction runtime transport requires geometric "
+                f"cell-face velocity shapes {geometric_shapes}"
+            )
+        u = xp.asarray(state.u)
+        v = xp.asarray(state.v)
+        nodal_shape = (nx + 1, ny + 1)
+        if tuple(u.shape) != nodal_shape or tuple(v.shape) != nodal_shape:
+            raise RuntimeError(
+                "geometric_cell_fraction runtime transport requires nodal "
+                "velocities or geometric cell-face velocities"
+            )
+        x_faces = 0.5 * (u[:, :-1] + u[:, 1:])
+        y_faces = 0.5 * (v[:-1, :] + v[1:, :])
+        boundary = boundary_axes(self.bc_type, self._grid.ndim)
+        if boundary[0] != "periodic":
+            x_faces = xp.array(x_faces, copy=True)
+            x_faces[0, :] = 0.0
+            x_faces[-1, :] = 0.0
+        if boundary[1] != "periodic":
+            y_faces = xp.array(y_faces, copy=True)
+            y_faces[:, 0] = 0.0
+            y_faces[:, -1] = 0.0
+        return [x_faces, y_faces]
 
     def _publish_conservative_state(self, state: NSStepState) -> NSStepState:
         """Persist conservative density/momentum as backend-native arrays."""
@@ -880,6 +954,158 @@ class TwoPhaseNSSolver:
         self._conservative_density = density
         self._conservative_momentum_components = momentum
         return state
+
+    def _geometric_projection_cadence(self) -> int:
+        """Return the AO compatibility-projection cadence for q transport."""
+        if getattr(self, "_reinit_method", "") != "compatibility_projection":
+            return 0
+        return int(getattr(self, "_reinit_every", 0))
+
+    def _advance_geometric_phase_stage(self, state: NSStepState) -> NSStepState:
+        """Advance typed AO q transport, then fail closed before NS coupling."""
+        self._last_geometric_common_flux_transport = None
+        self._last_geometric_runtime_material = None
+        self._last_geometric_runtime_capillary = None
+        self._last_geometric_runtime_capillary_application = None
+        phase_state = getattr(self, "_geometric_phase_state", None)
+        if phase_state is None:
+            raise ValueError(
+                "geometric_cell_fraction runtime transport requires "
+                "build_ic(...) to attach GeometricPhaseState before advancing "
+                "the NS step"
+            )
+        try:
+            face_velocity = self._geometric_face_velocity_for_common_flux(state)
+        except RuntimeError as exc:
+            raise ValueError(
+                "geometric_cell_fraction runtime transport requires "
+                "geometric cell-face velocities"
+            ) from exc
+        result = transport_geometric_phase_common_flux_2d(
+            self._grid,
+            phase_state,
+            face_velocity,
+            dt=state.dt,
+            rho_l=state.rho_l,
+            rho_g=state.rho_g,
+            boundary=boundary_axes(self.bc_type, self._grid.ndim),
+            tolerance=1.0e-11,
+            project_every_steps=self._geometric_projection_cadence(),
+            step_index=state.step_index,
+        )
+        state.geometric_common_flux_transport = result
+        self._last_geometric_common_flux_transport = result
+        material = materialise_geometric_common_flux_state(
+            self._grid,
+            result,
+            rho_l=state.rho_l,
+            rho_g=state.rho_g,
+            boundary=boundary_axes(self.bc_type, self._grid.ndim),
+            tolerance=1.0e-11,
+        )
+        state.geometric_runtime_material = material
+        self._last_geometric_runtime_material = material
+        capillary = materialise_geometric_runtime_capillary_state(
+            self._grid,
+            material,
+            sigma=state.sigma,
+            tolerance=1.0e-11,
+        )
+        state.geometric_runtime_capillary = capillary
+        self._last_geometric_runtime_capillary = capillary
+        application = materialise_geometric_runtime_capillary_application_state(
+            self._grid,
+            capillary,
+            dt=state.dt,
+        )
+        state.geometric_runtime_capillary_application = application
+        self._last_geometric_runtime_capillary_application = application
+        state.conservative_transport_certificate = {
+            "status": "geometric_phase_transport_ready",
+            "projected": result.phase_transport.projected,
+            "initial_volume": (
+                result.phase_transport.transport.certificate.initial_volume
+            ),
+            "final_volume": result.phase_transport.transport.certificate.final_volume,
+            "volume_drift": result.phase_transport.transport.certificate.volume_drift,
+            "closure_residual_linf": (
+                result.phase_transport.transport.certificate.closure_residual_linf
+            ),
+            "min_density": material.min_density,
+            "max_density": material.max_density,
+            "mass_flux_formula_residual_linf": (
+                material.mass_flux_formula_residual_linf
+            ),
+            "face_hodge_min_weight": material.face_hodge.min_weight,
+            "face_hodge_max_weight": material.face_hodge.max_weight,
+            "capillary_pressure_range_status": capillary.pressure_range_status,
+            "capillary_pressure_exact_static": capillary.pressure_exact_static,
+            "capillary_drive_present": capillary.capillary_drive_present,
+            "capillary_pressure_range_tolerance": (
+                capillary.pressure_range_tolerance
+            ),
+            "capillary_force_weighted_acceleration_l2": (
+                capillary.capillary_force_weighted_acceleration_l2
+            ),
+            "capillary_pressure_reaction_weighted_acceleration_l2": (
+                capillary.pressure_reaction_weighted_acceleration_l2
+            ),
+            "capillary_force_max_abs_face_covector": (
+                capillary.max_abs_capillary_force_face_covector
+            ),
+            "capillary_pressure_reaction_max_abs_face_covector": (
+                capillary.max_abs_pressure_reaction_face_covector
+            ),
+            "young_laplace_residual_linf": (
+                capillary.young_laplace_residual_linf
+            ),
+            "young_laplace_residual_l2": (
+                capillary.young_laplace_residual_l2
+            ),
+            "young_laplace_normal_residual_linf": (
+                capillary.young_laplace_normal_residual_linf
+            ),
+            "capillary_weighted_residual_acceleration_l2": (
+                capillary.weighted_residual_acceleration_l2
+            ),
+            "capillary_max_abs_residual_face_covector": (
+                capillary.max_abs_residual_face_covector
+            ),
+            "ao_capillary_predictor_increment_weighted_l2": (
+                application.predictor_increment_weighted_l2
+            ),
+            "ao_capillary_pressure_reaction_increment_weighted_l2": (
+                application.pressure_reaction_increment_weighted_l2
+            ),
+            "ao_capillary_pressure_balanced_increment_weighted_l2": (
+                application.pressure_balanced_increment_weighted_l2
+            ),
+            "ao_capillary_pressure_balanced_max_abs_face_increment": (
+                application.max_abs_pressure_balanced_face_increment
+            ),
+        }
+        if (
+            application.pressure_exact_static
+            and application.pressure_balanced_increment_weighted_l2
+            <= capillary.pressure_range_tolerance
+            and application.max_abs_pressure_balanced_face_increment
+            <= capillary.pressure_range_tolerance
+        ):
+            self._geometric_phase_state = result.phase_transport.state
+            state.conservative_transport_certificate[
+                "ao_static_downstream_unblocked"
+            ] = True
+            return state
+        if application.capillary_drive_present:
+            state.conservative_transport_certificate[
+                "ao_nonstatic_predictor_stage_unblocked"
+            ] = True
+            return state
+        raise ValueError(
+            "geometric_cell_fraction runtime transport produced typed "
+            "q/density/common-flux/capillary-Hodge/application state, but "
+            "non-static downstream AO momentum and PPE integration remain blocked"
+        )
 
     def _advance_conservative_common_flux_stage(
         self,
@@ -1036,6 +1262,14 @@ class TwoPhaseNSSolver:
         xp = getattr(backend, "xp", None)
         if xp is None:
             xp = np
+        if self._geometric_phase_runtime_enabled():
+            return self._advance_geometric_phase_stage(state)
+        if getattr(self, "_geometric_phase_state", None) is not None:
+            raise ValueError(
+                "geometric_cell_fraction runtime transport activation remains "
+                "blocked after the initial-state gate; connect the AO "
+                "q-transport/common-flux path before advancing the NS step"
+            )
         psi_previous = xp.array(state.psi, copy=True)
         curvature_method = getattr(self, "_curvature_method", "")
         if curvature_method == "transport_variational_p2_ale_discrete_gradient":
@@ -1217,6 +1451,15 @@ class TwoPhaseNSSolver:
         state: NSStepState,
     ) -> NSStepState:
         """Compute curvature and balanced-force surface tension terms."""
+        if state.geometric_runtime_capillary_application is not None:
+            return compute_ns_geometric_surface_tension_stage(
+                state,
+                backend=self._backend,
+                step_diag=self._step_diag,
+                projection_consistent_buoyancy=(
+                    self._projection_consistent_buoyancy
+                ),
+            )
         return compute_ns_surface_tension_stage(
             state,
             backend=self._backend,
@@ -1327,6 +1570,24 @@ class TwoPhaseNSSolver:
             capillary_force_source=self._capillary_force_source,
         )
 
+    def _commit_geometric_phase_state_after_downstream(
+        self,
+        state: NSStepState,
+    ) -> None:
+        """Commit transported AO q only after downstream NS stages succeed."""
+        certificate = state.conservative_transport_certificate or {}
+        if (
+            state.geometric_common_flux_transport is None
+            or certificate.get("ao_nonstatic_velocity_corrector_applied") is not True
+        ):
+            return
+        self._geometric_phase_state = (
+            state.geometric_common_flux_transport.phase_transport.state
+        )
+        certificate = dict(certificate)
+        certificate["ao_nonstatic_downstream_unblocked"] = True
+        state.conservative_transport_certificate = certificate
+
     def _record_step_diagnostics(
         self,
         state: NSStepState,
@@ -1358,8 +1619,16 @@ class TwoPhaseNSSolver:
         _apply_bc(state.u_star, state.v_star, state.bc_hook, self.bc_type)
         state = self._solve_pressure_stage(state)
         state = self._correct_velocity_stage(state)
+        self._commit_geometric_phase_state_after_downstream(state)
         if self._conservative_common_flux_enabled():
-            state = self._publish_conservative_state(state)
+            if state.geometric_runtime_material is not None:
+                state.conservative_transport_certificate[
+                    "ao_static_legacy_conservative_publish_skipped"
+                ] = True
+                self._conservative_density = None
+                self._conservative_momentum_components = None
+            else:
+                state = self._publish_conservative_state(state)
         self._projected_face_components = state.projected_face_components
         self._record_step_diagnostics(state)
 

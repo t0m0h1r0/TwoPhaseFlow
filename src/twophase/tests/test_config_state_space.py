@@ -8,7 +8,6 @@ import numpy as np
 import pytest
 
 from twophase.simulation.ao_fast_runtime_contract import (
-    AOFastRuntimeDisabledError,
     build_ao_fast_runtime_contract,
     validate_ao_fast_checkpoint_arrays,
 )
@@ -307,7 +306,7 @@ def test_reinitialization_none_requires_zero_schedule():
         )
 
 
-def test_valid_geometric_contract_builds_config_but_solver_runtime_fails_closed():
+def test_valid_geometric_contract_builds_config_and_solver_runtime():
     raw = _geometric_raw()
     cfg = parse_interface_state_space(raw["interface"], raw["numerics"])
     assert cfg.kind == "geometric_cell_fraction"
@@ -323,8 +322,10 @@ def test_valid_geometric_contract_builds_config_but_solver_runtime_fails_closed(
     assert contract.capillary_constraints == ("cell_volume",)
     assert contract.checkpoint_state_phase == "pre_step"
 
-    with pytest.raises(AOFastRuntimeDisabledError, match="validated contract"):
-        TwoPhaseNSSolver.from_config(experiment_cfg)
+    solver = TwoPhaseNSSolver.from_config(experiment_cfg)
+    assert solver._advection_scheme == "geometric_swept_volume"
+    assert solver._interface_tracking_method == "q_cell_fraction"
+    assert solver._capillary_force_source == "bundle_virtual_work"
 
 
 def test_ao_fast_checkpoint_contract_validates_handoff_and_face_histories():

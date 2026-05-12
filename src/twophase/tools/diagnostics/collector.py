@@ -179,6 +179,7 @@ class DiagnosticCollector:
         v: np.ndarray,
         p: np.ndarray,
         dV: np.ndarray | None = None,
+        liquid_volume: object | None = None,
     ) -> None:
         """Record diagnostics for the current timestep.
 
@@ -187,6 +188,10 @@ class DiagnosticCollector:
         dV : ndarray or None
             Per-node control volumes.  When ``None``, falls back to
             scalar ``h**2`` (uniform grid).
+        liquid_volume : object or None
+            Optional already-integrated liquid volume in physical units.  AO
+            geometric-cell-fraction runs use this to report the conserved
+            q-volume instead of recomputing volume from a diagnostic ψ view.
         """
         xp = _xp_of(psi)
         if dV is None:
@@ -218,7 +223,10 @@ class DiagnosticCollector:
         scalar_values = []
         if need_volume:
             scalar_names.append("V")
-            scalar_values.append(xp.sum(psi * dV))
+            if liquid_volume is None:
+                scalar_values.append(xp.sum(psi * dV))
+            else:
+                scalar_values.append(xp.asarray(liquid_volume))
         if need_ke:
             rho = self.rho_g + (self.rho_l - self.rho_g) * psi
             scalar_names.append("ke")

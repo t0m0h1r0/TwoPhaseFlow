@@ -97,25 +97,21 @@ class InitialConditionBuilder:
 
     # ── ビルド ────────────────────────────────────────────────────────────────
 
-    def build(self, grid: "Grid", eps: float, *, return_host: bool = True):
-        """Compute the initial CLS ψ field on the given grid.
+    def build_phi(self, grid: "Grid", *, return_host: bool = True):
+        """Compute the signed-distance gauge φ for the configured shapes.
 
         Parameters
         ----------
         grid : Grid
             Grid instance (provides ``meshgrid()`` and ``ndim``).
-        eps  : float
-            Interface half-width ε (same units as grid coordinates).
-            Typically ``epsilon_factor × dx_min``.
         return_host : bool
             When True, return a NumPy array for backward compatibility.  When
             False, keep the field on ``grid.xp``.
 
         Returns
         -------
-        psi : ndarray
-            CLS field ψ ∈ [0, 1], shape ``grid.shape``.
-            ψ ≈ 1 in liquid, ψ ≈ 0 in gas.
+        phi : ndarray
+            Shape-composed gauge with ``phi < 0`` in liquid.
         """
         coords = grid.meshgrid()  # tuple of ndarrays (numpy or cupy on GPU)
         shape_tuple = grid.shape
@@ -146,6 +142,31 @@ class InitialConditionBuilder:
         #   φ_final = max(φ_liquid, −φ_gas)
         #   φ_final < 0 ⟺ φ_liquid < 0（液体内） かつ −φ_gas < 0（気泡外）
         phi_final = xp.maximum(phi_liquid, -phi_gas)
+        result = phi_final.astype(np.float64)
+        return result.get() if return_host and xp is not np else result
+
+    def build(self, grid: "Grid", eps: float, *, return_host: bool = True):
+        """Compute the initial CLS ψ field on the given grid.
+
+        Parameters
+        ----------
+        grid : Grid
+            Grid instance (provides ``meshgrid()`` and ``ndim``).
+        eps  : float
+            Interface half-width ε (same units as grid coordinates).
+            Typically ``epsilon_factor × dx_min``.
+        return_host : bool
+            When True, return a NumPy array for backward compatibility.  When
+            False, keep the field on ``grid.xp``.
+
+        Returns
+        -------
+        psi : ndarray
+            CLS field ψ ∈ [0, 1], shape ``grid.shape``.
+            ψ ≈ 1 in liquid, ψ ≈ 0 in gas.
+        """
+        xp = grid.xp
+        phi_final = self.build_phi(grid, return_host=False)
 
         # CLS スムーズ Heaviside: ψ = 1/(1 + exp(φ/ε))
         # ψ → 1 inside (φ < 0), ψ → 0 outside (φ > 0)

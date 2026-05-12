@@ -102,10 +102,20 @@ def build_ao_fast_runtime_contract(cfg: Any) -> AOFastRuntimeContract:
         )
     _require(getattr(run, "capillary_reaction_projection", None),
              "pressure_component_hodge", "capillary_reaction_projection")
-    if getattr(run, "reinit_method", None) is not None:
-        raise ValueError("AO-Fast runtime contract requires reinit_method=None")
-    if int(getattr(run, "reinit_every", 0)) != 0:
+    reinit_method = getattr(run, "reinit_method", None)
+    reinit_every = int(getattr(run, "reinit_every", 0))
+    if reinit_method not in {None, "compatibility_projection"}:
+        raise ValueError(
+            "AO-Fast runtime contract requires reinit_method=None or "
+            "'compatibility_projection'"
+        )
+    if reinit_method is None and reinit_every != 0:
         raise ValueError("AO-Fast runtime contract requires reinit_every=0")
+    if reinit_method == "compatibility_projection" and reinit_every <= 0:
+        raise ValueError(
+            "AO-Fast runtime contract requires reinit_every>0 for "
+            "compatibility_projection"
+        )
 
     return AOFastRuntimeContract(
         state_kind="geometric_cell_fraction",

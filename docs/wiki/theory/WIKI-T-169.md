@@ -65,6 +65,8 @@ sources:
     description: "AO-Fast GPU hardening: compact Schur active-node matvecs, no dense metric cache in compact table construction, and stricter GPU host-control fail-close"
   - path: artifacts/A/ch14_ao_fast_gpu_review_loop_CHK-RA-CH14-AO-FASTVOL-021.md
     description: "AO-Fast GPU review loop: duplicate coordinate transfer removal, scalar-sync inner guards, compact bincount reduction, and unused metric-key allocation removal"
+  - path: artifacts/A/ch14_ao_fast_runtime_activation_CHK-RA-CH14-AO-FASTVOL-022.md
+    description: "AO-Fast runtime activation: geometric q/common-flux/capillary path, fail-closed swept-volume gate, and short capillary smoke validation"
 depends_on:
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-159]]"

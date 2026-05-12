@@ -11,6 +11,11 @@ PROJECTION_SNAPSHOT_FIELDS = (
     "psi_after_transport_before_reinit",
     "psi_after_reinit",
 )
+GEOMETRIC_SNAPSHOT_FIELDS = (
+    "geometric_q",
+    "geometric_phi",
+    "geometric_density",
+)
 SNAPSHOT_FIELDS = (
     "psi",
     "u",
@@ -18,6 +23,7 @@ SNAPSHOT_FIELDS = (
     "p",
     "rho",
     *PROJECTION_SNAPSHOT_FIELDS,
+    *GEOMETRIC_SNAPSHOT_FIELDS,
 )
 
 

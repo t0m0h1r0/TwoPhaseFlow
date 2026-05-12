@@ -6,6 +6,7 @@ This module centralizes side-effect imports that populate registries used by
 
 from ..levelset.advection import DissipativeCCDAdvection, LevelSetAdvection
 from ..levelset.fccd_advection import FCCDLevelSetAdvection
+from ..levelset.geometric_advection_gate import GeometricSweptVolumeAdvectionGate
 from ..ns_terms.convection import ConvectionTerm
 from ..ns_terms.fccd_convection import FCCDConvectionTerm
 from ..ns_terms.uccd6_convection import UCCD6ConvectionTerm
@@ -41,6 +42,7 @@ __all__ = [
     "LevelSetAdvection",
     "DissipativeCCDAdvection",
     "FCCDLevelSetAdvection",
+    "GeometricSweptVolumeAdvectionGate",
     "ConvectionTerm",
     "FCCDConvectionTerm",
     "UCCD6ConvectionTerm",
