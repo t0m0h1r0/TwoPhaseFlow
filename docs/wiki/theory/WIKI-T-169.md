@@ -69,6 +69,8 @@ sources:
     description: "AO-Fast runtime activation: geometric q/common-flux/capillary path, fail-closed swept-volume gate, and short capillary smoke validation"
   - path: artifacts/A/ch14_ao_fast_runtime_gpu_review_CHK-RA-CH14-AO-FASTVOL-023.md
     description: "AO-Fast runtime GPU review: dense exact runtime made CPU-only, GPU fail-close guards, active-projection schedule rejection, and manifest hardening"
+  - path: artifacts/A/ch14_ao_fast_gpu_runtime_completion_CHK-RA-CH14-AO-FASTVOL-024.md
+    description: "AO-Fast GPU runtime completion: device-resident geometric packet, nodal material bridge, pressure-coordinate coupling, and capillary smoke"
 depends_on:
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-159]]"
@@ -736,6 +738,22 @@ solver, reduction, and line-search kernels are implemented.  Remaining GPU work
 is the final fused active-row `Q/S/J/dS` and exact-acceptance kernels with
 kernel and transfer counters; the current vectorized active geometry remains
 pre-runtime.
+
+The first GPU runtime packet is now connected.  CUDA `geometric_cell_fraction`
+initialization and timesteps use `geometric_phase_runtime_gpu` instead of
+dense exact AO helpers: P1 `Q_h/S_h/J_q/dS_h` rows are evaluated by the active
+geometry formulas over the runtime lattice, q transport and common fluxes stay
+face-native, and bundle-capillary packets remain backend arrays.  The
+capillary pressure-range solve uses the explicit diagonal active-Schur
+approximation
+`lambda_D=diag(J_qJ_q^T)^{-1}J_q(-sigma dS_h)`, with Schur and
+Young-Laplace residuals exposed as the accuracy certificate; there is no
+hidden PCG/DC fallback.  q-owned cell theta/density are bridged to the nodal
+NS material lattice only at the solver boundary, while AO face Hodge work
+continues to use the cell cochain.  Non-static AO pressure reaction is admitted
+through the existing `pressure_coordinate` history path.  A 3-step remote GPU
+capillary-wave smoke completed with finite kinetic energy and volume drift
+below `1.4e-16`; dense exact AO remains CPU oracle/runtime only.
 
 CCD/DCCD/FCCD/UCCD remain useful on the smooth side of the split: gauge
 prediction, screened gauge metric `W_eta`, face-state reconstruction,

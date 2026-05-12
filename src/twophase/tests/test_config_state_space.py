@@ -13,6 +13,9 @@ from twophase.simulation.ao_fast_runtime_contract import (
 )
 from twophase.simulation.config_io import ExperimentConfig
 from twophase.simulation.config_state_space import parse_interface_state_space
+from twophase.simulation.geometric_phase_runtime_gpu import (
+    build_geometric_phase_state_gpu,
+)
 from twophase.simulation.ns_pipeline import TwoPhaseNSSolver
 from twophase.simulation.ns_step_state import NSStepRequest, NSStepState
 
@@ -345,7 +348,7 @@ def test_geometric_runtime_rejects_active_projection_schedule():
         build_ao_fast_runtime_contract(experiment_cfg)
 
 
-def test_geometric_runtime_gpu_backend_fails_closed_before_dense_runtime():
+def test_geometric_runtime_gpu_backend_uses_active_packet_not_dense_runtime():
     try:
         import cupy  # noqa: F401
     except Exception:
@@ -362,6 +365,12 @@ def test_geometric_runtime_gpu_backend_fails_closed_before_dense_runtime():
 
     xp = solver.backend.xp
     zeros = xp.zeros((9, 9))
+    x = xp.asarray(solver._grid.coords[0]).reshape((-1, 1))
+    phi = xp.broadcast_to(x - xp.asarray(0.5), zeros.shape)
+    solver._geometric_phase_state = (
+        getattr(solver, "_geometric_phase_state", None)
+        or build_geometric_phase_state_gpu(solver._grid, phi)
+    )
     state = NSStepState.from_inputs(
         NSStepRequest(
             psi=zeros,
@@ -370,13 +379,18 @@ def test_geometric_runtime_gpu_backend_fails_closed_before_dense_runtime():
             dt=1.0e-4,
             rho_l=1.0,
             rho_g=1.0,
-            sigma=0.0,
+            sigma=1.0,
             mu=0.01,
         ),
         backend=solver.backend,
     )
-    with pytest.raises(ValueError, match="active fused AO-Fast"):
-        solver._advance_geometric_phase_stage(state)
+    state = solver._advance_geometric_phase_stage(state)
+    assert state.geometric_runtime_material is not None
+    assert state.geometric_runtime_capillary_application is not None
+    assert (
+        state.geometric_runtime_capillary.pressure_range_status
+        == "gpu_diagonal_active_schur_approximation"
+    )
 
 
 def test_ao_fast_checkpoint_contract_validates_handoff_and_face_histories():

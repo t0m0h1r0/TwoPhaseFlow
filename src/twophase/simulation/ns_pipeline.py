@@ -40,6 +40,13 @@ from .geometric_phase_runtime import (
     materialise_geometric_runtime_capillary_application_state,
     materialise_geometric_runtime_capillary_state,
 )
+from .geometric_phase_runtime_gpu import (
+    build_geometric_phase_state_gpu,
+    materialise_geometric_common_flux_state_gpu,
+    materialise_geometric_runtime_capillary_application_state_gpu,
+    materialise_geometric_runtime_capillary_state_gpu,
+    transport_geometric_phase_common_flux_2d_gpu,
+)
 from . import ns_pipeline_registrations as _ns_pipeline_registrations  # noqa: F401
 from .ns_geometry_runtime import build_ns_geometry_runtime
 from .ns_grid_rebuild import rebuild_ns_grid
@@ -708,9 +715,13 @@ class TwoPhaseNSSolver:
         state_space = getattr(cfg, "interface_state_space", None)
         if getattr(state_space, "kind", "diffuse_cls") == "geometric_cell_fraction":
             phi = build_runtime_initial_phi(context, cfg.initial_condition)
-            self._geometric_phase_state = GeometricPhaseState.from_phi(
-                self._grid,
-                phi,
+            self._geometric_phase_state = (
+                build_geometric_phase_state_gpu(self._grid, phi)
+                if self._backend.is_gpu()
+                else GeometricPhaseState.from_phi(
+                    self._grid,
+                    phi,
+                )
             )
         else:
             self._geometric_phase_state = None
@@ -963,13 +974,6 @@ class TwoPhaseNSSolver:
 
     def _advance_geometric_phase_stage(self, state: NSStepState) -> NSStepState:
         """Advance typed AO q transport, then fail closed before NS coupling."""
-        if self._backend.is_gpu():
-            raise ValueError(
-                "geometric_cell_fraction GPU runtime requires active fused "
-                "AO-Fast transport/capillary/projection kernels. The dense "
-                "exact AO runtime is CPU-only and is disabled by "
-                "gpu_contract.inner_host_transfers=forbidden."
-            )
         self._last_geometric_common_flux_transport = None
         self._last_geometric_runtime_material = None
         self._last_geometric_runtime_capillary = None
@@ -988,42 +992,88 @@ class TwoPhaseNSSolver:
                 "geometric_cell_fraction runtime transport requires "
                 "geometric cell-face velocities"
             ) from exc
-        result = transport_geometric_phase_common_flux_2d(
-            self._grid,
-            phase_state,
-            face_velocity,
-            dt=state.dt,
-            rho_l=state.rho_l,
-            rho_g=state.rho_g,
-            boundary=boundary_axes(self.bc_type, self._grid.ndim),
-            tolerance=1.0e-11,
-            project_every_steps=self._geometric_projection_cadence(),
-            step_index=state.step_index,
-        )
+        boundary = boundary_axes(self.bc_type, self._grid.ndim)
+        if self._backend.is_gpu():
+            result = transport_geometric_phase_common_flux_2d_gpu(
+                self._grid,
+                phase_state,
+                face_velocity,
+                dt=state.dt,
+                rho_l=state.rho_l,
+                rho_g=state.rho_g,
+                boundary=boundary,
+                tolerance=1.0e-11,
+                project_every_steps=self._geometric_projection_cadence(),
+                step_index=state.step_index,
+            )
+        else:
+            result = transport_geometric_phase_common_flux_2d(
+                self._grid,
+                phase_state,
+                face_velocity,
+                dt=state.dt,
+                rho_l=state.rho_l,
+                rho_g=state.rho_g,
+                boundary=boundary,
+                tolerance=1.0e-11,
+                project_every_steps=self._geometric_projection_cadence(),
+                step_index=state.step_index,
+            )
         state.geometric_common_flux_transport = result
         self._last_geometric_common_flux_transport = result
-        material = materialise_geometric_common_flux_state(
-            self._grid,
-            result,
-            rho_l=state.rho_l,
-            rho_g=state.rho_g,
-            boundary=boundary_axes(self.bc_type, self._grid.ndim),
-            tolerance=1.0e-11,
+        material = (
+            materialise_geometric_common_flux_state_gpu(
+                self._grid,
+                result,
+                rho_l=state.rho_l,
+                rho_g=state.rho_g,
+                boundary=boundary,
+                tolerance=1.0e-11,
+            )
+            if self._backend.is_gpu()
+            else materialise_geometric_common_flux_state(
+                self._grid,
+                result,
+                rho_l=state.rho_l,
+                rho_g=state.rho_g,
+                boundary=boundary,
+                tolerance=1.0e-11,
+            )
         )
         state.geometric_runtime_material = material
+        state.psi = self._geometric_cell_to_node_view(material.phase_state.theta)
+        state.rho = self._geometric_cell_to_node_view(material.density)
+        state.conservative_density = state.rho
         self._last_geometric_runtime_material = material
-        capillary = materialise_geometric_runtime_capillary_state(
-            self._grid,
-            material,
-            sigma=state.sigma,
-            tolerance=1.0e-11,
+        capillary = (
+            materialise_geometric_runtime_capillary_state_gpu(
+                self._grid,
+                material,
+                sigma=state.sigma,
+                tolerance=1.0e-11,
+            )
+            if self._backend.is_gpu()
+            else materialise_geometric_runtime_capillary_state(
+                self._grid,
+                material,
+                sigma=state.sigma,
+                tolerance=1.0e-11,
+            )
         )
         state.geometric_runtime_capillary = capillary
         self._last_geometric_runtime_capillary = capillary
-        application = materialise_geometric_runtime_capillary_application_state(
-            self._grid,
-            capillary,
-            dt=state.dt,
+        application = (
+            materialise_geometric_runtime_capillary_application_state_gpu(
+                self._grid,
+                capillary,
+                dt=state.dt,
+            )
+            if self._backend.is_gpu()
+            else materialise_geometric_runtime_capillary_application_state(
+                self._grid,
+                capillary,
+                dt=state.dt,
+            )
         )
         state.geometric_runtime_capillary_application = application
         self._last_geometric_runtime_capillary_application = application
@@ -1113,6 +1163,41 @@ class TwoPhaseNSSolver:
             "q/density/common-flux/capillary-Hodge/application state, but "
             "non-static downstream AO momentum and PPE integration remain blocked"
         )
+
+    def _geometric_cell_to_node_view(self, cell_values):
+        """Average geometric cell cochains to the nodal NS material lattice."""
+        xp = self._backend.xp
+        values = xp.asarray(cell_values)
+        expected = tuple(self._grid.N)
+        if tuple(values.shape) != expected:
+            raise ValueError(f"geometric cell field shape must be {expected}")
+        nodes = xp.zeros((self._grid.N[0] + 1, self._grid.N[1] + 1), dtype=values.dtype)
+        counts = xp.zeros_like(nodes)
+        nodes[:-1, :-1] = nodes[:-1, :-1] + values
+        counts[:-1, :-1] = counts[:-1, :-1] + 1.0
+        nodes[1:, :-1] = nodes[1:, :-1] + values
+        counts[1:, :-1] = counts[1:, :-1] + 1.0
+        nodes[1:, 1:] = nodes[1:, 1:] + values
+        counts[1:, 1:] = counts[1:, 1:] + 1.0
+        nodes[:-1, 1:] = nodes[:-1, 1:] + values
+        counts[:-1, 1:] = counts[:-1, 1:] + 1.0
+        errstate = (
+            xp.errstate(invalid="ignore")
+            if hasattr(xp, "errstate")
+            else np.errstate(invalid="ignore")
+        )
+        with errstate:
+            nodal = nodes / counts
+        boundary = boundary_axes(self.bc_type, self._grid.ndim)
+        if boundary[0] == "periodic":
+            seam = 0.5 * (nodal[0, :] + nodal[-1, :])
+            nodal[0, :] = seam
+            nodal[-1, :] = seam
+        if boundary[1] == "periodic":
+            seam = 0.5 * (nodal[:, 0] + nodal[:, -1])
+            nodal[:, 0] = seam
+            nodal[:, -1] = seam
+        return nodal
 
     def _advance_conservative_common_flux_stage(
         self,

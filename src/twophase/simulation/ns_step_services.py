@@ -1702,13 +1702,6 @@ def solve_ns_pressure_stage(
                 "non-static AO capillary predictor requires face-native "
                 "predictor application before PPE"
             )
-        if (
-            state.previous_pressure_accel_face_components is not None
-            and _pressure_history_mode(ppe_runtime) == "pressure_coordinate"
-        ):
-            raise ValueError(
-                "non-static AO pressure-coordinate history coupling remains blocked"
-            )
         _prepare_nonstatic_geometric_pressure_reaction(
             state,
             backend=backend,
