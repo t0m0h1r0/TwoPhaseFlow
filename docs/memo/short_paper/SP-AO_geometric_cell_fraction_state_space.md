@@ -655,9 +655,12 @@ model to decrease the exact residual ledger:
 ```
 
 while also preserving sign/case margins and projection-work gates.  Fixed-count
-DC without residual decrease is not an AO-Fast method.  If DC stagnates, the
-solver escalates to the active PCG/Newton solve or fails closed; it must not
-repair the state by clipping `q` or relaxing the hard volume constraint.
+DC without residual decrease is not an AO-Fast method.  DC stagnation is a
+rejected candidate by default.  The solver may switch from DC to active
+PCG/Newton only when the YAML declares that exact fallback edge and its
+trigger; otherwise the step fails closed.  It must not repair the state by
+clipping `q`, relaxing the hard volume constraint, or silently changing solver
+families.
 
 The target complexity is `O(k |A|)` per Newton update, where `|A|` is the
 number of active interface-band cells.  The rejected production complexity is
@@ -683,14 +686,15 @@ the face-Hodge state needed by capillary work.
    rebuild compact SoA rows only on the dirty active region.
 3. compute exact Q_h^S(phi^-), S_h^S(phi^-), R=Q_h^S(phi^-)-q^- on A, not C_h.
 4. if exact residual, sign/case, and projection-work gates pass, accept.
-5. otherwise generate a candidate with the cheapest admissible active operator:
-   frozen-stratum linear update, active matrix-free PCG/Newton, or residual-
-   monotone DC used only as a preconditioned candidate when the active graph is
-   stable.
+5. otherwise run the declared primary active solver.  Frozen-stratum linear
+   updates and residual-monotone DC may be proposal-only accelerators when the
+   YAML says so; rejection discards the proposal and does not change solver
+   family.
 6. recompute exact active Q/S before commit; if sign/case changed, refresh the
    active table once and recheck.
-7. if exact active recomputation still fails, fail close or enter an explicit
-   topology route.
+7. if exact active recomputation still fails, apply the declared fallback
+   policy: `none` means fail close; `explicit_chain` allows only the listed
+   solver transition and then records it in the ledger.
 ```
 
 The asymptotic objective is:
@@ -742,6 +746,15 @@ interface:
         trust_region: sign_margin
         residual_tolerance: 1.0e-11
         condition_gate: diagnostic
+        solver:
+          primary: active_pcg_newton
+          accelerators:
+            dc_candidate:
+              enabled: true
+              role: proposal_only
+              on_reject: discard_candidate
+          fallback:
+            policy: none
       ledger:
         record_delta_surface: true
         record_residuals: true
@@ -788,6 +801,64 @@ interface:
 
 If the block is absent, parse as `diffuse_cls` for backward compatibility.
 
+### YAML/UX solver policy
+
+The UX must separate three choices:
+
+```text
+primary solver      the only solver family that owns convergence by default,
+accelerator         a proposal generator whose rejection changes no state,
+fallback            an explicitly declared solver transition after failure.
+```
+
+The default is fail-close:
+
+```yaml
+interface:
+  state_space:
+    compatibility:
+      projection:
+        solver:
+          primary: active_pcg_newton
+          accelerators:
+            dc_candidate:
+              enabled: true
+              role: proposal_only
+              on_reject: discard_candidate
+          fallback:
+            policy: none
+```
+
+In this mode, DC can reduce cost only by proposing an accepted step before the
+primary active solver needs work.  A rejected DC candidate is discarded.  If the
+declared primary solver fails, the compatibility projection fails closed.
+
+An implementation may opt into fallback only with a complete chain:
+
+```yaml
+interface:
+  state_space:
+    compatibility:
+      projection:
+        solver:
+          primary: residual_monotone_dc
+          fallback:
+            policy: explicit_chain
+            chain:
+              - from: residual_monotone_dc
+                to: active_pcg_newton
+                triggers:
+                  - no_exact_residual_decrease
+                  - trust_region_exhausted
+                record_as: dc_to_pcg_declared_fallback
+```
+
+This is not an automatic recovery rule.  It is a user-visible numerical
+contract.  The UI should present the transition as an opt-in solver policy,
+show the trigger list, and require the ledger label.  The run ledger must record
+`solver.primary`, `accelerator.accepted`, `fallback.policy`,
+`fallback.transition`, and the exact residuals before and after the transition.
+
 ### Reinitialization
 
 Compatibility projection is not reinitialization.  For the geometric route:
@@ -813,6 +884,9 @@ transport.variable=q with momentum.form != conservative_common_flux,
 bundle_virtual_work with endpoint != geometric_cell_fraction,
 geometric_cell_fraction with ridge_eikonal reinitialization,
 fail_close=false,
+implicit solver fallback such as auto, try_next, or on_failure without chain,
+fallback.policy=explicit_chain with missing from/to/triggers/record_as,
+accelerator on_reject that switches primary solver family,
 boundedness repaired by clipping,
 capillary from curvature_jump on incompatible psi,
 normalized J_A used as the hard physical projection operator.

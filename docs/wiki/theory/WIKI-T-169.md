@@ -33,6 +33,8 @@ sources:
     description: "Paper Chapter 9 insertion of active-stratum approximation accuracy and residual-monotone DC conditions"
   - path: artifacts/A/ch14_ao_fast_algorithm_contract_CHK-RA-CH14-AO-FASTVOL-004.md
     description: "Implementation-ready AO-Fast active geometry acceleration contract, GPU kernel plan, ledger counters, and proof obligations"
+  - path: artifacts/A/ch14_ao_yaml_fallback_policy_CHK-RA-CH14-AO-FASTVOL-005.md
+    description: "AO-Fast explicit fallback YAML/UX policy preserving fail-close semantics"
 depends_on:
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-159]]"
@@ -546,10 +548,13 @@ The implementation contract is an active-geometry acceleration route: detect
 dirty sign/case/crossing/metric/ownership rows, reuse compact active-table rows
 outside the dirty halo, recompute exact `Q/S/J/dS` only on the active graph,
 and expose `|A|`, `|dirty|`, refreshed-cell count, kernel-launch count, and
-host-transfer count in the ledger.  Candidate generation may use frozen active
-linearization, active matrix-free PCG/Newton, or residual-monotone DC as a cheap
-preconditioned proposal, but the speedup is credited to active geometry,
-incremental cache refresh, and device-resident fused kernels, not to DC itself.
+host-transfer count in the ledger.  The YAML must name the primary active
+solver.  Frozen active linearization or residual-monotone DC may be
+proposal-only accelerators, but rejection discards the proposal and does not
+change solver family.  PCG/Newton is either the declared primary solver or a
+declared `explicit_chain` fallback target.  There is no implicit DC-to-PCG
+recovery.  The speedup is credited to active geometry, incremental cache
+refresh, and device-resident fused kernels, not to DC itself.
 
 CCD/DCCD/FCCD/UCCD remain useful on the smooth side of the split: gauge
 prediction, screened gauge metric `W_eta`, face-state reconstruction,
@@ -577,6 +582,29 @@ interface:
         fail_close: true
         trust_region: sign_margin
         residual_tolerance: 1.0e-11
+        solver:
+          primary: active_pcg_newton
+          accelerators:
+            dc_candidate:
+              enabled: true
+              role: proposal_only
+              on_reject: discard_candidate
+          fallback:
+            policy: none
+```
+
+Fallback may be enabled only as an explicit solver chain:
+
+```yaml
+solver:
+  primary: residual_monotone_dc
+  fallback:
+    policy: explicit_chain
+    chain:
+      - from: residual_monotone_dc
+        to: active_pcg_newton
+        triggers: [no_exact_residual_decrease, trust_region_exhausted]
+        record_as: dc_to_pcg_declared_fallback
 ```
 
 The numerical stack must then be internally consistent:
@@ -610,6 +638,9 @@ q transport without conservative_common_flux,
 bundle_virtual_work with endpoint other than geometric_cell_fraction,
 geometric_cell_fraction with old Ridge-Eikonal volume reinitialization,
 fail_close=false,
+implicit fallback such as auto, try_next, best_effort, or on_failure,
+fallback.policy=explicit_chain without from/to/triggers/record_as,
+accelerator rejection that switches primary solver family,
 boundedness repaired by clipping,
 capillary from incompatible diffuse psi.
 ```

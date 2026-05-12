@@ -58,13 +58,14 @@ or halo ownership may have changed.
 3. rebuild compact SoA rows only on dirty active cells.
 4. compute exact Q/S residuals on A.
 5. if exact gates pass, accept without solve.
-6. otherwise generate an active candidate:
-     a. frozen-stratum linear update on compact rows,
-     b. active matrix-free PCG/Newton,
-     c. residual-monotone DC only when it is a cheap preconditioned candidate.
+6. otherwise run the declared primary active solver.  Frozen-stratum linear
+   updates and residual-monotone DC may run only as proposal-only accelerators
+   unless YAML declares them as the primary solver.
 7. exact-recompute Q/S on A before commit.
 8. if sign/case changed, refresh A once and recheck.
-9. fail close or enter a declared topology route if exact gates still fail.
+9. if exact gates still fail, apply the declared fallback policy: `none` fails
+   closed, while `explicit_chain` allows only the listed transition and records
+   the trigger.
 ```
 
 The speed contract is therefore:
@@ -115,6 +116,46 @@ cheap preconditioned candidate when the active graph and metric cache are
 stable, and only if exact `Q_h-q` residuals decrease.  The AO speedup is not
 credited to DC; it is credited to active geometry and device-resident kernels.
 
+## YAML/UX Fallback Policy
+
+The solver UX is fail-close by default:
+
+```yaml
+solver:
+  primary: active_pcg_newton
+  accelerators:
+    dc_candidate:
+      enabled: true
+      role: proposal_only
+      on_reject: discard_candidate
+  fallback:
+    policy: none
+```
+
+This means DC rejection discards the proposal.  It does not switch to PCG.
+PCG/Newton is either the declared primary solver, or it is a declared fallback
+target:
+
+```yaml
+solver:
+  primary: residual_monotone_dc
+  fallback:
+    policy: explicit_chain
+    chain:
+      - from: residual_monotone_dc
+        to: active_pcg_newton
+        triggers:
+          - no_exact_residual_decrease
+          - trust_region_exhausted
+        record_as: dc_to_pcg_declared_fallback
+```
+
+Parser gates must reject `auto`, `try_next`, `best_effort`, bare
+`on_failure: active_pcg_newton`, missing chain triggers, and accelerator
+settings that switch the primary solver on rejection.  The ledger must record
+`solver.primary`, accelerator acceptance, fallback policy, transition, trigger,
+and exact residuals before/after.
+
 CCD/DCCD/FCCD/UCCD are considered only for smooth auxiliary maps: `phi`
 prediction, `W_eta`, face-state reconstruction, and pressure-adjoint
 diagnostics.  They are not AO acceleration if they differentiate `theta_C` or
@@ -131,6 +172,8 @@ P5. GPU inner path has zero per-iteration host synchronization.
 P6. approximation remainders show the declared beta_C order.
 P7. exact acceptance uses active recomputation before commit.
 P8. scalar pressure reconstruction is diagnostic-only and may fail closed.
+P9. fallback parser rejects implicit solver transitions and records every
+    declared transition.
 ```
 
 ## Completion Judgement
