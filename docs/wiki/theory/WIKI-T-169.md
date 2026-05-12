@@ -35,6 +35,8 @@ sources:
     description: "Implementation-ready AO-Fast active geometry acceleration contract, GPU kernel plan, ledger counters, and proof obligations"
   - path: artifacts/A/ch14_ao_yaml_fallback_policy_CHK-RA-CH14-AO-FASTVOL-005.md
     description: "AO-Fast explicit fallback YAML/UX policy preserving fail-close semantics"
+  - path: artifacts/A/ch14_ao_fast_design_policy_CHK-RA-CH14-AO-FASTVOL-006.md
+    description: "AO-Fast implementation design policy and reuse plan for the direct AO branch"
 depends_on:
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-159]]"
@@ -556,6 +558,17 @@ declared `explicit_chain` fallback target.  There is no implicit DC-to-PCG
 recovery.  The speedup is credited to active geometry, incremental cache
 refresh, and device-resident fused kernels, not to DC itself.
 
+The direct AO branch `codex/ra-ch14-osc-sharp-volume-20260510` should be used
+as a dense reference implementation and source of formulas, not as the
+production compute loop.  Reusable pieces are the P1 cut geometry algebra,
+fixed-stratum derivative formulas, `MetricCellComplex` cache, q/theta/phi phase
+state, fail-close parser gates, capillary face-Hodge runtime contracts, and
+manufactured tests.  The dense compatibility projection and dense line search
+remain oracle/debug code; AO-Fast rewrites them into `ActiveGeometryTable`
+rows, dirty plus one-face halo refresh, and device-resident active Schur
+operators.  Dense reference mode is an oracle/debug path, not a runtime
+fallback; default production stays `active_cached` plus fail-close.
+
 CCD/DCCD/FCCD/UCCD remain useful on the smooth side of the split: gauge
 prediction, screened gauge metric `W_eta`, face-state reconstruction,
 pressure-adjoint work pairs, and smooth residual diagnostics.  They remain
@@ -577,6 +590,8 @@ interface:
       constraint: hard_cell_volume
       units: physical_volume
       projection:
+        implementation: active_cached
+        dense_reference: test_only
         method: fixed_stratum_schur
         metric: screened_gauge_hodge
         fail_close: true
@@ -638,6 +653,7 @@ q transport without conservative_common_flux,
 bundle_virtual_work with endpoint other than geometric_cell_fraction,
 geometric_cell_fraction with old Ridge-Eikonal volume reinitialization,
 fail_close=false,
+dense_reference/reference_dense used as an implicit runtime fallback,
 implicit fallback such as auto, try_next, best_effort, or on_failure,
 fallback.policy=explicit_chain without from/to/triggers/record_as,
 accelerator rejection that switches primary solver family,

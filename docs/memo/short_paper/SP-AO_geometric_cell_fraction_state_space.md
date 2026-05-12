@@ -723,6 +723,38 @@ count.  DC is therefore an optional cheap candidate inside AO-Fast; the speedup
 comes from compact active geometry, incremental cache refresh, fused GPU
 kernels, and avoiding full-grid cut-geometry recomputation.
 
+### Direct AO branch adoption policy
+
+The branch `codex/ra-ch14-osc-sharp-volume-20260510` is the dense direct-AO
+reference, not the production fast path.  Its usable assets are the exact P1
+case algebra for `Q_h/S_h/J_q/dS_h`, `MetricCellComplex` metric caching,
+q/theta/phi phase-state separation, fail-close parser gates, capillary
+face-Hodge runtime contracts, and manufactured tests.
+
+The production route must rewrite the storage and iteration domain:
+
+```text
+dense reference:  (Nx, Ny, 4) local derivative arrays and full-grid line search,
+AO-Fast:          ActiveGeometryTable rows on A plus one-face halo.
+```
+
+`project_cell_volume_compatibility_2d` from the dense branch may be imported as
+`DenseReferenceGeometry` / debug oracle only.  It is not an implicit fallback.
+The dense branch's scalar host residual checks inside CG are also not
+production GPU control; active PCG/Newton must keep Krylov reductions on device
+and transfer only outer ledger scalars.
+
+The first implementation slices should therefore be:
+
+```text
+1. import dense direct-AO formulas/tests as oracle code,
+2. build ActiveGeometryTable with the same P1 case algebra,
+3. prove active-vs-dense equality on manufactured regular strata,
+4. add dirty plus one-face halo refresh tests,
+5. add device-resident active J/J^T/Schur operators,
+6. then connect runtime/capillary gates and chapter-14 YAMLs.
+```
+
 ## 12. YAML Contract
 
 The front door is a state-space declaration:
@@ -740,6 +772,8 @@ interface:
       constraint: hard_cell_volume
       units: physical_volume
       projection:
+        implementation: active_cached
+        dense_reference: test_only
         method: fixed_stratum_schur
         metric: screened_gauge_hodge
         fail_close: true
@@ -884,6 +918,7 @@ transport.variable=q with momentum.form != conservative_common_flux,
 bundle_virtual_work with endpoint != geometric_cell_fraction,
 geometric_cell_fraction with ridge_eikonal reinitialization,
 fail_close=false,
+dense_reference/reference_dense used as an implicit runtime fallback,
 implicit solver fallback such as auto, try_next, or on_failure without chain,
 fallback.policy=explicit_chain with missing from/to/triggers/record_as,
 accelerator on_reject that switches primary solver family,
