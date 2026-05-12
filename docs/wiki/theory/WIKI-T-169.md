@@ -81,6 +81,12 @@ sources:
     description: "Blow-up-assumed experiment ladder for AO-Fast: algebraic certificate, one-step impulse, two-step history replay, short horizon, pre-blowup replay"
   - path: artifacts/A/ch14_ao_rung0_algebraic_rca_CHK-RA-CH14-AO-FASTVOL-029.md
     description: "Rung-0 algebraic AO split RCA: CPU exact zero-drive defect, component-volume residual probe, and GPU flat fail-close classification fix"
+  - path: artifacts/A/ch14_capillary_mainline_rerun_CHK-RA-CH14-AO-FASTVOL-030.md
+    description: "Mainline Chapter 14 capillary-wave rerun separating production FCCD/UCCD6/pressure-jump success from AO-Fast admission"
+  - path: artifacts/A/paper_ch12_13_ao_gate_experiments_CHK-RA-CH14-AO-FASTVOL-031.md
+    description: "Executable U12/V11 AO-Fast capillary split gates, stale V11 common-flux deletion, and paper-facing figures"
+  - path: artifacts/A/ch14_yaml_state_space_update_CHK-RA-CH14-AO-FASTVOL-032.md
+    description: "Chapter 14 YAML state-space contract: production configs declare diffuse_cls and do not admit AO-Fast implicitly"
 depends_on:
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-159]]"
@@ -930,3 +936,95 @@ bundle capillary Hodge gates,
 restart equivalence gates,
 then ch14 YAML activation.
 ```
+
+## Capillary Split Admission Findings
+
+The AO-Fast capillary blocker is algebraic, not a CFL or time-step symptom.
+For a fixed active stratum, building the capillary Riesz representative and
+the full cell-pressure reaction from the same Schur image can cancel the
+face-balanced drive exactly.  Therefore
+
+```text
+e = g + J_q^T pi != 0
+```
+
+is not by itself a certificate that the capillary covector performs physical
+work in the face velocity space.  A production AO-Fast path must first define
+the admissible pressure-reaction subspace `R_p(q_T)` in the same face work
+metric, then compute the non-pressure capillary drive:
+
+```text
+r_sigma_bal = r_sigma - Pi^{M_f}_{R_p(q_T)} r_sigma.
+```
+
+Consequences:
+
+- CPU exact full-pressure AO split is a counterexample when it returns zero
+  balanced drive for a non-static capillary wave.
+- Component-volume Hodge residual is only a non-staticity probe until it is
+  proven to equal the final `R_p` complement.
+- A non-static AO packet with diagonal active-Schur residual and zero balanced
+  drive must fail close; it must not switch to hidden PCG, DC, dense CPU, or
+  component-Hodge fallback.
+- Flat/static interfaces are a separate zero-drive control.  A flat interface
+  should not be rejected merely because a fail-close gate exists.
+
+The executable U12/V11 gates recorded the same pattern.  U12 flat N32 gives
+CPU exact/component balanced drive `0/0`; capillary wave N32 gives
+`0/2.117576`, and N64 gives `0/2.305484`.  V11 repeats the result with
+pressure-coordinate and face-acceleration histories: flat pressure-coordinate
+component drive is `0`, while wave pressure-coordinate, wave face-acceleration,
+and wave N64 component probes give `2.117576`, `2.117576`, and `2.305484`.
+All required GPU non-static rows ran and fail-closed.
+
+## Chapter 14 Production YAML Contract
+
+The checked-in Chapter 14 benchmark YAMLs are production diffuse-CLS configs,
+not AO-Fast `geometric_cell_fraction` configs.  Each canonical YAML now
+declares:
+
+```yaml
+interface:
+  state_space:
+    kind: diffuse_cls
+```
+
+This is a retrieval and parser contract, not a physical parameter change.  It
+prevents `geometric_cell_fraction` from being read as an implicit fallback for
+the validated Chapter 14 route.
+
+Chapter 14 capillary routes are now separated at the YAML front door:
+
+```text
+capillary wave / Rayleigh--Taylor:
+  surface_tension.source = curvature_jump
+
+static droplet / oscillating droplet / rising bubble:
+  surface_tension.source = closed_interface_riesz
+  poisson.operator.capillary_reaction_projection = pressure_component_hodge
+
+AO-Fast geometric_cell_fraction:
+  separate YAML contract only; not admitted by production ch14 YAMLs
+```
+
+The mainline capillary-wave rerun belongs to the first category.  Its
+FCCD/UCCD6/pressure-jump/component-Hodge production stack completed the
+snapshot window with small volume drift, but that result is not evidence that
+the AO-Fast packet passed the capillary split gate.  Conversely, AO-Fast
+fail-close does not falsify the standard Chapter 14 capillary benchmark.
+
+## Experiment And Paper Routing
+
+Do not revive the stale V11 common-flux admissibility experiment as evidence
+for AO-Fast capillary admission.  That script answered an older transport
+ledger question.  The current paper route is:
+
+```text
+Chapter 12 U12: algebraic AO-Fast capillary split gate
+Chapter 13 V11: integration pre-gate separating AO-Fast from production
+Chapter 14: standard production benchmark unless a separate AO-Fast YAML
+            passes the U12/V11 pressure-reaction gates
+```
+
+This keeps the paper from claiming success for an unresolved pressure-reaction
+split while preserving the useful AO-Fast theory and GPU implementation work.
