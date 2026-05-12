@@ -313,14 +313,20 @@ class PPESolverDefectCorrection(IPPESolver):
                 final_residual,
                 record_stats=False,
             )
-            final_residual_norm = float(
-                self.backend.asnumpy(xp.linalg.norm(final_residual.ravel()))
+            final_stats = self.backend.asnumpy(
+                xp.stack([
+                    xp.linalg.norm(final_residual.ravel()),
+                    xp.max(xp.abs(final_residual.ravel())),
+                ])
             )
+            final_residual_norm = float(final_stats[0])
+            final_residual_linf = float(final_stats[1])
             history.append(final_residual_norm)
             broke = final_residual_norm <= self.tolerance * scale
-        final_residual_linf = float(
-            self.backend.asnumpy(xp.max(xp.abs(final_residual.ravel())))
-        )
+        else:
+            final_residual_linf = float(
+                self.backend.asnumpy(xp.max(xp.abs(final_residual.ravel())))
+            )
         self.last_residual_history = history
         self.last_stalled = not broke
         self.last_base_pressure = xp.copy(pressure)

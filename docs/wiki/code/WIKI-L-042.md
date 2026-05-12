@@ -10,6 +10,12 @@ sources:
     description: "Live-run CPU/GPU observation and py-spy stack evidence"
   - path: src/twophase/simulation/runner.py
     description: "Cadence-gated pre-step checkpoint materialization"
+  - path: src/twophase/simulation/geometric_phase_runtime_gpu.py
+    description: "AO-Fast fail-close scalar packet transfer"
+  - path: src/twophase/tools/diagnostics/collector.py
+    description: "Batched capillary-wave diagnostic scalar transfer"
+  - path: src/twophase/simulation/viscous_helmholtz_dc.py
+    description: "Batched initial viscous-DC norm transfer"
 depends_on:
   - "[[WIKI-L-038]]"
   - "[[WIKI-L-039]]"
@@ -44,6 +50,10 @@ matrix-free kernels), not a host-only numerical loop with independent chunks.
   written.  Materialize the frame only when a YAML/CLI checkpoint cadence,
   time checkpoint crossing, or terminal continuation checkpoint actually needs
   it.
+- Scalar-valued control gates that must remain on the host should transfer a
+  single packed vector per logical boundary.  Do not call `float(...)`,
+  `to_host(...)`, or `asnumpy(...)` repeatedly for residuals that are consumed
+  by the same fail-close, diagnostic, or convergence decision.
 - Process pools are especially suspect around CuPy arrays: they imply
   device-to-host copies, pickling, separate CUDA contexts, or invalid sharing
   of a coupled timestep state.
