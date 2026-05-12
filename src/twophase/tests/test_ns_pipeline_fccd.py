@@ -790,7 +790,7 @@ def test_fccd_solver_is_shared():
 
 
 def test_ch14_capillary_yaml_builds_solver():
-    """Checked-in ch14 capillary YAML is executable: FCCD/HFE stack + UCCD convection."""
+    """Checked-in ch14 capillary YAML enters the AO-Fast q-transport stack."""
     from twophase.ppe.defect_correction import PPESolverDefectCorrection
     from twophase.ppe.fccd_matrixfree import PPESolverFCCDMatrixFree
     from twophase.ppe.fd_direct import PPESolverFDDirect
@@ -802,18 +802,22 @@ def test_ch14_capillary_yaml_builds_solver():
     cfg = ExperimentConfig.from_yaml(path)
     solver = TwoPhaseNSSolver.from_config(cfg)
 
+    assert cfg.interface_state_space.kind == "geometric_cell_fraction"
     assert solver._fccd is not None
-    assert solver._advection_scheme == "fccd_flux"
+    assert solver._advection_scheme == "geometric_swept_volume"
+    assert solver._interface_tracking_method == "q_cell_fraction"
     assert solver._convection_scheme == "uccd6"
     assert solver._pressure_gradient_scheme == "fccd_flux"
     assert solver._surface_tension_gradient_scheme == "none"
     assert solver._surface_tension_scheme == "pressure_jump"
+    assert solver._capillary_force_source == "bundle_virtual_work"
+    assert solver._capillary_range_projection == "none"
+    assert solver._capillary_reaction_projection == "pressure_component_hodge"
     assert solver._ppe_coefficient_scheme == "phase_separated"
     assert solver._ppe_interface_coupling_scheme == "affine_jump"
-    assert solver._hfe is not None
     assert isinstance(solver._transport, PsiDirectTransport)
     assert solver._interface_runtime.rebuild_freq == 1
-    assert solver._interface_runtime.reinit_every == 1
+    assert solver._interface_runtime.reinit_every == 0
     assert isinstance(solver._ppe_solver, PPESolverDefectCorrection)
     assert isinstance(solver._ppe_solver.operator, PPESolverFCCDMatrixFree)
     assert isinstance(solver._ppe_solver.base_solver, PPESolverFDDirect)
@@ -832,6 +836,8 @@ def test_ch14_capillary_wave_yaml_builds_initial_field():
 
     psi = solver.build_ic(cfg)
     assert psi.shape == solver._grid.shape
+    assert solver._geometric_phase_state is not None
+    assert solver._geometric_phase_state.q.shape == tuple(solver._grid.N)
 
     x0 = int(np.argmin(np.abs(np.asarray(solver._grid.coords[0]) - 0.0)))
     y_coords = np.asarray(solver._grid.coords[1])
@@ -841,46 +847,23 @@ def test_ch14_capillary_wave_yaml_builds_initial_field():
     assert psi[x0, y_high] < 0.5
 
 
-def test_ch14_capillary_curvature_is_supported_on_interface_band():
-    """HFE must not reintroduce pressure-jump curvature in saturation tails."""
+def test_ch14_rayleigh_taylor_yaml_builds_ao_initial_state():
+    """Rayleigh--Taylor YAML shares the AO-Fast q/theta/phi state contract."""
     path = (
         Path(__file__).resolve().parents[3]
-        / "experiment/ch14/config/ch14_capillary.yaml"
+        / "experiment/ch14/config/ch14_rayleigh_taylor.yaml"
     )
     cfg = ExperimentConfig.from_yaml(path)
     solver = TwoPhaseNSSolver.from_config(cfg)
     psi = solver.build_ic(cfg)
-    u, v = solver.build_velocity(cfg, psi)
-    psi, _, _ = solver._rebuild_grid(psi, u, v, cfg.physics.rho_l, cfg.physics.rho_g)
 
-    kappa_raw = solver._curv.compute(psi)
-    kappa = solver._hfe.apply(
-        solver._backend.xp.asarray(kappa_raw),
-        solver._backend.xp.asarray(psi),
-    )
-    kappa = _interface_supported_curvature(
-        kappa,
-        psi,
-        xp=solver._backend.xp,
-        psi_min=getattr(solver._curv, "psi_min", 0.01),
-    )
-    kappa_h = np.asarray(solver._backend.to_host(kappa))
-    psi_h = np.asarray(solver._backend.to_host(psi))
-
-    psi_min = getattr(solver._curv, "psi_min", 0.01)
-    tail = (psi_h <= psi_min) | (psi_h >= 1.0 - psi_min)
-    assert np.all(kappa_h[tail] == 0.0)
-    capillary = next(
-        obj for obj in cfg.initial_condition["objects"]
-        if obj.get("type") == "capillary_wave"
-    )
-    wavelength = (
-        float(capillary.get("length", cfg.grid.LX))
-        / float(capillary["mode"])
-    )
-    k_wave = 2.0 * np.pi / wavelength
-    continuum_kappa_max = abs(float(capillary["amplitude"])) * k_wave * k_wave
-    assert float(np.max(np.abs(kappa_h * (1.0 - psi_h)))) < 2.0 * continuum_kappa_max
+    assert cfg.interface_state_space.kind == "geometric_cell_fraction"
+    assert solver._advection_scheme == "geometric_swept_volume"
+    assert solver._interface_tracking_method == "q_cell_fraction"
+    assert solver._capillary_force_source == "bundle_virtual_work"
+    assert solver._geometric_phase_state is not None
+    assert solver._geometric_phase_state.q.shape == tuple(solver._grid.N)
+    assert psi.shape == solver._grid.shape
 
 
 def test_ch14_rising_bubble_yaml_builds_solver():
@@ -904,7 +887,12 @@ def test_ch14_rising_bubble_yaml_builds_solver():
     assert solver._transport.mass_correction is False
     assert solver._interface_runtime.rebuild_freq == 0
     assert solver._interface_runtime.reinit_every == 0
-    assert solver._advection_scheme == "fccd_flux"
+    assert cfg.interface_state_space.kind == "geometric_cell_fraction"
+    assert solver._advection_scheme == "geometric_swept_volume"
+    assert solver._interface_tracking_method == "q_cell_fraction"
+    assert solver._capillary_force_source == "bundle_virtual_work"
+    assert solver._capillary_range_projection == "none"
+    assert solver._capillary_reaction_projection == "pressure_component_hodge"
     assert solver._convection_scheme == "uccd6"
     assert solver._convection_time_scheme == "imex_bdf2"
     assert solver._viscous_time_scheme == "implicit_bdf2"
@@ -940,6 +928,10 @@ def test_ch14_canonical_yamls_build_shared_common_flux_contract():
     for path in sorted(p for p in config_dir.glob("ch14_*.yaml") if not p.name.startswith("_")):
         cfg = ExperimentConfig.from_yaml(path)
         solver = TwoPhaseNSSolver.from_config(cfg)
+        assert cfg.interface_state_space.kind == "geometric_cell_fraction", path.name
+        assert solver._advection_scheme == "geometric_swept_volume", path.name
+        assert solver._interface_tracking_method == "q_cell_fraction", path.name
+        assert solver._capillary_force_source == "bundle_virtual_work", path.name
         assert solver._momentum_form == "conservative_common_flux", path.name
         assert solver._cn_buoyancy_predictor_assembly_mode == "none", path.name
         assert solver._preserve_projected_faces is True, path.name

@@ -31,10 +31,44 @@ grid:
 
 interface:
   state_space:
-    # Chapter-14 production benchmarks remain diffuse-CLS configs.  AO-Fast
-    # geometric_cell_fraction requires an explicit separate contract and is
-    # fail-closed before entering these production YAMLs.
-    kind: diffuse_cls
+    kind: geometric_cell_fraction
+    conserved_variable: q
+    normalized_view: theta
+    gauge:
+      variable: phi
+      trace: p1_levelset
+    compatibility:
+      constraint: hard_cell_volume
+      units: physical_volume
+      projection:
+        implementation: active_cached
+        dense_reference: test_only
+        gpu_contract:
+          required: true
+          active_storage: struct_of_arrays
+          inner_host_transfers: forbidden
+          dense_runtime_fallback: forbidden
+          record_kernel_counters: true
+        method: fixed_stratum_schur
+        metric: screened_gauge_hodge
+        fail_close: true
+        trust_region: sign_margin
+        residual_tolerance: 1.0e-11
+        condition_gate: fail_close
+        support_budget:
+          max_active_ratio: 0.25
+          max_support_stream_ratio: 0.25
+          max_epoch_growth_ratio: 1.5
+          on_overrun: fail_close
+        solver:
+          primary: active_pcg_newton
+          accelerators:
+            dc_candidate:
+              enabled: true
+              role: proposal_only
+              on_reject: discard_candidate
+          fallback:
+            policy: none
   thickness:
     mode: local
     base_factor: 1.5
@@ -46,16 +80,12 @@ interface:
       # Hodge gate.
       method: face_implicit
   reinitialization:
-    algorithm: ridge_eikonal
+    algorithm: none
     schedule:
-      # Static-equilibrium validation must not apply pseudo-time profile
-      # restoration as a physical step.  Reinitialization is validated
-      # separately; here it would inject unaccounted capillary work.
       every_steps: 0
     profile:
-      eps_scale: 1.4
+      eps_scale: 1.0
       ridge_sigma_0: 3.0
-      volume_constraint: sharp_phase_volume
 
 physics:
   phases:
@@ -83,9 +113,13 @@ numerics:
     algorithm: fractional_step
   interface:
     transport:
-      variable: psi
-      spatial: fccd
+      variable: q
+      spatial: geometric_swept_volume
       time_integrator: tvd_rk3
+      boundedness: certified
+      fail_close: true
+    tracking:
+      primary: q
   momentum:
     form: conservative_common_flux
     predictor:
@@ -106,13 +140,14 @@ numerics:
             max_iterations: 12
             relaxation: 0.8
       surface_tension:
+        gradient: none
         formulation: pressure_jump
-        source: closed_interface_riesz
+        source: bundle_virtual_work
         closed_interface:
-          endpoint: conservative_psi
+          endpoint: geometric_cell_fraction
           residual_contract:
             metric: pressure_adjoint
-            constraints: [component_volume]
+            constraints: [cell_volume]
             fail_close: true
   projection:
     face_flux_projection: true
