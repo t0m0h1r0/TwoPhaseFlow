@@ -91,6 +91,46 @@ class GeometricRuntimeCapillaryApplicationState:
     capillary_drive_present: bool
 
 
+def validate_geometric_runtime_capillary_application_admitted(
+    application: GeometricRuntimeCapillaryApplicationState,
+) -> None:
+    """Fail-close AO capillarity unless the pressure reaction is admitted.
+
+    A3 mapping:
+      Equation: SP-AO runtime drive is
+      ``r_sigma - Pi^{M_f}_{R_p(q_T)} r_sigma``.
+      Discretization: the current dense/diagnostic pressure-Hodge packet only
+      certifies static Young-Laplace identities; it is not the admitted
+      pressure-reaction subspace ``R_p(q_T)``.
+      Code: pressure-exact static packets may bypass legacy CSF, while
+      non-static packets stop before predictor/PPE/corrector coupling.
+    """
+    if not isinstance(application, GeometricRuntimeCapillaryApplicationState):
+        raise TypeError("application must be a GeometricRuntimeCapillaryApplicationState")
+    tolerance = _validate_tolerance(application.capillary.pressure_range_tolerance)
+    if application.pressure_exact_static:
+        if (
+            application.pressure_balanced_increment_weighted_l2 > tolerance
+            or application.max_abs_pressure_balanced_face_increment > tolerance
+        ):
+            raise ValueError(
+                "pressure-exact AO capillary packet has nonzero "
+                "pressure-balanced drive"
+            )
+        return
+    if application.capillary_drive_present:
+        raise ValueError(
+            "non-static AO capillary runtime remains fail-closed until an "
+            "admitted pressure-reaction projection R_p(q_T) is implemented; "
+            "Young-Laplace pressure-Hodge diagnostics are not a runtime "
+            "pressure reaction"
+        )
+    raise ValueError(
+        "AO capillary application is neither pressure-exact static nor an "
+        "admitted non-static pressure reaction"
+    )
+
+
 def materialise_geometric_common_flux_state(
     grid,
     result: GeometricCommonFluxTransportResult,

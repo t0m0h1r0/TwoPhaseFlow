@@ -54,6 +54,10 @@ class AOFastRuntimeContract:
     capillary_endpoint: str
     capillary_constraints: tuple[str, ...]
     capillary_reaction_projection: str
+    projection_implementation: str
+    dense_reference: str
+    gpu_required: bool
+    fallback_policy: str
     checkpoint_state_phase: str = "pre_step"
     checkpoint_required_arrays: tuple[str, ...] = GEOMETRIC_CHECKPOINT_REQUIRED_ARRAYS
     face_history_prefixes: tuple[str, ...] = GEOMETRIC_FACE_HISTORY_PREFIXES
@@ -86,6 +90,15 @@ def build_ao_fast_runtime_contract(cfg: Any) -> AOFastRuntimeContract:
     _require(getattr(state, "conserved_variable", None), "q", "conserved_variable")
     _require(getattr(state, "normalized_view", None), "theta", "normalized_view")
     _require(getattr(state, "gauge_variable", None), "phi", "gauge_variable")
+    _require(
+        getattr(state, "projection_implementation", None),
+        "active_cached",
+        "projection_implementation",
+    )
+    _require(getattr(state, "dense_reference", None), "test_only", "dense_reference")
+    if getattr(state, "gpu_required", False) is not True:
+        raise ValueError("AO-Fast runtime contract requires gpu_required=True")
+    _require(getattr(state, "fallback_policy", None), "none", "fallback_policy")
     _require(getattr(run, "interface_tracking_method", None), "q_cell_fraction",
              "interface_tracking_method")
     _require(getattr(run, "advection_scheme", None), "geometric_swept_volume",
@@ -129,6 +142,10 @@ def build_ao_fast_runtime_contract(cfg: Any) -> AOFastRuntimeContract:
         capillary_endpoint="geometric_cell_fraction",
         capillary_constraints=("cell_volume",),
         capillary_reaction_projection="pressure_component_hodge",
+        projection_implementation="active_cached",
+        dense_reference="test_only",
+        gpu_required=True,
+        fallback_policy="none",
     )
 
 

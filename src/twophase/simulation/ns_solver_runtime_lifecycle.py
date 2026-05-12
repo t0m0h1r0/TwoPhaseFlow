@@ -73,6 +73,7 @@ def initialise_ns_solver_from_options(solver, options) -> None:
     solver._record_interface_projection_fields = False
     solver._last_interface_projection_fields = None
     solver._initialise_geometry(options.grid)
+    _validate_geometric_backend(solver, options)
     solver._initialise_interface_runtime(options.interface)
     solver._initialise_ppe_runtime(
         options.ppe,
@@ -93,3 +94,15 @@ def initialise_ns_solver_from_options(solver, options) -> None:
         ),
     )
     bind_ns_runtime_bootstrap(solver, bootstrap)
+
+
+def _validate_geometric_backend(solver, options) -> None:
+    """Reject active-geometry execution on the dense CPU runtime."""
+    if (
+        getattr(options.schemes, "advection_scheme", "") == "geometric_swept_volume"
+        and not solver._backend.is_gpu()
+    ):
+        raise RuntimeError(
+            "active_geometry_capillary requires a GPU backend; CPU dense "
+            "runtime fallback is not permitted for AO-Fast"
+        )

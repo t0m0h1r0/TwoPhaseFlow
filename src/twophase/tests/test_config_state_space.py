@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -13,9 +14,14 @@ from twophase.simulation.ao_fast_runtime_contract import (
 )
 from twophase.simulation.config_io import ExperimentConfig
 from twophase.simulation.config_state_space import parse_interface_state_space
+from twophase.simulation.geometric_phase_runtime import (
+    GeometricRuntimeCapillaryApplicationState,
+    validate_geometric_runtime_capillary_application_admitted,
+)
 from twophase.simulation.geometric_phase_runtime_gpu import (
     build_geometric_phase_state_gpu,
 )
+from twophase.simulation.ns_solver_builder import build_solver_init_options
 from twophase.simulation.ns_pipeline import TwoPhaseNSSolver
 from twophase.simulation.ns_step_state import NSStepRequest, NSStepState
 
@@ -300,9 +306,14 @@ def test_valid_geometric_contract_builds_config_and_solver_runtime():
     contract = build_ao_fast_runtime_contract(experiment_cfg)
     assert contract.capillary_constraints == ("cell_volume",)
     assert contract.checkpoint_state_phase == "pre_step"
+    assert contract.projection_implementation == "active_cached"
+    assert contract.dense_reference == "test_only"
+    assert contract.gpu_required is True
+    assert contract.fallback_policy == "none"
 
-    solver = TwoPhaseNSSolver.from_config(experiment_cfg)
-    assert solver._advection_scheme == "geometric_swept_volume"
+    options = build_solver_init_options(experiment_cfg)
+    assert options.grid.use_gpu is True
+    assert options.schemes.advection_scheme == "geometric_swept_volume"
 
 
 def test_active_geometry_capillary_scalar_preset_expands_defaults():
@@ -314,9 +325,44 @@ def test_active_geometry_capillary_scalar_preset_expands_defaults():
     assert cfg.interface_state_space.conserved_variable == "q"
     assert cfg.interface_state_space.projection_implementation == "active_cached"
     assert cfg.interface_state_space.fallback_policy == "none"
-    solver = TwoPhaseNSSolver.from_config(cfg)
-    assert solver._interface_tracking_method == "q_cell_fraction"
-    assert solver._capillary_force_source == "bundle_virtual_work"
+    options = build_solver_init_options(cfg)
+    assert options.grid.use_gpu is True
+    assert options.interface.interface_tracking_method == "q_cell_fraction"
+    assert options.schemes.capillary_force_source == "bundle_virtual_work"
+
+
+def test_nonstatic_ao_capillary_runtime_rejects_unadmitted_reaction():
+    zeros = (np.zeros((1, 1)), np.zeros((1, 1)))
+    application = GeometricRuntimeCapillaryApplicationState(
+        capillary=SimpleNamespace(pressure_range_tolerance=1.0e-11),
+        dt=1.0,
+        predictor_face_acceleration=zeros,
+        pressure_reaction_face_acceleration=zeros,
+        predictor_face_increment=zeros,
+        pressure_reaction_face_increment=zeros,
+        pressure_balanced_face_increment=zeros,
+        predictor_increment_weighted_l2=1.0,
+        pressure_reaction_increment_weighted_l2=0.0,
+        pressure_balanced_increment_weighted_l2=1.0,
+        max_abs_pressure_balanced_face_increment=1.0,
+        pressure_exact_static=False,
+        capillary_drive_present=True,
+    )
+
+    with pytest.raises(ValueError, match="R_p\\(q_T\\)"):
+        validate_geometric_runtime_capillary_application_admitted(application)
+
+
+def test_direct_geometric_runtime_rejects_cpu_backend():
+    with pytest.raises(RuntimeError, match="requires a GPU backend"):
+        TwoPhaseNSSolver(
+            8,
+            8,
+            1.0,
+            1.0,
+            advection_scheme="geometric_swept_volume",
+            use_gpu=False,
+        )
 
 
 def test_active_geometry_capillary_rejects_mapping_form():

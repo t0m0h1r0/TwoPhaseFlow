@@ -39,6 +39,7 @@ from .geometric_phase_runtime import (
     materialise_geometric_common_flux_state,
     materialise_geometric_runtime_capillary_application_state,
     materialise_geometric_runtime_capillary_state,
+    validate_geometric_runtime_capillary_application_admitted,
 )
 from .geometric_phase_runtime_gpu import (
     build_geometric_phase_state_gpu,
@@ -1085,6 +1086,7 @@ class TwoPhaseNSSolver:
                 application,
                 ppe_runtime=self._ppe_runtime,
             )
+        validate_geometric_runtime_capillary_application_admitted(application)
         state.conservative_transport_certificate = {
             "status": "geometric_phase_transport_ready",
             "projected": result.phase_transport.projected,

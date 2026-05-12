@@ -37,6 +37,7 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             LX=g.LX,
             LY=g.LY,
             bc_type=g.bc_type,
+            use_gpu=True if is_geometric else getattr(g, "use_gpu", None),
             alpha_grid=alpha_grid,
             fitting_axes=fitting_axes,
             fitting_alpha_grid=(
