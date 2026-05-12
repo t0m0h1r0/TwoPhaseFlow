@@ -80,6 +80,9 @@ class ActiveGeometryLedger:
     n_target_mixed: int
     capacity_limit: int
     support_stream_limit: int
+    device_resident: bool = False
+    host_transfer_count: int = 0
+    deferred_device_count_fields: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -151,8 +154,7 @@ def build_active_table_for_cell_ids(
     _check_support_budget(n_active, n_cells, support_budget, "active support")
 
     active_geometry = refresh_active_geometry_2d(grid, phi, ids, level=level)
-    complex_h = MetricCellComplex.from_grid(grid)
-    cell_measure_A = _gather_cell_values(xp, complex_h.cell_measures, ids)
+    cell_measure_A = _active_cell_measures(grid, ids, dtype=active_geometry.q_A.dtype)
     q_target_A = (
         active_geometry.q_A
         if q_target is None
@@ -176,17 +178,32 @@ def build_active_table_for_cell_ids(
     owner_epoch_A = _vector_or_default(xp, owner_epoch, n_active, xp.int32, 0)
     metric_key_A = _metric_key(xp, cell_measure_A)
     support_stream_limit = _support_stream_limit(n_cells, support_budget)
+    n_halo = 0 if halo_mask is None else _host_count(halo_mask_A)
+    n_flux_touched = 0 if flux_touched_mask is None else _host_count(flux_touched_A)
+    n_target_mixed = _host_count(target_state_code_A == int(TargetStateCode.MIXED))
+    deferred_count_fields = tuple(
+        name
+        for name, count in (
+            ("n_halo", n_halo),
+            ("n_flux_touched", n_flux_touched),
+            ("n_target_mixed", n_target_mixed),
+        )
+        if count < 0
+    )
     ledger = ActiveGeometryLedger(
         construction_mode=construction_mode,
         dense_scan_used=bool(dense_scan_used),
         n_cells=n_cells,
         n_active=n_active,
-        n_core=int(n_active - _host_count(halo_mask_A)),
-        n_halo=_host_count(halo_mask_A),
-        n_flux_touched=_host_count(flux_touched_A),
-        n_target_mixed=_host_count(target_state_code_A == int(TargetStateCode.MIXED)),
+        n_core=int(n_active - n_halo) if n_halo >= 0 else -1,
+        n_halo=n_halo,
+        n_flux_touched=n_flux_touched,
+        n_target_mixed=n_target_mixed,
         capacity_limit=_active_limit(n_cells, support_budget),
         support_stream_limit=support_stream_limit,
+        device_resident=is_device_array(ids),
+        host_transfer_count=0,
+        deferred_device_count_fields=deferred_count_fields,
     )
     return ActiveGeometryTable(
         xp=xp,
@@ -378,6 +395,15 @@ def _gather_cell_values(xp, field, cell_ids):
     return field[cell_ids[:, 0], cell_ids[:, 1]]
 
 
+def _active_cell_measures(grid, cell_ids, *, dtype):
+    xp = grid.xp
+    x = xp.asarray(grid.coords[0], dtype=dtype)
+    y = xp.asarray(grid.coords[1], dtype=dtype)
+    i = cell_ids[:, 0]
+    j = cell_ids[:, 1]
+    return (x[i + 1] - x[i]) * (y[j + 1] - y[j])
+
+
 def _gather_or_vector_values(xp, values, cell_ids, n_active: int):
     arr = xp.asarray(values)
     if arr.ndim == 1:
@@ -428,6 +454,10 @@ def _host_ids_from_mask(mask):
 
 
 def _host_count(mask) -> int:
+    if is_device_array(mask):
+        if int(mask.size) == 0:
+            return 0
+        return -1
     arr = mask.get() if hasattr(mask, "get") else np.asarray(mask)
     return int(np.count_nonzero(arr))
 

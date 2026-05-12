@@ -61,6 +61,8 @@ sources:
     description: "AO-Fast C9 disabled runtime contract adapter for q/theta/phi handoff, checkpoint arrays, and bundle capillary contract"
   - path: artifacts/A/ch14_ao_fast_review_hardening_CHK-RA-CH14-AO-FASTVOL-019.md
     description: "AO-Fast review hardening: checkpoint cell/node split, mixed-state YAML rejection, support-stream budget enforcement, and empty-support no-op ledger"
+  - path: artifacts/A/ch14_ao_fast_gpu_hardening_CHK-RA-CH14-AO-FASTVOL-020.md
+    description: "AO-Fast GPU hardening: compact Schur active-node matvecs, no dense metric cache in compact table construction, and stricter GPU host-control fail-close"
 depends_on:
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-159]]"
@@ -707,6 +709,21 @@ expansion, enforces active capacity after halo expansion, and rejects device
 streams in the temporary host compactor so there is no hidden D2H path under a
 GPU contract.  Empty active support is a valid no-op projection state with an
 explicit `empty_active_support` ledger, not an empty reduction crash.
+
+C9 GPU hardening removes the next reviewed bottlenecks before runtime
+activation.  Active Schur matvecs now use a compact unique active-node support:
+`J^T` scatters into this compact node set and `J` gathers from it, so PCG
+candidate iterations no longer allocate or zero the full nodal grid.  Compact
+active-table construction gathers cell measures directly from active cell ids
+and grid coordinates instead of touching the dense metric-complex cache, whose
+device cache tokens are oracle/debug territory.  For GPU tables, ledger fields
+that would require a scalar device sync are explicitly deferred and
+`host_transfer_count=0` is recorded.  Nonempty GPU diagnostics/PCG/projection
+paths have no host-control escape hatch; they fail closed until fused device-side
+solver, reduction, and line-search kernels are implemented.  Remaining GPU work
+is the final fused active-row `Q/S/J/dS` and exact-acceptance kernels with
+kernel and transfer counters; the current vectorized active geometry remains
+pre-runtime.
 
 CCD/DCCD/FCCD/UCCD remain useful on the smooth side of the split: gauge
 prediction, screened gauge metric `W_eta`, face-state reconstruction,

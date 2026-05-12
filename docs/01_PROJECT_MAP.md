@@ -211,12 +211,19 @@ support by a full-grid dense oracle scan.  Dense support scans are confined to
 as initialization/oracle/debug work.  The temporary host compactor enforces
 `max_support_stream_ratio` before halo expansion, enforces the final active
 support capacity after halo expansion, and rejects CUDA/device streams until the
-fused GPU support-compaction path is admitted.  `geometry/active_projection.py` owns
-matrix-free active `J`, `J^T`, Schur matvecs, CPU-control PCG with
-`tau_cg_floor` fail-close, and exact active-row residual acceptance.  GPU active
-tables stay device-resident; the unfused PCG host-control loop fails closed on
-GPU until the fused runtime path is admitted.  Empty active support returns an
-explicit no-op ledger rather than reducing an empty residual.  After C8,
+fused GPU support-compaction path is admitted.  Compact active-table
+construction gathers active cell measures directly from grid coordinates and
+does not call the dense metric-complex cache.  GPU ledgers report
+`device_resident=True`, `host_transfer_count=0`, and defer count fields that
+would require synchronization instead of calling `.get()`.
+`geometry/active_projection.py` owns matrix-free active `J`, `J^T`, Schur
+matvecs, CPU-control PCG with `tau_cg_floor` fail-close, and exact active-row
+residual acceptance.  Schur matvecs operate on compact unique active nodes, so
+PCG iterations do not allocate or zero a full nodal grid.  Full nodal scatter is
+kept only for explicit gauge updates.  GPU active tables stay device-resident;
+nonempty GPU diagnostics/PCG/projection fail closed until fused device-side
+solver, reduction, and line-search kernels are admitted.  Empty active support returns
+an explicit no-op ledger rather than reducing an empty residual.  After C8,
 `geometric_cell_fraction` YAML may build an `ExperimentConfig` when it declares
 the closed AO-Fast contract (`q` transport, `geometric_swept_volume`,
 `bundle_virtual_work`, `cell_volume`, `algorithm: none`).  Solver construction

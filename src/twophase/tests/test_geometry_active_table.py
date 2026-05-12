@@ -193,6 +193,10 @@ def test_compact_table_construction_does_not_call_dense_oracle(monkeypatch):
         "twophase.geometry.active_table.cut_geometry_2d",
         _blocked_dense_call,
     )
+    monkeypatch.setattr(
+        "twophase.geometry.active_table.MetricCellComplex.from_grid",
+        _blocked_dense_call,
+    )
 
     table = build_active_table_for_cell_ids(grid, phi, ids)
     assert table.n_active == 3
@@ -215,12 +219,32 @@ def test_gpu_active_table_stays_device_and_pcg_host_control_fails_closed():
     assert is_device_array(table.q_A)
     assert is_device_array(table.jq_local_A)
     assert table.ledger.dense_scan_used is False
+    assert table.ledger.device_resident is True
+    assert table.ledger.host_transfer_count == 0
+    assert table.ledger.n_halo == 0
+    assert table.ledger.n_flux_touched == 0
+    assert table.ledger.n_target_mixed == -1
+    assert table.ledger.deferred_device_count_fields == ("n_target_mixed",)
 
     operator = ActiveSchurOperator(table)
+    assert operator.n_active_nodes < (grid.N[0] + 1) * (grid.N[1] + 1)
+    compact_jt = operator.apply_j_transpose_compact(cp.ones((table.n_active,), dtype=float))
+    assert is_device_array(compact_jt)
+    assert compact_jt.shape == (operator.n_active_nodes,)
     rhs = operator.apply_schur(cp.ones((table.n_active,), dtype=float))
     assert is_device_array(rhs)
-    with pytest.raises(ValueError, match="GPU active PCG host-control"):
+    with pytest.raises(ValueError, match="fused device reductions"):
+        operator.diagnostics()
+    with pytest.raises(ValueError, match="fused device solver"):
         solve_active_pcg(operator, rhs, tolerance=1.0e-10, max_iterations=8)
+    with pytest.raises(ValueError, match="fused device reductions"):
+        project_active_cell_volume_compatibility_2d(
+            grid,
+            phi,
+            table,
+            tolerance=1.0e-10,
+            max_newton_iterations=1,
+        )
 
 
 def test_active_jq_and_ds_match_finite_difference_on_active_rows():
@@ -280,6 +304,15 @@ def test_active_schur_adjointness_and_pcg_floor_policy():
     diagnostics = operator.diagnostics()
     assert diagnostics.active_row_count > 0
     assert diagnostics.cheap_condition_estimate >= 1.0
+
+    compact_jt = operator.apply_j_transpose_compact(cell)
+    assert compact_jt.shape == (operator.n_active_nodes,)
+    np.testing.assert_allclose(
+        operator.apply_j_compact(compact_jt),
+        operator.apply_j(operator.apply_j_transpose(cell)),
+        rtol=1.0e-12,
+        atol=1.0e-12,
+    )
 
     rhs = operator.apply_schur(cell)
     result = solve_active_pcg(

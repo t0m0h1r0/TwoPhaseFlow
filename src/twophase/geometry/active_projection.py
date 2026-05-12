@@ -64,6 +64,19 @@ class ActiveSchurOperator:
     def __init__(self, table: ActiveGeometryTable):
         self.table = table
         self.xp = table.xp
+        flat_nodes = table.node_ids_A.reshape((-1,))
+        if table.n_active == 0:
+            self.active_node_ids_U = self.xp.asarray((), dtype=self.xp.int64)
+            self.row_node_ids_U = self.xp.zeros((0, 4), dtype=self.xp.int64)
+        else:
+            active_node_ids, inverse = self.xp.unique(flat_nodes, return_inverse=True)
+            self.active_node_ids_U = active_node_ids
+            self.row_node_ids_U = inverse.reshape(table.node_ids_A.shape)
+
+    @property
+    def n_active_nodes(self) -> int:
+        """Return the unique nodal support size touched by active rows."""
+        return int(self.active_node_ids_U.shape[0])
 
     def apply_j(self, nodal_values):
         """Apply active ``J`` to a nodal vector/field."""
@@ -75,23 +88,53 @@ class ActiveSchurOperator:
     def apply_j_transpose(self, cell_values):
         """Apply active ``J^T`` and scatter to nodal shape."""
         xp = self.xp
-        values = xp.asarray(cell_values)
-        if tuple(values.shape) != (self.table.n_active,):
-            raise ValueError("cell_values length must match n_active")
+        compact = self.apply_j_transpose_compact(cell_values)
         flat = xp.zeros(
             (self.table.node_shape[0] * self.table.node_shape[1],),
             dtype=self.table.jq_local_A.dtype,
         )
-        contribution = self.table.jq_local_A * values[:, None]
-        xp.add.at(flat, self.table.node_ids_A.reshape((-1,)), contribution.reshape((-1,)))
+        xp.add.at(flat, self.active_node_ids_U, compact)
         return flat.reshape(self.table.node_shape)
+
+    def apply_j_compact(self, compact_nodal_values):
+        """Apply active ``J`` from compact unique active-node values."""
+        xp = self.xp
+        nodal = xp.asarray(compact_nodal_values)
+        if tuple(nodal.shape) != (self.n_active_nodes,):
+            raise ValueError("compact_nodal_values length must match n_active_nodes")
+        local = nodal[self.row_node_ids_U]
+        return xp.sum(self.table.jq_local_A * local, axis=-1)
+
+    def apply_j_transpose_compact(self, cell_values):
+        """Apply active ``J^T`` into the compact unique active-node support."""
+        xp = self.xp
+        values = xp.asarray(cell_values)
+        if tuple(values.shape) != (self.table.n_active,):
+            raise ValueError("cell_values length must match n_active")
+        compact = xp.zeros((self.n_active_nodes,), dtype=self.table.jq_local_A.dtype)
+        contribution = self.table.jq_local_A * values[:, None]
+        xp.add.at(compact, self.row_node_ids_U.reshape((-1,)), contribution.reshape((-1,)))
+        return compact
 
     def apply_schur(self, cell_values):
         """Apply ``J J^T`` without materializing a dense Schur matrix."""
-        return self.apply_j(self.apply_j_transpose(cell_values))
+        return self.apply_j_compact(self.apply_j_transpose_compact(cell_values))
 
     def diagnostics(self, *, row_norm_tolerance: float = 0.0) -> ActiveSchurDiagnostics:
         """Return cheap row-norm rank and conditioning estimates."""
+        if self.table.n_active == 0:
+            return ActiveSchurDiagnostics(
+                n_rows=0,
+                active_row_count=0,
+                row_norm_min=0.0,
+                row_norm_max=0.0,
+                cheap_condition_estimate=math.inf,
+            )
+        if is_device_array(self.table.q_A):
+            raise ValueError(
+                "GPU active diagnostics require fused device reductions; "
+                "host-control loop is disabled"
+            )
         xp = self.xp
         row_norm = self.table.row_norm_A
         active = row_norm > float(row_norm_tolerance)
@@ -137,9 +180,9 @@ def solve_active_pcg(
         raise ValueError("max_iterations must be positive")
     if tau_cg_floor is not None and float(tau_cg_floor) > tolerance:
         raise ValueError("active PCG roundoff floor exceeds requested target")
-    if is_device_array(operator.table.q_A) and not allow_gpu_host_control:
+    if is_device_array(operator.table.q_A):
         raise ValueError(
-            "GPU active PCG host-control loop is disabled; use a fused C7 path"
+            "GPU active PCG requires a fused device solver; host-control loop is disabled"
         )
 
     xp = operator.xp
@@ -229,6 +272,11 @@ def project_active_cell_volume_compatibility_2d(
                 stop_reason="empty_active_support",
                 pcg_stop_reasons=(),
             ),
+        )
+    if is_device_array(table.q_A):
+        raise ValueError(
+            "GPU active projection requires fused device reductions and line search; "
+            "host-control loop is disabled"
         )
     max_pcg_iterations = (
         4 * max(1, table.n_active)
