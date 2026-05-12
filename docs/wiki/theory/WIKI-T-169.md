@@ -31,6 +31,8 @@ sources:
     description: "AO-Fast fixed-stratum approximation-order contract and residual-monotone DC theory"
   - path: artifacts/A/paper_ch9_ao_fast_theory_CHK-RA-CH14-AO-FASTVOL-003.md
     description: "Paper Chapter 9 insertion of active-stratum approximation accuracy and residual-monotone DC conditions"
+  - path: artifacts/A/ch14_ao_fast_algorithm_contract_CHK-RA-CH14-AO-FASTVOL-004.md
+    description: "Implementation-ready AO-Fast active geometry acceleration contract, GPU kernel plan, ledger counters, and proof obligations"
 depends_on:
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-159]]"
@@ -539,6 +541,15 @@ residual-monotone for the exact residual `R(phi)=Q_h^S(phi)-q^-`.  The frozen
 active Schur inverse may be used as a cheap defect-correction operator, with
 the step length chosen by an on-device residual decrease test.  Fixed-count DC,
 clipping, or relaxed volume constraints remain forbidden.
+
+The implementation contract is an active-geometry acceleration route: detect
+dirty sign/case/crossing/metric/ownership rows, reuse compact active-table rows
+outside the dirty halo, recompute exact `Q/S/J/dS` only on the active graph,
+and expose `|A|`, `|dirty|`, refreshed-cell count, kernel-launch count, and
+host-transfer count in the ledger.  Candidate generation may use frozen active
+linearization, active matrix-free PCG/Newton, or residual-monotone DC as a cheap
+preconditioned proposal, but the speedup is credited to active geometry,
+incremental cache refresh, and device-resident fused kernels, not to DC itself.
 
 CCD/DCCD/FCCD/UCCD remain useful on the smooth side of the split: gauge
 prediction, screened gauge metric `W_eta`, face-state reconstruction,

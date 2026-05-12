@@ -668,6 +668,57 @@ transfer is limited to explicit ledger scalars after an accepted outer
 iteration.  In particular, no `.get()`, `asnumpy`, Python list materialization,
 or scalar D2H synchronization belongs inside CG iteration control.
 
+### AO-Fast acceleration contract
+
+The production target is not a different compatibility iteration.  It is to
+avoid rebuilding and scanning the full cell complex when only the interface
+stratum has changed.  Inputs are the conservative transported volume `q^-`, the
+predicted gauge `phi^-`, the previous active table, cached metric arrays, and
+the face-Hodge state needed by capillary work.
+
+```text
+1. detect dirty cells from sign/case changes, moved crossing intervals,
+   changed boundary/periodic ownership, or changed grid metric identity.
+2. reuse the previous active table outside the dirty set and its one-face halo;
+   rebuild compact SoA rows only on the dirty active region.
+3. compute exact Q_h^S(phi^-), S_h^S(phi^-), R=Q_h^S(phi^-)-q^- on A, not C_h.
+4. if exact residual, sign/case, and projection-work gates pass, accept.
+5. otherwise generate a candidate with the cheapest admissible active operator:
+   frozen-stratum linear update, active matrix-free PCG/Newton, or residual-
+   monotone DC used only as a preconditioned candidate when the active graph is
+   stable.
+6. recompute exact active Q/S before commit; if sign/case changed, refresh the
+   active table once and recheck.
+7. if exact active recomputation still fails, fail close or enter an explicit
+   topology route.
+```
+
+The asymptotic objective is:
+
+```text
+direct AO:  O(k |C_h|) geometry work per candidate,
+AO-Fast:    O(|dirty| + k |A|) active geometry/solve work,
+```
+
+where `A` is the compact interface-band graph and `dirty` is the subset whose
+case, metric, or ownership cache changed.  The implementation must expose this
+cost model in diagnostics; if `|dirty|` grows to `|C_h|`, the ledger should say
+so instead of pretending the step was an active-band update.
+
+The committed output is:
+
+```text
+(q^-, phi^+, active_table^+, geometry_cache^+, projection_ledger^+)
+```
+
+with `Q_h(phi^+)=q^-` certified to tolerance in physical volume units.  The
+ledger must record evaluated active cells, dirty cells, refreshed cells,
+proposal family, exact residual norms before and after, maximum `beta_C`,
+minimum sign/case margin, `Delta S_Pi`, GPU kernel launches, and host-transfer
+count.  DC is therefore an optional cheap candidate inside AO-Fast; the speedup
+comes from compact active geometry, incremental cache refresh, fused GPU
+kernels, and avoiding full-grid cut-geometry recomputation.
+
 ## 12. YAML Contract
 
 The front door is a state-space declaration:
