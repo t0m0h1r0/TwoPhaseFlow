@@ -408,6 +408,74 @@ for zero projected capillary drive.
 If the condition does not hold, the interface has physical nonzero capillary
 drive.  No code path may branch on "circle", "ellipse", or benchmark name.
 
+### Certified non-static pressure split
+
+On a fixed regular stratum, restrict `J_q` to the active mixed-cell rows and
+let `W` be the SPD gauge metric used by the bundle lift.  The pressure
+component of the capillary covector is not a diagonal row-norm heuristic; it
+is the Schur projection
+
+```text
+S pi = - J_q W^{-1} g,
+S = J_q W^{-1} J_q^T,
+g = sigma dS_h.
+```
+
+If `J_q` has full row rank, then `S` is SPD because
+
+```text
+lambda^T S lambda
+  = (J_q^T lambda)^T W^{-1} (J_q^T lambda) > 0.
+```
+
+The solution `pi` is therefore unique up to the declared pressure gauge and is
+the scalar AO pressure coordinate.  Extending `pi` to the full cell pressure
+space by the configured gauge gives
+
+```text
+pressure_reaction(w) = pi^T T_q w = (T_q^T pi)^T w,
+```
+
+so `pressure_history.form: pressure_coordinate` may store and extrapolate this
+cell scalar coordinate only after this Schur solve is certified.
+
+The residual
+
+```text
+e = g + J_q^T pi
+```
+
+is the non-pressure part of the surface covector.  The physical non-static
+drive is
+
+```text
+balanced_drive(w) = - e[L_B(w)].
+```
+
+Therefore a runtime packet that sets `capillary_face == pressure_reaction_face`
+when `e` is nonzero is algebraically wrong.  It is not a low-order
+approximation; it deletes the non-static capillary drive.
+
+For an approximate solve `pi_k`, with Schur residual
+
+```text
+rho_k = -J_q W^{-1} g - S pi_k,
+```
+
+the certified error is
+
+```text
+||pi - pi_k||_S <= ||rho_k||_{S^{-1}},
+||balanced_k - balanced||_{M_f^{-1}}
+  <= C_L ||rho_k||_{S^{-1}},
+```
+
+where `C_L` bounds the lift `||L_B(w)||_W <= C_L ||w||_{M_f}`.  PCG/Newton/DC
+may be used only when this residual, rank, conditioning, sign-margin, and
+exact `Q_h(phi)=q` gates certify the result.  DC is a residual-monotone
+proposal; rejected DC does not imply an implicit fallback unless the YAML
+declares the solver-chain edge explicitly.
+
 ## 9. CCD/FCCD/UCCD Orthogonality
 
 The geometric phase variable is discontinuous by construction:

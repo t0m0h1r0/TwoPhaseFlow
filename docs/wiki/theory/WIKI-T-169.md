@@ -71,6 +71,12 @@ sources:
     description: "AO-Fast runtime GPU review: dense exact runtime made CPU-only, GPU fail-close guards, active-projection schedule rejection, and manifest hardening"
   - path: artifacts/A/ch14_ao_fast_gpu_runtime_completion_CHK-RA-CH14-AO-FASTVOL-024.md
     description: "AO-Fast GPU runtime completion: device-resident geometric packet, nodal material bridge, pressure-coordinate coupling, and capillary smoke"
+  - path: artifacts/A/ch14_ao_fast_quarter_failure_theory_rca_CHK-RA-CH14-AO-FASTVOL-025.md
+    description: "Theory-first RCA of failed AO-Fast capillary quarter-period run; identifies zero non-static drive and undefined pressure-coordinate history"
+  - path: artifacts/A/ch14_ao_gpu_fail_close_fix_CHK-RA-CH14-AO-FASTVOL-026.md
+    description: "Production fail-close gate for uncertified GPU AO capillarity"
+  - path: artifacts/A/ch14_ao_nonstatic_pressure_split_proof_CHK-RA-CH14-AO-FASTVOL-027.md
+    description: "Proof of active Schur pressure split, scalar AO pressure coordinate, non-static balanced drive, and residual-certified accuracy"
 depends_on:
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-159]]"
