@@ -40,6 +40,11 @@ grid:
             alpha: 2.0
 
 interface:
+  state_space:
+    # Chapter-14 production benchmarks remain diffuse-CLS configs.  AO-Fast
+    # geometric_cell_fraction requires an explicit separate contract and is
+    # fail-closed before entering these production YAMLs.
+    kind: diffuse_cls
   thickness:
     mode: local
     base_factor: 1.5
@@ -111,6 +116,7 @@ numerics:
             relaxation: 0.8
       surface_tension:
         formulation: pressure_jump
+        source: curvature_jump
   projection:
     face_flux_projection: true
     canonical_face_state: true
