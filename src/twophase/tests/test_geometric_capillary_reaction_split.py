@@ -47,6 +47,7 @@ def test_geometric_capillary_split_removes_component_reaction():
     assert split.status == "pressure_component_hodge_split"
     np.testing.assert_allclose(split.component_coefficients, 1.0)
     np.testing.assert_allclose(split.corrected_source_face_acceleration[0], 0.0)
+    np.testing.assert_allclose(split.pressure_range_coordinate, 0.0)
     np.testing.assert_allclose(split.balanced_face_acceleration[0], 0.0)
     assert split.raw_source_weighted_l2 == pytest.approx(2.0)
     assert split.balanced_weighted_l2 == pytest.approx(0.0)

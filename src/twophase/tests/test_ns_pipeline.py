@@ -838,6 +838,94 @@ def test_face_native_predictor_rebuilds_pressure_coordinate_history_faces():
     np.testing.assert_allclose(state.predictor_face_components[1], xp.full(shape, 16.2))
 
 
+def test_ao_pressure_coordinate_history_suppresses_legacy_jump_sigma():
+    """AO-owned surface tension must not re-enter scalar pressure history."""
+    from twophase.backend import Backend
+    from twophase.simulation.ns_step_services import compute_ns_predictor_stage
+    from twophase.simulation.ns_step_state import NSStepInputs, NSStepState
+
+    backend = Backend(use_gpu=False)
+    xp = backend.xp
+    shape = (2, 2)
+
+    class ZeroConvection:
+        def compute(self, ctx):
+            return xp.zeros_like(ctx.velocity[0]), xp.zeros_like(ctx.velocity[1])
+
+    class RecordingPredictor:
+        def predict(self, u, v, conv_u, conv_v, mu, rho, dt, ccd, **kwargs):
+            return u + dt * conv_u, v + dt * conv_v
+
+    class FaceContract:
+        def __init__(self):
+            self.history_sigmas = []
+
+        def reconstruct_nodes(self, face_components):
+            return face_components
+
+        def face_fluxes(self, components):
+            return components
+
+        def pressure_fluxes(self, pressure, rho, **kwargs):
+            del rho
+            self.history_sigmas.append(kwargs["interface_stress_context"].sigma)
+            return [pressure, pressure]
+
+    inputs = NSStepInputs(
+        psi=xp.ones(shape),
+        u=xp.zeros(shape),
+        v=xp.zeros(shape),
+        dt=0.1,
+        rho_l=1.0,
+        rho_g=1.0,
+        sigma=7.0,
+        mu=1.0,
+    )
+    state = NSStepState.from_inputs(inputs, backend=backend)
+    state.rho = xp.ones(shape)
+    state.mu_field = xp.ones(shape)
+    state.kappa = xp.ones(shape)
+    state.previous_base_pressure = xp.full(shape, 3.0)
+    state.face_velocity_components = [xp.zeros(shape), xp.zeros(shape)]
+    state.geometric_runtime_capillary_application = SimpleNamespace(
+        pressure_exact_static=False,
+        capillary_drive_present=True,
+        pressure_reaction_projection_status="pressure_component_hodge_split",
+        predictor_face_increment=[xp.zeros(shape), xp.zeros(shape)],
+        pressure_reaction_increment_weighted_l2=0.0,
+        predictor_increment_weighted_l2=0.0,
+    )
+    state.conservative_transport_certificate = {
+        "ao_nonstatic_surface_tension_slot_bypassed": True,
+    }
+    div_op = FaceContract()
+    ppe_runtime = SimpleNamespace(
+        ppe_solver_name="fccd_iterative",
+        ppe_coefficient_scheme="phase_separated",
+        ppe_interface_coupling_scheme="affine_jump",
+        pressure_history_mode="pressure_coordinate",
+        pressure_history_extrapolation="constant",
+    )
+
+    compute_ns_predictor_stage(
+        state,
+        backend=backend,
+        ccd=None,
+        conv_term=ZeroConvection(),
+        viscous_predictor=RecordingPredictor(),
+        scheme_runtime=SimpleNamespace(convection_time_scheme="euler"),
+        conv_ab2_ready=False,
+        conv_prev=None,
+        projection_consistent_buoyancy=True,
+        face_native_predictor_state=True,
+        div_op=div_op,
+        bc_type="periodic",
+        ppe_runtime=ppe_runtime,
+    )
+
+    assert div_op.history_sigmas == [0.0]
+
+
 def test_implicit_bdf2_viscous_predictor_zero_operator_matches_formula():
     """With V=0, the matrix-free solve reduces exactly to the BDF2 affine RHS."""
     from twophase.backend import Backend

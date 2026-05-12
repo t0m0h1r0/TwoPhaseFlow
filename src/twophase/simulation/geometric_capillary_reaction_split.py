@@ -30,6 +30,7 @@ class GeometricCapillaryReactionSplit:
     component_reaction_face_accelerations: tuple[tuple[Any, Any], ...]
     corrected_source_face_acceleration: tuple[Any, Any]
     pressure_range_face_acceleration: tuple[Any, Any]
+    pressure_range_coordinate: Any
     balanced_face_acceleration: tuple[Any, Any]
     face_weight_components: tuple[Any, Any]
     component_coefficients: Any
@@ -98,6 +99,7 @@ def build_geometric_capillary_reaction_split(
         component_reaction_face_accelerations=component_faces,
         corrected_source_face_acceleration=corrected,
         pressure_range_face_acceleration=pressure_range,
+        pressure_range_coordinate=xp.asarray(projection["pressure_coordinate"]),
         balanced_face_acceleration=balanced,
         face_weight_components=weights,
         component_coefficients=projection["component_hodge_coefficients"],

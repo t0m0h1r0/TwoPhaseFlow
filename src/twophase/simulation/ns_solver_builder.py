@@ -105,6 +105,29 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             reinit_volume_constraint=str(
                 getattr(run, "reinit_volume_constraint", "diffuse_mass")
             ),
+            active_projection_solver_scheme=str(
+                getattr(state_space, "active_projection_solver_scheme", "pcg")
+            ),
+            active_projection_pcg_tolerance=float(
+                getattr(state_space, "active_projection_pcg_tolerance", 1.0e-12)
+            ),
+            active_projection_pcg_max_iterations=int(
+                getattr(state_space, "active_projection_pcg_max_iterations", 256)
+            ),
+            active_projection_pcg_roundoff_floor=getattr(
+                state_space,
+                "active_projection_pcg_roundoff_floor",
+                1.0e-14,
+            ),
+            active_projection_dc_tolerance=float(
+                getattr(state_space, "active_projection_dc_tolerance", 1.0e-11)
+            ),
+            active_projection_dc_max_iterations=int(
+                getattr(state_space, "active_projection_dc_max_iterations", 8)
+            ),
+            active_projection_dc_relaxation=float(
+                getattr(state_space, "active_projection_dc_relaxation", 1.0)
+            ),
         ),
         ppe=SolverPPEOptions(
             ppe_solver=str(getattr(run, "ppe_solver", "fccd_iterative")),

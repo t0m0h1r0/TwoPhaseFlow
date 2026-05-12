@@ -60,6 +60,13 @@ class SolverInterfaceOptions:
     reinit_eps_scale: float = 1.0
     ridge_sigma_0: float = 3.0
     reinit_volume_constraint: str = "diffuse_mass"
+    active_projection_solver_scheme: str = "pcg"
+    active_projection_pcg_tolerance: float = 1.0e-12
+    active_projection_pcg_max_iterations: int = 256
+    active_projection_pcg_roundoff_floor: float | None = 1.0e-14
+    active_projection_dc_tolerance: float = 1.0e-11
+    active_projection_dc_max_iterations: int = 8
+    active_projection_dc_relaxation: float = 1.0
 
 
 @dataclass(frozen=True)

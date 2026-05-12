@@ -813,6 +813,13 @@ def test_ch14_capillary_yaml_builds_solver():
     assert solver._capillary_force_source == "bundle_virtual_work"
     assert solver._capillary_range_projection == "none"
     assert solver._capillary_reaction_projection == "pressure_component_hodge"
+    assert solver._active_projection_solver_scheme == "pcg"
+    assert solver._active_projection_pcg_tolerance == pytest.approx(1.0e-12)
+    assert solver._active_projection_pcg_max_iterations == 256
+    assert solver._active_projection_pcg_roundoff_floor == pytest.approx(1.0e-14)
+    assert solver._active_projection_dc_tolerance == pytest.approx(1.0e-11)
+    assert solver._active_projection_dc_max_iterations == 8
+    assert solver._active_projection_dc_relaxation == pytest.approx(1.0)
     assert solver._ppe_coefficient_scheme == "phase_separated"
     assert solver._ppe_interface_coupling_scheme == "affine_jump"
     assert isinstance(solver._transport, PsiDirectTransport)

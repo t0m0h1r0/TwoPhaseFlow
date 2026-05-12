@@ -204,7 +204,13 @@ def materialise_geometric_runtime_capillary_state_gpu(
     *,
     sigma: float,
     tolerance: float = 1.0e-11,
+    solver_scheme: str = "pcg",
+    pcg_tolerance: float = 1.0e-12,
     max_pcg_iterations: int = 256,
+    pcg_roundoff_floor: float | None = 1.0e-14,
+    dc_tolerance: float = 1.0e-11,
+    dc_max_iterations: int = 8,
+    dc_relaxation: float = 1.0,
 ) -> GeometricRuntimeCapillaryState:
     """Build the GPU AO capillary source packet.
 
@@ -217,6 +223,20 @@ def materialise_geometric_runtime_capillary_state_gpu(
     _require_gpu_array_namespace(grid.xp, "materialise_geometric_runtime_capillary_state_gpu")
     sigma = _validate_sigma(sigma)
     tolerance = _validate_positive_float(tolerance, "tolerance")
+    solver_scheme = str(solver_scheme).strip().lower()
+    pcg_tolerance = _validate_positive_float(pcg_tolerance, "pcg_tolerance")
+    if pcg_roundoff_floor is not None:
+        pcg_roundoff_floor = _validate_positive_float(
+            pcg_roundoff_floor,
+            "pcg_roundoff_floor",
+        )
+        if pcg_roundoff_floor > pcg_tolerance:
+            raise ValueError("pcg_roundoff_floor must not exceed pcg_tolerance")
+    dc_tolerance = _validate_positive_float(dc_tolerance, "dc_tolerance")
+    dc_max_iterations = _validate_positive_int(dc_max_iterations, "dc_max_iterations")
+    dc_relaxation = _validate_positive_float(dc_relaxation, "dc_relaxation")
+    if dc_relaxation > 1.0:
+        raise ValueError("dc_relaxation must not exceed 1.0")
     xp = grid.xp
     phase_state = material.phase_state
     geometry, derivatives = _geometry_and_derivatives_full(
@@ -243,14 +263,20 @@ def materialise_geometric_runtime_capillary_state_gpu(
     row_norm = xp.sum(derivatives.jq_local * derivatives.jq_local, axis=-1)
     active = row_norm > 0.0
     rhs = _apply_jq_full(xp, derivatives.jq_local, capillary_nodal)
-    pressure_cell = _solve_schur_pcg_fixed_gpu(
+    pressure_cell = _solve_schur_for_active_policy_gpu(
         grid,
         xp,
         derivatives.jq_local,
         xp.where(active, rhs, xp.zeros_like(rhs)),
         row_norm,
         active,
-        max_iterations=max_pcg_iterations,
+        solver_scheme=solver_scheme,
+        pcg_tolerance=pcg_tolerance,
+        pcg_max_iterations=max_pcg_iterations,
+        pcg_roundoff_floor=pcg_roundoff_floor,
+        dc_tolerance=dc_tolerance,
+        dc_max_iterations=dc_max_iterations,
+        dc_relaxation=dc_relaxation,
     )
     pressure_nodal = _apply_jq_transpose_full(grid, derivatives.jq_local, pressure_cell)
     projected_rhs = _apply_jq_full(xp, derivatives.jq_local, pressure_nodal)
@@ -1044,6 +1070,77 @@ def _apply_jq_full(xp, jq_local, nodal_values):
     return xp.sum(jq_local * local, axis=-1)
 
 
+def _solve_schur_for_active_policy_gpu(
+    grid,
+    xp,
+    jq_local,
+    rhs,
+    row_norm,
+    active,
+    *,
+    solver_scheme: str,
+    pcg_tolerance: float,
+    pcg_max_iterations: int,
+    pcg_roundoff_floor: float | None,
+    dc_tolerance: float,
+    dc_max_iterations: int,
+    dc_relaxation: float,
+):
+    """Dispatch the AO-Fast active Schur solve without hidden fallbacks."""
+    scheme = str(solver_scheme).strip().lower()
+    if scheme == "pcg":
+        return _solve_schur_pcg_fixed_gpu(
+            grid,
+            xp,
+            jq_local,
+            rhs,
+            row_norm,
+            active,
+            max_iterations=pcg_max_iterations,
+            tolerance=pcg_tolerance,
+            roundoff_floor=pcg_roundoff_floor,
+        )
+    if scheme == "dc":
+        return _solve_schur_dc_fixed_gpu(
+            grid,
+            xp,
+            jq_local,
+            rhs,
+            row_norm,
+            active,
+            max_iterations=dc_max_iterations,
+            tolerance=dc_tolerance,
+            relaxation=dc_relaxation,
+        )
+    if scheme == "dc_then_pcg":
+        dc_guess = _solve_schur_dc_fixed_gpu(
+            grid,
+            xp,
+            jq_local,
+            rhs,
+            row_norm,
+            active,
+            max_iterations=dc_max_iterations,
+            tolerance=dc_tolerance,
+            relaxation=dc_relaxation,
+        )
+        return _solve_schur_pcg_fixed_gpu(
+            grid,
+            xp,
+            jq_local,
+            rhs,
+            row_norm,
+            active,
+            initial_guess=dc_guess,
+            max_iterations=pcg_max_iterations,
+            tolerance=pcg_tolerance,
+            roundoff_floor=pcg_roundoff_floor,
+        )
+    raise ValueError(
+        "solver_scheme must be 'pcg', 'dc', or 'dc_then_pcg'"
+    )
+
+
 def _solve_schur_pcg_fixed_gpu(
     grid,
     xp,
@@ -1053,36 +1150,108 @@ def _solve_schur_pcg_fixed_gpu(
     active,
     *,
     max_iterations: int,
+    tolerance: float,
+    roundoff_floor: float | None = None,
+    initial_guess=None,
 ):
     """Solve ``J J^T x = rhs`` with a fixed device-resident PCG loop.
 
     The loop count is fixed by the caller so no residual-dependent host
     synchronization occurs inside the GPU capillary source construction.
+    Once the device residual reaches the requested tolerance, scalar masks
+    freeze the recurrence so later fixed iterations cannot drift away from
+    the accepted pressure-adjoint solve.
     """
     iterations = int(max_iterations)
     if iterations < 1:
         raise ValueError("max_pcg_iterations must be positive")
+    tolerance = _validate_positive_float(tolerance, "tolerance")
+    if roundoff_floor is not None:
+        roundoff_floor = _validate_positive_float(roundoff_floor, "roundoff_floor")
+        if roundoff_floor > tolerance:
+            raise ValueError("roundoff_floor must not exceed tolerance")
     b = xp.where(active, xp.asarray(rhs), xp.zeros_like(rhs))
     diagonal = xp.where(active & (row_norm > 0.0), row_norm, xp.ones_like(row_norm))
-    x = xp.zeros_like(b)
+    x = (
+        xp.zeros_like(b)
+        if initial_guess is None
+        else xp.where(active, xp.asarray(initial_guess), xp.zeros_like(b))
+    )
     r = b - _apply_schur_full_gpu(grid, xp, jq_local, x)
     z = r / diagonal
     p = z
     rz_old = xp.sum(r * z)
-    eps = xp.asarray(1.0e-30, dtype=b.dtype)
+    algebra_floor = 1.0e-30 if roundoff_floor is None else max(
+        float(roundoff_floor) ** 2,
+        1.0e-30,
+    )
+    eps = xp.asarray(algebra_floor, dtype=b.dtype)
+    residual_tolerance = xp.asarray(tolerance, dtype=b.dtype)
     for _ in range(iterations):
         ap = _apply_schur_full_gpu(grid, xp, jq_local, p)
         denom = xp.sum(p * ap)
-        safe_denom = xp.where(xp.abs(denom) > eps, denom, xp.ones_like(denom))
-        alpha = rz_old / safe_denom
-        x = x + alpha * p
-        r = r - alpha * ap
+        residual_linf = xp.max(xp.abs(r))
+        active_iteration = (
+            (residual_linf > residual_tolerance)
+            & (xp.abs(denom) > eps)
+            & (xp.abs(rz_old) > eps)
+        )
+        safe_denom = xp.where(active_iteration, denom, xp.ones_like(denom))
+        alpha = xp.where(active_iteration, rz_old / safe_denom, xp.zeros_like(denom))
+        x_next = x + alpha * p
+        r_next = r - alpha * ap
+        x = xp.where(active_iteration, x_next, x)
+        r = xp.where(active_iteration, r_next, r)
         z = r / diagonal
         rz_new = xp.sum(r * z)
-        safe_rz_old = xp.where(xp.abs(rz_old) > eps, rz_old, xp.ones_like(rz_old))
-        beta = rz_new / safe_rz_old
-        p = z + beta * p
-        rz_old = rz_new
+        safe_rz_old = xp.where(active_iteration, rz_old, xp.ones_like(rz_old))
+        beta = xp.where(active_iteration, rz_new / safe_rz_old, xp.zeros_like(rz_old))
+        p = xp.where(active_iteration, z + beta * p, p)
+        rz_old = xp.where(active_iteration, rz_new, rz_old)
+    return xp.where(active, x, xp.zeros_like(x))
+
+
+def _solve_schur_dc_fixed_gpu(
+    grid,
+    xp,
+    jq_local,
+    rhs,
+    row_norm,
+    active,
+    *,
+    max_iterations: int,
+    tolerance: float,
+    relaxation: float,
+    initial_guess=None,
+):
+    """Residual-monotone Jacobi defect correction for active Schur rows."""
+    iterations = _validate_positive_int(max_iterations, "max_iterations")
+    tolerance = _validate_positive_float(tolerance, "tolerance")
+    relaxation = _validate_positive_float(relaxation, "relaxation")
+    if relaxation > 1.0:
+        raise ValueError("relaxation must not exceed 1.0")
+    b = xp.where(active, xp.asarray(rhs), xp.zeros_like(rhs))
+    diagonal = xp.where(active & (row_norm > 0.0), row_norm, xp.ones_like(row_norm))
+    x = (
+        xp.zeros_like(b)
+        if initial_guess is None
+        else xp.where(active, xp.asarray(initial_guess), xp.zeros_like(b))
+    )
+    residual = b - _apply_schur_full_gpu(grid, xp, jq_local, x)
+    residual = xp.where(active, residual, xp.zeros_like(residual))
+    residual_linf = xp.max(xp.abs(residual))
+    residual_tolerance = xp.asarray(tolerance, dtype=b.dtype)
+    for _ in range(iterations):
+        active_iteration = residual_linf > residual_tolerance
+        candidate = x + relaxation * residual / diagonal
+        candidate = xp.where(active, candidate, xp.zeros_like(candidate))
+        candidate_residual = b - _apply_schur_full_gpu(grid, xp, jq_local, candidate)
+        candidate_residual = xp.where(active, candidate_residual, xp.zeros_like(residual))
+        candidate_linf = xp.max(xp.abs(candidate_residual))
+        accept = active_iteration & (candidate_linf <= residual_linf)
+        x = xp.where(accept, candidate, x)
+        residual = xp.where(accept, candidate_residual, residual)
+        residual_linf = xp.where(accept, candidate_linf, residual_linf)
     return xp.where(active, x, xp.zeros_like(x))
 
 
@@ -1191,6 +1360,13 @@ def _validate_nonnegative_float(value, name):
     converted = float(value)
     if not (math.isfinite(converted) and converted >= 0.0):
         raise ValueError(f"{name} must be finite and non-negative")
+    return converted
+
+
+def _validate_positive_int(value, name):
+    converted = int(value)
+    if converted < 1 or converted != value:
+        raise ValueError(f"{name} must be a positive integer")
     return converted
 
 

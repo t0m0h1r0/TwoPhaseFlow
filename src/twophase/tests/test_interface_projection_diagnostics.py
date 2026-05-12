@@ -318,6 +318,7 @@ def test_external_component_saddle_projection_removes_reaction_row():
 
     np.testing.assert_allclose(projection["component_hodge_coefficients"], 1.0)
     np.testing.assert_allclose(projection["corrected_jump_components"][0], 0.0)
+    np.testing.assert_allclose(projection["pressure_coordinate"], 0.0)
     np.testing.assert_allclose(projection["hodge_residual_components"][0], 0.0)
     assert projection["contract_active_metric"] == pytest.approx(1.0)
     assert projection["contract_pressure_adjoint_residual"] == pytest.approx(0.0)

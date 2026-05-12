@@ -95,6 +95,7 @@ class NSStepState:
     geometric_capillary_pressure_reaction_prepared: bool = False
     geometric_capillary_pressure_reaction_face_increment: list[Any] | None = None
     geometric_capillary_pressure_reaction_face_acceleration: list[Any] | None = None
+    geometric_capillary_pressure_reaction_coordinate: Any = None
     geometric_capillary_pressure_reaction_rhs: Any = None
     geometric_capillary_pressure_residual_rhs: Any = None
     geometric_capillary_scalar_pressure_face_components: list[Any] | None = None

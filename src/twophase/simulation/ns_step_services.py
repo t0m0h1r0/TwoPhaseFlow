@@ -208,12 +208,13 @@ def _ao_capillary_acceleration_for_projection_faces(
 
 
 def _needs_geometric_pressure_reaction_split(application) -> bool:
+    capillary = getattr(application, "capillary", None)
     return (
         str(
             getattr(
                 application,
                 "pressure_reaction_projection_status",
-                getattr(application.capillary, "pressure_reaction_projection_status", ""),
+                getattr(capillary, "pressure_reaction_projection_status", ""),
             )
         ).strip().lower()
         == "pressure_reaction_projection_pending"
@@ -384,6 +385,7 @@ def _application_from_geometric_capillary_split(
         max_abs_pressure_balanced_face_increment=balanced_max,
         pressure_exact_static=pressure_exact_static,
         capillary_drive_present=not pressure_exact_static,
+        pressure_reaction_coordinate=xp.asarray(split.pressure_range_coordinate),
         face_hodge_weights=split.face_weight_components,
         pressure_reaction_projection_status=split.status,
     )
@@ -665,6 +667,11 @@ def _pressure_coordinate_history_faces(
         capillary_force_source == "closed_interface_riesz"
         and not _uses_geometric_capillary_surface_slot(state)
     )
+    history_jump_sigma = (
+        0.0
+        if closed_interface_source or _uses_geometric_capillary_surface_slot(state)
+        else state.sigma
+    )
     interface_psi = _capillary_interface_psi(
         xp=xp,
         state=state,
@@ -679,13 +686,13 @@ def _pressure_coordinate_history_faces(
         state=state,
         curvature_method=curvature_method,
         grid=grid,
-        sigma=state.sigma,
+        sigma=history_jump_sigma,
     )
     kwargs = _pressure_face_flux_kwargs(
         xp=xp,
         state=state,
         ppe_runtime=ppe_runtime,
-        interface_sigma=0.0 if closed_interface_source else state.sigma,
+        interface_sigma=history_jump_sigma,
         curvature_method=curvature_method,
         interface_psi=interface_psi,
         interface_psi_previous=interface_psi_previous,
@@ -1569,8 +1576,16 @@ def _prepare_nonstatic_geometric_pressure_reaction(
             )
     acceleration = [increment / projection_dt for increment in increments]
     rhs = div_op.divergence_from_faces(acceleration)
+    reaction_coordinate = getattr(
+        application,
+        "pressure_reaction_coordinate",
+        None,
+    )
     state.geometric_capillary_pressure_reaction_face_increment = increments
     state.geometric_capillary_pressure_reaction_face_acceleration = acceleration
+    state.geometric_capillary_pressure_reaction_coordinate = (
+        None if reaction_coordinate is None else xp.asarray(reaction_coordinate)
+    )
     state.geometric_capillary_pressure_reaction_rhs = rhs
     state.geometric_capillary_pressure_reaction_prepared = True
     certificate = dict(state.conservative_transport_certificate or {})
@@ -1596,6 +1611,9 @@ def _prepare_nonstatic_geometric_pressure_reaction(
                 backend,
                 xp,
                 xp.max(xp.abs(rhs)),
+            ),
+            "ao_pressure_reaction_coordinate_available": (
+                reaction_coordinate is not None
             ),
         }
     )
@@ -1721,6 +1739,37 @@ def _embed_nonstatic_geometric_pressure_reaction_corrector(
             "ao_scalar_ppe_solve_completed": True,
             "ao_pressure_reaction_rhs_subtracted": True,
             "ao_pressure_reaction_corrector_embedded": True,
+        }
+    )
+    state.conservative_transport_certificate = certificate
+
+
+def _install_nonstatic_geometric_pressure_coordinate(
+    state: NSStepState,
+    *,
+    xp,
+    ppe_solver,
+) -> None:
+    """Store the scalar AO pressure coordinate after face embedding.
+
+    The face corrector has already consumed ``a_pi`` directly.  Adding the
+    pressure-range coordinate to ``pressure_base`` makes the next
+    ``pressure_coordinate`` history step reconstruct the same pressure-adjoint
+    cochain from the scalar variable instead of silently dropping the AO
+    reaction from the history state.
+    """
+    coordinate = state.geometric_capillary_pressure_reaction_coordinate
+    if coordinate is None:
+        raise ValueError(
+            "non-static AO pressure reaction requires the scalar coordinate "
+            "from the pressure-adjoint split"
+        )
+    state.pressure_base = xp.asarray(state.pressure_base) + xp.asarray(coordinate)
+    state.pressure = _apply_solver_interface_jump(ppe_solver, state.pressure_base)
+    certificate = dict(state.conservative_transport_certificate or {})
+    certificate.update(
+        {
+            "ao_pressure_reaction_coordinate_embedded": True,
         }
     )
     state.conservative_transport_certificate = certificate
@@ -2168,6 +2217,11 @@ def solve_ns_pressure_stage(
             ppe_runtime=ppe_runtime,
             curvature_method=curvature_method,
             pressure_flux_kwargs=pressure_flux_eval_kwargs,
+        )
+        _install_nonstatic_geometric_pressure_coordinate(
+            state,
+            xp=xp,
+            ppe_solver=ppe_solver,
         )
     next_p_prev_dev = xp.copy(state.pressure)
     next_p_prev = (

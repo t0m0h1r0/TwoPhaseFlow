@@ -1053,6 +1053,13 @@ class TwoPhaseNSSolver:
                 material,
                 sigma=state.sigma,
                 tolerance=1.0e-11,
+                solver_scheme=self._active_projection_solver_scheme,
+                pcg_tolerance=self._active_projection_pcg_tolerance,
+                max_pcg_iterations=self._active_projection_pcg_max_iterations,
+                pcg_roundoff_floor=self._active_projection_pcg_roundoff_floor,
+                dc_tolerance=self._active_projection_dc_tolerance,
+                dc_max_iterations=self._active_projection_dc_max_iterations,
+                dc_relaxation=self._active_projection_dc_relaxation,
             )
             if self._backend.is_gpu()
             else materialise_geometric_runtime_capillary_state(

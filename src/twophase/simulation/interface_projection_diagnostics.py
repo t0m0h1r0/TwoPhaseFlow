@@ -461,7 +461,7 @@ def capillary_external_component_saddle_projection(
         _set_solver_graph_static_operator_cache(ppe_solver, True)
         _invalidate_solver_graph_cache(ppe_solver)
         _set_zero_jump_solver_context(ppe_solver, zero_jump_kwargs)
-        raw_range, raw_hodge = _external_hodge_split(
+        raw_range, raw_hodge, raw_pressure = _external_hodge_split(
             xp=xp,
             div_op=div_op,
             ppe_solver=ppe_solver,
@@ -484,12 +484,14 @@ def capillary_external_component_saddle_projection(
         _restore_solver_graph(snapshots)
 
     component_hodge_faces = [split[1] for split in component_splits]
+    component_pressures = [split[2] for split in component_splits]
     component_count = len(component_faces)
     if component_count == 0:
         coefficients = xp.zeros((0,), dtype=xp.asarray(rho).dtype)
         corrected_faces = raw_faces
         augmented_hodge_faces = raw_hodge
         range_faces = raw_range
+        pressure_coordinate = raw_pressure
         denominator = xp.asarray(0.0, dtype=xp.asarray(rho).dtype)
     else:
         matrix = xp.zeros((component_count, component_count), dtype=xp.asarray(rho).dtype)
@@ -538,6 +540,10 @@ def capillary_external_component_saddle_projection(
                 strict=True,
             )
         ]
+        pressure_coordinate = raw_pressure - sum(
+            coefficients[index] * component_pressure
+            for index, component_pressure in enumerate(component_pressures)
+        )
         denominator = (
             matrix[0, 0]
             if component_count == 1
@@ -557,6 +563,7 @@ def capillary_external_component_saddle_projection(
     return {
         "capillary_jump_components": raw_faces,
         "range_projection_components": range_faces,
+        "pressure_coordinate": pressure_coordinate,
         "hodge_residual_components": augmented_hodge_faces,
         "face_weight_components": face_weights,
         "corrected_jump_components": corrected_faces,
@@ -597,7 +604,7 @@ def _external_hodge_split(
             strict=True,
         )
     ]
-    return range_projection_faces, hodge_residual_faces
+    return range_projection_faces, hodge_residual_faces, projected_pressure
 
 
 def _solve_small_component_system(xp, matrix, rhs, *, rcond: float):

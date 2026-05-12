@@ -91,6 +91,7 @@ class GeometricRuntimeCapillaryApplicationState:
     max_abs_pressure_balanced_face_increment: float
     pressure_exact_static: bool
     capillary_drive_present: bool
+    pressure_reaction_coordinate: Any = None
     face_hodge_weights: tuple[Any, Any] | None = None
     pressure_reaction_projection_status: str = "pressure_hodge_diagnostic"
 

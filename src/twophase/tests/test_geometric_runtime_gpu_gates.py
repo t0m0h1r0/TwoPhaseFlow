@@ -9,7 +9,12 @@ from twophase.backend import Backend
 from twophase.config import GridConfig
 from twophase.core.grid import Grid
 from twophase.geometry.p1_cut_geometry import cut_geometry_2d
-from twophase.simulation.geometric_phase_runtime_gpu import _host_scalar_packet_float
+from twophase.simulation.geometric_phase_runtime_gpu import (
+    _host_scalar_packet_float,
+    _solve_schur_dc_fixed_gpu,
+    _solve_schur_for_active_policy_gpu,
+    _solve_schur_pcg_fixed_gpu,
+)
 
 
 class _CountingBackend:
@@ -40,6 +45,88 @@ def test_gpu_scalar_packet_uses_one_host_transfer():
         "predictor": pytest.approx(3.0e-12),
     }
     assert backend.host_transfer_count == 1
+
+
+def test_gpu_schur_pcg_respects_device_tolerance_mask():
+    class GridStub:
+        ndim = 2
+        N = (1, 1)
+        xp = np
+
+    grid = GridStub()
+    jq_local = np.ones((1, 1, 4), dtype=float)
+    rhs = np.asarray([[8.0]])
+    row_norm = np.asarray([[4.0]])
+    active = np.asarray([[True]])
+
+    converged_initially = _solve_schur_pcg_fixed_gpu(
+        grid,
+        np,
+        jq_local,
+        rhs,
+        row_norm,
+        active,
+        max_iterations=4,
+        tolerance=100.0,
+        roundoff_floor=1.0e-14,
+    )
+    solved = _solve_schur_pcg_fixed_gpu(
+        grid,
+        np,
+        jq_local,
+        rhs,
+        row_norm,
+        active,
+        max_iterations=4,
+        tolerance=1.0e-12,
+        roundoff_floor=1.0e-14,
+    )
+
+    np.testing.assert_allclose(converged_initially, 0.0)
+    np.testing.assert_allclose(solved, 2.0)
+
+
+def test_gpu_schur_dc_and_dc_then_pcg_follow_yaml_scheme():
+    class GridStub:
+        ndim = 2
+        N = (1, 1)
+        xp = np
+
+    grid = GridStub()
+    jq_local = np.ones((1, 1, 4), dtype=float)
+    rhs = np.asarray([[8.0]])
+    row_norm = np.asarray([[4.0]])
+    active = np.asarray([[True]])
+
+    dc_only = _solve_schur_dc_fixed_gpu(
+        grid,
+        np,
+        jq_local,
+        rhs,
+        row_norm,
+        active,
+        max_iterations=1,
+        tolerance=1.0e-12,
+        relaxation=1.0,
+    )
+    chained = _solve_schur_for_active_policy_gpu(
+        grid,
+        np,
+        jq_local,
+        rhs,
+        row_norm,
+        active,
+        solver_scheme="dc_then_pcg",
+        pcg_tolerance=1.0e-12,
+        pcg_max_iterations=4,
+        pcg_roundoff_floor=1.0e-14,
+        dc_tolerance=1.0e-12,
+        dc_max_iterations=1,
+        dc_relaxation=1.0,
+    )
+
+    np.testing.assert_allclose(dc_only, 2.0)
+    np.testing.assert_allclose(chained, 2.0)
 
 
 def test_direct_dense_geometry_rejects_gpu_backend():
