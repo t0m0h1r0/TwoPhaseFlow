@@ -10,9 +10,9 @@
 （§\ref{sec:grid_density}：界面集中ガウス密度関数）と，
 そこに作用する CCD/FCCD のメトリック補正
 （§\ref{sec:scheme_per_variable}: 連鎖律 $\mathrm{d}J/\mathrm{d}\xi$ 経由の高次精度），
-および D1--D4 metric 診断
+および D1--D4 計量診断
 （§\ref{sec:ridge_eikonal_nu_grid}）の単体精度を確認する．
-非一様・曲線格子上での高次差分と metric/GCL の扱いは
+非一様・曲線格子上での高次差分と計量/GCL の扱いは
 Vinokur~\cite{Vinokur1983}，Thomas--Lombard の GCL~\cite{ThomasLombard1979}，
 および Visbal--Gaitonde の高次 compact 差分~\cite{VisbalGaitonde2002}
 を背景文献とする．
@@ -33,7 +33,7 @@ $\alpha = 1$ で一様格子（密度恒等的に 1），$\alpha = 2$ で
         $\|\mathrm{d}f / \mathrm{d}x\|_\infty < 3\times 10^{-13}$，
         倍精度 $\eps_{\mathrm{mach}}$ に CCD compact stencil の N 倍累積を見込んだ機械零閾値）併用
         （保存形・対称性維持の観点は~\cite{VerstappenVeldman2003}）．
-  \item[U3-b] FCCD face value/grad．$\alpha = 2$ 上の同 MMS．
+  \item[U3-b] FCCD 面値/面勾配．$\alpha = 2$ 上の同じ製造解．
   \item[U3-c] Ridge--Eikonal D1--D4 メトリック補正．
         円界面 $\psi = R^2 - (x-0.5)^2 - (y-0.5)^2$（$R = 0.25$），
         $\alpha \in \{1.0,\, 1.5,\, 2.0\}$，$N = 128$．
@@ -42,9 +42,9 @@ $\alpha = 1$ で一様格子（密度恒等的に 1），$\alpha = 2$ で
         \quad $D_2$: $\eps_{\mathrm{local}}$ 振幅幅，
         \quad $D_3$: 幾何平均間隔の振幅幅，
         \quad $D_4$: $\max|\mathrm{d}J/\mathrm{d}\xi|$（連鎖律補正）．
-        $\alpha = 1$ では $D_k = 0$，$\alpha > 1$ では本 smooth probe で必要となる
+        $\alpha = 1$ では $D_k = 0$，$\alpha > 1$ では本滑らかな製造場で必要となる
         $D_4$（連鎖律補正）の発火を確認する．D1--D3 は局所厚み・振幅幅の診断であり，
-        本設定で発火しないこと自体が smooth-interface 条件との整合を示す．
+        本設定で発火しないこと自体が滑らかな界面条件との整合を示す．
 \end{description}
 
 \paragraph{D1--D4 の位置づけ．}
@@ -82,9 +82,9 @@ $N$ & $h_{\min}$ & $\|e_{d_1}\|_\infty$ ($\alpha=1$) & ($\alpha=2$) \\
 \end{table}
 
 \begin{table}[!ht]
-\caption{U3-b：FCCD face value/grad on \texorpdfstring{$\alpha=2$}{alpha=2} 非一様格子}
+\caption{U3-b：\texorpdfstring{$\alpha=2$}{alpha=2} 非一様格子上の FCCD 面値/面勾配}
 \label{tab:U3_fccd_nonuniform}
-\PaperCaptionNote{均一格子 U1-c と同様に 4 次律速を示す．非一様格子上でも FCCD face evaluation の基本次数が維持されることを確認する．}
+\PaperCaptionNote{均一格子 U1-c と同様に 4 次律速を示す．非一様格子上でも FCCD 面評価の基本次数が維持されることを確認する．}
 \centering\small
 \begin{tabular}{r r r r}
 \toprule
@@ -128,15 +128,15 @@ $D_4$ は両 $\alpha$ で $O(10^{-11})$ と一桁上に位置し，連鎖律 $\m
 \includegraphics[width=0.88\linewidth]{figures/ch12_u3_nonuniform_spatial_suite}
 \caption{U3：非一様格子 空間離散精度}
 \label{fig:ch12_u3}
-\PaperCaptionNote{$\alpha=2$ 界面集中ガウス密度上で CCD 1 階 d1 slope $5.98$ + FCCD face value/grad slope $4.00 / 4.09$； Ridge--Eikonal D1--D4 メトリック補正は $\alpha=1$ で全零，$\alpha>1$ で D4（連鎖律）が $O(10^{-11})$ で発火．}
+\PaperCaptionNote{$\alpha=2$ 界面集中ガウス密度上で CCD 1 階 d1 slope $5.98$ + FCCD 面値/面勾配 slope $4.00 / 4.09$； Ridge--Eikonal D1--D4 メトリック補正は $\alpha=1$ で全零，$\alpha>1$ で D4（連鎖律）が $O(10^{-11})$ で発火．}
 \end{figure}
 
 \paragraph{判定と次章への接続．}
 \begin{itemize}\setlength{\itemsep}{0pt}
   \item U3-a CCD 非一様：slope $5.98$．設計 6 次の機械零域近接，
         \textbf{合格} \checkmark．
-  \item U3-b FCCD 非一様：slope $4.00$（face value）/ $4.09$（face grad）．
-        U1-c と同じ 4 次律速を保ち，非一様格子上でも face evaluation が
+  \item U3-b FCCD 非一様：slope $4.00$（面値）/ $4.09$（面勾配）．
+        U1-c と同じ 4 次律速を保ち，非一様格子上でも面評価が
         破綻しないことを確認．\checkmark
   \item U3-c Ridge--Eikonal メトリック D1--D4：
         $\alpha=1$ で全零，$\alpha>1$ で $D_4$ が連鎖律補正として

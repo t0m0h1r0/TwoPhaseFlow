@@ -310,14 +310,13 @@ $F^{(k,j)}_{f_{-1/2}} = u^{(k)}_f\cdot u^{(j)}_f$ は
 \label{sec:fccd_adv_impl}
 % -------------------------------------------------------------------------------
 
-\noindent\textbf{$\mathbf{q}$-共有最適化}：
+\noindent\textbf{共通基盤量の再利用}：
 面値 $\mathbf{P}_f\mathbf{u}$，面勾配 $\mathbf{M}^{\FCCD}\mathbf{u}$，
 面第二導関数 $\mathbf{S}_{\CCD}^f\mathbf{u}$ はすべて共通の
 $\mathbf{q} = \mathbf{S}_{\CCD}\mathbf{u}$ に依存するため，
-CCD ブロック三重対角解は\textbf{1 軸あたり 1 回のみ}．
-追加コストは疎行列 $\mathbf{P}_1, \mathbf{P}_2, \mathbf{D}_1, \mathbf{D}_2$ の
-$\mathcal{O}(N)$ 乗算のみで，
-演算量は純 CCD 移流の 1.3--1.5$\times$．
+CCD ブロック三重対角解で得た基盤量を複数の面演算子で共有できる．
+この性質により，FCCD は別々の補間・勾配・曲率評価を寄せ集めるのではなく，
+同一の面評価位置に基づく一つの演算子族として読める．
 
 \noindent\textbf{本稿内での役割分担}：
 \begin{itemize}
