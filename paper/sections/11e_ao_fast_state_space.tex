@@ -1,0 +1,297 @@
+% paper/sections/11e_ao_fast_state_space.tex
+%
+% §11  AO-Fast geometric cell-fraction state space
+%
+% ═══════════════════════════════════════════════════════════════════════════════
+\subsection{AO-Fast 幾何セル分率状態空間}
+\label{sec:ao_fast_state_space}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+本節は，ショートペーパー AO で定義した幾何セル分率状態空間を，
+第2章の連続理論と第12--14章の実験 gate の間に置く数値アルゴリズム章である．
+第~\ref{sec:capillary_pressure_reaction_subspace}節では，
+表面エネルギー仮想仕事と圧力反力部分空間 $R_p$ を理論境界として固定した．
+ここでは，その境界を高速に評価するための状態所有者，互換射影，
+アクティブ集合，近似誤差，GPU 契約，および YAML/fail-close 契約を定式化する．
+
+\subsubsection{状態所有者と幾何互換条件}
+\label{sec:ao_state_ownership}
+
+AO 経路では，物質量の所有者を平滑化された $\psi$ ではなく，
+セルごとの有次元液相体積
+\begin{equation}
+  q_C = |C|\,\theta_C,\qquad
+  \rho_C(q)=\rho_g+(\rho_l-\rho_g)\frac{q_C}{|C|}
+  \label{eq:ao_volume_owner}
+\end{equation}
+に置く．
+正規化分率 $\theta_C$ は表示・物性補間用の view であり，
+非一様格子で $\sum_C\theta_C$ を体積として読んではならない．
+鋭い毛管幾何は連続 gauge $\phi$ が誘導する界面複体
+$\Gamma_h=\Gamma(\phi)$ が所有する．
+固定正則 stratum $S$ 上では，液相領域
+$\Omega_l(\phi)=\{\bx:\phi_h(\bx)<0\}$ に対して
+\begin{equation}
+  Q_h^S(\phi)_C
+  =
+  |C\cap\Omega_l(\Gamma(\phi))|,
+  \qquad
+  A_h^S(\phi)_C=\frac{Q_h^S(\phi)_C}{|C|},
+  \qquad
+  S_h^S(\phi)=|\Gamma(\phi)|
+  \label{eq:ao_geometry_maps}
+\end{equation}
+を定義し，互換状態は
+\begin{equation}
+  Q_h^S(\phi)_C=q_C
+  \quad (C\in\mathcal{A}_q)
+  \label{eq:ao_geometric_compatibility}
+\end{equation}
+を満たす．
+ここで $\mathcal{A}_q$ は混合セル，直前の混合セル，
+輸送で状態が変わったセル，目標状態で $0<q_C<|C|$ となるセル，
+および符号・境界所有権判定に必要な一面 halo からなるアクティブ制約支持である．
+周期境界は商複体として数え，壁では phase flux が消える面を境界制約として扱う．
+壁接触角を後から導入する場合は $dS_h$ の境界項で入れるべきであり，
+曲率の後処理補正として混ぜてはならない．
+
+この所有者分離により，拒否される経路も明確になる：
+$q$ から密度を作りながら毛管力だけを互換でない $\psi$ から作る経路，
+非幾何輸送後の大域質量補正，$q$ の clipping を保存性証明と呼ぶ経路，
+および不連続な $\theta_C$ を CCD/DCCD/FCCD/UCCD の滑らかなスカラーとして微分する経路は，
+AO 経路では採用しない．
+CCD 族は速度，圧力，gauge predictor，smooth diagnostic，面状態再構成に使う．
+幾何写像 $Q_h,J_q,T_q,dS_h$ の代替微分器としては使わない．
+
+\subsubsection{互換射影と射影仕事}
+\label{sec:ao_compatibility_projection}
+
+保存輸送は，セル面 incidence $B$ と swept liquid flux $\Phi_l$ により
+\begin{equation}
+  q^{n+1}=q^n-\Delta t\,B\Phi_l,
+  \qquad
+  \mathbf{1}^T B\Phi_l=0
+  \label{eq:ao_conservative_q_update}
+\end{equation}
+と書く．
+密度・運動量の共通フラックスは同じ $\Phi_l$ から作り，
+位相，密度，運動量を同一台帳で進める．
+この段階で得た $q^-$ と gauge predictor $\phi^-$ は，互換 bundle
+式~\eqref{eq:ao_geometric_compatibility} へ射影する：
+\begin{equation}
+  \min_{\phi}\frac12\|\phi-\phi^-\|_{W_\eta}^2
+  \quad\text{subject to}\quad
+  Q_h^S(\phi)_C=q^-_C\quad(C\in\mathcal{A}_q),
+  \qquad
+  W_\eta=W_v+\eta L^T H_L L .
+  \label{eq:ao_projection_problem}
+\end{equation}
+線形化では $J_q=dQ_h^S/d\phi$ を用い，Schur 系
+\begin{equation}
+  S_q\lambda=J_q\delta_{\mathrm{pred}}-r_q,
+  \qquad
+  S_q=J_qW_\eta^{-1}J_q^T,
+  \qquad
+  \delta=\delta_{\mathrm{pred}}-W_\eta^{-1}J_q^T\lambda
+  \label{eq:ao_projection_schur}
+\end{equation}
+を解く．
+$J_q$ が宣言された圧力 gauge を除いて full row rank であれば，
+$S_q$ は SPD であり，rank・条件数・sign/case margin・
+物理体積残差 $\|Q_h(\phi^+)-q^-\|$ が射影受理条件になる．
+この射影は gauge を互換状態へ戻す処理であり，
+表面長の変化
+\begin{equation}
+  \Delta S_\Pi=S_h(\phi^+)-S_h(\phi^-)
+  \label{eq:ao_projection_surface_work}
+\end{equation}
+は物理的な毛管仕事ではなく射影仕事として台帳に記録する．
+大きすぎる $\Delta S_\Pi$ は fail-close gate であり，
+表面張力の散逸や安定化として消費してはならない．
+
+\subsubsection{毛管 bundle work と圧力反力分解}
+\label{sec:ao_bundle_capillarity}
+
+互換状態では，表面エネルギーは
+$E_\sigma(\phi)=\sigma S_h(\phi)$ であり，
+面速度 $w_f$ による体積変化は $T_q(\Gamma_h)w_f$ として読む．
+この体積変化を互換 bundle に lift し，
+その lift に対する $dS_h$ の作用を評価して，
+面空間 $F_h$ 上の毛管共変量 $r_\sigma$ を得る．
+したがって AO 経路の毛管力は曲率配列の後処理ではなく，
+同じ $Q_h,J_q,T_q,dS_h,M_f$ が定める face-Hodge Riesz 代表である．
+
+静的平衡は，あるセル圧力座標 $\pi$ が存在して
+\begin{equation}
+  \sigma\,dS_h[\delta\phi]+\pi^T J_q\delta\phi=0
+  \quad
+  \text{for all admissible }\delta\phi
+  \label{eq:ao_discrete_young_laplace_test}
+\end{equation}
+を満たすかで判定する．
+これは形状名による分岐ではなく，互換 bundle 上の Young--Laplace 条件である．
+ただし，第~\ref{sec:capillary_pressure_reaction_subspace}節の
+式~\eqref{eq:ao_full_pressure_cancellation} が示すように，
+full cell-pressure image へ射影すると毛管波の非圧力駆動まで消える場合がある．
+したがって実行時に速度を変える量は，
+理論境界として先に定義した $R_p(q_T)$ に対する
+式~\eqref{eq:capillary_pressure_reaction_projection} の
+$M_f$-直交残差でなければならない．
+
+\subsubsection{AO-Fast の計算量削減と近似誤差}
+\label{sec:ao_fast_acceleration}
+
+ショートペーパー AO の式を全領域で愚直に読むと，
+各 time step と line search trial で全セルの cut geometry，
+全セルの $J_q$ table，および全セル Schur 作用を再構築するため，
+計算量は
+\begin{equation}
+  \text{direct AO:}\quad \Ord{k|C_h|}
+  \quad\text{per candidate}
+  \label{eq:ao_direct_complexity}
+\end{equation}
+となる．
+AO-Fast の高速化単位は solver family の差し替えではなく，
+実際に界面 stratum が変わったアクティブ表だけを更新することである：
+\begin{equation}
+  \text{AO-Fast:}\quad
+  \Ord{|\mathrm{dirty}|+k|\mathcal{A}_q|}
+  \label{eq:ao_fast_complexity}
+\end{equation}
+を目標とする．
+ここで dirty は sign/case，交差区間，境界・周期所有権，目標支持，
+swept-flux 支持，または metric identity が変化した行である．
+通常実行時に $q^-$ を全領域 scan して mixed cell を探すことはしない．
+transport が出す state-changing support stream と前 step の active table から
+device 上で compaction し，full-grid support scan は初期化，restart 検証，
+dense oracle 比較，明示 debug，または degenerate exact step に限定する．
+
+固定正則 stratum では，凍結した局所幾何を proposal generator として使える．
+局所 crossing margin と節点 sign margin から
+\begin{equation}
+  \beta_C
+  =
+  \frac{\|\delta\phi\|_{\infty,C}}
+       {\min(\gamma_C,m_C)}
+  \label{eq:ao_beta_margin}
+\end{equation}
+を定義し，$\beta_C\le\beta_\ast<1$ なら
+\begin{align}
+  |Q_h^S(\phi+\delta\phi)_C-Q_h^S(\phi)_C-J_{q,C}\delta\phi_C|
+  &\le C_Q |C|\beta_C^2, \notag\\
+  |S_h^S(\phi+\delta\phi)_C-S_h^S(\phi)_C-dS_C\delta\phi_C|
+  &\le C_S |\Gamma_C|\beta_C^2 .
+  \label{eq:ao_fixed_stratum_accuracy}
+\end{align}
+二次 secant/Hessian proposal を使う場合でも，
+その精度主張は同じ stratum 上の候補精度であり，
+commit は常に exact active recomputation の残差で判定する．
+
+近似毛管分解の精度は，毛管加速度の仕事ノルムで宣言する．
+近似共変量 $\widetilde r_\sigma$ と近似射影
+$\widetilde\Pi_{R_p}^{M_f}$ が
+\begin{equation}
+  \|r_\sigma-\widetilde r_\sigma\|_{M_f^{-1}}\le\varepsilon_\sigma,\qquad
+  \|\Pi_{R_p}^{M_f}r_\sigma-\widetilde\Pi_{R_p}^{M_f}\widetilde r_\sigma\|_{M_f^{-1}}
+  \le\varepsilon_p
+  \label{eq:ao_fast_error_budget}
+\end{equation}
+を満たすなら，
+\begin{equation}
+  \|a_{\sigma,\mathrm{bal}}-\widetilde a_{\sigma,\mathrm{bal}}\|_{M_f}
+  \le \varepsilon_\sigma+\varepsilon_p
+  \label{eq:ao_fast_acceleration_error_bound}
+\end{equation}
+である．
+この境界は「近似を使ってよい」という許可ではなく，
+近似を受理するために事前宣言された精度契約である．
+
+\subsubsection{PCG/DC，GPU，YAML 契約}
+\label{sec:ao_fast_solver_yaml_contract}
+
+互換射影の主反復は，active graph 上の Schur 作用を matrix-free に評価する
+PCG/Newton 系とし，前 step warm start，対角および connected-component block
+preconditioner，必要なら component deflation を用いる．
+反復許容誤差は downstream の exact gate で支配し，
+\begin{equation}
+  \tau_{\mathrm{cg}}
+  \le
+  \min(c_q\tau_q,\;c_s\tau_S,\;c_\kappa\tau_q/\kappa_{\mathrm{est}})
+  \label{eq:ao_pcg_tolerance}
+\end{equation}
+のように，物理体積残差・射影仕事・条件数推定から決める．
+丸め floor が目標を上回る場合は，さらに反復しても精度を買えないので，
+fail-close または明示された solver-chain 遷移だけを許す．
+
+DC は primary solver ではなく，exact residual を単調に下げる proposal としてのみ使う．
+厳密 active residual を
+\begin{equation}
+  R(\phi)=Q_h^S(\phi)-q^-
+  \label{eq:ao_exact_active_residual}
+\end{equation}
+とし，安価な凍結逆作用 $P_0$ から
+\begin{equation}
+  \delta\phi_{\mathrm{DC}}=-P_0R(\phi_k),
+  \qquad
+  \phi_{\mathrm{trial}}(\alpha)=\phi_k+\alpha\delta\phi_{\mathrm{DC}}
+  \label{eq:ao_dc_candidate}
+\end{equation}
+を作る．
+受理できるのは，
+\begin{equation}
+  \|R(\phi_{\mathrm{trial}})\|_{H_C^{-1}}
+  <
+  \|R(\phi_k)\|_{H_C^{-1}}
+  \label{eq:ao_dc_residual_monotone}
+\end{equation}
+を exact recomputation で満たし，sign/case margin と
+$\Delta S_\Pi$ gate も満たす場合だけである．
+DC が停滞した場合に PCG へ移るかどうかは YAML で明示する方針であり，
+暗黙 fallback ではない．
+
+GPU 実装では，active table，cut-geometry row，$J/J^T$ 作用，
+Krylov vector，line-search residual，rank/conditioning probe を
+すべて \texttt{backend.xp} 上に保持する．
+CG/Newton/DC/line-search の内側で \texttt{.get()}，\texttt{asnumpy}，
+\texttt{float(...)}，\texttt{bool(...)}，Python list materialization による
+host 同期を行わない．
+host へ渡してよいのは，outer iteration 受理後の台帳スカラー，
+kernel counter，host-transfer counter だけである．
+dense direct-AO 由来の実装は，exact P1 case algebra，
+metric cache，q/theta/phi 分離，fail-close parser gate，
+face-Hodge work identity などの知見を取り込んでよいが，
+本番経路では \texttt{oracle\_only}，\texttt{gpu\_production}，\texttt{reject}
+の分類を通過した記号だけを呼ぶ．
+全格子 dense projection は debug oracle であり，production fallback ではない．
+
+YAML/UX では，primary solver，accelerator，fallback を分けて宣言する．
+既定は fail-close であり，例えば
+\texttt{fallback.policy: none} なら primary solver 失敗後に
+PCG/DC を自動で切り替えない．
+\texttt{fallback.policy: explicit\_chain} を選ぶ場合は，
+\texttt{from}，\texttt{to}，\texttt{triggers}，\texttt{record\_as} を持つ
+可視な chain として台帳に記録する．
+同様に \texttt{geometric\_cell\_fraction} では，
+輸送変数を \texttt{q}，互換制約を \texttt{hard\_cell\_volume} とし，
+GPU 内側反復の host transfer と dense runtime fallback を禁止する．
+\texttt{psi} 輸送，Ridge--Eikonal 再初期化，boundedness clipping，
+diagnostic-only condition gate，implicit fallback は parse 時点で拒否する．
+
+\subsubsection{実験章への接続}
+\label{sec:ao_fast_validation_connection}
+
+AO-Fast は，式~\eqref{eq:ao_geometric_compatibility} の hard volume constraint，
+式~\eqref{eq:capillary_pressure_reaction_projection} の $R_p$ 分解，
+式~\eqref{eq:ao_fast_error_budget}--\eqref{eq:ao_fast_acceleration_error_bound} の
+近似誤差，および本節の GPU/YAML 契約を同時に満たすまでは，
+第~\ref{sec:benchmarks}章の production 物理経路へ入れない．
+第~\ref{sec:U12_ao_capillary_split_gate}節の U12 は full pressure image の反例と
+GPU fail-close を単体 gate として確認し，
+第~\ref{sec:ao_fast_capillary_gate}節の V11 は統合前 gate として
+標準 FCCD/UCCD6/pressure-jump/component-Hodge 経路との境界を固定する．
+したがって，第~\ref{sec:val_capillary}節の毛管波が完走しても，
+それは AO-Fast production admission ではない．
+AO-Fast の本番化は，active-vs-dense equality，dirty/flux/target refresh，
+device-resident Schur/PCG，declared fallback ledger，
+および Chapter 14 YAML の \texttt{geometric\_cell\_fraction} 明示化を
+順に通過した後の別段階である．
