@@ -680,21 +680,29 @@ predicted gauge `phi^-`, the previous active table, cached metric arrays, and
 the face-Hodge state needed by capillary work.
 
 ```text
-1. detect dirty cells from sign/case changes, moved crossing intervals,
-   changed boundary/periodic ownership, or changed grid metric identity.
-2. reuse the previous active table outside the dirty set and its one-face halo;
-   rebuild compact SoA rows only on the dirty active region.
-3. compute exact Q_h^S(phi^-), S_h^S(phi^-), R=Q_h^S(phi^-)-q^- on A, not C_h.
-4. if exact residual, sign/case, and projection-work gates pass, accept.
-5. otherwise run the declared primary active solver.  Frozen-stratum linear
+1. build the constraint support A_q from current mixed cells, previous mixed
+   cells, swept-flux-touched cells, target-mixed cells where 0<q^-_C<|C|, and
+   the one-face halo needed for sign/case/ownership detection.
+2. attach q_target_A, cell_measure_A, target_state_code_A, and origin_mask_A;
+   reject out-of-bounds targets before solving.
+3. detect dirty cells from sign/case changes, moved crossing intervals,
+   changed boundary/periodic ownership, changed target support, swept-flux
+   support, or changed grid metric identity.
+4. reuse previous active rows outside the dirty set and halo; rebuild compact
+   SoA rows only on dirty A_q rows.
+5. compute exact Q_h^S(phi^-), S_h^S(phi^-), R=Q_h^S(phi^-)-q^- on A_q, not C_h.
+6. if exact residual, sign/case, and projection-work gates pass, accept.
+7. otherwise run the declared primary active solver.  Frozen-stratum linear
    updates and residual-monotone DC may be proposal-only accelerators when the
    YAML says so; rejection discards the proposal and does not change solver
    family.
-6. recompute exact active Q/S before commit; if sign/case changed, refresh the
-   active table once and recheck.
-7. if exact active recomputation still fails, apply the declared fallback
-   policy: `none` means fail close; `explicit_chain` allows only the listed
-   solver transition and then records it in the ledger.
+8. recompute exact active Q/S before commit; if active support expands, advance
+   a bounded active-set epoch and recheck.
+9. if topology is required or the epoch limit is exceeded, fail close or enter
+   a declared topology route.  Solver fallback is not a topology recovery.
+10. if exact active recomputation still fails for solver-family reasons, apply
+    the declared fallback policy: `none` means fail close; `explicit_chain`
+    allows only the listed solver transition and then records it in the ledger.
 ```
 
 The asymptotic objective is:
@@ -777,10 +785,10 @@ The first implementation slices should therefore be:
 
 ```text
 1. import dense direct-AO formulas/tests as oracle code,
-2. build ActiveGeometryTable with the same P1 case algebra,
+2. build ActiveGeometryTable over `A_q`, not current mixed cells alone,
 3. prove active-vs-dense equality on manufactured regular strata,
-4. add dirty plus one-face halo refresh tests,
-5. add device-resident active J/J^T/Schur operators,
+4. add dirty/flux-touched/target-mixed plus one-face halo refresh tests,
+5. add device-resident active J/J^T/Schur operators with conditioning gates,
 6. then connect runtime/capillary gates and chapter-14 YAMLs.
 ```
 
@@ -791,22 +799,31 @@ recorded.  The gate freezes the first implementation boundary:
 
 ```text
 dense direct-AO code is oracle/test-only,
-production storage is ActiveGeometryTable struct-of-arrays,
-all imported symbols are classified as oracle_only, gpu_production, or reject,
+production storage is ActiveGeometryTable struct-of-arrays over A_q,
+A_q includes current/previous mixed, flux-touched, target-mixed, and halo rows,
+q_target_A, cell_measure_A, target state, and origin masks are first-class,
+all imported symbols use closed classification oracle_only, gpu_production, or reject,
+migration status is separate from classification,
 GPU production forbids inner-loop host transfers,
 default fallback policy is none,
 exact active Q_h/S_h recomputation owns acceptance,
-tolerances are declared before tests are accepted,
+physical-volume tolerances are unit-invariant and declared before tests,
+PCG/Newton gates record rank, conditioning, and stop reason,
+active-set topology changes use bounded epochs or fail-close,
+GPU performance gates have pass/fail thresholds,
 runtime/capillary/chapter-14 YAML adapters wait for active geometry gates.
 ```
 
-The intended commit ladder is: dense oracle import, active table skeleton,
-GPU active storage, dirty plus one-face halo refresh, active Q/S/J/dS kernels,
-device-resident J/J^T/Schur, active PCG/Newton line search, YAML/UX parser
-gates, runtime/checkpoint/capillary adapters, then chapter-14 smoke YAMLs.
+The intended commit ladder is: dense oracle plus manifest/governance/parser
+skeleton, active `A_q` table skeleton, GPU active storage, dirty/flux/target
+plus one-face halo refresh, active Q/S/J/dS kernels, device-resident J/J^T/Schur
+with rank/conditioning gates, active PCG/Newton line search with active-set
+epochs, YAML/UX runtime construction, runtime/checkpoint/capillary adapters,
+then chapter-14 smoke YAMLs.
 Each slice is a separate checkpoint; if any slice introduces dense fallback,
-hidden D2H synchronization, approximate residual acceptance, or implicit
-solver fallback, the implementation fails closed at that slice.
+hidden D2H synchronization, approximate residual acceptance, current-phi-only
+constraint support, dimensioned tolerance shortcuts, or implicit solver
+fallback, the implementation fails closed at that slice.
 
 ## 12. YAML Contract
 

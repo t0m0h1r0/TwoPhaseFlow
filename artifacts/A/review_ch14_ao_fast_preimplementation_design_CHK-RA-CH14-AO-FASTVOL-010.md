@@ -15,6 +15,11 @@ But it is not yet safe to begin production implementation unchanged.  The
 review found two blockers and several high-risk design gaps.  The next step
 should be a CHK-011 design repair before C1/C2 code begins.
 
+Resolution status: CHK-011 repaired all findings in
+`artifacts/A/ch14_ao_fast_design_repair_CHK-RA-CH14-AO-FASTVOL-011.md` and
+updated the implementation-facing CHK-009 design text.  Production
+implementation must use the repaired CHK-009/CHK-011 contract.
+
 ## Findings
 
 ### F1 BLOCKER - Active set is defined from current phi, not from target q support
