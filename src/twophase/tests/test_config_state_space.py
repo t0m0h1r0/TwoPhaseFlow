@@ -305,9 +305,18 @@ def test_active_geometry_capillary_scheme_preset_expands_defaults():
     assert solver._capillary_force_source == "bundle_virtual_work"
 
 
-def test_active_geometry_capillary_rejects_legacy_ao_scheme_names():
+@pytest.mark.parametrize(
+    "scheme",
+    [
+        "ao_fast",
+        "ao-fast",
+        "active-geometry-capillary",
+        "geometric_cell_fraction",
+    ],
+)
+def test_active_geometry_capillary_rejects_legacy_scheme_names(scheme):
     raw = _geometric_raw()
-    raw["interface"]["state_space"] = {"scheme": "ao_fast"}
+    raw["interface"]["state_space"] = {"scheme": scheme}
 
     with pytest.raises(ValueError, match="active_geometry_capillary"):
         ExperimentConfig.from_dict(raw)
@@ -318,6 +327,24 @@ def test_active_geometry_capillary_rejects_kind_only_front_door():
     raw["interface"]["state_space"] = {"kind": "geometric_cell_fraction"}
 
     with pytest.raises(ValueError, match="scheme='active_geometry_capillary'"):
+        ExperimentConfig.from_dict(raw)
+
+
+@pytest.mark.parametrize(
+    "extra",
+    [
+        {"kind": "geometric_cell_fraction"},
+        {"conserved_variable": "q"},
+        {"normalized_view": "theta"},
+        {"gauge": {"variable": "phi"}},
+        {"compatibility": {"projection": {"implementation": "active_cached"}}},
+    ],
+)
+def test_active_geometry_capillary_rejects_parser_owned_yaml_knobs(extra):
+    raw = _geometric_raw()
+    raw["interface"]["state_space"].update(extra)
+
+    with pytest.raises(ValueError, match="only the scheme key"):
         ExperimentConfig.from_dict(raw)
 
 
@@ -473,107 +500,3 @@ def test_ao_fast_checkpoint_contract_rejects_bad_face_history_shape():
     arrays["solver/projected_face_components/1"] = np.zeros((8, 8))
     with pytest.raises(ValueError, match="face history"):
         validate_ao_fast_checkpoint_arrays(arrays, cell_shape=(8, 8))
-
-
-@pytest.mark.parametrize(
-    ("patch", "match"),
-    [
-        (
-            {
-                "interface": {
-                    "state_space": {
-                        "compatibility": {
-                            "projection": {"implementation": "dense_reference"}
-                        }
-                    }
-                }
-            },
-            "projection.implementation",
-        ),
-        (
-            {
-                "interface": {
-                    "state_space": {
-                        "compatibility": {
-                            "projection": {"dense_reference": "runtime"}
-                        }
-                    }
-                }
-            },
-            "dense_reference",
-        ),
-        (
-            {
-                "interface": {
-                    "state_space": {
-                        "compatibility": {
-                            "projection": {"gpu_contract": {"required": False}}
-                        }
-                    }
-                }
-            },
-            "gpu_contract.required",
-        ),
-        (
-            {
-                "interface": {
-                    "state_space": {
-                        "compatibility": {
-                            "projection": {"condition_gate": "diagnostic"}
-                        }
-                    }
-                }
-            },
-            "condition_gate",
-        ),
-        (
-            {
-                "interface": {
-                    "state_space": {
-                        "compatibility": {
-                            "projection": {
-                                "solver": {"fallback": {"policy": "auto"}}
-                            }
-                        }
-                    }
-                }
-            },
-            "fallback.policy",
-        ),
-    ],
-)
-def test_geometric_state_space_negative_parser_gates(patch, match):
-    raw = _geometric_raw(patch)
-    with pytest.raises(ValueError, match=match):
-        ExperimentConfig.from_dict(raw)
-
-
-def test_explicit_chain_requires_complete_transition_metadata():
-    raw = _geometric_raw(
-        {
-            "interface": {
-                "state_space": {
-                    "compatibility": {
-                        "projection": {
-                            "solver": {
-                                "primary": "residual_monotone_dc",
-                                "fallback": {
-                                    "policy": "explicit_chain",
-                                    "chain": [
-                                        {
-                                            "from": "residual_monotone_dc",
-                                            "to": "active_pcg_newton",
-                                            "triggers": ["trust_region_exhausted"],
-                                        }
-                                    ],
-                                },
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    )
-
-    with pytest.raises(ValueError, match="record_as"):
-        ExperimentConfig.from_dict(raw)

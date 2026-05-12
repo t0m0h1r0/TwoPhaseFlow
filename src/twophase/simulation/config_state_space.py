@@ -83,12 +83,16 @@ def parse_interface_state_space(interface: dict, numerics: dict) -> InterfaceSta
         raw = {"scheme": raw}
     if not isinstance(raw, dict):
         raise ValueError("interface.state_space must be a mapping or scheme string")
-    if "kind" not in raw and "scheme" in raw:
+    if "scheme" in raw:
         scheme = _normalize_state_space_scheme(raw["scheme"])
         if scheme == _ACTIVE_GEOMETRY_CAPILLARY_SCHEME:
-            raw = {**raw, "kind": "geometric_cell_fraction"}
-        elif scheme == "diffuse_cls":
-            raw = {**raw, "kind": "diffuse_cls"}
+            _reject_active_geometry_state_space_overrides(raw)
+            return _parse_geometric_cell_fraction_state_space(
+                _active_geometry_capillary_state_space_defaults(),
+                interface,
+                numerics,
+            )
+        raw = {**raw, "kind": "diffuse_cls"}
     if "kind" not in raw:
         raise ValueError("interface.state_space.scheme is required")
 
@@ -102,14 +106,11 @@ def parse_interface_state_space(interface: dict, numerics: dict) -> InterfaceSta
         _validate_legacy_diffuse_stack(numerics)
         return InterfaceStateSpaceCfg()
 
-    if "scheme" not in raw:
-        raise ValueError(
-            "active-geometry capillary YAML must select "
-            "interface.state_space.scheme='active_geometry_capillary'; "
-            "kind='geometric_cell_fraction' is an internal expanded kind"
-        )
-    raw = _merge_defaults(_active_geometry_capillary_state_space_defaults(), raw)
-    return _parse_geometric_cell_fraction_state_space(raw, interface, numerics)
+    raise ValueError(
+        "active-geometry capillary YAML must select only "
+        "interface.state_space.scheme='active_geometry_capillary'; "
+        "kind='geometric_cell_fraction' is an internal expanded kind"
+    )
 
 
 def _parse_declared_diffuse(raw: dict[str, Any]) -> None:
@@ -264,18 +265,14 @@ def _normalize_state_space_scheme(value: Any) -> str:
     )
 
 
-def _merge_defaults(defaults: dict[str, Any], raw: dict[str, Any]) -> dict[str, Any]:
-    merged = dict(defaults)
-    for key, value in raw.items():
-        if (
-            key in merged
-            and isinstance(merged[key], dict)
-            and isinstance(value, dict)
-        ):
-            merged[key] = _merge_defaults(merged[key], value)
-        else:
-            merged[key] = value
-    return merged
+def _reject_active_geometry_state_space_overrides(raw: dict[str, Any]) -> None:
+    extras = sorted(set(raw) - {"scheme"})
+    if extras:
+        raise ValueError(
+            "interface.state_space.scheme='active_geometry_capillary' accepts "
+            "only the scheme key; parser-owned contract keys are not YAML "
+            f"knobs: {', '.join(extras)}"
+        )
 
 
 def _validate_gpu_contract(gpu_contract: dict[str, Any]) -> None:
