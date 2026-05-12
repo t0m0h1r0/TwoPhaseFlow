@@ -79,6 +79,8 @@ sources:
     description: "Proof of active Schur pressure split, scalar AO pressure coordinate, non-static balanced drive, and residual-certified accuracy"
   - path: artifacts/A/ch14_ao_blowup_assumed_experiment_strategy_CHK-RA-CH14-AO-FASTVOL-028.md
     description: "Blow-up-assumed experiment ladder for AO-Fast: algebraic certificate, one-step impulse, two-step history replay, short horizon, pre-blowup replay"
+  - path: artifacts/A/ch14_ao_rung0_algebraic_rca_CHK-RA-CH14-AO-FASTVOL-029.md
+    description: "Rung-0 algebraic AO split RCA: CPU exact zero-drive defect, component-volume residual probe, and GPU flat fail-close classification fix"
 depends_on:
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-159]]"

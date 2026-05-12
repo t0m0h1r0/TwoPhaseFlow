@@ -377,7 +377,11 @@ def test_geometric_runtime_gpu_backend_fail_closes_uncertified_capillary_packet(
     xp = solver.backend.xp
     zeros = xp.zeros((9, 9))
     x = xp.asarray(solver._grid.coords[0]).reshape((-1, 1))
-    phi = xp.broadcast_to(x - xp.asarray(0.5), zeros.shape)
+    y = xp.asarray(solver._grid.coords[1]).reshape((1, -1))
+    phi = y - (
+        xp.asarray(0.47)
+        + xp.asarray(0.05) * xp.cos(xp.asarray(4.0 * np.pi) * x)
+    )
     solver._geometric_phase_state = (
         getattr(solver, "_geometric_phase_state", None)
         or build_geometric_phase_state_gpu(solver._grid, phi)

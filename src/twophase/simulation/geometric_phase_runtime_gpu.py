@@ -483,9 +483,17 @@ def validate_geometric_runtime_capillary_fail_close_gpu(
             "PCG/Newton/DC solve is required before advancing"
         )
 
-    nonstatic = bool(
+    declared_drive = bool(
         application.capillary_drive_present and not application.pressure_exact_static
     )
+    predictor_l2 = 0.0
+    if declared_drive:
+        predictor_l2 = _host_scalar_float(
+            backend,
+            application.predictor_increment_weighted_l2,
+            "AO predictor increment weighted l2",
+        )
+    nonstatic = declared_drive and predictor_l2 > tolerance
     if nonstatic and _pressure_history_mode(ppe_runtime) == "pressure_coordinate":
         violations.append(
             "pressure_history_mode='pressure_coordinate' requires a scalar AO "
@@ -493,11 +501,6 @@ def validate_geometric_runtime_capillary_fail_close_gpu(
             "increments"
         )
     if nonstatic:
-        predictor_l2 = _host_scalar_float(
-            backend,
-            application.predictor_increment_weighted_l2,
-            "AO predictor increment weighted l2",
-        )
         balanced_l2 = _host_scalar_float(
             backend,
             application.pressure_balanced_increment_weighted_l2,
@@ -508,12 +511,7 @@ def validate_geometric_runtime_capillary_fail_close_gpu(
             application.max_abs_pressure_balanced_face_increment,
             "AO pressure-balanced increment max",
         )
-        if predictor_l2 <= tolerance:
-            violations.append(
-                "capillary_drive_present=True but the predictor increment is "
-                f"zero within tolerance ({predictor_l2:.6e})"
-            )
-        elif balanced_l2 <= tolerance and balanced_max <= tolerance:
+        if balanced_l2 <= tolerance and balanced_max <= tolerance:
             violations.append(
                 "non-static packet has zero pressure-balanced drive "
                 f"(weighted_l2={balanced_l2:.6e}, max={balanced_max:.6e}); "

@@ -445,16 +445,37 @@ The residual
 e = g + J_q^T pi
 ```
 
-is the non-pressure part of the surface covector.  The physical non-static
-drive is
+is the non-pressure part of the surface covector in nodal gauge space.  Rung-0
+algebraic diagnostics in CHK-RA-CH14-AO-FASTVOL-029 refine the certification
+condition: nonzero `e` alone is not a face-drive certificate.  If the runtime
+pressure-reaction space is the full `T_q^T` image of the same active cell
+Schur system used to assemble the capillary Riesz covector, then
 
 ```text
-balanced_drive(w) = - e[L_B(w)].
+S lambda = J_q(-g),        r_sigma = T_q^T lambda,
+S pi     = -J_q g,         pressure_face = T_q^T pi,
 ```
 
-Therefore a runtime packet that sets `capillary_face == pressure_reaction_face`
-when `e` is nonzero is algebraically wrong.  It is not a low-order
-approximation; it deletes the non-static capillary drive.
+are the same linear system.  Hence `lambda=pi` and
+`r_sigma-pressure_face=0` by construction, even while `e` is nonzero.  In that
+case `e` is orthogonal to the implemented bundle-lift range and the
+face-space drive has been over-projected away.
+
+The physical non-static drive must therefore be defined after the admissible
+pressure-reaction subspace `R_p` is fixed:
+
+```text
+balanced_drive = r_sigma - Pi_{R_p}^{M_f} r_sigma.
+```
+
+`R_p` must be a certified physical reaction space, not automatically the full
+cell-pressure image.  Component-volume reaction removal is useful as an
+algebraic diagnostic because it gives zero drive for flat/static states and
+nonzero drive for capillary waves, but it is not by itself the final runtime
+pressure-coordinate proof.  The final route must provide a scalar,
+PPE-compatible AO pressure coordinate plus an `M_f`-metric face residual.
+A runtime packet that sets `capillary_face == pressure_reaction_face` for a
+non-static wave is not a low-order approximation; it deletes the drive.
 
 For an approximate solve `pi_k`, with Schur residual
 
