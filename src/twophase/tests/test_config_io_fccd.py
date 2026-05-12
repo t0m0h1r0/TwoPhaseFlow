@@ -348,6 +348,10 @@ def test_ch14_capillary_yaml_loads_execution_stack():
     assert cfg.interface_state_space.normalized_view == "theta"
     assert cfg.interface_state_space.gpu_required is True
     assert cfg.interface_state_space.fallback_policy == "none"
+    assert cfg.interface_state_space.active_projection_solver_scheme == "pcg"
+    assert cfg.interface_state_space.active_projection_pcg_tolerance == pytest.approx(
+        1.0e-12
+    )
     assert cfg.run.advection_scheme == "geometric_swept_volume"
     assert cfg.run.convection_scheme == "uccd6"
     assert cfg.run.convection_time_scheme == "imex_bdf2"
@@ -520,6 +524,15 @@ def test_ch14_canonical_yamls_share_base_numerical_stack():
         assert cfg.interface_state_space.kind == "geometric_cell_fraction", path.name
         assert cfg.interface_state_space.gpu_required is True, path.name
         assert cfg.interface_state_space.fallback_policy == "none", path.name
+        assert raw["numerics"]["projection"]["active_geometry"]["solver"]["scheme"] == (
+            "pcg"
+        ), path.name
+        assert cfg.interface_state_space.active_projection_solver_scheme == (
+            "pcg"
+        ), path.name
+        assert cfg.interface_state_space.active_projection_pcg_tolerance == (
+            pytest.approx(1.0e-12)
+        ), path.name
         assert cfg.run.advection_scheme == "geometric_swept_volume", path.name
         assert cfg.run.interface_tracking_method == "q_cell_fraction", path.name
         assert cfg.run.curvature_method == "face_implicit", path.name

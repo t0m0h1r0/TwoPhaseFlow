@@ -193,6 +193,21 @@ class InterfaceStateSpaceCfg:
     dense_reference: str = "none"
     gpu_required: bool = False
     fallback_policy: str = "none"
+    active_projection_solver_scheme: str = "pcg"
+    active_projection_primary: str = "active_pcg_newton"
+    active_projection_fallback_policy: str = "none"
+    active_projection_fallback_target: str | None = None
+    active_projection_fallback_triggers: tuple[str, ...] = ()
+    active_projection_convergence_norm: str = "linf"
+    active_projection_absolute_tolerance: float = 1.0e-11
+    active_projection_relative_tolerance: float = 0.0
+    active_projection_max_iterations: int = 8
+    active_projection_pcg_tolerance: float = 1.0e-12
+    active_projection_pcg_max_iterations: int = 256
+    active_projection_pcg_roundoff_floor: float | None = 1.0e-14
+    active_projection_dc_tolerance: float = 1.0e-11
+    active_projection_dc_max_iterations: int = 8
+    active_projection_dc_relaxation: float = 1.0
 
 
 @dataclass

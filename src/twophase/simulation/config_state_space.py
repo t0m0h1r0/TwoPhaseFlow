@@ -21,6 +21,13 @@ from .config_sections import validate_choice
 
 
 _ACTIVE_GEOMETRY_CAPILLARY_SCHEME = "active_geometry_capillary"
+_ACTIVE_PROJECTION_SOLVER_SCHEMES = ("pcg", "dc", "dc_then_pcg")
+_ACTIVE_PROJECTION_FALLBACK_TRIGGERS = (
+    "not_converged",
+    "residual_floor_exceeded",
+    "stagnation",
+    "condition_gate_failed",
+)
 
 
 def _active_geometry_capillary_state_space_defaults() -> dict[str, Any]:
@@ -240,7 +247,10 @@ def _parse_geometric_cell_fraction_state_space(
         "interface.state_space.compatibility.projection.condition_gate",
     )
     _validate_support_budget(support_budget)
-    fallback_policy = _validate_solver_policy(solver)
+    solver_policy = _parse_active_projection_solver_policy(
+        default_solver=solver,
+        numerics=numerics,
+    )
     _validate_reinitialization(interface)
     _validate_geometric_numerics(numerics)
     return InterfaceStateSpaceCfg(
@@ -255,7 +265,22 @@ def _parse_geometric_cell_fraction_state_space(
         projection_implementation=projection_implementation,
         dense_reference=dense_reference,
         gpu_required=True,
-        fallback_policy=fallback_policy,
+        fallback_policy=solver_policy["fallback_policy"],
+        active_projection_solver_scheme=solver_policy["scheme"],
+        active_projection_primary=solver_policy["primary"],
+        active_projection_fallback_policy=solver_policy["fallback_policy"],
+        active_projection_fallback_target=solver_policy["fallback_target"],
+        active_projection_fallback_triggers=solver_policy["fallback_triggers"],
+        active_projection_convergence_norm=solver_policy["convergence_norm"],
+        active_projection_absolute_tolerance=solver_policy["absolute_tolerance"],
+        active_projection_relative_tolerance=solver_policy["relative_tolerance"],
+        active_projection_max_iterations=solver_policy["max_iterations"],
+        active_projection_pcg_tolerance=solver_policy["pcg_tolerance"],
+        active_projection_pcg_max_iterations=solver_policy["pcg_max_iterations"],
+        active_projection_pcg_roundoff_floor=solver_policy["pcg_roundoff_floor"],
+        active_projection_dc_tolerance=solver_policy["dc_tolerance"],
+        active_projection_dc_max_iterations=solver_policy["dc_max_iterations"],
+        active_projection_dc_relaxation=solver_policy["dc_relaxation"],
     )
 
 
@@ -338,7 +363,207 @@ def _validate_support_budget(support_budget: dict[str, Any]) -> None:
     )
 
 
-def _validate_solver_policy(solver: dict[str, Any]) -> str:
+def _parse_active_projection_solver_policy(
+    *,
+    default_solver: dict[str, Any],
+    numerics: dict[str, Any],
+) -> dict[str, Any]:
+    _validate_internal_solver_policy(default_solver)
+    active_geometry = _active_geometry_projection_section(numerics)
+    raw_solver = active_geometry.get("solver", {})
+    if isinstance(raw_solver, str):
+        raw_solver = {"scheme": raw_solver}
+    solver = _mapping(raw_solver, "numerics.projection.active_geometry.solver")
+    _reject_unknown_keys(
+        solver,
+        {"scheme", "convergence", "pcg", "dc", "fallback"},
+        "numerics.projection.active_geometry.solver",
+    )
+
+    scheme = _normalize_active_projection_solver_scheme(solver.get("scheme", "pcg"))
+    if scheme == "pcg" and "dc" in solver:
+        raise ValueError(
+            "numerics.projection.active_geometry.solver.dc requires "
+            "scheme='dc' or 'dc_then_pcg'"
+        )
+    if scheme == "dc" and ("pcg" in solver or "fallback" in solver):
+        raise ValueError(
+            "scheme='dc' is DC-only; remove pcg/fallback settings or use "
+            "scheme='dc_then_pcg'"
+        )
+    if scheme == "pcg" and "fallback" in solver:
+        raise ValueError("scheme='pcg' is PCG-only and must not declare fallback")
+
+    convergence = _mapping(
+        solver.get("convergence", {}),
+        "numerics.projection.active_geometry.solver.convergence",
+    )
+    _reject_unknown_keys(
+        convergence,
+        {"norm", "absolute_tolerance", "relative_tolerance", "max_iterations"},
+        "numerics.projection.active_geometry.solver.convergence",
+    )
+    convergence_norm = validate_choice(
+        convergence.get("norm", "linf"),
+        ("linf",),
+        "numerics.projection.active_geometry.solver.convergence.norm",
+    )
+    absolute_tolerance = _positive_float(
+        convergence.get("absolute_tolerance", 1.0e-11),
+        "numerics.projection.active_geometry.solver.convergence.absolute_tolerance",
+    )
+    relative_tolerance = _nonnegative_float(
+        convergence.get("relative_tolerance", 0.0),
+        "numerics.projection.active_geometry.solver.convergence.relative_tolerance",
+    )
+    max_iterations = _positive_int(
+        convergence.get("max_iterations", 8),
+        "numerics.projection.active_geometry.solver.convergence.max_iterations",
+    )
+
+    pcg = _mapping(
+        solver.get("pcg", {}),
+        "numerics.projection.active_geometry.solver.pcg",
+    )
+    _reject_unknown_keys(
+        pcg,
+        {"tolerance", "max_iterations", "roundoff_floor"},
+        "numerics.projection.active_geometry.solver.pcg",
+    )
+    pcg_tolerance = _positive_float(
+        pcg.get("tolerance", min(absolute_tolerance, 1.0e-12)),
+        "numerics.projection.active_geometry.solver.pcg.tolerance",
+    )
+    pcg_max_iterations = _positive_int(
+        pcg.get("max_iterations", 256),
+        "numerics.projection.active_geometry.solver.pcg.max_iterations",
+    )
+    pcg_roundoff_floor = _optional_positive_float(
+        pcg.get("roundoff_floor", 1.0e-14),
+        "numerics.projection.active_geometry.solver.pcg.roundoff_floor",
+    )
+    if pcg_roundoff_floor is not None and pcg_roundoff_floor > pcg_tolerance:
+        raise ValueError(
+            "numerics.projection.active_geometry.solver.pcg.roundoff_floor "
+            "must be <= pcg.tolerance"
+        )
+
+    dc = _mapping(
+        solver.get("dc", {}),
+        "numerics.projection.active_geometry.solver.dc",
+    )
+    _reject_unknown_keys(
+        dc,
+        {"tolerance", "max_iterations", "relaxation"},
+        "numerics.projection.active_geometry.solver.dc",
+    )
+    dc_tolerance = _positive_float(
+        dc.get("tolerance", absolute_tolerance),
+        "numerics.projection.active_geometry.solver.dc.tolerance",
+    )
+    dc_max_iterations = _positive_int(
+        dc.get("max_iterations", max_iterations),
+        "numerics.projection.active_geometry.solver.dc.max_iterations",
+    )
+    dc_relaxation = _unit_interval_open_closed(
+        dc.get("relaxation", 1.0),
+        "numerics.projection.active_geometry.solver.dc.relaxation",
+    )
+
+    fallback = _mapping(
+        solver.get("fallback", {}),
+        "numerics.projection.active_geometry.solver.fallback",
+    )
+    _reject_unknown_keys(
+        fallback,
+        {"triggers"},
+        "numerics.projection.active_geometry.solver.fallback",
+    )
+    if scheme == "dc_then_pcg":
+        fallback_policy = "explicit_chain"
+        fallback_target = "active_pcg_newton"
+        fallback_triggers = _validate_fallback_triggers(
+            fallback.get("triggers", ("not_converged", "residual_floor_exceeded"))
+        )
+        primary = "residual_monotone_dc"
+    elif scheme == "dc":
+        fallback_policy = "none"
+        fallback_target = None
+        fallback_triggers = ()
+        primary = "residual_monotone_dc"
+    else:
+        fallback_policy = "none"
+        fallback_target = None
+        fallback_triggers = ()
+        primary = "active_pcg_newton"
+
+    return {
+        "scheme": scheme,
+        "primary": primary,
+        "fallback_policy": fallback_policy,
+        "fallback_target": fallback_target,
+        "fallback_triggers": tuple(fallback_triggers),
+        "convergence_norm": convergence_norm,
+        "absolute_tolerance": absolute_tolerance,
+        "relative_tolerance": relative_tolerance,
+        "max_iterations": max_iterations,
+        "pcg_tolerance": pcg_tolerance,
+        "pcg_max_iterations": pcg_max_iterations,
+        "pcg_roundoff_floor": pcg_roundoff_floor,
+        "dc_tolerance": dc_tolerance,
+        "dc_max_iterations": dc_max_iterations,
+        "dc_relaxation": dc_relaxation,
+    }
+
+
+def _active_geometry_projection_section(numerics: dict[str, Any]) -> dict[str, Any]:
+    projection = _mapping(numerics.get("projection", {}), "numerics.projection")
+    active_geometry = _mapping(
+        projection.get("active_geometry", {}),
+        "numerics.projection.active_geometry",
+    )
+    _reject_unknown_keys(
+        active_geometry,
+        {"solver"},
+        "numerics.projection.active_geometry",
+    )
+    return active_geometry
+
+
+def _normalize_active_projection_solver_scheme(value: Any) -> str:
+    normalized = str(value).strip().lower()
+    return validate_choice(
+        normalized,
+        _ACTIVE_PROJECTION_SOLVER_SCHEMES,
+        "numerics.projection.active_geometry.solver.scheme",
+    )
+
+
+def _validate_fallback_triggers(value: Any) -> tuple[str, ...]:
+    if isinstance(value, str):
+        triggers = (value,)
+    elif isinstance(value, (list, tuple)):
+        triggers = tuple(str(item).strip().lower() for item in value)
+    else:
+        raise ValueError(
+            "numerics.projection.active_geometry.solver.fallback.triggers "
+            "must be a non-empty list"
+        )
+    if not triggers:
+        raise ValueError(
+            "numerics.projection.active_geometry.solver.fallback.triggers "
+            "must be non-empty"
+        )
+    for trigger in triggers:
+        validate_choice(
+            trigger,
+            _ACTIVE_PROJECTION_FALLBACK_TRIGGERS,
+            "numerics.projection.active_geometry.solver.fallback.triggers",
+        )
+    return triggers
+
+
+def _validate_internal_solver_policy(solver: dict[str, Any]) -> None:
     primary = _require_value(
         solver.get("primary", "active_pcg_newton"),
         solver.get("primary", "active_pcg_newton"),
@@ -366,7 +591,6 @@ def _validate_solver_policy(solver: dict[str, Any]) -> str:
     )
     if policy == "explicit_chain":
         _validate_explicit_chain(fallback)
-    return policy
 
 
 def _validate_accelerators(accelerators: dict[str, Any]) -> None:
@@ -673,6 +897,41 @@ def _positive_float(value: Any, path: str) -> float:
     return parsed
 
 
+def _optional_positive_float(value: Any, path: str) -> float | None:
+    if value is None:
+        return None
+    return _positive_float(value, path)
+
+
+def _nonnegative_float(value: Any, path: str) -> float:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{path} must be a non-negative finite value") from exc
+    if not math.isfinite(parsed) or parsed < 0.0:
+        raise ValueError(f"{path} must be a non-negative finite value")
+    return parsed
+
+
+def _positive_int(value: Any, path: str) -> int:
+    if isinstance(value, bool):
+        raise ValueError(f"{path} must be a positive integer")
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"{path} must be a positive integer") from exc
+    if parsed <= 0:
+        raise ValueError(f"{path} must be a positive integer")
+    return parsed
+
+
+def _unit_interval_open_closed(value: Any, path: str) -> float:
+    parsed = _positive_float(value, path)
+    if parsed > 1.0:
+        raise ValueError(f"{path} must be in (0, 1]")
+    return parsed
+
+
 def _nonnegative_int(value: Any, path: str) -> int:
     if isinstance(value, bool):
         raise ValueError(f"{path} must be a non-negative integer")
@@ -683,3 +942,9 @@ def _nonnegative_int(value: Any, path: str) -> int:
     if parsed < 0:
         raise ValueError(f"{path} must be a non-negative integer")
     return parsed
+
+
+def _reject_unknown_keys(raw: dict[str, Any], allowed: set[str], path: str) -> None:
+    extras = sorted(set(raw) - set(allowed))
+    if extras:
+        raise ValueError(f"{path} has unknown keys: {', '.join(extras)}")

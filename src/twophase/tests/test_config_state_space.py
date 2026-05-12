@@ -296,6 +296,9 @@ def test_valid_geometric_contract_builds_config_and_solver_runtime():
     assert cfg.kind == "geometric_cell_fraction"
     assert cfg.projection_implementation == "active_cached"
     assert cfg.fallback_policy == "none"
+    assert cfg.active_projection_solver_scheme == "pcg"
+    assert cfg.active_projection_primary == "active_pcg_newton"
+    assert cfg.active_projection_pcg_tolerance == pytest.approx(1.0e-12)
 
     experiment_cfg = ExperimentConfig.from_dict(raw)
     assert experiment_cfg.interface_state_space.scheme == "active_geometry_capillary"
@@ -310,6 +313,9 @@ def test_valid_geometric_contract_builds_config_and_solver_runtime():
     assert contract.dense_reference == "test_only"
     assert contract.gpu_required is True
     assert contract.fallback_policy == "none"
+    assert contract.active_projection_solver_scheme == "pcg"
+    assert contract.active_projection_primary == "active_pcg_newton"
+    assert contract.active_projection_pcg_roundoff_floor == pytest.approx(1.0e-14)
 
     options = build_solver_init_options(experiment_cfg)
     assert options.grid.use_gpu is True
@@ -325,10 +331,168 @@ def test_active_geometry_capillary_scalar_preset_expands_defaults():
     assert cfg.interface_state_space.conserved_variable == "q"
     assert cfg.interface_state_space.projection_implementation == "active_cached"
     assert cfg.interface_state_space.fallback_policy == "none"
+    assert cfg.interface_state_space.active_projection_solver_scheme == "pcg"
     options = build_solver_init_options(cfg)
     assert options.grid.use_gpu is True
     assert options.interface.interface_tracking_method == "q_cell_fraction"
     assert options.schemes.capillary_force_source == "bundle_virtual_work"
+
+
+@pytest.mark.parametrize(
+    ("scheme", "primary", "fallback_policy", "fallback_target"),
+    [
+        ("dc", "residual_monotone_dc", "none", None),
+        ("pcg", "active_pcg_newton", "none", None),
+        ("dc_then_pcg", "residual_monotone_dc", "explicit_chain", "active_pcg_newton"),
+    ],
+)
+def test_active_geometry_projection_solver_yaml_modes(
+    scheme,
+    primary,
+    fallback_policy,
+    fallback_target,
+):
+    raw = _geometric_raw(
+        {
+            "numerics": {
+                "projection": {
+                    "active_geometry": {
+                        "solver": {
+                            "scheme": scheme,
+                            "convergence": {
+                                "norm": "linf",
+                                "absolute_tolerance": 2.0e-11,
+                                "relative_tolerance": 1.0e-9,
+                                "max_iterations": 9,
+                            },
+                            "dc": {
+                                "tolerance": 3.0e-11,
+                                "max_iterations": 4,
+                                "relaxation": 0.75,
+                            },
+                            "fallback": {
+                                "triggers": ["not_converged", "residual_floor_exceeded"]
+                            },
+                        }
+                    }
+                }
+            }
+        }
+    )
+    solver_cfg = raw["numerics"]["projection"]["active_geometry"]["solver"]
+    if scheme == "pcg":
+        solver_cfg.pop("dc")
+        solver_cfg.pop("fallback")
+    elif scheme == "dc":
+        solver_cfg.pop("fallback")
+
+    experiment_cfg = ExperimentConfig.from_dict(raw)
+    cfg = experiment_cfg.interface_state_space
+    assert cfg.active_projection_solver_scheme == scheme
+    assert cfg.active_projection_primary == primary
+    assert cfg.fallback_policy == fallback_policy
+    assert cfg.active_projection_fallback_policy == fallback_policy
+    assert cfg.active_projection_fallback_target == fallback_target
+    assert cfg.active_projection_absolute_tolerance == pytest.approx(2.0e-11)
+    assert cfg.active_projection_relative_tolerance == pytest.approx(1.0e-9)
+    assert cfg.active_projection_max_iterations == 9
+    expected_dc_tolerance = 2.0e-11 if scheme == "pcg" else 3.0e-11
+    expected_dc_iterations = 9 if scheme == "pcg" else 4
+    expected_dc_relaxation = 1.0 if scheme == "pcg" else 0.75
+    assert cfg.active_projection_dc_tolerance == pytest.approx(expected_dc_tolerance)
+    assert cfg.active_projection_dc_max_iterations == expected_dc_iterations
+    assert cfg.active_projection_dc_relaxation == pytest.approx(expected_dc_relaxation)
+    if scheme == "dc_then_pcg":
+        assert cfg.active_projection_fallback_triggers == (
+            "not_converged",
+            "residual_floor_exceeded",
+        )
+    contract = build_ao_fast_runtime_contract(experiment_cfg)
+    assert contract.active_projection_solver_scheme == scheme
+    assert contract.active_projection_primary == primary
+    assert contract.active_projection_fallback_policy == fallback_policy
+    assert contract.active_projection_convergence_norm == "linf"
+    assert contract.active_projection_absolute_tolerance == pytest.approx(2.0e-11)
+
+
+def test_active_geometry_projection_solver_rejects_hidden_fallback():
+    raw = _geometric_raw(
+        {
+            "numerics": {
+                "projection": {
+                    "active_geometry": {
+                        "solver": {
+                            "scheme": "dc",
+                            "fallback": {"triggers": ["not_converged"]},
+                        }
+                    }
+                }
+            }
+        }
+    )
+
+    with pytest.raises(ValueError, match="DC-only"):
+        ExperimentConfig.from_dict(raw)
+
+
+def test_active_geometry_projection_solver_rejects_invalid_convergence():
+    raw = _geometric_raw(
+        {
+            "numerics": {
+                "projection": {
+                    "active_geometry": {
+                        "solver": {
+                            "scheme": "pcg",
+                            "pcg": {
+                                "tolerance": 1.0e-12,
+                                "roundoff_floor": 1.0e-10,
+                            },
+                        }
+                    }
+                }
+            }
+        }
+    )
+
+    with pytest.raises(ValueError, match="roundoff_floor"):
+        ExperimentConfig.from_dict(raw)
+
+
+def test_active_geometry_projection_solver_rejects_internal_scheme_name():
+    raw = _geometric_raw(
+        {
+            "numerics": {
+                "projection": {
+                    "active_geometry": {
+                        "solver": {"scheme": "active_pcg_newton"}
+                    }
+                }
+            }
+        }
+    )
+
+    with pytest.raises(ValueError, match="solver.scheme"):
+        ExperimentConfig.from_dict(raw)
+
+
+def test_active_geometry_projection_solver_rejects_ambiguous_convergence_key():
+    raw = _geometric_raw(
+        {
+            "numerics": {
+                "projection": {
+                    "active_geometry": {
+                        "solver": {
+                            "scheme": "pcg",
+                            "convergence": {"tolerance": 1.0e-11},
+                        }
+                    }
+                }
+            }
+        }
+    )
+
+    with pytest.raises(ValueError, match="unknown keys: tolerance"):
+        ExperimentConfig.from_dict(raw)
 
 
 def test_nonstatic_ao_capillary_runtime_rejects_unadmitted_reaction():

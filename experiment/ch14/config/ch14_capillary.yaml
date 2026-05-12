@@ -130,6 +130,18 @@ numerics:
             constraints: [cell_volume]
             fail_close: true
   projection:
+    active_geometry:
+      solver:
+        scheme: pcg
+        convergence:
+          norm: linf
+          absolute_tolerance: 1.0e-11
+          relative_tolerance: 0.0
+          max_iterations: 8
+        pcg:
+          tolerance: 1.0e-12
+          max_iterations: 256
+          roundoff_floor: 1.0e-14
     face_flux_projection: true
     canonical_face_state: true
     face_native_predictor_state: true

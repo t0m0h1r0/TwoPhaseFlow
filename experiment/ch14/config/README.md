@@ -337,8 +337,8 @@ The dynamic ch14 YAMLs share the production stack:
 - `interface.state_space: active_geometry_capillary` — the user-facing
   active-geometry capillary decomposition selection.
   Internal projection details such as `active_cached`, GPU storage, dense
-  reference policy, support budgets, solver accelerators, and fallback policy
-  are fixed by the parser preset rather than repeated in each experiment YAML.
+  reference policy, and support budgets are fixed by the parser preset rather
+  than repeated in each experiment YAML.
 - `interface.transport.variable: q` and
   `interface.transport.spatial: geometric_swept_volume` — active geometry owns the
   material phase as physical cell volume, while `theta` and `phi` are derived
@@ -399,11 +399,90 @@ viscosity:
   with the low-order FD `L_L` operator. The FD matrix factor is reused within
   one outer DC solve, matching the paper's grid-defect method without
   re-entering the legacy FVM direct sparse solve for every correction RHS.
+- `projection.active_geometry.solver` selects the active q/phi compatibility
+  projection solver policy.  This is separate from `interface.state_space`:
+  the state-space key selects active geometry, while this block selects how the
+  active projection is solved and stopped.  Production YAMLs currently use
+  `scheme: pcg`; `dc` and `dc_then_pcg` are explicit research settings.
 
 Experiment-specific YAMLs may change geometry, boundary conditions, initial
 fields, gravity, output cadence, and final time. They should not change the
 canonical ch14 numerical stack above without recording a new paper-backed
 experiment type.
+
+## Active Geometry Solver Semantics
+
+`projection.active_geometry.solver.scheme` selects one of three explicit
+policies:
+
+- `pcg`: PCG/Newton only; no DC fallback.
+- `dc`: residual-monotone defect correction only; no PCG fallback.
+- `dc_then_pcg`: start with residual-monotone DC and fall back to PCG only on
+  listed triggers.
+
+PCG-only example:
+
+```yaml
+projection:
+  active_geometry:
+    solver:
+      scheme: pcg
+      convergence:
+        norm: linf
+        absolute_tolerance: 1.0e-11
+        relative_tolerance: 0.0
+        max_iterations: 8
+      pcg:
+        tolerance: 1.0e-12
+        max_iterations: 256
+        roundoff_floor: 1.0e-14
+```
+
+DC-only example:
+
+```yaml
+projection:
+  active_geometry:
+    solver:
+      scheme: dc
+      convergence:
+        norm: linf
+        absolute_tolerance: 1.0e-11
+        relative_tolerance: 0.0
+        max_iterations: 8
+      dc:
+        tolerance: 1.0e-11
+        max_iterations: 8
+        relaxation: 1.0
+```
+
+DC with explicit PCG fallback:
+
+```yaml
+projection:
+  active_geometry:
+    solver:
+      scheme: dc_then_pcg
+      convergence:
+        norm: linf
+        absolute_tolerance: 1.0e-11
+        relative_tolerance: 0.0
+        max_iterations: 8
+      dc:
+        tolerance: 1.0e-11
+        max_iterations: 4
+        relaxation: 0.75
+      pcg:
+        tolerance: 1.0e-12
+        max_iterations: 256
+        roundoff_floor: 1.0e-14
+      fallback:
+        triggers: [not_converged, residual_floor_exceeded]
+```
+
+Fallback is never implicit: declaring `scheme: dc` with a `fallback:` block is
+rejected; declaring `scheme: pcg` with DC settings is rejected.  `roundoff_floor`
+must be no larger than the PCG tolerance.
 
 ## PPE Solver Semantics
 
