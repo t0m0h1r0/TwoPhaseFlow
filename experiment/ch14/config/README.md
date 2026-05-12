@@ -40,16 +40,11 @@ The five production configs share the chapter-14 execution contract introduced
 for the rising-bubble route: conservative common-flux momentum transport,
 `predictor.assembly: none`, projected-face preservation, pressure-coordinate
 BDF2 history, and an explicit fail-closed boundary-Hodge state-space contract.
-The capillary-wave YAML is the AO-Fast exception and declares the full
-`geometric_cell_fraction` contract: transported `q`, normalized `theta`, P1
-gauge `phi`, active-cached compatibility, required GPU storage, no implicit
-dense runtime fallback, `geometric_swept_volume` transport, and
-`bundle_virtual_work` pressure-jump coupling.  The remaining Chapter 14 YAMLs
-stay `diffuse_cls`.  The physical force source remains experiment-specific:
-closed droplet and bubble interfaces use the closed-interface Riesz
-pressure-jump route, the Rayleigh--Taylor graph/open-interface benchmark keeps
-the validated curvature-jump route, and the capillary-wave benchmark uses AO
-bundle virtual work with `pressure_component_hodge` reaction.
+All five YAMLs declare the full AO-Fast `geometric_cell_fraction` contract:
+transported `q`, normalized `theta`, P1 gauge `phi`, active-cached
+compatibility, required GPU storage, no implicit dense runtime fallback,
+`geometric_swept_volume` transport, and `bundle_virtual_work` pressure-jump
+coupling with `pressure_component_hodge` reaction.
 
 `ch14_capillary.yaml` and `ch14_oscillating_droplet.yaml` are SI water-air
 cases at about 20 C.  The capillary wave uses a 20 mm x 20 mm tank with
@@ -60,14 +55,10 @@ unit-box scale.  The capillary-wave theory reference uses the rigid-wall
 two-layer finite-depth dispersion relation because the 10 mm interface sits
 midway between the upper and lower walls of the 20 mm tank; the paper-facing
 snapshot window then follows the signed mode-2 production response over one
-observed cycle.  Its interface carrier is AO-Fast `q`; Ridge--Eikonal
-reinitialization is disabled because compatibility projection is a separate AO
-contract, not a diffuse-CLS redistance step.  The oscillating-droplet window
-follows the Rayleigh-Lamb water-air period.  Its every-step dynamic
-Ridge--Eikonal restoration uses the transported CLS `diffuse_mass` constraint;
-the sharper `sharp_phase_volume` constraint is kept for static/equilibrium
-gates where the sharp area and diffuse profile targets are compatible without
-moving the interface.
+observed cycle.  The oscillating-droplet window follows the Rayleigh-Lamb
+water-air period.  All five Chapter 14 YAMLs use AO-Fast `q` as the interface
+carrier; Ridge--Eikonal reinitialization is disabled because compatibility
+projection is a separate AO contract, not a diffuse-CLS redistance step.
 
 The five production configs emit periodic snapshots with `psi`, `velocity`,
 and pressure-family figures. The runner stores raw fields in `data.npz` under
@@ -211,15 +202,17 @@ physical-time integrator together:
 numerics:
   interface:
     transport:
-      variable: psi
-      spatial: fccd
+      variable: q
+      spatial: geometric_swept_volume
       time_integrator: tvd_rk3
+      boundedness: certified
+      fail_close: true
+    tracking:
+      primary: q
 ```
 
-`numerics.interface.tracking` is only needed when the primary tracking variable
-differs from the transport variable (phi-primary experiments). When
-`transport.variable: psi`, the `tracking:` block adds no information and should
-be omitted.
+For AO-Fast Chapter 14 YAMLs, `tracking.primary: q` is part of the explicit
+state-space contract.
 
 Tracking redistance frequency is intentionally separate from reinitialization
 frequency:
@@ -304,8 +297,8 @@ interface transport, momentum terms, and projection/PPE.
   entry in `numerics.time`; all per-equation choices live in their own blocks.
 - `interface.transport`: transported variable, spatial scheme, and physical-time
   integrator co-located in one block.
-- `interface.tracking`: tracking/redistance policy, only needed for phi-primary
-  experiments. Omit when `transport.variable: psi`.
+- `interface.tracking`: tracking/redistance policy.  Chapter 14 AO-Fast YAMLs
+  declare `primary: q` so the q/theta/phi state-space contract is visible.
 - `momentum.terms`: spatial/time choices for physical momentum terms. Pressure
   and surface tension are written as `pressure` and `surface_tension`, not as
   hidden derivative knobs. `pressure.gradient` and `surface_tension.gradient`
@@ -336,32 +329,29 @@ must be independently visible.
 
 The dynamic ch14 YAMLs share the production stack:
 
-- `interface.transport.spatial: fccd` — FCCD is the conservative interface
-  transport operator (WIKI-T-065 / WIKI-X-031: ψ is the conservative transported
-  state; φ is geometry and should not be the primary physical-time transport
-  variable). `tracking:` is omitted because `transport.variable: psi` already
-  determines the tracking variable. The flux-locus form is the term default.
+- `interface.transport.variable: q` and
+  `interface.transport.spatial: geometric_swept_volume` — AO-Fast owns the
+  material phase as physical cell volume, while `theta` and `phi` are derived
+  views constrained by the explicit state-space contract.
 - `interface.transport.time_integrator: tvd_rk3` — co-located with the spatial
   scheme in the same `transport:` block.
 - `interface.geometry.curvature.method: face_implicit` — scalar face-native
-  Young-Laplace pressure-jump geometry on fitted grids.
+  Young-Laplace diagnostic geometry on fitted grids.
 - `interface.reinitialization.schedule.every_steps` — Ridge--Eikonal profile
-  restoration is applied every physical step in dynamic ch14 routes; the
-  static-droplet equilibrium route sets it to `0`.
+  restoration is disabled (`0`) for AO-Fast Chapter 14 YAMLs; AO compatibility
+  projection is not a diffuse redistance fallback.
 - `momentum.terms.convection.spatial: uccd6` + `time_integrator: imex_bdf2` —
   WIKI-T-062 positions UCCD6 as the order-preserving upwind CCD remedy for
   transport/Gibbs control.
 - `momentum.terms.pressure.gradient: fccd` and
   `momentum.terms.surface_tension.formulation: pressure_jump` — surface tension
   enters the PPE as an interface stress condition rather than as a CSF body force.
-- `momentum.terms.surface_tension.source: closed_interface_riesz` may expose
-  `closed_interface.endpoint: conservative_psi` and
-  `residual_contract: {metric: pressure_adjoint, constraints: [component_volume],
-  fail_close: true}`. These keys state the production theorem contract: the
-  surface-energy covector, component-volume reaction, PPE source, and face
-  corrector all use the conservative face-psi endpoint and the same
-  pressure-adjoint face metric. Other endpoint/metric/constraint choices are
-  rejected until a matching A3 proof and implementation exist.
+- `momentum.terms.surface_tension.source: bundle_virtual_work` exposes
+  `closed_interface.endpoint: geometric_cell_fraction` and
+  `residual_contract: {metric: pressure_adjoint, constraints: [cell_volume],
+  fail_close: true}`. These keys state the AO-Fast theorem contract: the
+  surface-energy covector, cell-volume reaction, PPE source, and face corrector
+  all use the geometric q endpoint and the same pressure-adjoint face metric.
 - `momentum.terms.viscosity.spatial: ccd` + `time_integrator: implicit_bdf2` —
   BDF2 Helmholtz path for stiffness-relevant viscous terms. The nested
   `solver.kind` selects `defect_correction` (default production path) or
