@@ -13,6 +13,7 @@ from twophase.geometry.swept_flux import (
     _axis_aligned_strip_area,
     _axis_aligned_strip_area_unfused,
 )
+from twophase.ppe.fd_direct import _PreparedCuPySuperLUSolve
 from twophase.simulation import geometric_phase_runtime_gpu as gpu_runtime
 from twophase.simulation.geometric_phase_runtime_gpu import (
     _host_scalar_packet_float,
@@ -402,6 +403,42 @@ def test_gpu_swept_strip_raw_kernel_matches_unfused_nonuniform_geometry():
     )
     cp.testing.assert_allclose(case_raw_x, case_oracle_x, rtol=1.0e-12, atol=1.0e-12)
     cp.testing.assert_allclose(case_raw_y, case_oracle_y, rtol=1.0e-12, atol=1.0e-12)
+
+
+def test_gpu_fd_direct_uses_explicit_spsm_solve_plan_for_same_factor():
+    cp = pytest.importorskip("cupy")
+    cpsp = pytest.importorskip("cupyx.scipy.sparse")
+    cpspla = pytest.importorskip("cupyx.scipy.sparse.linalg")
+    try:
+        if cp.cuda.runtime.getDeviceCount() < 1:
+            pytest.skip("CUDA device unavailable")
+    except cp.cuda.runtime.CUDARuntimeError as exc:
+        pytest.skip(str(exc))
+
+    matrix = cpsp.csc_matrix(
+        cp.asarray(
+            [
+                [4.0, 1.0, 0.0, 0.0],
+                [1.0, 3.0, 1.0, 0.0],
+                [0.0, 1.0, 2.5, 0.5],
+                [0.0, 0.0, 0.5, 2.0],
+            ]
+        )
+    )
+    raw_factor = cpspla.splu(matrix)
+    plan = _PreparedCuPySuperLUSolve(raw_factor, rhs_shape=(matrix.shape[0], 1))
+
+    rhs_a = cp.asarray([1.0, -2.0, 3.0, 0.5])
+    rhs_b = cp.asarray([-0.25, 0.75, 1.25, -1.5])
+    cp.testing.assert_allclose(plan.solve(rhs_a), raw_factor.solve(rhs_a))
+    prepared_analyses = plan.analysis_count
+    assert prepared_analyses == 2
+
+    cp.testing.assert_allclose(plan.solve(rhs_b), raw_factor.solve(rhs_b))
+    assert plan.analysis_count == prepared_analyses
+
+    with pytest.raises(RuntimeError, match="vector RHS"):
+        plan.solve(cp.eye(matrix.shape[0]))
 
 
 def test_gpu_schur_dc_and_dc_then_pcg_follow_yaml_scheme():
