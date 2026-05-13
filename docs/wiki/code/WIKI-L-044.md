@@ -10,6 +10,8 @@ sources:
     description: "Chapter 14 post-transfer GPU acceleration theory"
   - path: artifacts/A/ch14_active_geometry_rawkernel_fusion_CHK-RA-CH14-AO-FASTVOL-059.md
     description: "Implementation and validation of finite-stratum active-geometry fusion"
+  - path: artifacts/A/ch14_swept_flux_rawkernel_fusion_CHK-RA-CH14-AO-FASTVOL-060.md
+    description: "Implementation and validation of fail-closed swept-strip RawKernel fusion"
   - path: src/twophase/geometry/active_kernels.py
     description: "Current active-geometry finite-stratum evaluator"
   - path: src/twophase/geometry/swept_flux.py
@@ -84,7 +86,11 @@ Inadmissible fusion:
    through a single RawKernel while retaining the unfused evaluator as fallback
    and parity oracle.
 2. Fuse swept-volume face flux.  Treat flux as one conservative face cochain and
-   scatter it with opposite signs to adjacent cells.
+   scatter it with opposite signs to adjacent cells.  CHK-RA-CH14-AO-FASTVOL-060
+   implements the low-risk part of this item: the local P1 liquid
+   strip-intersection area is fused in a CuPy RawKernel, while the existing
+   face-cochain assembly, velocity sign selection, donor-cell width selection,
+   and periodic face identity remain unchanged.
 3. Reuse and batch defect-correction sparse analysis by exact operator epoch.
    The epoch key must include metric, boundary, coefficient, and stencil/jump
    identity.
@@ -97,7 +103,9 @@ Inadmissible fusion:
 - Active geometry parity: old/new `q`, `s`, `Jq`, `dS`, masks, and row norms on
   uniform, nonuniform, periodic, wall, and near-interface cases.
 - Swept flux parity: old/new face flux equality plus exact adjacent-cell
-  cancellation.
+  cancellation.  GPU swept-strip fusion must fail closed on unsupported dtype,
+  unsupported operand rank, compilation failure, or launch failure; do not use
+  silent GPU-to-unfused fallback for production GPU routes.
 - Sparse reuse safety: mutating grid coordinates, density, viscosity, boundary
   mode, or jump context must invalidate caches.
 - Route correctness: ch14 capillary 10-step and fractional-period gates remain
@@ -109,4 +117,7 @@ Inadmissible fusion:
 
 For post-transfer GPU work, fuse finite-stratum algebra and reuse exact operator
 epochs.  Do not change the physics, grid, convergence contract, or YAML-owned
-numerical choices to obtain a prettier GPU trace.
+numerical choices to obtain a prettier GPU trace.  When a fused GPU kernel is
+the selected production path, make unsupported or failed GPU execution
+fail-close; keep unfused code as CPU/oracle coverage, not as a hidden GPU
+escape hatch.

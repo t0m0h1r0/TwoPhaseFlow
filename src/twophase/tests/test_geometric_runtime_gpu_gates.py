@@ -9,6 +9,10 @@ from twophase.backend import Backend
 from twophase.config import GridConfig
 from twophase.core.grid import Grid
 from twophase.geometry.p1_cut_geometry import cut_geometry_2d
+from twophase.geometry.swept_flux import (
+    _axis_aligned_strip_area,
+    _axis_aligned_strip_area_unfused,
+)
 from twophase.simulation import geometric_phase_runtime_gpu as gpu_runtime
 from twophase.simulation.geometric_phase_runtime_gpu import (
     _host_scalar_packet_float,
@@ -262,6 +266,142 @@ def test_gpu_pcg_block_kernel_matches_vector_pcg():
 
     assert raw is not None
     cp.testing.assert_allclose(raw, vector, rtol=1.0e-10, atol=1.0e-10)
+
+
+def test_gpu_swept_strip_raw_kernel_matches_unfused_nonuniform_geometry():
+    cp = pytest.importorskip("cupy")
+    try:
+        if cp.cuda.runtime.getDeviceCount() < 1:
+            pytest.skip("CUDA device unavailable")
+    except cp.cuda.runtime.CUDARuntimeError as exc:
+        pytest.skip(str(exc))
+
+    rng = np.random.default_rng(811)
+    x_edges_np = np.cumsum(np.r_[0.0, rng.uniform(0.05, 0.17, size=5)])
+    y_edges_np = np.cumsum(np.r_[0.0, rng.uniform(0.04, 0.19, size=4)])
+    phi_lb_np = rng.normal(size=(5, 4))
+    phi_rb_np = rng.normal(size=(5, 4))
+    phi_lt_np = rng.normal(size=(5, 4))
+    phi_rt_np = rng.normal(size=(5, 4))
+    # Include the ambiguous P1 case-10 split and zero-adjacent cuts in the
+    # oracle comparison; these are where fail-open fallbacks most easily hide.
+    phi_lb_np[1, 1] = 1.0
+    phi_rb_np[1, 1] = -1.0
+    phi_rt_np[1, 1] = 1.0
+    phi_lt_np[1, 1] = -1.0
+    phi_lb_np[3, 2] = 0.0
+
+    x_edges = cp.asarray(x_edges_np)
+    y_edges = cp.asarray(y_edges_np)
+    phi_lb = cp.asarray(phi_lb_np)
+    phi_rb = cp.asarray(phi_rb_np)
+    phi_lt = cp.asarray(phi_lt_np)
+    phi_rt = cp.asarray(phi_rt_np)
+
+    x0 = x_edges[:-1].reshape((-1, 1))
+    x1 = x_edges[1:].reshape((-1, 1))
+    y0 = y_edges[:-1].reshape((1, -1))
+    y1 = y_edges[1:].reshape((1, -1))
+    dx = (x_edges[1:] - x_edges[:-1]).reshape((-1, 1))
+    dy = (y_edges[1:] - y_edges[:-1]).reshape((1, -1))
+
+    x_lower = x1 - 0.37 * dx
+    x_upper = x1
+    y_lower = y0
+    y_upper = y0 + 0.41 * dy
+
+    raw_x = _axis_aligned_strip_area(
+        cp, "x", x0, x1, y0, y1, x_lower, x_upper, phi_lb, phi_rb, phi_lt, phi_rt
+    )
+    oracle_x = _axis_aligned_strip_area_unfused(
+        cp, "x", x0, x1, y0, y1, x_lower, x_upper, phi_lb, phi_rb, phi_lt, phi_rt
+    )
+    raw_y = _axis_aligned_strip_area(
+        cp, "y", x0, x1, y0, y1, y_lower, y_upper, phi_lb, phi_rb, phi_lt, phi_rt
+    )
+    oracle_y = _axis_aligned_strip_area_unfused(
+        cp, "y", x0, x1, y0, y1, y_lower, y_upper, phi_lb, phi_rb, phi_lt, phi_rt
+    )
+
+    cp.testing.assert_allclose(raw_x, oracle_x, rtol=1.0e-12, atol=1.0e-12)
+    cp.testing.assert_allclose(raw_y, oracle_y, rtol=1.0e-12, atol=1.0e-12)
+
+    cases = np.arange(16, dtype=np.uint8)
+    case_values = np.ones((16, 1, 4), dtype=float)
+    for corner in range(4):
+        case_values[:, 0, corner] = np.where(cases & (1 << corner), -1.0, 1.0)
+    case_x0 = cp.asarray(np.linspace(0.0, 1.5, 16)).reshape((-1, 1))
+    case_dx = cp.asarray(np.linspace(0.05, 0.2, 16)).reshape((-1, 1))
+    case_x1 = case_x0 + case_dx
+    case_y0 = cp.asarray([[0.0]])
+    case_y1 = cp.asarray([[0.7]])
+    case_x_lower = case_x0 + 0.23 * case_dx
+    case_x_upper = case_x0 + 0.81 * case_dx
+    case_y_lower = cp.asarray([[0.11]])
+    case_y_upper = cp.asarray([[0.53]])
+    case_phi_lb = cp.asarray(case_values[:, :, 0])
+    case_phi_rb = cp.asarray(case_values[:, :, 1])
+    case_phi_rt = cp.asarray(case_values[:, :, 2])
+    case_phi_lt = cp.asarray(case_values[:, :, 3])
+
+    case_raw_x = _axis_aligned_strip_area(
+        cp,
+        "x",
+        case_x0,
+        case_x1,
+        case_y0,
+        case_y1,
+        case_x_lower,
+        case_x_upper,
+        case_phi_lb,
+        case_phi_rb,
+        case_phi_lt,
+        case_phi_rt,
+    )
+    case_oracle_x = _axis_aligned_strip_area_unfused(
+        cp,
+        "x",
+        case_x0,
+        case_x1,
+        case_y0,
+        case_y1,
+        case_x_lower,
+        case_x_upper,
+        case_phi_lb,
+        case_phi_rb,
+        case_phi_lt,
+        case_phi_rt,
+    )
+    case_raw_y = _axis_aligned_strip_area(
+        cp,
+        "y",
+        case_x0,
+        case_x1,
+        case_y0,
+        case_y1,
+        case_y_lower,
+        case_y_upper,
+        case_phi_lb,
+        case_phi_rb,
+        case_phi_lt,
+        case_phi_rt,
+    )
+    case_oracle_y = _axis_aligned_strip_area_unfused(
+        cp,
+        "y",
+        case_x0,
+        case_x1,
+        case_y0,
+        case_y1,
+        case_y_lower,
+        case_y_upper,
+        case_phi_lb,
+        case_phi_rb,
+        case_phi_lt,
+        case_phi_rt,
+    )
+    cp.testing.assert_allclose(case_raw_x, case_oracle_x, rtol=1.0e-12, atol=1.0e-12)
+    cp.testing.assert_allclose(case_raw_y, case_oracle_y, rtol=1.0e-12, atol=1.0e-12)
 
 
 def test_gpu_schur_dc_and_dc_then_pcg_follow_yaml_scheme():
