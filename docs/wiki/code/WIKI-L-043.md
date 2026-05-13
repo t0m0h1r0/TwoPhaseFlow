@@ -14,6 +14,8 @@ sources:
     description: "Algebra-preserving AO-Fast geometry and Schur fusion"
   - path: artifacts/A/ch14_gpu_pcg_block_kernel_CHK-RA-CH14-AO-FASTVOL-056.md
     description: "Block-resident AO-Fast Schur PCG for N=32 capillary route"
+  - path: artifacts/A/ch14_future_active_pcg_on_support_CHK-RA-CH14-AO-FASTVOL-057.md
+    description: "Future O(N) compact active-row Schur PCG design memory"
 depends_on:
   - "[[WIKI-L-038]]"
   - "[[WIKI-L-039]]"
@@ -70,6 +72,15 @@ capillary route:
   Schur, dot, max, and update kernels.  Guard the optimization by row-space
   size; larger systems need a multi-block theory rather than accidental reuse.
 
+Do not confuse periodic nodal image count with Schur row count.  For an N=32
+periodic direction the nodal field may have an image shape such as `33 x 33`,
+but the current active-geometry Schur solve is over cell-row multipliers
+`lambda_C`, so the full fixed row space is `32 x 32 = 1024` and the single-block
+kernel applies.  This is still not the scalable endpoint.  The separate future
+AO-Fast design should restore compact active rows near the interface, with
+`|A_q| = O(N)` in 2D, instead of widening the single-block cap for the full
+`O(N^2)` cell space.
+
 ## Consequences
 
 - Do not retune CFL, tolerances, pressure routes, smoothing, or damping to make
@@ -82,6 +93,9 @@ capillary route:
   fused Schur vs `J(J^T x)`.
 - Raw Krylov kernels should be tested against the vector recurrence on the same
   backend before route-level timing is trusted.
+- Future O(N) active-row PCG must handle periodic halo/support closure,
+  interface-tracking grid-rebuild support epochs, and nonuniform-grid `jq_local`
+  metrics before it can replace the full fixed-shape Schur path.
 - GPU runtime code should not keep a usable single-scalar transfer helper; even
   unavoidable scalar diagnostics should pass through a packet helper so future
   additions naturally batch synchronization.
