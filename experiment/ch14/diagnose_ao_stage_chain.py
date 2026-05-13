@@ -299,6 +299,18 @@ def main() -> None:
     parser.add_argument("--ppe-dc-relaxation", type=float)
     parser.add_argument("--ppe-dc-max-iterations", type=int)
     parser.add_argument("--ppe-dc-tolerance", type=float)
+    parser.add_argument(
+        "--active-projection-scheme",
+        choices=("as_config", "pcg", "dc", "dc_then_pcg"),
+        default="as_config",
+    )
+    parser.add_argument("--active-projection-max-iterations", type=int)
+    parser.add_argument("--active-projection-pcg-tolerance", type=float)
+    parser.add_argument("--active-projection-pcg-max-iterations", type=int)
+    parser.add_argument("--active-projection-pcg-roundoff-floor", type=float)
+    parser.add_argument("--active-projection-dc-tolerance", type=float)
+    parser.add_argument("--active-projection-dc-max-iterations", type=int)
+    parser.add_argument("--active-projection-dc-relaxation", type=float)
     parser.add_argument("--force-predictor-startup", action="store_true")
     parser.add_argument("--drop-pressure-history", action="store_true")
     parser.add_argument("--uniform-grid", action="store_true")
@@ -330,6 +342,72 @@ def main() -> None:
         overrides["run.ppe_dc_max_iterations"] = args.ppe_dc_max_iterations
     if args.ppe_dc_tolerance is not None:
         overrides["run.ppe_dc_tolerance"] = args.ppe_dc_tolerance
+    if args.active_projection_scheme != "as_config":
+        scheme = args.active_projection_scheme
+        overrides["interface_state_space.active_projection_solver_scheme"] = scheme
+        if scheme == "pcg":
+            overrides["interface_state_space.active_projection_primary"] = (
+                "active_pcg_newton"
+            )
+            overrides["interface_state_space.active_projection_fallback_policy"] = (
+                "none"
+            )
+            overrides["interface_state_space.fallback_policy"] = "none"
+            overrides["interface_state_space.active_projection_fallback_target"] = None
+            overrides["interface_state_space.active_projection_fallback_triggers"] = ()
+        elif scheme == "dc":
+            overrides["interface_state_space.active_projection_primary"] = (
+                "residual_monotone_dc"
+            )
+            overrides["interface_state_space.active_projection_fallback_policy"] = (
+                "none"
+            )
+            overrides["interface_state_space.fallback_policy"] = "none"
+            overrides["interface_state_space.active_projection_fallback_target"] = None
+            overrides["interface_state_space.active_projection_fallback_triggers"] = ()
+        else:
+            overrides["interface_state_space.active_projection_primary"] = (
+                "residual_monotone_dc"
+            )
+            overrides["interface_state_space.active_projection_fallback_policy"] = (
+                "explicit_chain"
+            )
+            overrides["interface_state_space.fallback_policy"] = "explicit_chain"
+            overrides["interface_state_space.active_projection_fallback_target"] = (
+                "active_pcg_newton"
+            )
+            overrides["interface_state_space.active_projection_fallback_triggers"] = (
+                "not_converged",
+                "residual_floor_exceeded",
+            )
+    if args.active_projection_max_iterations is not None:
+        overrides["interface_state_space.active_projection_max_iterations"] = (
+            args.active_projection_max_iterations
+        )
+    if args.active_projection_pcg_tolerance is not None:
+        overrides["interface_state_space.active_projection_pcg_tolerance"] = (
+            args.active_projection_pcg_tolerance
+        )
+    if args.active_projection_pcg_max_iterations is not None:
+        overrides["interface_state_space.active_projection_pcg_max_iterations"] = (
+            args.active_projection_pcg_max_iterations
+        )
+    if args.active_projection_pcg_roundoff_floor is not None:
+        overrides["interface_state_space.active_projection_pcg_roundoff_floor"] = (
+            args.active_projection_pcg_roundoff_floor
+        )
+    if args.active_projection_dc_tolerance is not None:
+        overrides["interface_state_space.active_projection_dc_tolerance"] = (
+            args.active_projection_dc_tolerance
+        )
+    if args.active_projection_dc_max_iterations is not None:
+        overrides["interface_state_space.active_projection_dc_max_iterations"] = (
+            args.active_projection_dc_max_iterations
+        )
+    if args.active_projection_dc_relaxation is not None:
+        overrides["interface_state_space.active_projection_dc_relaxation"] = (
+            args.active_projection_dc_relaxation
+        )
     if args.uniform_grid:
         overrides.update(
             {
