@@ -93,6 +93,9 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             interface_tracking_method=str(
                 getattr(run, "interface_tracking_method", "phi_primary")
             ),
+            interface_gauge_reconstruction=str(
+                getattr(run, "interface_gauge_reconstruction", "fixed_stratum")
+            ),
             phi_primary_redist_every=int(getattr(run, "phi_primary_redist_every", 4)),
             phi_primary_clip_factor=float(getattr(run, "phi_primary_clip_factor", 12.0)),
             phi_primary_heaviside_eps_scale=float(

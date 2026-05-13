@@ -366,12 +366,12 @@ def materialise_geometric_runtime_capillary_application_state(
     xp = grid.xp
     predictor_face_acceleration = _validate_face_pair(
         grid,
-        capillary.capillary_force_acceleration,
+        _scale_face_pair(capillary.capillary_force_acceleration, dt=-1.0),
         name="runtime AO capillary predictor acceleration",
     )
     pressure_reaction_face_acceleration = _validate_face_pair(
         grid,
-        capillary.pressure_reaction_acceleration,
+        _scale_face_pair(capillary.pressure_reaction_acceleration, dt=-1.0),
         name="runtime AO pressure reaction acceleration",
     )
     predictor_face_increment = _validate_face_pair(

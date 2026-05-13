@@ -102,6 +102,9 @@ def initialise_ns_solver_from_options(solver, options) -> None:
     solver._active_projection_dc_relaxation = float(
         getattr(options.interface, "active_projection_dc_relaxation", 1.0)
     )
+    solver._interface_gauge_reconstruction = str(
+        getattr(options.interface, "interface_gauge_reconstruction", "fixed_stratum")
+    ).strip().lower()
     solver._record_interface_projection_fields = False
     solver._last_interface_projection_fields = None
     solver._initialise_geometry(options.grid)

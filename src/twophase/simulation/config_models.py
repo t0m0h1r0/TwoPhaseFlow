@@ -83,6 +83,7 @@ class RunCfg:
     phi_primary_transport: bool = False
     interface_tracking_enabled: bool = True
     interface_tracking_method: str = "psi_direct"
+    interface_gauge_reconstruction: str = "fixed_stratum"
     phi_primary_redist_every: int = 4
     phi_primary_clip_factor: float = 12.0
     phi_primary_heaviside_eps_scale: float = 1.0

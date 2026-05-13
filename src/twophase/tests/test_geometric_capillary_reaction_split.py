@@ -5,9 +5,13 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
+from twophase.backend import Backend
+from twophase.config import GridConfig
+from twophase.core.grid import Grid
 from twophase.simulation.geometric_capillary_reaction_split import (
     build_geometric_capillary_reaction_split,
 )
+from twophase.simulation.ns_step_services import _geometric_to_projection_face_pair_2d
 
 
 def test_geometric_capillary_split_removes_component_reaction():
@@ -88,3 +92,50 @@ def test_geometric_capillary_split_retains_nonpressure_hodge_drive():
     np.testing.assert_allclose(split.pressure_range_face_acceleration[0], 0.0)
     np.testing.assert_allclose(split.balanced_face_acceleration[0], raw[0])
     assert split.balanced_weighted_l2 == pytest.approx(np.sqrt(2.0))
+
+
+def test_ao_face_bridge_converts_volume_cochains_on_nonuniform_grid():
+    backend = Backend(use_gpu=False)
+    grid = Grid(GridConfig(ndim=2, N=(2, 3), L=(3.0, 3.0)), backend)
+    grid.coords[0] = np.asarray([0.0, 1.0, 3.0])
+    grid.coords[1] = np.asarray([0.0, 0.5, 1.5, 3.0])
+    dx = np.diff(grid.coords[0])
+    dy = np.diff(grid.coords[1])
+
+    x_velocity = 2.0
+    y_velocity = -3.0
+    x_cochain = x_velocity * dy.reshape((1, 3)) * np.ones((3, 3))
+    y_cochain = y_velocity * dx.reshape((2, 1)) * np.ones((2, 4))
+
+    projected = _geometric_to_projection_face_pair_2d(
+        xp=np,
+        grid=grid,
+        face_pair=[x_cochain, y_cochain],
+        boundary=("periodic", "wall"),
+    )
+
+    np.testing.assert_allclose(projected[0], x_velocity)
+    np.testing.assert_allclose(projected[1], y_velocity)
+
+
+def test_ao_face_bridge_uses_periodic_seam_metric_weights():
+    backend = Backend(use_gpu=False)
+    grid = Grid(GridConfig(ndim=2, N=(2, 2), L=(3.0, 1.0)), backend)
+    grid.coords[0] = np.asarray([0.0, 1.0, 3.0])
+    grid.coords[1] = np.asarray([0.0, 0.25, 1.0])
+    dx = np.diff(grid.coords[0])
+
+    y_velocity = np.asarray([[10.0, 10.0, 10.0], [20.0, 20.0, 20.0]])
+    y_cochain = y_velocity * dx.reshape((2, 1))
+    x_cochain = np.zeros((3, 2))
+
+    projected = _geometric_to_projection_face_pair_2d(
+        xp=np,
+        grid=grid,
+        face_pair=[x_cochain, y_cochain],
+        boundary=("periodic", "wall"),
+    )
+
+    expected_seam = (dx[0] * 20.0 + dx[-1] * 10.0) / (dx[-1] + dx[0])
+    np.testing.assert_allclose(projected[1][0, :], expected_seam)
+    np.testing.assert_allclose(projected[1][-1, :], expected_seam)

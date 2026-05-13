@@ -50,6 +50,7 @@ class AOFastRuntimeContract:
     normalized_view: str
     gauge_variable: str
     tracking_method: str
+    tracking_gauge_reconstruction: str
     advection_scheme: str
     capillary_force_source: str
     capillary_endpoint: str
@@ -123,6 +124,14 @@ def build_ao_fast_runtime_contract(cfg: Any) -> AOFastRuntimeContract:
     _validate_active_projection_solver_contract(state)
     _require(getattr(run, "interface_tracking_method", None), "q_cell_fraction",
              "interface_tracking_method")
+    tracking_gauge = str(
+        getattr(run, "interface_gauge_reconstruction", "fixed_stratum")
+    ).strip().lower()
+    if tracking_gauge not in {"fixed_stratum", "column_height_graph"}:
+        raise ValueError(
+            "AO-Fast runtime contract requires interface_gauge_reconstruction "
+            "to be 'fixed_stratum' or 'column_height_graph'"
+        )
     _require(getattr(run, "advection_scheme", None), "geometric_swept_volume",
              "advection_scheme")
     _require(getattr(run, "capillary_force_source", None), "bundle_virtual_work",
@@ -158,6 +167,7 @@ def build_ao_fast_runtime_contract(cfg: Any) -> AOFastRuntimeContract:
         normalized_view="theta",
         gauge_variable="phi",
         tracking_method="q_cell_fraction",
+        tracking_gauge_reconstruction=tracking_gauge,
         advection_scheme="geometric_swept_volume",
         capillary_force_source="bundle_virtual_work",
         capillary_endpoint="geometric_cell_fraction",

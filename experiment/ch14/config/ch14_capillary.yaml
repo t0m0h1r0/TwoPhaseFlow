@@ -103,6 +103,7 @@ numerics:
       fail_close: true
     tracking:
       primary: q
+      gauge_reconstruction: column_height_graph
   momentum:
     form: conservative_common_flux
     predictor:
@@ -140,11 +141,11 @@ numerics:
           norm: linf
           absolute_tolerance: 1.0e-11
           relative_tolerance: 0.0
-          max_iterations: 32
+          max_iterations: 128
         pcg:
-          tolerance: 1.0e-12
-          max_iterations: 256
-          roundoff_floor: 1.0e-14
+          tolerance: 1.0e-13
+          max_iterations: 512
+          roundoff_floor: 1.0e-15
     face_flux_projection: true
     canonical_face_state: true
     face_native_predictor_state: true
@@ -164,7 +165,7 @@ numerics:
       max_iterations: 80
       gate: diagnostic
     pressure_history:
-      form: pressure_coordinate
+      form: face_acceleration
       extrapolation: bdf2
       reaction: variational_adjoint
       metric: transported_face_mass

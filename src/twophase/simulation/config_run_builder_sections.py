@@ -9,6 +9,7 @@ from .config_models import RunCfg
 from .config_sections import opt_float, validate_choice
 from .config_run_tracking_sections import (
     parse_tracking_enabled,
+    parse_tracking_gauge_reconstruction,
     parse_tracking_method,
     parse_tracking_primary,
     parse_tracking_redistance_every,
@@ -263,6 +264,9 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
         interface_tracking_method=parse_tracking_method(
             options.tracking,
             options.layout_paths["tracking_primary"],
+        ),
+        interface_gauge_reconstruction=parse_tracking_gauge_reconstruction(
+            options.tracking,
         ),
         phi_primary_redist_every=parse_tracking_redistance_every(
             options.tracking,

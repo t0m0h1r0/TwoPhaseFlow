@@ -60,6 +60,33 @@ def test_gpu_single_scalar_transfer_helper_fails_closed():
     assert backend.host_transfer_count == 0
 
 
+def test_gpu_swept_flux_rejects_receiver_overfill_without_clipping():
+    class GridStub:
+        ndim = 2
+        N = (2, 1)
+        xp = np
+        backend = _CountingBackend()
+        coords = (
+            np.asarray([0.0, 1.0, 2.0]),
+            np.asarray([0.0, 1.0]),
+        )
+
+    q = np.ones(GridStub.N, dtype=float)
+    flux_x = np.asarray([[0.0], [0.1], [0.0]], dtype=float)
+    flux_y = np.zeros((2, 2), dtype=float)
+
+    with pytest.raises(ValueError, match="receiver gas capacity"):
+        gpu_runtime._apply_swept_flux_gpu(
+            GridStub(),
+            q,
+            (flux_x, flux_y),
+            dt=1.0,
+            boundary=("wall", "wall"),
+            tolerance=1.0e-12,
+        )
+    assert GridStub.backend.host_transfer_count == 1
+
+
 def test_gpu_schur_pcg_respects_device_tolerance_mask():
     class GridStub:
         ndim = 2
@@ -164,6 +191,20 @@ def test_gpu_masked_schur_direct_formula_matches_j_jt_composition():
     composed = support.apply_j(support.apply_j_transpose(cell))
 
     np.testing.assert_allclose(direct, composed, rtol=1.0e-14, atol=1.0e-14)
+
+
+def test_gpu_active_cut_rows_rejects_roundoff_only_rows():
+    row_norm = np.asarray(
+        [[1.0, 1.0e-14], [0.0, 1.0e-11]],
+        dtype=float,
+    )
+
+    active = gpu_runtime._active_cut_rows_from_norm_gpu(np, row_norm)
+
+    np.testing.assert_array_equal(
+        active,
+        np.asarray([[True, False], [False, True]], dtype=bool),
+    )
 
 
 def test_gpu_masked_schur_raw_kernel_matches_vector_formula():

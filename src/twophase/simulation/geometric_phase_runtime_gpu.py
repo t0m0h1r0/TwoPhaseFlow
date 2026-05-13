@@ -82,6 +82,52 @@ def build_geometric_phase_state_gpu(grid, phi, *, level: float = 0.0):
     )
 
 
+def project_geometric_phase_state_gpu(
+    grid,
+    q,
+    phi,
+    *,
+    level: float = 0.0,
+    tolerance: float = 1.0e-11,
+    relative_tolerance: float = 0.0,
+    max_newton_iterations: int = 8,
+    solver_scheme: str = "pcg",
+    pcg_tolerance: float = 1.0e-12,
+    pcg_max_iterations: int = 256,
+    pcg_roundoff_floor: float | None = 1.0e-14,
+    dc_tolerance: float = 1.0e-11,
+    dc_max_iterations: int = 8,
+    dc_relaxation: float = 1.0,
+) -> GeometricPhaseState:
+    """Build and project a GPU geometric state from explicit ``q`` and ``phi``.
+
+    A3 mapping:
+      Equation: SP-AO requires the hard cell-volume constraint
+      ``Q_h(phi)=q`` before surface-energy variation.
+      Discretization: callers may supply a topology-moving gauge seed; this
+      wrapper closes it with the active-set Schur/Newton compatibility
+      projection without relaxing the residual tolerance.
+      Code: arrays stay in the CuPy namespace and the returned state records
+      the exact recomputed compatibility residual.
+    """
+    _require_gpu_array_namespace(grid.xp, "project_geometric_phase_state_gpu")
+    state = _phase_state_from_q_phi_gpu(grid, q, phi, level=level)
+    return _project_q_phi_compatibility_fixed_gpu(
+        grid,
+        state,
+        tolerance=tolerance,
+        relative_tolerance=relative_tolerance,
+        max_newton_iterations=max_newton_iterations,
+        solver_scheme=solver_scheme,
+        pcg_tolerance=pcg_tolerance,
+        pcg_max_iterations=pcg_max_iterations,
+        pcg_roundoff_floor=pcg_roundoff_floor,
+        dc_tolerance=dc_tolerance,
+        dc_max_iterations=dc_max_iterations,
+        dc_relaxation=dc_relaxation,
+    )
+
+
 def transport_geometric_phase_common_flux_2d_gpu(
     grid,
     state: GeometricPhaseState,
@@ -136,6 +182,7 @@ def transport_geometric_phase_common_flux_2d_gpu(
         swept_flux.phase_fluxes,
         dt=dt,
         boundary=boundary,
+        tolerance=tolerance,
     )
     pre_projection = _phase_state_from_q_phi_gpu(
         grid,
@@ -284,7 +331,7 @@ def materialise_geometric_runtime_capillary_state_gpu(
     del geometry
 
     row_norm = xp.sum(derivatives.jq_local * derivatives.jq_local, axis=-1)
-    active = row_norm > 0.0
+    active = _active_cut_rows_from_norm_gpu(xp, row_norm)
     schur_support = _masked_schur_support_from_active(
         grid,
         xp,
@@ -476,10 +523,10 @@ def materialise_geometric_runtime_capillary_application_state_gpu(
     dt = _validate_positive_float(dt, "dt")
     xp = grid.xp
     predictor_acceleration = tuple(
-        xp.asarray(face) for face in capillary.capillary_force_acceleration
+        -xp.asarray(face) for face in capillary.capillary_force_acceleration
     )
     pressure_acceleration = tuple(
-        xp.asarray(face) for face in capillary.pressure_reaction_acceleration
+        -xp.asarray(face) for face in capillary.pressure_reaction_acceleration
     )
     predictor_increment = tuple(dt * face for face in predictor_acceleration)
     pressure_increment = tuple(dt * face for face in pressure_acceleration)
@@ -644,10 +691,16 @@ def _active_interface_compatibility_residual_linf_gpu(
         .derivatives
     )
     row_norm = xp.sum(derivatives.jq_local * derivatives.jq_local, axis=-1)
-    row_norm_floor = xp.asarray(1.0e-12, dtype=row_norm.dtype) * xp.max(row_norm)
-    active = row_norm > row_norm_floor
+    active = _active_cut_rows_from_norm_gpu(xp, row_norm)
     residual = xp.asarray(phase_state.q) - xp.asarray(phase_state.geometry.q)
     return xp.max(xp.where(active, xp.abs(residual), xp.zeros_like(residual)))
+
+
+def _active_cut_rows_from_norm_gpu(xp, row_norm):
+    """Return the numerically meaningful fixed-stratum Schur support."""
+    row_norm = xp.asarray(row_norm)
+    row_norm_floor = xp.asarray(1.0e-12, dtype=row_norm.dtype) * xp.max(row_norm)
+    return row_norm > row_norm_floor
 
 
 def _geometry_and_derivatives_full(grid, phi, *, level: float):
@@ -737,7 +790,8 @@ def _project_q_phi_compatibility_fixed_gpu(
       ``J_q J_q^T lambda = q - Q_h(phi)`` and updates
       ``delta phi = J_q^T lambda``.  Candidate gauges are accepted only after
       exact ``Q_h`` recomputation, so near-node topology changes are handled by
-      residual-monotone active-set refresh instead of a coordinate offset.
+      residual-monotone active-set refresh instead of freezing the old sign
+      stratum or applying a coordinate offset.
       Code: this routine keeps the Schur solve and line-search candidates in
       the backend namespace; convergence is certified later by the exact
       active-interface ``q/phi`` residual gate on the returned state.
@@ -758,18 +812,25 @@ def _project_q_phi_compatibility_fixed_gpu(
     q_target = xp.asarray(state.q, dtype=phi.dtype)
     geometry, derivatives = _geometry_and_derivatives_full(grid, phi, level=level)
     residual = q_target - geometry.q
-    initial_linf = _linf(xp, residual)
+    row_norm = xp.sum(derivatives.jq_local * derivatives.jq_local, axis=-1)
+    row_norm_floor = xp.asarray(1.0e-12, dtype=phi.dtype) * xp.max(row_norm)
+    active_rows = row_norm > row_norm_floor
+    initial_linf = xp.max(
+        xp.where(active_rows, xp.abs(residual), xp.zeros_like(residual))
+    )
     residual_tolerance = xp.maximum(
         xp.asarray(tolerance, dtype=phi.dtype),
         xp.asarray(relative_tolerance, dtype=phi.dtype) * initial_linf,
     )
 
     for _ in range(max_newton_iterations):
-        residual_linf = _linf(xp, residual)
-        active_newton = residual_linf > residual_tolerance
         row_norm = xp.sum(derivatives.jq_local * derivatives.jq_local, axis=-1)
         row_norm_floor = xp.asarray(1.0e-12, dtype=phi.dtype) * xp.max(row_norm)
         active_rows = row_norm > row_norm_floor
+        residual_linf = xp.max(
+            xp.where(active_rows, xp.abs(residual), xp.zeros_like(residual))
+        )
+        active_newton = residual_linf > residual_tolerance
         rhs = xp.where(active_rows, residual, xp.zeros_like(residual))
         schur_support = _masked_schur_support_from_active(
             grid,
@@ -807,6 +868,7 @@ def _project_q_phi_compatibility_fixed_gpu(
             current_residual_linf=residual_linf,
             step_cap=xp.asarray(1.0, dtype=phi.dtype),
             active_newton=active_newton,
+            active_rows=active_rows,
         )
         phi = xp.where(active_newton, phi + step * delta_phi, phi)
         geometry, derivatives = _geometry_and_derivatives_full(grid, phi, level=level)
@@ -837,15 +899,42 @@ def _residual_reducing_step_gpu(
     current_residual_linf,
     step_cap,
     active_newton,
+    active_rows,
 ):
     """Pick the first fixed backtracking step that reduces exact ``Q_h`` error."""
     step = xp.minimum(xp.asarray(1.0, dtype=phi.dtype), step_cap)
     min_step = xp.asarray(1.0e-8, dtype=phi.dtype)
-    factors = xp.asarray((1.0, 0.5, 0.25, 0.125, 0.0625, 0.03125), dtype=phi.dtype)
+    factors = xp.asarray(
+        (
+            1.0,
+            0.5,
+            0.25,
+            0.125,
+            0.0625,
+            0.03125,
+            0.015625,
+            0.0078125,
+            0.00390625,
+            0.001953125,
+            0.0009765625,
+            0.00048828125,
+            0.000244140625,
+            0.0001220703125,
+        ),
+        dtype=phi.dtype,
+    )
     steps = step * factors
     candidate_phi = phi[None, ...] + steps[:, None, None] * delta_phi[None, ...]
     candidate_q = _geometry_q_candidates_full(grid, candidate_phi, level=level)
-    candidate_linf = xp.max(xp.abs(q_target[None, ...] - candidate_q), axis=(1, 2))
+    candidate_residual = xp.abs(q_target[None, ...] - candidate_q)
+    candidate_linf = xp.max(
+        xp.where(
+            active_rows[None, ...],
+            candidate_residual,
+            xp.zeros_like(candidate_residual),
+        ),
+        axis=(1, 2),
+    )
     candidate_index = xp.arange(steps.shape[0], dtype=xp.int64)
     sentinel = xp.asarray(steps.shape[0], dtype=xp.int64)
     accept = (
@@ -853,7 +942,10 @@ def _residual_reducing_step_gpu(
         & (steps >= min_step)
         & (candidate_linf < current_residual_linf)
     )
-    first = xp.min(xp.where(accept, candidate_index, sentinel))
+    improved_linf = xp.where(accept, candidate_linf, xp.inf)
+    best = xp.argmin(improved_linf)
+    any_accepted = xp.any(accept)
+    first = xp.where(any_accepted, best, sentinel)
     first_mask = candidate_index == first
     selected = xp.sum(xp.where(first_mask, steps, xp.zeros_like(steps)))
     return selected
@@ -1081,18 +1173,70 @@ def _construct_p1_swept_flux_gpu(
     )
 
 
-def _apply_swept_flux_gpu(grid, q, phase_fluxes, *, dt: float, boundary):
+def _apply_swept_flux_gpu(
+    grid,
+    q,
+    phase_fluxes,
+    *,
+    dt: float,
+    boundary,
+    tolerance: float,
+):
     xp = grid.xp
     q_dev = xp.asarray(q)
     flux_x, flux_y = tuple(xp.asarray(face, dtype=q_dev.dtype) for face in phase_fluxes)
     swept_x = dt * flux_x
     swept_y = dt * flux_y
+    cell_measures = _cell_measures_2d(grid, xp, q_dev.dtype)
+    min_input_margin = xp.min(xp.minimum(q_dev, cell_measures - q_dev))
+    closure_residual = _closure_residual_linf_gpu(
+        xp,
+        flux_x,
+        flux_y,
+        boundary,
+    )
+    min_donor_margin, min_receiver_margin = _directional_capacity_margins_2d_gpu(
+        xp,
+        q_dev,
+        cell_measures,
+        swept_x,
+        swept_y,
+        boundary,
+    )
     divergence = (swept_x[1:, :] - swept_x[:-1, :]) + (
         swept_y[:, 1:] - swept_y[:, :-1]
     )
     q_next = q_dev - divergence
-    cell_measures = _cell_measures_2d(grid, xp, q_dev.dtype)
     min_margin = xp.min(xp.minimum(q_next, cell_measures - q_next))
+    volume_drift = xp.sum(q_next) - xp.sum(q_dev)
+    scalars = _host_scalar_packet_float(
+        grid.backend,
+        [
+            ("swept flux input q bound margin", min_input_margin),
+            ("swept flux closure residual", closure_residual),
+            ("swept flux donor margin", min_donor_margin),
+            ("swept flux receiver margin", min_receiver_margin),
+            ("swept flux transported q bound margin", min_margin),
+            ("swept flux global volume drift", volume_drift),
+        ],
+    )
+    violations: list[str] = []
+    if scalars["swept flux input q bound margin"] < -tolerance:
+        violations.append("input q lies outside physical cell-volume bounds")
+    if scalars["swept flux closure residual"] > tolerance:
+        violations.append("swept phase flux violates declared boundary closure")
+    if scalars["swept flux donor margin"] < -tolerance:
+        violations.append("swept phase flux exceeds donor liquid capacity")
+    if scalars["swept flux receiver margin"] < -tolerance:
+        violations.append("swept phase flux exceeds receiver gas capacity")
+    if scalars["swept flux transported q bound margin"] < -tolerance:
+        violations.append("swept phase flux violates q boundedness certificate")
+    if abs(scalars["swept flux global volume drift"]) > tolerance:
+        violations.append("swept phase flux violates global q conservation")
+    if violations:
+        raise ValueError(
+            "GPU AO swept-flux fail-close: " + "; ".join(violations)
+        )
     return SweptFluxTransportResult(
         q=q_next,
         certificate=SweptFluxCertificate(
@@ -1100,18 +1244,13 @@ def _apply_swept_flux_gpu(grid, q, phase_fluxes, *, dt: float, boundary):
             boundary=boundary,
             initial_volume=xp.sum(q_dev),
             final_volume=xp.sum(q_next),
-            volume_drift=xp.sum(q_next) - xp.sum(q_dev),
-            closure_residual_linf=_closure_residual_linf_gpu(
-                xp,
-                flux_x,
-                flux_y,
-                boundary,
-            ),
+            volume_drift=volume_drift,
+            closure_residual_linf=closure_residual,
             min_q=xp.min(q_next),
             max_q=xp.max(q_next),
             min_bound_margin=min_margin,
-            min_donor_margin=min_margin,
-            min_receiver_margin=min_margin,
+            min_donor_margin=min_donor_margin,
+            min_receiver_margin=min_receiver_margin,
         ),
     )
 
@@ -1134,6 +1273,56 @@ def _common_mass_fluxes_gpu(xp, phase_fluxes, volume_fluxes, *, rho_l, rho_g):
         rho_g * volume + drho * phase
         for phase, volume in zip(phase_fluxes, volume_fluxes, strict=True)
     )
+
+
+def _directional_capacity_margins_2d_gpu(
+    xp,
+    q,
+    cell_measures,
+    swept_x,
+    swept_y,
+    boundary,
+):
+    outgoing = xp.zeros_like(q)
+    incoming = xp.zeros_like(q)
+
+    x_internal = swept_x[1:-1, :]
+    x_forward = xp.maximum(x_internal, 0.0)
+    x_backward = xp.maximum(-x_internal, 0.0)
+    outgoing[:-1, :] = outgoing[:-1, :] + x_forward
+    incoming[1:, :] = incoming[1:, :] + x_forward
+    outgoing[1:, :] = outgoing[1:, :] + x_backward
+    incoming[:-1, :] = incoming[:-1, :] + x_backward
+
+    y_internal = swept_y[:, 1:-1]
+    y_forward = xp.maximum(y_internal, 0.0)
+    y_backward = xp.maximum(-y_internal, 0.0)
+    outgoing[:, :-1] = outgoing[:, :-1] + y_forward
+    incoming[:, 1:] = incoming[:, 1:] + y_forward
+    outgoing[:, 1:] = outgoing[:, 1:] + y_backward
+    incoming[:, :-1] = incoming[:, :-1] + y_backward
+
+    if boundary[0] == "periodic":
+        x_periodic = swept_x[0, :]
+        x_forward = xp.maximum(x_periodic, 0.0)
+        x_backward = xp.maximum(-x_periodic, 0.0)
+        outgoing[-1, :] = outgoing[-1, :] + x_forward
+        incoming[0, :] = incoming[0, :] + x_forward
+        outgoing[0, :] = outgoing[0, :] + x_backward
+        incoming[-1, :] = incoming[-1, :] + x_backward
+
+    if boundary[1] == "periodic":
+        y_periodic = swept_y[:, 0]
+        y_forward = xp.maximum(y_periodic, 0.0)
+        y_backward = xp.maximum(-y_periodic, 0.0)
+        outgoing[:, -1] = outgoing[:, -1] + y_forward
+        incoming[:, 0] = incoming[:, 0] + y_forward
+        outgoing[:, 0] = outgoing[:, 0] + y_backward
+        incoming[:, -1] = incoming[:, -1] + y_backward
+
+    donor_margin = xp.min(q - outgoing)
+    receiver_margin = xp.min(cell_measures - q + outgoing - incoming)
+    return donor_margin, receiver_margin
 
 
 def _face_mass_hodge_gpu(grid, state, density, *, rho_l, rho_g, boundary):
@@ -1451,6 +1640,7 @@ def _apply_schur_masked_2d_raw_if_available(
     values,
     cell_shape,
 ):
+    return None
     raw_kernel_type = getattr(xp, "RawKernel", None)
     if raw_kernel_type is None:
         return None

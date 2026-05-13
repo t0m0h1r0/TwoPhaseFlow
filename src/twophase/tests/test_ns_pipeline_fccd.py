@@ -806,6 +806,7 @@ def test_ch14_capillary_yaml_builds_solver():
     assert solver._fccd is not None
     assert solver._advection_scheme == "geometric_swept_volume"
     assert solver._interface_tracking_method == "q_cell_fraction"
+    assert solver._interface_gauge_reconstruction == "column_height_graph"
     assert solver._convection_scheme == "uccd6"
     assert solver._pressure_gradient_scheme == "fccd_flux"
     assert solver._surface_tension_gradient_scheme == "none"
@@ -816,10 +817,10 @@ def test_ch14_capillary_yaml_builds_solver():
     assert solver._active_projection_solver_scheme == "pcg"
     assert solver._active_projection_absolute_tolerance == pytest.approx(1.0e-11)
     assert solver._active_projection_relative_tolerance == pytest.approx(0.0)
-    assert solver._active_projection_max_iterations == 32
-    assert solver._active_projection_pcg_tolerance == pytest.approx(1.0e-12)
-    assert solver._active_projection_pcg_max_iterations == 256
-    assert solver._active_projection_pcg_roundoff_floor == pytest.approx(1.0e-14)
+    assert solver._active_projection_max_iterations == 128
+    assert solver._active_projection_pcg_tolerance == pytest.approx(1.0e-13)
+    assert solver._active_projection_pcg_max_iterations == 512
+    assert solver._active_projection_pcg_roundoff_floor == pytest.approx(1.0e-15)
     assert cfg.interface_state_space.active_projection_primary == "active_pcg_newton"
     assert cfg.interface_state_space.active_projection_fallback_policy == "none"
     assert solver._ppe_coefficient_scheme == "phase_separated"
@@ -833,6 +834,201 @@ def test_ch14_capillary_yaml_builds_solver():
     assert isinstance(solver._ppe_solver.base_solver, PPESolverFDDirect)
     assert solver._div_op is solver._fccd_div_op
     assert solver._viscous_spatial_scheme == "ccd_bulk"
+
+
+def test_column_height_graph_gauge_reconstruction_uses_q_column_volume():
+    """AO graph-gauge prediction must be owned by q, not by stale psi."""
+    solver = TwoPhaseNSSolver(
+        8, 6, 1.0, 1.0,
+        bc_type="periodic",
+        grid_rebuild_freq=0,
+        interface_gauge_reconstruction="column_height_graph",
+    )
+    x = np.asarray(solver._grid.coords[0])
+    y = np.asarray(solver._grid.coords[1])
+    dx = np.diff(x)
+    dy = np.diff(y)
+    x_center = 0.5 * (x[:-1] + x[1:])
+    height_cells = 0.46 + 0.04 * np.cos(2.0 * np.pi * x_center)
+    q = np.zeros(tuple(solver._grid.N))
+    for i, height in enumerate(height_cells):
+        for j in range(solver._grid.N[1]):
+            liquid_height = min(y[j + 1], height) - y[j]
+            q[i, j] = dx[i] * min(max(liquid_height, 0.0), dy[j])
+
+    phi = np.asarray(solver._backend.to_host(solver._graph_phi_from_column_volume(q)))
+    height_nodes = y[0] - phi[:, 0]
+
+    np.testing.assert_allclose(height_nodes[0], height_nodes[-1])
+    expected_seam = (
+        dx[0] * height_cells[-1] + dx[-1] * height_cells[0]
+    ) / (dx[-1] + dx[0])
+    np.testing.assert_allclose(height_nodes[0], expected_seam)
+    denom = dx[:-1] + dx[1:]
+    expected_inner = (
+        dx[1:] * height_cells[:-1] + dx[:-1] * height_cells[1:]
+    ) / denom
+    np.testing.assert_allclose(height_nodes[1:-1], expected_inner)
+    target_volume = np.sum(q)
+    graph_volume = np.sum(dx * 0.5 * (height_nodes[:-1] + height_nodes[1:]))
+    np.testing.assert_allclose(graph_volume, target_volume)
+    assert np.all(phi[:, 0] < 0.0)
+    assert np.all(phi[:, -1] > 0.0)
+
+
+def test_geometric_cell_face_velocity_projection_preserves_full_cells():
+    """AO transport velocity must be divergence-free on its own cell faces."""
+    solver = TwoPhaseNSSolver(
+        6, 5, 1.0, 1.0,
+        bc_type="periodic_wall",
+        grid_rebuild_freq=0,
+        use_gpu=False,
+    )
+    x = np.linspace(0.0, 1.0, solver._grid.N[0] + 1) ** 1.25
+    y = np.linspace(0.0, 1.0, solver._grid.N[1] + 1) ** 1.4
+    x[-1] = 1.0
+    y[-1] = 1.0
+    solver._grid.coords[0] = x
+    solver._grid.coords[1] = y
+
+    rng = np.random.default_rng(20260514)
+    vx = rng.normal(scale=0.02, size=(solver._grid.N[0] + 1, solver._grid.N[1]))
+    vy = rng.normal(scale=0.02, size=(solver._grid.N[0], solver._grid.N[1] + 1))
+
+    projected = solver._project_geometric_cell_face_velocity(
+        [vx, vy],
+        dt=1.0e-3,
+        boundary=("periodic", "wall"),
+    )
+    dx = np.diff(solver._grid.coords[0])
+    dy = np.diff(solver._grid.coords[1])
+    flux_x = projected[0] * dy.reshape((1, -1))
+    flux_y = projected[1] * dx.reshape((-1, 1))
+    div = (flux_x[1:, :] - flux_x[:-1, :]) + (
+        flux_y[:, 1:] - flux_y[:, :-1]
+    )
+
+    np.testing.assert_allclose(flux_x[0, :], flux_x[-1, :], atol=1.0e-12)
+    np.testing.assert_allclose(flux_y[:, 0], 0.0, atol=1.0e-12)
+    np.testing.assert_allclose(flux_y[:, -1], 0.0, atol=1.0e-12)
+    assert np.max(np.abs(div)) * 1.0e-3 <= solver._active_projection_absolute_tolerance
+
+    cell_volume = dx[:, None] * dy[None, :]
+    q_next = cell_volume - 1.0e-3 * div
+    np.testing.assert_allclose(q_next, cell_volume, atol=1.0e-11)
+
+
+def test_geometric_volume_hodge_operator_is_spd_on_nonuniform_quotient():
+    """The AO Hodge matrix must remain SPD modulo constants on nonuniform grids."""
+    cases = [
+        ((4, 3), "periodic_wall", ("periodic", "wall")),
+        ((3, 4), "wall_periodic", ("wall", "periodic")),
+        ((4, 4), "periodic", ("periodic", "periodic")),
+        ((3, 3), "wall", ("wall", "wall")),
+    ]
+    for (nx, ny), bc_type, boundary in cases:
+        solver = TwoPhaseNSSolver(
+            nx, ny, 1.0, 1.0,
+            bc_type=bc_type,
+            grid_rebuild_freq=0,
+            use_gpu=False,
+        )
+        x = np.linspace(0.0, 1.0, nx + 1) ** 1.2
+        y = np.linspace(0.0, 1.0, ny + 1) ** 1.35
+        x[-1] = 1.0
+        y[-1] = 1.0
+        solver._grid.coords[0] = x
+        solver._grid.coords[1] = y
+        n_cells = nx * ny
+        matrix = np.zeros((n_cells, n_cells))
+        for column in range(n_cells):
+            basis = np.zeros((nx, ny))
+            basis.flat[column] = 1.0
+            grad_x, grad_y = solver._geometric_volume_flux_gradient(
+                basis,
+                dtype=float,
+                boundary=boundary,
+            )
+            matrix[:, column] = (
+                -solver._geometric_volume_flux_divergence(grad_x, grad_y)
+            ).ravel()
+
+        np.testing.assert_allclose(matrix, matrix.T, atol=1.0e-13)
+        np.testing.assert_allclose(matrix @ np.ones(n_cells), 0.0, atol=1.0e-12)
+        eigenvalues = np.linalg.eigvalsh(matrix)
+        assert eigenvalues[0] >= -1.0e-12
+        assert np.count_nonzero(np.abs(eigenvalues) < 1.0e-12) == 1
+
+
+def test_geometric_face_velocity_rejects_unknown_face_shapes():
+    """AO common flux must fail close instead of falling back from bad faces."""
+    solver = TwoPhaseNSSolver(
+        5, 4, 1.0, 1.0,
+        bc_type="periodic_wall",
+        grid_rebuild_freq=0,
+        use_gpu=False,
+    )
+    shape = solver._grid.shape
+    state = NSStepState(
+        psi=np.zeros(shape),
+        u=np.zeros(shape),
+        v=np.zeros(shape),
+        dt=1.0e-3,
+        rho_l=1.0,
+        rho_g=1.0,
+        sigma=0.0,
+        mu=1.0,
+        g_acc=0.0,
+        rho_ref=1.0,
+        mu_l=None,
+        mu_g=None,
+        bc_hook=None,
+        step_index=0,
+        face_velocity_components=[
+            np.zeros((solver._grid.N[0], solver._grid.N[1])),
+            np.zeros((solver._grid.N[0], solver._grid.N[1])),
+        ],
+    )
+
+    with pytest.raises(RuntimeError, match="projection-native face shapes"):
+        solver._geometric_face_velocity_for_common_flux(state)
+
+
+def test_geometric_face_velocity_uses_projection_native_pullback():
+    """Preserved projection faces must be an explicit AO velocity source."""
+    solver = TwoPhaseNSSolver(
+        5, 4, 1.0, 1.0,
+        bc_type="periodic_wall",
+        grid_rebuild_freq=0,
+        use_gpu=False,
+    )
+    nx, ny = solver._grid.N
+    shape = solver._grid.shape
+    state = NSStepState(
+        psi=np.zeros(shape),
+        u=np.zeros(shape),
+        v=np.zeros(shape),
+        dt=1.0e-3,
+        rho_l=1.0,
+        rho_g=1.0,
+        sigma=0.0,
+        mu=1.0,
+        g_acc=0.0,
+        rho_ref=1.0,
+        mu_l=None,
+        mu_g=None,
+        bc_hook=None,
+        step_index=0,
+        projected_face_components=[
+            np.ones((nx, ny + 1)),
+            np.zeros((nx + 1, ny)),
+        ],
+    )
+
+    face_velocity = solver._geometric_face_velocity_for_common_flux(state)
+
+    assert np.max(np.abs(face_velocity[0])) > 0.9
+    np.testing.assert_allclose(face_velocity[1], 0.0, atol=1.0e-12)
 
 
 def test_ch14_capillary_wave_yaml_builds_initial_field():
@@ -855,6 +1051,54 @@ def test_ch14_capillary_wave_yaml_builds_initial_field():
     y_high = int(np.argmin(np.abs(y_coords - 0.75 * cfg.grid.LY)))
     assert psi[x0, y_low] > 0.5
     assert psi[x0, y_high] < 0.5
+
+
+def test_ch14_capillary_rebuild_refreshes_ao_state_metric_owner():
+    """Interface-fitted rebuild must keep AO q/phi on the rebuilt metric."""
+    path = (
+        Path(__file__).resolve().parents[3]
+        / "experiment/ch14/config/ch14_capillary.yaml"
+    )
+    cfg = ExperimentConfig.from_yaml(path)
+    solver = TwoPhaseNSSolver.from_config(cfg)
+
+    psi = solver.build_ic(cfg)
+    phase_before = solver._geometric_phase_state
+    old_x = np.asarray(solver._grid.coords[0]).copy()
+    old_y = np.asarray(solver._grid.coords[1]).copy()
+    u, v = solver.build_velocity(cfg, psi)
+
+    psi, u, v = solver._rebuild_grid(
+        psi,
+        u,
+        v,
+        rho_l=cfg.physics.rho_l,
+        rho_g=cfg.physics.rho_g,
+    )
+
+    assert solver._geometric_phase_state is not None
+    assert solver._geometric_phase_state is not phase_before
+    assert np.max(np.abs(np.asarray(solver._grid.coords[0]) - old_x)) > 0.0
+    assert np.max(np.abs(np.asarray(solver._grid.coords[1]) - old_y)) > 0.0
+    assert solver._geometric_phase_state.q.shape == tuple(solver._grid.N)
+    assert solver._geometric_phase_state.compatibility_residual_linf <= 1.0e-14
+    np.testing.assert_allclose(
+        np.asarray(solver._backend.to_host(solver._geometric_phase_state.q)),
+        np.asarray(solver._backend.to_host(solver._geometric_phase_state.geometry.q)),
+        rtol=0.0,
+        atol=1.0e-14,
+    )
+    theta_nodes = np.asarray(
+        solver._backend.to_host(
+            solver._geometric_cell_to_node_view(solver._geometric_phase_state.theta)
+        )
+    )
+    x0 = int(np.argmin(np.abs(np.asarray(solver._grid.coords[0]) - 0.0)))
+    y_coords = np.asarray(solver._grid.coords[1])
+    y_low = int(np.argmin(np.abs(y_coords - 0.25 * cfg.grid.LY)))
+    y_high = int(np.argmin(np.abs(y_coords - 0.75 * cfg.grid.LY)))
+    assert theta_nodes[x0, y_low] > 0.5
+    assert theta_nodes[x0, y_high] < 0.5
 
 
 def test_ch14_rayleigh_taylor_yaml_builds_ao_initial_state():

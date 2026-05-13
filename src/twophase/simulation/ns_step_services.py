@@ -118,17 +118,25 @@ def _projection_base_face_components(*, xp, state: NSStepState, div_op) -> tuple
     return base_faces, False
 
 
-def _geometric_to_projection_face_pair_2d(*, xp, grid, face_pair: list) -> list:
+def _geometric_to_projection_face_pair_2d(
+    *,
+    xp,
+    grid,
+    face_pair: list,
+    boundary: tuple[str, str] = ("wall", "wall"),
+) -> list:
     """Map AO cell-face increments to the NS projection face lattice.
 
     A3 mapping:
       Equation: ``u_f^* += Pi_CF(dt M_C^{-1} r_sigma)``.
       Discretization: AO capillary increments live on cell faces
-      ``((Nx+1,Ny),(Nx,Ny+1))`` while the nodal-control-volume projection
-      uses the dual face lattice ``((Nx,Ny+1),(Nx+1,Ny))``. ``Pi_CF`` is the
-      tensor P1 midpoint interpolation between these two face lattices.
-      Code: this backend-native slice kernel performs the interpolation
-      before wall-face projection and PPE use.
+      ``((Nx+1,Ny),(Nx,Ny+1))`` as integrated face-volume cochains, while the
+      nodal-control-volume projection uses point velocities on the dual face
+      lattice ``((Nx,Ny+1),(Nx+1,Ny))``.  ``Pi_CF`` first divides by the
+      physical face measure and then applies tensor P1 interpolation between
+      the two face lattices, using physical nonuniform distances at nodes.
+      Code: this backend-native slice kernel performs the cochain-to-velocity
+      conversion and interpolation before wall-face projection and PPE use.
     """
     if grid is None or getattr(grid, "ndim", None) != 2:
         raise ValueError("AO capillary face bridge requires a 2D grid")
@@ -142,20 +150,74 @@ def _geometric_to_projection_face_pair_2d(*, xp, grid, face_pair: list) -> list:
             f"{(tuple(x_face.shape), tuple(y_face.shape))}"
         )
 
-    x_mid = 0.5 * (x_face[:-1, :] + x_face[1:, :])
-    projected_x = xp.empty((nx, ny + 1), dtype=x_face.dtype)
-    projected_x[:, 0] = x_mid[:, 0]
-    projected_x[:, ny] = x_mid[:, ny - 1]
-    if ny > 1:
-        projected_x[:, 1:ny] = 0.5 * (x_mid[:, :-1] + x_mid[:, 1:])
+    dx = xp.asarray(grid.coords[0][1:] - grid.coords[0][:-1], dtype=x_face.dtype)
+    dy = xp.asarray(grid.coords[1][1:] - grid.coords[1][:-1], dtype=x_face.dtype)
+    x_velocity = x_face / dy.reshape((1, ny))
+    y_velocity = y_face / dx.reshape((nx, 1))
 
-    y_mid = 0.5 * (y_face[:, :-1] + y_face[:, 1:])
+    x_mid = 0.5 * (x_velocity[:-1, :] + x_velocity[1:, :])
+    projected_x = xp.empty((nx, ny + 1), dtype=x_face.dtype)
+    _cell_center_to_nodes_axis1(
+        xp=xp,
+        values=x_mid,
+        widths=dy,
+        out=projected_x,
+        periodic=boundary[1] == "periodic",
+    )
+
+    y_mid = 0.5 * (y_velocity[:, :-1] + y_velocity[:, 1:])
     projected_y = xp.empty((nx + 1, ny), dtype=y_face.dtype)
-    projected_y[0, :] = y_mid[0, :]
-    projected_y[nx, :] = y_mid[nx - 1, :]
-    if nx > 1:
-        projected_y[1:nx, :] = 0.5 * (y_mid[:-1, :] + y_mid[1:, :])
+    _cell_center_to_nodes_axis0(
+        xp=xp,
+        values=y_mid,
+        widths=dx,
+        out=projected_y,
+        periodic=boundary[0] == "periodic",
+    )
     return [projected_x, projected_y]
+
+
+def _cell_center_to_nodes_axis0(*, xp, values, widths, out, periodic: bool) -> None:
+    n = int(values.shape[0])
+    if periodic:
+        seam = (
+            widths[0] * values[-1, :] + widths[-1] * values[0, :]
+        ) / (widths[-1] + widths[0])
+        out[0, :] = seam
+        out[n, :] = seam
+    else:
+        out[0, :] = values[0, :]
+        out[n, :] = values[-1, :]
+    if n > 1:
+        denom = (widths[:-1] + widths[1:]).reshape((-1, 1))
+        left_weight = widths[1:].reshape((-1, 1)) / denom
+        right_weight = widths[:-1].reshape((-1, 1)) / denom
+        out[1:n, :] = left_weight * values[:-1, :] + right_weight * values[1:, :]
+
+
+def _cell_center_to_nodes_axis1(*, xp, values, widths, out, periodic: bool) -> None:
+    n = int(values.shape[1])
+    if periodic:
+        seam = (
+            widths[0] * values[:, -1] + widths[-1] * values[:, 0]
+        ) / (widths[-1] + widths[0])
+        out[:, 0] = seam
+        out[:, n] = seam
+    else:
+        out[:, 0] = values[:, 0]
+        out[:, n] = values[:, -1]
+    if n > 1:
+        denom = (widths[:-1] + widths[1:]).reshape((1, -1))
+        lower_weight = widths[1:].reshape((1, -1)) / denom
+        upper_weight = widths[:-1].reshape((1, -1)) / denom
+        out[:, 1:n] = lower_weight * values[:, :-1] + upper_weight * values[:, 1:]
+
+
+def _ao_application_boundary(application) -> tuple[str, str]:
+    capillary = getattr(application, "capillary", None)
+    material = getattr(capillary, "material", None)
+    face_hodge = getattr(material, "face_hodge", None)
+    return tuple(getattr(face_hodge, "boundary", ("wall", "wall")))
 
 
 def _ao_predictor_increment_for_projection_faces(
@@ -170,6 +232,7 @@ def _ao_predictor_increment_for_projection_faces(
         grid=grid,
         face_pair=application.predictor_face_increment,
         reference_faces=reference_faces,
+        boundary=_ao_application_boundary(application),
         label="predictor",
     )
 
@@ -186,6 +249,7 @@ def _ao_pressure_reaction_increment_for_projection_faces(
         grid=grid,
         face_pair=application.pressure_reaction_face_increment,
         reference_faces=reference_faces,
+        boundary=_ao_application_boundary(application),
         label="pressure reaction",
     )
 
@@ -196,6 +260,7 @@ def _ao_capillary_acceleration_for_projection_faces(
     grid,
     face_pair,
     reference_faces: list,
+    boundary: tuple[str, str],
     label: str,
 ) -> tuple[list, str]:
     return _ao_face_pair_for_projection_faces(
@@ -203,6 +268,7 @@ def _ao_capillary_acceleration_for_projection_faces(
         grid=grid,
         face_pair=face_pair,
         reference_faces=reference_faces,
+        boundary=boundary,
         label=label,
     )
 
@@ -246,6 +312,7 @@ def _split_pending_geometric_capillary_application(
         grid=grid,
         face_pair=application.predictor_face_acceleration,
         reference_faces=reference_faces,
+        boundary=_ao_application_boundary(application),
         label="raw source acceleration",
     )
     component_accelerations = tuple(
@@ -263,6 +330,7 @@ def _split_pending_geometric_capillary_application(
             grid=grid,
             face_pair=component,
             reference_faces=reference_faces,
+            boundary=_ao_application_boundary(application),
             label=f"component-{index} reaction acceleration",
         )
         component_faces.append(faces)
@@ -397,6 +465,7 @@ def _ao_face_pair_for_projection_faces(
     grid,
     face_pair,
     reference_faces: list,
+    boundary: tuple[str, str],
     label: str,
 ) -> tuple[list, str]:
     increments = [xp.asarray(component) for component in face_pair]
@@ -406,6 +475,7 @@ def _ao_face_pair_for_projection_faces(
         xp=xp,
         grid=grid,
         face_pair=increments,
+        boundary=boundary,
     )
     if not _face_pair_shapes_match(projected, reference_faces):
         reference_shapes = tuple(tuple(face.shape) for face in reference_faces)

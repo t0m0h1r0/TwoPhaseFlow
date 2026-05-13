@@ -685,6 +685,15 @@ def _validate_geometric_numerics(numerics: dict[str, Any]) -> None:
         "numerics.interface.transport.boundedness",
     )
     _require_true(transport.get("fail_close", True), "numerics.interface.transport.fail_close")
+    tracking = _mapping(interface_num.get("tracking", {}), "numerics.interface.tracking")
+    gauge_reconstruction = tracking.get("gauge_reconstruction", "fixed_stratum")
+    if isinstance(gauge_reconstruction, dict):
+        gauge_reconstruction = gauge_reconstruction.get("scheme", "fixed_stratum")
+    validate_choice(
+        str(gauge_reconstruction).strip().lower(),
+        ("fixed_stratum", "column_height_graph"),
+        "numerics.interface.tracking.gauge_reconstruction",
+    )
 
     momentum = _mapping(numerics["momentum"], "numerics.momentum")
     _require_value(momentum.get("form"), "conservative_common_flux", "numerics.momentum.form")

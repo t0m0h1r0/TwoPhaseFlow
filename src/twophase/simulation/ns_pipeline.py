@@ -12,6 +12,8 @@ Conventions
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import numpy as np
 
 from ..ccd.fccd import FCCDSolver
@@ -46,8 +48,22 @@ from .geometric_phase_runtime_gpu import (
     materialise_geometric_common_flux_state_gpu,
     materialise_geometric_runtime_capillary_application_state_gpu,
     materialise_geometric_runtime_capillary_state_gpu,
+    project_geometric_phase_state_gpu,
     transport_geometric_phase_common_flux_2d_gpu,
     validate_geometric_runtime_capillary_fail_close_gpu,
+)
+from .geometric_volume_hodge import (
+    GeometricVolumeHodgePolicy,
+    build_geometric_volume_metrics,
+    close_geometric_volume_flux_boundary,
+    geometric_cell_face_shapes,
+    geometric_volume_flux_divergence,
+    geometric_volume_flux_gradient,
+    geometric_volume_flux_projection_diagonal,
+    project_geometric_cell_face_velocity,
+    project_geometric_volume_flux_pair,
+    projection_native_face_shapes,
+    solve_geometric_volume_flux_projection_pcg,
 )
 from . import ns_pipeline_registrations as _ns_pipeline_registrations  # noqa: F401
 from .ns_geometry_runtime import build_ns_geometry_runtime
@@ -160,6 +176,7 @@ class TwoPhaseNSSolver:
         phi_primary_transport: bool = True,
         interface_tracking_enabled: bool = True,
         interface_tracking_method: str | None = None,
+        interface_gauge_reconstruction: str = "fixed_stratum",
         phi_primary_redist_every: int = 4,
         phi_primary_clip_factor: float = 12.0,
         phi_primary_heaviside_eps_scale: float = 1.0,
@@ -283,6 +300,7 @@ class TwoPhaseNSSolver:
                 phi_primary_transport=phi_primary_transport,
                 interface_tracking_enabled=interface_tracking_enabled,
                 interface_tracking_method=interface_tracking_method,
+                interface_gauge_reconstruction=interface_gauge_reconstruction,
                 phi_primary_redist_every=phi_primary_redist_every,
                 phi_primary_clip_factor=phi_primary_clip_factor,
                 phi_primary_heaviside_eps_scale=phi_primary_heaviside_eps_scale,
@@ -661,6 +679,22 @@ class TwoPhaseNSSolver:
         self._velocity_prev = None
         self._velocity_bdf2_ready = False
         reset_ns_runtime_contexts(self)
+        self._refresh_geometric_phase_state_after_grid_rebuild(result.psi)
+
+    def _refresh_geometric_phase_state_after_grid_rebuild(self, psi) -> None:
+        """Keep AO cell-volume geometry tied to the rebuilt grid metric."""
+        if (
+            getattr(self, "_geometric_phase_state", None) is None
+            or self._alpha_grid <= 1.0
+        ):
+            return
+        context = self._runtime_setup_context()
+        phi = -context.reconstruct_base.phi_from_psi(psi)
+        self._geometric_phase_state = (
+            build_geometric_phase_state_gpu(self._grid, phi)
+            if self._backend.is_gpu()
+            else GeometricPhaseState.from_phi(self._grid, phi)
+        )
 
     # ── initial condition / velocity builders ─────────────────────────────
 
@@ -896,6 +930,60 @@ class TwoPhaseNSSolver:
     def _geometric_phase_runtime_enabled(self) -> bool:
         return getattr(self, "_advection_scheme", "") == "geometric_swept_volume"
 
+    def _geometric_phase_grid_rebuild_due(self, step_index: int) -> bool:
+        """Return whether AO-owned geometry should refresh the fitted grid."""
+        return (
+            self._geometric_phase_runtime_enabled()
+            and self._alpha_grid > 1.0
+            and self._interface_runtime.rebuild_freq > 0
+            and int(step_index) > 0
+            and int(step_index) % self._interface_runtime.rebuild_freq == 0
+        )
+
+    def _rebuild_grid_from_geometric_phase_state(
+        self,
+        state: NSStepState,
+    ) -> NSStepState:
+        """Fit the tensor grid to AO geometry without replacing q by ψ data."""
+        phase_state = getattr(self, "_geometric_phase_state", None)
+        if phase_state is None:
+            return state
+        xp = self._backend.xp
+        old_coords = [coords.copy() for coords in self._grid.coords]
+        old_phi = xp.asarray(phase_state.phi)
+        context = self._runtime_setup_context()
+        state.psi = context.reconstruct_base.psi_from_phi(-old_phi)
+        state.rho = xp.asarray(
+            state.rho_g
+            + (state.rho_l - state.rho_g)
+            * self._geometric_cell_to_node_view(phase_state.theta)
+        )
+        state.conservative_density = state.rho
+        state.conservative_momentum_components = [
+            state.rho * xp.asarray(state.u),
+            state.rho * xp.asarray(state.v),
+        ]
+        state = self._rebuild_grid_conservative(state)
+        remapper = build_grid_remapper(self._backend, old_coords, self._grid.coords)
+        phi = remapper.remap(old_phi)
+        self._geometric_phase_state = (
+            build_geometric_phase_state_gpu(self._grid, phi)
+            if self._backend.is_gpu()
+            else GeometricPhaseState.from_phi(self._grid, phi)
+        )
+        state.psi = self._geometric_cell_to_node_view(
+            self._geometric_phase_state.theta
+        )
+        state.rho = xp.asarray(
+            state.rho_g + (state.rho_l - state.rho_g) * state.psi
+        )
+        state.conservative_density = state.rho
+        state.conservative_momentum_components = [
+            state.rho * xp.asarray(state.u),
+            state.rho * xp.asarray(state.v),
+        ]
+        return state
+
     def _face_velocity_for_common_flux(self, state: NSStepState):
         """Return projection-native face velocities for common-flux transport."""
         xp = self._backend.xp
@@ -914,19 +1002,47 @@ class TwoPhaseNSSolver:
         """Return geometric cell-face normal velocities for AO swept transport."""
         xp = self._backend.xp
         nx, ny = int(self._grid.N[0]), int(self._grid.N[1])
-        geometric_shapes = ((nx + 1, ny), (nx, ny + 1))
+        boundary = boundary_axes(self.bc_type, self._grid.ndim)
+        geometric_shapes = geometric_cell_face_shapes((nx, ny))
+        projection_shapes = projection_native_face_shapes((nx, ny))
         if state.face_velocity_components is not None:
             supplied = [
                 xp.asarray(component) for component in state.face_velocity_components
             ]
-            if all(
-                tuple(component.shape) == shape
-                for component, shape in zip(supplied, geometric_shapes, strict=True)
-            ):
-                return supplied
+            supplied_shapes = tuple(tuple(component.shape) for component in supplied)
+            if supplied_shapes == geometric_shapes:
+                return self._project_geometric_cell_face_velocity(
+                    supplied,
+                    dt=state.dt,
+                    boundary=boundary,
+                )
+            if supplied_shapes == projection_shapes:
+                return self._project_projection_faces_to_geometric_cell_faces(
+                    supplied,
+                    dt=state.dt,
+                    boundary=boundary,
+                )
             raise RuntimeError(
-                "geometric_cell_fraction runtime transport requires geometric "
-                f"cell-face velocity shapes {geometric_shapes}"
+                "geometric_cell_fraction runtime transport requires either "
+                f"geometric cell-face velocity shapes {geometric_shapes!r} or "
+                f"projection-native face shapes {projection_shapes!r}; "
+                f"got {supplied_shapes!r}"
+            )
+        if state.projected_face_components is not None:
+            projected = [
+                xp.asarray(component) for component in state.projected_face_components
+            ]
+            projected_shapes = tuple(tuple(component.shape) for component in projected)
+            if projected_shapes != projection_shapes:
+                raise RuntimeError(
+                    "geometric_cell_fraction projected face state must have "
+                    f"projection-native shapes {projection_shapes!r}; "
+                    f"got {projected_shapes!r}"
+                )
+            return self._project_projection_faces_to_geometric_cell_faces(
+                projected,
+                dt=state.dt,
+                boundary=boundary,
             )
         u = xp.asarray(state.u)
         v = xp.asarray(state.v)
@@ -936,9 +1052,54 @@ class TwoPhaseNSSolver:
                 "geometric_cell_fraction runtime transport requires nodal "
                 "velocities or geometric cell-face velocities"
             )
+        x_faces, y_faces = self._nodal_velocity_to_geometric_cell_faces(
+            u,
+            v,
+            boundary=boundary,
+        )
+        return self._project_geometric_cell_face_velocity(
+            [x_faces, y_faces],
+            dt=state.dt,
+            boundary=boundary,
+        )
+
+    def _project_projection_faces_to_geometric_cell_faces(
+        self,
+        projection_faces,
+        *,
+        dt: float,
+        boundary: tuple[str, str],
+    ):
+        """Explicitly pull projection-native faces back to AO cell faces."""
+        if not hasattr(self._div_op, "reconstruct_nodes"):
+            raise RuntimeError(
+                "geometric_cell_fraction projection-face pullback requires "
+                "a divergence operator with reconstruct_nodes"
+            )
+        u, v = self._div_op.reconstruct_nodes(projection_faces)
+        _apply_bc(u, v, None, self.bc_type)
+        x_faces, y_faces = self._nodal_velocity_to_geometric_cell_faces(
+            u,
+            v,
+            boundary=boundary,
+        )
+        return self._project_geometric_cell_face_velocity(
+            [x_faces, y_faces],
+            dt=dt,
+            boundary=boundary,
+        )
+
+    def _nodal_velocity_to_geometric_cell_faces(
+        self,
+        u,
+        v,
+        *,
+        boundary: tuple[str, str],
+    ):
+        """Map nodal vector components to AO geometric cell-face velocities."""
+        xp = self._backend.xp
         x_faces = 0.5 * (u[:, :-1] + u[:, 1:])
         y_faces = 0.5 * (v[:-1, :] + v[1:, :])
-        boundary = boundary_axes(self.bc_type, self._grid.ndim)
         if boundary[0] != "periodic":
             x_faces = xp.array(x_faces, copy=True)
             x_faces[0, :] = 0.0
@@ -947,7 +1108,168 @@ class TwoPhaseNSSolver:
             y_faces = xp.array(y_faces, copy=True)
             y_faces[:, 0] = 0.0
             y_faces[:, -1] = 0.0
-        return [x_faces, y_faces]
+        return x_faces, y_faces
+
+    def _project_geometric_cell_face_velocity(
+        self,
+        face_velocity,
+        *,
+        dt: float,
+        boundary: tuple[str, str],
+    ):
+        """Project AO cell-face volume fluxes onto ``B_g Phi_V=0``.
+
+        A3 mapping:
+          Equation: a fully liquid cell has ``Phi_l=Phi_V``; preserving
+          ``q_C=|C|`` therefore requires the AO finite-volume incidence
+          ``B_g Phi_V=0`` on the geometric cell-face lattice.
+          Discretization: build integrated cell-face volume fluxes, solve the
+          Neumann/periodic finite-volume Hodge projection
+          ``F=F0-grad_g pi`` with ``B_g F=0`` on the current nonuniform grid,
+          and divide by physical face measures for swept-strip transport.
+          Code: all vector algebra stays backend-native; one scalar packet at
+          the end fail-closes if the projected divergence would move q beyond
+          the active compatibility volume tolerance in one step.
+        """
+        projection = project_geometric_cell_face_velocity(
+            self._backend,
+            self._grid.coords,
+            tuple(self._grid.N),
+            face_velocity,
+            dt=dt,
+            boundary=boundary,
+            policy=self._geometric_volume_hodge_policy(),
+        )
+        return projection.face_velocity_components
+
+    def _geometric_volume_hodge_policy(self) -> GeometricVolumeHodgePolicy:
+        """Return the YAML-owned AO volume Hodge PCG policy."""
+        return GeometricVolumeHodgePolicy(
+            absolute_tolerance=float(
+                getattr(self, "_active_projection_absolute_tolerance", 1.0e-11)
+            ),
+            pcg_tolerance=float(
+                getattr(self, "_active_projection_pcg_tolerance", 1.0e-12)
+            ),
+            pcg_max_iterations=int(
+                getattr(self, "_active_projection_pcg_max_iterations", 256)
+            ),
+            pcg_roundoff_floor=getattr(
+                self,
+                "_active_projection_pcg_roundoff_floor",
+                1.0e-14,
+            ),
+        )
+
+    def _close_geometric_volume_flux_boundary(
+        self,
+        flux_x,
+        flux_y,
+        *,
+        boundary: tuple[str, str],
+    ):
+        """Materialise the declared wall/periodic closure on cell-face fluxes."""
+        return close_geometric_volume_flux_boundary(
+            self._backend.xp,
+            flux_x,
+            flux_y,
+            boundary=boundary,
+        )
+
+    def _project_geometric_volume_flux_pair(
+        self,
+        flux_x,
+        flux_y,
+        *,
+        dt: float,
+        boundary: tuple[str, str],
+    ):
+        """Return the finite-volume Hodge projection of cell-face fluxes."""
+        projected, _raw_residual, _projected_residual = (
+            project_geometric_volume_flux_pair(
+                self._backend,
+                self._grid.coords,
+                tuple(self._grid.N),
+                (flux_x, flux_y),
+                dt=dt,
+                boundary=boundary,
+                policy=self._geometric_volume_hodge_policy(),
+            )
+        )
+        return projected
+
+    def _geometric_volume_flux_gradient(
+        self,
+        potential,
+        *,
+        dtype,
+        boundary: tuple[str, str],
+    ):
+        """Return integrated cell-face flux ``grad_g potential``."""
+        xp = self._backend.xp
+        metrics = build_geometric_volume_metrics(
+            xp,
+            self._grid.coords,
+            tuple(self._grid.N),
+            dtype=dtype,
+            boundary=boundary,
+        )
+        return geometric_volume_flux_gradient(
+            xp,
+            metrics,
+            potential,
+            dtype=dtype,
+        )
+
+    def _geometric_volume_flux_divergence(self, flux_x, flux_y):
+        return geometric_volume_flux_divergence(flux_x, flux_y)
+
+    def _geometric_volume_flux_projection_diagonal(
+        self,
+        *,
+        dtype,
+        boundary: tuple[str, str],
+    ):
+        xp = self._backend.xp
+        metrics = build_geometric_volume_metrics(
+            xp,
+            self._grid.coords,
+            tuple(self._grid.N),
+            dtype=dtype,
+            boundary=boundary,
+        )
+        return geometric_volume_flux_projection_diagonal(
+            xp,
+            metrics,
+            dtype=dtype,
+        )
+
+    def _solve_geometric_volume_flux_projection_pcg(
+        self,
+        rhs,
+        diag,
+        *,
+        boundary: tuple[str, str],
+    ):
+        """Device-resident fixed-loop PCG for the geometric flux Hodge solve."""
+        xp = self._backend.xp
+        metrics = build_geometric_volume_metrics(
+            xp,
+            self._grid.coords,
+            tuple(self._grid.N),
+            dtype=rhs.dtype,
+            boundary=boundary,
+        )
+        policy = self._geometric_volume_hodge_policy().validated()
+        return solve_geometric_volume_flux_projection_pcg(
+            xp,
+            metrics,
+            rhs,
+            diag,
+            pcg_tolerance=policy.pcg_tolerance,
+            max_iterations=policy.pcg_max_iterations,
+            roundoff_floor=policy.pcg_roundoff_floor,
+        )
 
     def _publish_conservative_state(self, state: NSStepState) -> NSStepState:
         """Persist conservative density/momentum as backend-native arrays."""
@@ -974,12 +1296,162 @@ class TwoPhaseNSSolver:
             return 0
         return int(getattr(self, "_reinit_every", 0))
 
+    def _geometric_graph_gauge_reconstruction_enabled(
+        self,
+        boundary: tuple[str, str],
+    ) -> bool:
+        """Return whether q-primary AO should seed phi from a graph topology."""
+        mode = getattr(self, "_interface_gauge_reconstruction", "fixed_stratum")
+        if mode == "fixed_stratum":
+            return False
+        if mode != "column_height_graph":
+            raise ValueError(
+                "interface_gauge_reconstruction must be 'fixed_stratum' or "
+                f"'column_height_graph', got {mode!r}"
+            )
+        if self._grid.ndim != 2 or tuple(boundary) != ("periodic", "wall"):
+            raise ValueError(
+                "column_height_graph gauge reconstruction requires a 2-D "
+                "x-periodic/y-wall graph interface"
+            )
+        return True
+
+    def _graph_phi_from_column_volume(self, q):
+        """Build the liquid-below graph gauge predictor from AO column volumes.
+
+        A3 mapping:
+          Equation: for a single graph ``Gamma={y=h(x)}`` with liquid below,
+          ``sum_j q_{ij} = dx_i (h_i - y_min)`` is the finite-volume column
+          integral of the liquid indicator.
+          Discretization: recover cell-center heights from the conserved
+          column volume and interpolate them to P1 x-nodes with the same
+          nonuniform-grid metric weights used by projection-facing cell views.
+          Code: the returned gauge is only a topology-moving seed; the
+          conserved cell volumes are not changed, and AO compatibility is
+          closed by the hard ``Q_h(phi)=q`` projection before use.
+        """
+        xp = self._backend.xp
+        q_dev = xp.asarray(q)
+        expected = tuple(self._grid.N)
+        if tuple(q_dev.shape) != expected:
+            raise ValueError(f"graph q field shape must be {expected}")
+        x_edges = xp.asarray(self._grid.coords[0], dtype=q_dev.dtype)
+        y_edges = xp.asarray(self._grid.coords[1], dtype=q_dev.dtype)
+        dx = x_edges[1:] - x_edges[:-1]
+        column_volume = xp.sum(q_dev, axis=1)
+        height_cells = y_edges[0] + column_volume / dx
+
+        height_tol = max(
+            float(getattr(self, "_active_projection_absolute_tolerance", 1.0e-11)),
+            1.0e-12 * float(self._grid.L[1]),
+        )
+        min_height = float(self._backend.to_host(xp.min(height_cells)))
+        max_height = float(self._backend.to_host(xp.max(height_cells)))
+        lower = float(self._backend.to_host(y_edges[0]))
+        upper = float(self._backend.to_host(y_edges[-1]))
+        if min_height < lower - height_tol or max_height > upper + height_tol:
+            raise ValueError(
+                "column_height_graph gauge reconstruction requires all "
+                "liquid-column heights to stay inside the y-wall domain"
+            )
+
+        nx = int(self._grid.N[0])
+        height_nodes = xp.empty((nx + 1,), dtype=q_dev.dtype)
+        seam = (
+            dx[0] * height_cells[-1] + dx[-1] * height_cells[0]
+        ) / (dx[-1] + dx[0])
+        height_nodes[0] = seam
+        height_nodes[-1] = seam
+        if nx > 1:
+            denom = dx[:-1] + dx[1:]
+            left_weight = dx[1:] / denom
+            right_weight = dx[:-1] / denom
+            height_nodes[1:nx] = (
+                left_weight * height_cells[:-1]
+                + right_weight * height_cells[1:]
+            )
+        graph_total = xp.sum(
+            dx * (0.5 * (height_nodes[:-1] + height_nodes[1:]) - y_edges[0])
+        )
+        height_nodes = height_nodes + (
+            xp.sum(column_volume) - graph_total
+        ) / (x_edges[-1] - x_edges[0])
+
+        min_height = float(self._backend.to_host(xp.min(height_nodes)))
+        max_height = float(self._backend.to_host(xp.max(height_nodes)))
+        if min_height < lower - height_tol or max_height > upper + height_tol:
+            raise ValueError(
+                "column_height_graph gauge reconstruction requires the realised "
+                "P1 graph to stay inside the y-wall domain"
+            )
+        return y_edges.reshape((1, -1)) - height_nodes.reshape((-1, 1))
+
+    def _project_geometric_state_from_q_phi(self, q, phi, *, level: float):
+        """Close a topology-aware gauge seed with the AO hard constraint."""
+        if self._backend.is_gpu():
+            return project_geometric_phase_state_gpu(
+                self._grid,
+                q,
+                phi,
+                level=level,
+                tolerance=self._active_projection_absolute_tolerance,
+                relative_tolerance=self._active_projection_relative_tolerance,
+                max_newton_iterations=self._active_projection_max_iterations,
+                solver_scheme=self._active_projection_solver_scheme,
+                pcg_tolerance=self._active_projection_pcg_tolerance,
+                pcg_max_iterations=self._active_projection_pcg_max_iterations,
+                pcg_roundoff_floor=self._active_projection_pcg_roundoff_floor,
+                dc_tolerance=self._active_projection_dc_tolerance,
+                dc_max_iterations=self._active_projection_dc_max_iterations,
+                dc_relaxation=self._active_projection_dc_relaxation,
+            )
+        state = GeometricPhaseState.from_q_phi(
+            self._grid,
+            q,
+            phi,
+            level=level,
+            tolerance=self._active_projection_absolute_tolerance,
+            require_compatible=False,
+        )
+        return state.project_compatibility(
+            self._grid,
+            tolerance=self._active_projection_absolute_tolerance,
+            max_newton_iterations=self._active_projection_max_iterations,
+            max_cg_iterations=self._active_projection_pcg_max_iterations,
+        )
+
+    def _reconstruct_geometric_graph_gauge(
+        self,
+        result,
+        *,
+        boundary: tuple[str, str],
+    ):
+        """Replace transported fixed-stratum phi by a q-owned graph gauge."""
+        if not self._geometric_graph_gauge_reconstruction_enabled(boundary):
+            return result
+        transported = result.phase_transport.state
+        phi = self._graph_phi_from_column_volume(transported.q)
+        projected = self._project_geometric_state_from_q_phi(
+            transported.q,
+            phi,
+            level=transported.stratum.level,
+        )
+        phase_transport = replace(
+            result.phase_transport,
+            state=projected,
+            pre_projection_state=transported,
+            projected=True,
+        )
+        return replace(result, phase_transport=phase_transport)
+
     def _advance_geometric_phase_stage(self, state: NSStepState) -> NSStepState:
         """Advance typed AO q transport, then fail closed before NS coupling."""
         self._last_geometric_common_flux_transport = None
         self._last_geometric_runtime_material = None
         self._last_geometric_runtime_capillary = None
         self._last_geometric_runtime_capillary_application = None
+        if self._geometric_phase_grid_rebuild_due(state.step_index):
+            state = self._rebuild_grid_from_geometric_phase_state(state)
         phase_state = getattr(self, "_geometric_phase_state", None)
         if phase_state is None:
             raise ValueError(
@@ -1030,6 +1502,7 @@ class TwoPhaseNSSolver:
                 project_every_steps=self._geometric_projection_cadence(),
                 step_index=state.step_index,
             )
+        result = self._reconstruct_geometric_graph_gauge(result, boundary=boundary)
         state.geometric_common_flux_transport = result
         self._last_geometric_common_flux_transport = result
         material = (

@@ -350,9 +350,10 @@ def test_ch14_capillary_yaml_loads_execution_stack():
     assert cfg.interface_state_space.fallback_policy == "none"
     assert cfg.interface_state_space.active_projection_solver_scheme == "pcg"
     assert cfg.interface_state_space.active_projection_pcg_tolerance == pytest.approx(
-        1.0e-12
+        1.0e-13
     )
     assert cfg.run.advection_scheme == "geometric_swept_volume"
+    assert cfg.run.interface_gauge_reconstruction == "column_height_graph"
     assert cfg.run.convection_scheme == "uccd6"
     assert cfg.run.convection_time_scheme == "imex_bdf2"
     assert cfg.run.viscous_spatial_scheme == "ccd_bulk"
@@ -376,7 +377,7 @@ def test_ch14_capillary_yaml_loads_execution_stack():
     assert cfg.run.boundary_hodge_mode == "off"
     assert cfg.run.boundary_hodge_state_space == "constrained_face"
     assert cfg.run.boundary_hodge_pressure_pairing == "restricted_variational_adjoint"
-    assert cfg.run.pressure_history_mode == "pressure_coordinate"
+    assert cfg.run.pressure_history_mode == "face_acceleration"
     assert cfg.run.pressure_history_extrapolation == "bdf2"
     assert cfg.run.reinit_method == "compatibility_projection"
     assert cfg.run.reproject_mode == "variable_density_only"
@@ -531,7 +532,7 @@ def test_ch14_canonical_yamls_share_base_numerical_stack():
             "pcg"
         ), path.name
         assert cfg.interface_state_space.active_projection_pcg_tolerance == (
-            pytest.approx(1.0e-12)
+            pytest.approx(1.0e-13)
         ), path.name
         assert cfg.run.advection_scheme == "geometric_swept_volume", path.name
         assert cfg.run.interface_tracking_method == "q_cell_fraction", path.name
@@ -557,7 +558,12 @@ def test_ch14_canonical_yamls_share_base_numerical_stack():
             cfg.run.boundary_hodge_pressure_pairing
             == "restricted_variational_adjoint"
         ), path.name
-        assert cfg.run.pressure_history_mode == "pressure_coordinate", path.name
+        expected_history = (
+            "face_acceleration"
+            if path.name == "ch14_capillary.yaml"
+            else "pressure_coordinate"
+        )
+        assert cfg.run.pressure_history_mode == expected_history, path.name
         assert cfg.run.pressure_history_extrapolation == "bdf2", path.name
         assert cfg.run.pressure_scheme == "fccd_matrixfree", path.name
         assert cfg.run.ppe_coefficient_scheme == "phase_separated", path.name
