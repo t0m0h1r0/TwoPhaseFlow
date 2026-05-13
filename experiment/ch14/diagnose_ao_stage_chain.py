@@ -62,8 +62,37 @@ def _face_div_linf(backend, div_op, faces) -> float:
     return _scalar(backend, xp.max(xp.abs(div)))
 
 
-def _manual_step(solver, request, *, force_predictor_startup: bool = False):
+def _geometric_cell_div_linf(backend, grid, faces) -> float:
+    """Return cell-centred geometric divergence for AO swept-volume faces."""
+    if faces is None:
+        return 0.0
+    xp = backend.xp
+    nx, ny = int(grid.N[0]), int(grid.N[1])
+    x_faces = xp.asarray(faces[0])
+    y_faces = xp.asarray(faces[1])
+    if tuple(x_faces.shape) != (nx + 1, ny) or tuple(y_faces.shape) != (nx, ny + 1):
+        return 0.0
+    dx = xp.asarray(np.diff(np.asarray(grid.coords[0], dtype=float))).reshape((nx, 1))
+    dy = xp.asarray(np.diff(np.asarray(grid.coords[1], dtype=float))).reshape((1, ny))
+    div = (x_faces[1:, :] - x_faces[:-1, :]) / dx
+    div = div + (y_faces[:, 1:] - y_faces[:, :-1]) / dy
+    return _scalar(backend, xp.max(xp.abs(div)))
+
+
+def _manual_step(
+    solver,
+    request,
+    *,
+    force_predictor_startup: bool = False,
+    drop_pressure_history: bool = False,
+):
+    if drop_pressure_history:
+        solver._p_prev_dev = None
+        solver._p_base_prev_dev = None
+        solver._p_base_prev2_dev = None
+        solver._p_prev_accel_face_components = None
     state = solver._prepare_step_inputs(request)
+    prepared_geometric_faces = solver._geometric_face_velocity_for_common_flux(state)
     prepared_previous_face_linf = _face_linf(
         solver._backend,
         state.previous_pressure_accel_face_components,
@@ -108,6 +137,11 @@ def _manual_step(solver, request, *, force_predictor_startup: bool = False):
     predictor_metrics = {
         "prepared_previous_face_linf": prepared_previous_face_linf,
         "prepared_previous_face_div": prepared_previous_face_div,
+        "prepared_geometric_div": _geometric_cell_div_linf(
+            solver._backend,
+            solver._grid,
+            prepared_geometric_faces,
+        ),
         "rho_min": rho_min,
         "rho_max": rho_max,
         "mu_min": mu_min,
@@ -163,6 +197,24 @@ def _manual_step(solver, request, *, force_predictor_startup: bool = False):
             solver._div_op,
             state.pressure_accel_face_components,
         ),
+        "ppe_dc_iterations": float(
+            getattr(solver._ppe_solver, "last_diagnostics", {}).get(
+                "ppe_dc_iterations",
+                0.0,
+            )
+        ),
+        "ppe_dc_initial_l2": float(
+            getattr(solver._ppe_solver, "last_diagnostics", {}).get(
+                "ppe_dc_initial_residual_l2",
+                0.0,
+            )
+        ),
+        "ppe_dc_final_l2": float(
+            getattr(solver._ppe_solver, "last_diagnostics", {}).get(
+                "ppe_dc_final_residual_l2",
+                0.0,
+            )
+        ),
         "ppe_dc_relative_l2": float(
             getattr(solver._ppe_solver, "last_diagnostics", {}).get(
                 "ppe_dc_final_relative_l2",
@@ -189,6 +241,7 @@ def _manual_step(solver, request, *, force_predictor_startup: bool = False):
             state = solver._publish_conservative_state(state)
     solver._projected_face_components = state.projected_face_components
     solver._record_step_diagnostics(state)
+    corrected_geometric_faces = solver._geometric_face_velocity_for_common_flux(state)
     corrector_metrics = {
         "projected_face_linf": _face_linf(
             solver._backend,
@@ -198,6 +251,11 @@ def _manual_step(solver, request, *, force_predictor_startup: bool = False):
             solver._backend,
             solver._div_op,
             state.projected_face_components,
+        ),
+        "geometric_div": _geometric_cell_div_linf(
+            solver._backend,
+            solver._grid,
+            corrected_geometric_faces,
         ),
         "u_linf": _field_linf(solver._backend, state.u),
         "v_linf": _field_linf(solver._backend, state.v),
@@ -238,7 +296,12 @@ def main() -> None:
     )
     parser.add_argument("--viscous-dc-relaxation", type=float)
     parser.add_argument("--viscous-dc-max-iterations", type=int)
+    parser.add_argument("--ppe-dc-relaxation", type=float)
+    parser.add_argument("--ppe-dc-max-iterations", type=int)
+    parser.add_argument("--ppe-dc-tolerance", type=float)
     parser.add_argument("--force-predictor-startup", action="store_true")
+    parser.add_argument("--drop-pressure-history", action="store_true")
+    parser.add_argument("--uniform-grid", action="store_true")
     parser.add_argument("--backend", choices=("as_env", "cpu", "gpu"), default="as_env")
     args = parser.parse_args()
 
@@ -261,6 +324,28 @@ def main() -> None:
         overrides["run.viscous_dc_relaxation"] = args.viscous_dc_relaxation
     if args.viscous_dc_max_iterations is not None:
         overrides["run.viscous_dc_max_iterations"] = args.viscous_dc_max_iterations
+    if args.ppe_dc_relaxation is not None:
+        overrides["run.ppe_dc_relaxation"] = args.ppe_dc_relaxation
+    if args.ppe_dc_max_iterations is not None:
+        overrides["run.ppe_dc_max_iterations"] = args.ppe_dc_max_iterations
+    if args.ppe_dc_tolerance is not None:
+        overrides["run.ppe_dc_tolerance"] = args.ppe_dc_tolerance
+    if args.uniform_grid:
+        overrides.update(
+            {
+                "grid.alpha_grid": 1.0,
+                "grid.fitting_axes": (False, False),
+                "grid.fitting_alpha_grid": (1.0, 1.0),
+                "grid.fitting_eps_g_factor": (2.0, 2.0),
+                "grid.fitting_eps_g_cells": (None, None),
+                "grid.wall_refinement_axes": (False, False),
+                "grid.wall_alpha_grid": (1.0, 1.0),
+                "grid.wall_eps_g_factor_axes": (2.0, 2.0),
+                "grid.wall_eps_g_cells": (None, None),
+                "grid.grid_rebuild_freq": 0,
+                "grid.interface_fitting_enabled": False,
+            }
+        )
     cfg = cfg.override(**overrides)
     solver = TwoPhaseNSSolver.from_config(cfg)
     backend = solver._backend
@@ -285,6 +370,7 @@ def main() -> None:
         "dt",
         "prepared_prev_face",
         "prepared_prev_div",
+        "prepared_geom_div",
         "rho_min",
         "rho_max",
         "mu_min",
@@ -310,9 +396,13 @@ def main() -> None:
         "pressure_div",
         "projected_face",
         "projected_div",
+        "geometric_div",
         "u",
         "ppe_rhs",
         "div_u",
+        "ppe_dc_iterations",
+        "ppe_dc_initial_l2",
+        "ppe_dc_final_l2",
         "ppe_dc_rel",
         "ppe_dc_converged",
     ]
@@ -348,6 +438,7 @@ def main() -> None:
                     step_index=step,
                 ),
                 force_predictor_startup=args.force_predictor_startup,
+                drop_pressure_history=args.drop_pressure_history,
             )
         except ValueError as exc:
             print("FAIL_CLOSE", step + 1, f"{t:.12e}", f"{dt:.12e}", str(exc), sep=",")
@@ -361,6 +452,7 @@ def main() -> None:
             f"{dt:.12e}",
             f"{predictor['prepared_previous_face_linf']:.12e}",
             f"{predictor['prepared_previous_face_div']:.12e}",
+            f"{predictor['prepared_geometric_div']:.12e}",
             f"{predictor['rho_min']:.12e}",
             f"{predictor['rho_max']:.12e}",
             f"{predictor['mu_min']:.12e}",
@@ -386,9 +478,13 @@ def main() -> None:
             f"{pressure['pressure_face_div']:.12e}",
             f"{corrector['projected_face_linf']:.12e}",
             f"{corrector['projected_face_div']:.12e}",
+            f"{corrector['geometric_div']:.12e}",
             f"{max(corrector['u_linf'], corrector['v_linf']):.12e}",
             f"{corrector['diag_ppe_rhs']:.12e}",
             f"{corrector['diag_div_u']:.12e}",
+            f"{pressure['ppe_dc_iterations']:.12e}",
+            f"{pressure['ppe_dc_initial_l2']:.12e}",
+            f"{pressure['ppe_dc_final_l2']:.12e}",
             f"{pressure['ppe_dc_relative_l2']:.12e}",
             f"{pressure['ppe_dc_converged']:.12e}",
             sep=",",

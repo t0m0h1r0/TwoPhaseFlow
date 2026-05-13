@@ -352,6 +352,36 @@ def test_nonuniform_d1_converges(backend):
     )
 
 
+def test_nonuniform_metric_uses_dimensionless_xi_for_short_domain(backend):
+    """The non-uniform metric route must not multiply derivatives by 1/L twice."""
+    length = 0.02
+    cfg = SimulationConfig(
+        grid=GridConfig(ndim=2, N=(32, 32), L=(length, length), alpha_grid=2.0),
+    )
+    grid = Grid(cfg.grid, backend)
+    ccd = CCDSolver(grid, backend, bc_type="wall")
+    X, _ = np.meshgrid(grid.coords[0], grid.coords[1], indexing="ij")
+    f = np.sin(np.pi * X / length)
+
+    d1, d2 = ccd.differentiate(f, axis=0)
+    d1_exact = (np.pi / length) * np.cos(np.pi * X / length)
+    d2_exact = -((np.pi / length) ** 2) * np.sin(np.pi * X / length)
+
+    interior = slice(3, -3)
+    np.testing.assert_allclose(
+        np.asarray(d1[interior, :]),
+        d1_exact[interior, :],
+        rtol=2.0e-4,
+        atol=2.0e-2,
+    )
+    np.testing.assert_allclose(
+        np.asarray(d2[interior, :]),
+        d2_exact[interior, :],
+        rtol=2.0e-3,
+        atol=3.0,
+    )
+
+
 def test_first_derivative_matches_differentiate_nonuniform(backend):
     """d1-only path must stay consistent after non-uniform metric mapping."""
     grid = _make_nonuniform_grid(32, 2.0, backend)

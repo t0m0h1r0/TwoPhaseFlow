@@ -32,8 +32,9 @@ Boundary treatment (§4.7, O(h⁵)):
 
 Non-uniform grid (§4.9):
     When ``grid.uniform`` is False, the CCD system is solved in the
-    uniform computational coordinate ξ and the results are mapped back to
-    physical space using the metric J = ∂ξ/∂x stored on the grid.
+    dimensionless uniform computational coordinate ξ∈[0,1] and the results
+    are mapped back to physical space using the metric J = ∂ξ/∂x stored on
+    the grid.
 """
 
 from __future__ import annotations
@@ -115,12 +116,18 @@ class CCDSolver:
             if not self._axis_periodic(ax):
                 continue
             n_pts = grid.N[ax] + 1
-            h = float(grid.L[ax] / grid.N[ax])
+            h = self._axis_solver_spacing(ax)
             self._periodic_solvers[ax] = self._build_axis_solver_periodic(n_pts, h)
 
     def _axis_periodic(self, axis: int) -> bool:
         """Return whether one coordinate axis uses periodic topology."""
         return is_periodic_axis(self.bc_type, axis, self.ndim)
+
+    def _axis_solver_spacing(self, axis: int) -> float:
+        """Return the coordinate spacing used by the compact stencil."""
+        if self.grid.uniform:
+            return float(self.grid.L[axis] / self.grid.N[axis])
+        return 1.0 / float(self.grid.N[axis])
 
     # ── Public API ────────────────────────────────────────────────────────
 
@@ -169,7 +176,7 @@ class CCDSolver:
 
         Used exclusively for grid metric computation (§6 Step 5): call with the
         physical coordinate array x[i] on the uniform computational grid to obtain
-        dx/d(x_unif) and d²x/d(x_unif)², from which J and ∂J/∂ξ are derived.
+        dx/dξ and d²x/dξ², from which J and ∂J/∂ξ are derived.
 
         The input ``data`` must be a 1-D array of shape ``(N[axis]+1,)``.  It is
         internally embedded into an N-dimensional array so that ``axis`` picks the
@@ -287,7 +294,7 @@ class CCDSolver:
     def _get_axis_solver(self, axis: int) -> dict:
         if axis not in self._solvers:
             n_pts = self.grid.N[axis] + 1
-            h = float(self.grid.L[axis] / self.grid.N[axis])
+            h = self._axis_solver_spacing(axis)
             self._solvers[axis] = self._build_axis_solver(n_pts, h)
         return self._solvers[axis]
 
