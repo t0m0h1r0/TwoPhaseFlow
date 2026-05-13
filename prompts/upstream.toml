@@ -1,7 +1,7 @@
 name = "research-agent-metaprompt"
 remote = "https://github.com/t0m0h1r0/research-agent.git"
 distribution_mode = "git-submodule"
-revision = "2faee13"
+revision = "10d773d"
 submodule_path = "prompts/meta"
 metaprompt_groups = ["kernel"]
 generated_agent_prompts = "project-local"
