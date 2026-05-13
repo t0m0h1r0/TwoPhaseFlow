@@ -22,8 +22,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+import numpy as np
+
 
 _EDGE_CORNERS = ((0, 1), (1, 2), (2, 3), (3, 0))
+_ACTIVE_GEOMETRY_RAW_KERNELS = {}
 
 
 @dataclass(frozen=True)
@@ -89,6 +92,25 @@ def refresh_active_geometry_2d(grid, phi, cell_ids, *, level: float = 0.0):
     if ids.ndim != 2 or ids.shape[1] != 2:
         raise ValueError("cell_ids must have shape (n_active, 2)")
 
+    raw = _refresh_active_geometry_2d_raw_if_available(
+        grid,
+        xp,
+        phi_dev,
+        ids,
+        level=float(level),
+    )
+    if raw is not None:
+        return raw
+    return _refresh_active_geometry_2d_unfused(
+        grid,
+        xp,
+        phi_dev,
+        ids,
+        level=float(level),
+    )
+
+
+def _refresh_active_geometry_2d_unfused(grid, xp, phi_dev, ids, *, level: float):
     values, points = _active_cell_corner_fields(xp, grid, phi_dev - float(level), ids)
     cell_measure_A = _active_cell_measures_from_points(points)
     crossings = tuple(_edge_crossing(xp, values, points, edge) for edge in range(4))
@@ -119,6 +141,442 @@ def refresh_active_geometry_2d(grid, phi, cell_ids, *, level: float = 0.0):
         finite_mask_A=finite_mask_A,
         regular_mask_A=regular_mask_A,
     )
+
+
+def _refresh_active_geometry_2d_raw_if_available(
+    grid,
+    xp,
+    phi_dev,
+    ids,
+    *,
+    level: float,
+):
+    raw_kernel_type = getattr(xp, "RawKernel", None)
+    if raw_kernel_type is None:
+        return None
+    n_active = int(ids.shape[0])
+    if n_active == 0:
+        return None
+    dtype = np.dtype(phi_dev.dtype)
+    if dtype not in (np.dtype("float32"), np.dtype("float64")):
+        return None
+
+    phi_c = xp.ascontiguousarray(phi_dev)
+    ids_c = xp.ascontiguousarray(ids, dtype=xp.int64)
+    x = xp.ascontiguousarray(_device_coord_1d(xp, grid, 0, dtype))
+    y = xp.ascontiguousarray(_device_coord_1d(xp, grid, 1, dtype))
+    q_A = xp.empty((n_active,), dtype=dtype)
+    s_A = xp.empty((n_active,), dtype=dtype)
+    case_code_A = xp.empty((n_active,), dtype=xp.uint8)
+    edge_mask_A = xp.empty((n_active,), dtype=xp.uint8)
+    lambda_edge_A = xp.empty((n_active, 4), dtype=dtype)
+    cell_measure_A = xp.empty((n_active,), dtype=dtype)
+    jq_local_A = xp.empty((n_active, 4), dtype=dtype)
+    ds_local_A = xp.empty((n_active, 4), dtype=dtype)
+    row_norm_A = xp.empty((n_active,), dtype=dtype)
+    sign_margin_A = xp.empty((n_active,), dtype=dtype)
+    finite_mask_A = xp.empty((n_active,), dtype=bool)
+    regular_mask_A = xp.empty((n_active,), dtype=bool)
+
+    threads = 128
+    blocks = (n_active + threads - 1) // threads
+    kernel = _active_geometry_raw_kernel(xp, dtype)
+    kernel(
+        (blocks,),
+        (threads,),
+        (
+            phi_c,
+            ids_c,
+            x,
+            y,
+            q_A,
+            s_A,
+            case_code_A,
+            edge_mask_A,
+            lambda_edge_A,
+            cell_measure_A,
+            jq_local_A,
+            ds_local_A,
+            row_norm_A,
+            sign_margin_A,
+            finite_mask_A,
+            regular_mask_A,
+            np.int32(grid.N[0]),
+            np.int32(grid.N[1]),
+            np.int32(n_active),
+            np.asarray(level, dtype=dtype),
+        ),
+    )
+    return P1ActiveGeometry(
+        q_A=q_A,
+        s_A=s_A,
+        case_code_A=case_code_A,
+        edge_mask_A=edge_mask_A,
+        lambda_edge_A=lambda_edge_A,
+        cell_measure_A=cell_measure_A,
+        jq_local_A=jq_local_A,
+        ds_local_A=ds_local_A,
+        row_norm_A=row_norm_A,
+        sign_margin_A=sign_margin_A,
+        finite_mask_A=finite_mask_A,
+        regular_mask_A=regular_mask_A,
+    )
+
+
+def _active_geometry_raw_kernel(xp, dtype):
+    key = (id(xp), np.dtype(dtype).name, "active_geometry")
+    cached = _ACTIVE_GEOMETRY_RAW_KERNELS.get(key)
+    if cached is not None:
+        return cached
+    scalar = "float" if np.dtype(dtype) == np.dtype("float32") else "double"
+    finite_max = (
+        "3.4028234663852886e38f"
+        if np.dtype(dtype) == np.dtype("float32")
+        else "1.7976931348623157e308"
+    )
+    code = r"""
+__device__ __forceinline__ __SCALAR__ ag_abs(__SCALAR__ value) {
+    return value < (__SCALAR__)0 ? -value : value;
+}
+
+__device__ __forceinline__ __SCALAR__ ag_min(__SCALAR__ left, __SCALAR__ right) {
+    return left < right ? left : right;
+}
+
+__device__ __forceinline__ int ag_edge_lo(int edge) {
+    return edge == 0 ? 0 : (edge == 1 ? 1 : (edge == 2 ? 2 : 3));
+}
+
+__device__ __forceinline__ int ag_edge_hi(int edge) {
+    return edge == 0 ? 1 : (edge == 1 ? 2 : (edge == 2 ? 3 : 0));
+}
+
+__device__ __forceinline__ bool ag_inside(int case_code, int corner) {
+    return (case_code & (1 << corner)) != 0;
+}
+
+__device__ __forceinline__ void ag_token_point(
+    int kind,
+    int index,
+    const __SCALAR__* __restrict__ px,
+    const __SCALAR__* __restrict__ py,
+    const __SCALAR__* __restrict__ cx,
+    const __SCALAR__* __restrict__ cy,
+    __SCALAR__* out_x,
+    __SCALAR__* out_y
+) {
+    if (kind == 0) {
+        *out_x = px[index];
+        *out_y = py[index];
+    } else {
+        *out_x = cx[index];
+        *out_y = cy[index];
+    }
+}
+
+__device__ __forceinline__ int ag_build_ring(
+    int case_code,
+    int ring,
+    int* __restrict__ token_kind,
+    int* __restrict__ token_index
+) {
+    if (case_code == 10) {
+        if (ring == 0) {
+            token_kind[0] = 0; token_index[0] = 1;
+            token_kind[1] = 1; token_index[1] = 1;
+            token_kind[2] = 1; token_index[2] = 0;
+            return 3;
+        }
+        if (ring == 1) {
+            token_kind[0] = 0; token_index[0] = 3;
+            token_kind[1] = 1; token_index[1] = 3;
+            token_kind[2] = 1; token_index[2] = 2;
+            return 3;
+        }
+        return 0;
+    }
+    if (ring != 0) {
+        return 0;
+    }
+    int count = 0;
+    for (int edge = 0; edge < 4; ++edge) {
+        int lo = ag_edge_lo(edge);
+        int hi = ag_edge_hi(edge);
+        bool inside_lo = ag_inside(case_code, lo);
+        bool inside_hi = ag_inside(case_code, hi);
+        if (inside_lo) {
+            token_kind[count] = 0;
+            token_index[count] = lo;
+            ++count;
+        }
+        if (inside_lo != inside_hi) {
+            token_kind[count] = 1;
+            token_index[count] = edge;
+            ++count;
+        }
+    }
+    return count;
+}
+
+__device__ __forceinline__ void ag_add_crossing_derivative(
+    int edge,
+    __SCALAR__ scale_x,
+    __SCALAR__ scale_y,
+    __SCALAR__ sign,
+    const __SCALAR__* __restrict__ values,
+    const __SCALAR__* __restrict__ px,
+    const __SCALAR__* __restrict__ py,
+    const bool* __restrict__ edge_cross,
+    __SCALAR__* __restrict__ local
+) {
+    int lo = ag_edge_lo(edge);
+    int hi = ag_edge_hi(edge);
+    __SCALAR__ denominator = values[hi] - values[lo];
+    __SCALAR__ safe_denominator = edge_cross[edge] ? denominator : (__SCALAR__)1;
+    __SCALAR__ denominator_sq = safe_denominator * safe_denominator;
+    __SCALAR__ tangent_x = px[hi] - px[lo];
+    __SCALAR__ tangent_y = py[hi] - py[lo];
+    __SCALAR__ projected = scale_x * tangent_x + scale_y * tangent_y;
+    local[lo] += sign * projected * (-values[hi] / denominator_sq);
+    local[hi] += sign * projected * (values[lo] / denominator_sq);
+}
+
+__device__ __forceinline__ __SCALAR__ ag_segment_length(
+    int left,
+    int right,
+    const __SCALAR__* __restrict__ cx,
+    const __SCALAR__* __restrict__ cy
+) {
+    __SCALAR__ dx = cx[right] - cx[left];
+    __SCALAR__ dy = cy[right] - cy[left];
+    return sqrt(dx * dx + dy * dy);
+}
+
+__device__ __forceinline__ void ag_add_segment_length_derivative(
+    int left,
+    int right,
+    const __SCALAR__* __restrict__ values,
+    const __SCALAR__* __restrict__ px,
+    const __SCALAR__* __restrict__ py,
+    const __SCALAR__* __restrict__ cx,
+    const __SCALAR__* __restrict__ cy,
+    const bool* __restrict__ edge_cross,
+    __SCALAR__* __restrict__ local
+) {
+    __SCALAR__ length = ag_segment_length(left, right, cx, cy);
+    __SCALAR__ safe_length = length > (__SCALAR__)0 ? length : (__SCALAR__)1;
+    __SCALAR__ tangent_x = (cx[right] - cx[left]) / safe_length;
+    __SCALAR__ tangent_y = (cy[right] - cy[left]) / safe_length;
+    ag_add_crossing_derivative(
+        left, tangent_x, tangent_y, (__SCALAR__)-1,
+        values, px, py, edge_cross, local
+    );
+    ag_add_crossing_derivative(
+        right, tangent_x, tangent_y, (__SCALAR__)1,
+        values, px, py, edge_cross, local
+    );
+}
+
+extern "C" __global__
+void refresh_active_geometry_2d_raw(
+    const __SCALAR__* __restrict__ phi,
+    const long long* __restrict__ ids,
+    const __SCALAR__* __restrict__ x,
+    const __SCALAR__* __restrict__ y,
+    __SCALAR__* __restrict__ q,
+    __SCALAR__* __restrict__ s,
+    unsigned char* __restrict__ case_code_out,
+    unsigned char* __restrict__ edge_mask_out,
+    __SCALAR__* __restrict__ lambda_edge,
+    __SCALAR__* __restrict__ cell_measure,
+    __SCALAR__* __restrict__ jq_local,
+    __SCALAR__* __restrict__ ds_local,
+    __SCALAR__* __restrict__ row_norm,
+    __SCALAR__* __restrict__ sign_margin,
+    bool* __restrict__ finite_mask,
+    bool* __restrict__ regular_mask,
+    const int nx,
+    const int ny,
+    const int n_active,
+    const __SCALAR__ level
+) {
+    int row = blockDim.x * blockIdx.x + threadIdx.x;
+    if (row >= n_active) {
+        return;
+    }
+    int i = (int)ids[2 * row + 0];
+    int j = (int)ids[2 * row + 1];
+    int ny_nodes = ny + 1;
+    __SCALAR__ values[4];
+    values[0] = phi[i * ny_nodes + j] - level;
+    values[1] = phi[(i + 1) * ny_nodes + j] - level;
+    values[2] = phi[(i + 1) * ny_nodes + (j + 1)] - level;
+    values[3] = phi[i * ny_nodes + (j + 1)] - level;
+
+    __SCALAR__ px[4];
+    __SCALAR__ py[4];
+    px[0] = x[i];     py[0] = y[j];
+    px[1] = x[i + 1]; py[1] = y[j];
+    px[2] = x[i + 1]; py[2] = y[j + 1];
+    px[3] = x[i];     py[3] = y[j + 1];
+
+    bool edge_cross[4];
+    __SCALAR__ theta[4];
+    __SCALAR__ cx[4];
+    __SCALAR__ cy[4];
+    unsigned char edge_bits = 0;
+    for (int edge = 0; edge < 4; ++edge) {
+        int lo = ag_edge_lo(edge);
+        int hi = ag_edge_hi(edge);
+        edge_cross[edge] = values[lo] * values[hi] < (__SCALAR__)0;
+        __SCALAR__ denominator = values[hi] - values[lo];
+        __SCALAR__ safe_denominator = edge_cross[edge] ? denominator : (__SCALAR__)1;
+        theta[edge] = edge_cross[edge] ? -values[lo] / safe_denominator : (__SCALAR__)0;
+        cx[edge] = px[lo] + theta[edge] * (px[hi] - px[lo]);
+        cy[edge] = py[lo] + theta[edge] * (py[hi] - py[lo]);
+        if (edge_cross[edge]) {
+            edge_bits = (unsigned char)(edge_bits + (1 << edge));
+        }
+        lambda_edge[4 * row + edge] = theta[edge];
+    }
+
+    int case_code = 0;
+    for (int corner = 0; corner < 4; ++corner) {
+        if (values[corner] < (__SCALAR__)0) {
+            case_code += (1 << corner);
+        }
+    }
+    case_code_out[row] = (unsigned char)case_code;
+    edge_mask_out[row] = edge_bits;
+    cell_measure[row] = (px[1] - px[0]) * (py[2] - py[1]);
+
+    __SCALAR__ local_q = (__SCALAR__)0;
+    __SCALAR__ local_s = (__SCALAR__)0;
+    __SCALAR__ jq[4] = {(__SCALAR__)0, (__SCALAR__)0, (__SCALAR__)0, (__SCALAR__)0};
+    __SCALAR__ ds[4] = {(__SCALAR__)0, (__SCALAR__)0, (__SCALAR__)0, (__SCALAR__)0};
+
+    for (int ring = 0; ring < 2; ++ring) {
+        int token_kind[8];
+        int token_index[8];
+        int count = ag_build_ring(case_code, ring, token_kind, token_index);
+        if (count < 3) {
+            continue;
+        }
+        bool active = true;
+        for (int token = 0; token < count; ++token) {
+            if (token_kind[token] == 1) {
+                active = active && edge_cross[token_index[token]];
+            }
+        }
+        if (!active) {
+            continue;
+        }
+        __SCALAR__ shoelace = (__SCALAR__)0;
+        for (int token = 0; token < count; ++token) {
+            int next = token + 1 == count ? 0 : token + 1;
+            __SCALAR__ tx, ty, nxp, nyp;
+            ag_token_point(
+                token_kind[token], token_index[token],
+                px, py, cx, cy, &tx, &ty
+            );
+            ag_token_point(
+                token_kind[next], token_index[next],
+                px, py, cx, cy, &nxp, &nyp
+            );
+            shoelace += tx * nyp - ty * nxp;
+        }
+        local_q += (__SCALAR__)0.5 * shoelace;
+
+        for (int token = 0; token < count; ++token) {
+            if (token_kind[token] != 1) {
+                continue;
+            }
+            int prev = token == 0 ? count - 1 : token - 1;
+            int next = token + 1 == count ? 0 : token + 1;
+            __SCALAR__ prev_x, prev_y, next_x, next_y;
+            ag_token_point(
+                token_kind[prev], token_index[prev],
+                px, py, cx, cy, &prev_x, &prev_y
+            );
+            ag_token_point(
+                token_kind[next], token_index[next],
+                px, py, cx, cy, &next_x, &next_y
+            );
+            __SCALAR__ covector_x = (__SCALAR__)0.5 * (next_y - prev_y);
+            __SCALAR__ covector_y = (__SCALAR__)0.5 * (prev_x - next_x);
+            ag_add_crossing_derivative(
+                token_index[token],
+                covector_x,
+                covector_y,
+                (__SCALAR__)1,
+                values,
+                px,
+                py,
+                edge_cross,
+                jq
+            );
+        }
+    }
+
+    int crossing_edges[4];
+    int crossing_count = 0;
+    for (int edge = 0; edge < 4; ++edge) {
+        int lo = ag_edge_lo(edge);
+        int hi = ag_edge_hi(edge);
+        if (ag_inside(case_code, lo) != ag_inside(case_code, hi)) {
+            crossing_edges[crossing_count] = edge;
+            ++crossing_count;
+        }
+    }
+    bool active_length = crossing_count == 2 || crossing_count == 4;
+    for (int index = 0; index < crossing_count; ++index) {
+        active_length = active_length && edge_cross[crossing_edges[index]];
+    }
+    if (active_length) {
+        local_s += ag_segment_length(crossing_edges[0], crossing_edges[1], cx, cy);
+        ag_add_segment_length_derivative(
+            crossing_edges[0], crossing_edges[1],
+            values, px, py, cx, cy, edge_cross, ds
+        );
+        if (crossing_count == 4) {
+            local_s += ag_segment_length(crossing_edges[2], crossing_edges[3], cx, cy);
+            ag_add_segment_length_derivative(
+                crossing_edges[2], crossing_edges[3],
+                values, px, py, cx, cy, edge_cross, ds
+            );
+        }
+    }
+
+    q[row] = local_q;
+    s[row] = local_s;
+    __SCALAR__ norm = (__SCALAR__)0;
+    for (int corner = 0; corner < 4; ++corner) {
+        jq_local[4 * row + corner] = jq[corner];
+        ds_local[4 * row + corner] = ds[corner];
+        norm += jq[corner] * jq[corner];
+    }
+    row_norm[row] = norm;
+
+    __SCALAR__ margin = ag_min(
+        ag_min(ag_abs(values[0]), ag_abs(values[1])),
+        ag_min(ag_abs(values[2]), ag_abs(values[3]))
+    );
+    bool finite = true;
+    for (int corner = 0; corner < 4; ++corner) {
+        finite = (
+            finite
+            && values[corner] == values[corner]
+            && ag_abs(values[corner]) <= (__SCALAR__)__FINITE_MAX__
+        );
+    }
+    sign_margin[row] = margin;
+    finite_mask[row] = finite;
+    regular_mask[row] = finite && margin > (__SCALAR__)0;
+}
+""".replace("__SCALAR__", scalar).replace("__FINITE_MAX__", finite_max)
+    kernel = xp.RawKernel(code, "refresh_active_geometry_2d_raw")
+    _ACTIVE_GEOMETRY_RAW_KERNELS[key] = kernel
+    return kernel
 
 
 def refresh_active_volume_geometry_2d(grid, phi, cell_ids, *, level: float = 0.0):

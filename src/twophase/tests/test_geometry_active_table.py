@@ -10,6 +10,7 @@ from twophase.config import GridConfig
 from twophase.core.grid import Grid
 from twophase.geometry import active_projection as active_projection_module
 from twophase.geometry.active_kernels import (
+    _refresh_active_geometry_2d_unfused,
     refresh_active_geometry_2d,
     refresh_active_volume_geometry_candidates_2d,
     refresh_active_volume_geometry_2d,
@@ -258,6 +259,60 @@ def test_gpu_active_table_stays_device_and_pcg_host_control_fails_closed():
             table,
             tolerance=1.0e-10,
             max_newton_iterations=1,
+        )
+
+
+def test_gpu_fused_active_geometry_matches_unfused_nonuniform_rows():
+    cp = pytest.importorskip("cupy")
+    try:
+        grid = Grid(GridConfig(ndim=2, N=(8, 7), L=(1.0, 1.0)), Backend(use_gpu=True))
+    except RuntimeError as exc:
+        pytest.skip(str(exc))
+    grid.coords[0] = np.linspace(0.0, 1.0, grid.N[0] + 1) ** 1.35
+    grid.coords[1] = np.linspace(0.0, 1.0, grid.N[1] + 1) ** 1.15
+    grid._device_coord_cache.clear()
+    rng = np.random.default_rng(20260514)
+    phi_host = rng.normal(size=(grid.N[0] + 1, grid.N[1] + 1))
+    phi_host += 0.15 * np.linspace(-1.0, 1.0, grid.N[0] + 1)[:, None]
+    ids_host = np.asarray(
+        [(i, j) for i in range(grid.N[0]) for j in range(grid.N[1])],
+        dtype=np.int64,
+    )
+    phi = cp.asarray(phi_host, dtype=cp.float64)
+    ids = cp.asarray(ids_host, dtype=cp.int64)
+    level = 0.037
+
+    fused = refresh_active_geometry_2d(grid, phi, ids, level=level)
+    unfused = _refresh_active_geometry_2d_unfused(
+        grid,
+        grid.xp,
+        phi,
+        ids,
+        level=level,
+    )
+
+    for field in (
+        "q_A",
+        "s_A",
+        "lambda_edge_A",
+        "cell_measure_A",
+        "jq_local_A",
+        "ds_local_A",
+        "row_norm_A",
+        "sign_margin_A",
+    ):
+        np.testing.assert_allclose(
+            grid.backend.to_host(getattr(fused, field)),
+            grid.backend.to_host(getattr(unfused, field)),
+            rtol=1.0e-12,
+            atol=1.0e-13,
+            err_msg=field,
+        )
+    for field in ("case_code_A", "edge_mask_A", "finite_mask_A", "regular_mask_A"):
+        np.testing.assert_array_equal(
+            grid.backend.to_host(getattr(fused, field)),
+            grid.backend.to_host(getattr(unfused, field)),
+            err_msg=field,
         )
 
 

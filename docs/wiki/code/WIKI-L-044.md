@@ -8,6 +8,8 @@ tags: [gpu, performance, fusion, active_geometry, swept_flux, ppe, defect_correc
 sources:
   - path: artifacts/A/ch14_gpu_acceleration_theory_CHK-RA-CH14-AO-FASTVOL-058.md
     description: "Chapter 14 post-transfer GPU acceleration theory"
+  - path: artifacts/A/ch14_active_geometry_rawkernel_fusion_CHK-RA-CH14-AO-FASTVOL-059.md
+    description: "Implementation and validation of finite-stratum active-geometry fusion"
   - path: src/twophase/geometry/active_kernels.py
     description: "Current active-geometry finite-stratum evaluator"
   - path: src/twophase/geometry/swept_flux.py
@@ -78,6 +80,9 @@ Inadmissible fusion:
 
 1. Fuse active-geometry refresh.  The unfused evaluator repeatedly computes
    `q/s/Jq/dS` through many helper kernels and is currently a top route cost.
+   CHK-RA-CH14-AO-FASTVOL-059 implements this for CuPy float32/float64 inputs
+   through a single RawKernel while retaining the unfused evaluator as fallback
+   and parity oracle.
 2. Fuse swept-volume face flux.  Treat flux as one conservative face cochain and
    scatter it with opposite signs to adjacent cells.
 3. Reuse and batch defect-correction sparse analysis by exact operator epoch.
