@@ -247,8 +247,11 @@ output:
       arrow_outline_alpha: 0.9
       file_prefix: velocity_t
 
+    # AO capillary pressure reaction is a face cochain. Plot the scalar
+    # pressure only as a gauge diagnostic; do not relabel a nonintegrable
+    # face-Hodge cochain as physical scalar pressure.
     - type: snapshot_series
-      field: pressure_hodge
+      field: pressure
       shared_scale: true
       symmetric_scale: true
       file_prefix: pressure_t

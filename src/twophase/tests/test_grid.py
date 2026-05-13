@@ -343,6 +343,53 @@ def test_update_from_levelset_tracks_current_interface_on_active_axis():
     assert second_center > first_center + 0.08
 
 
+def test_update_from_levelset_keeps_wave_nodes_in_regular_p1_stratum():
+    """Interface-fitted nodes must not land on the P1 cut interface."""
+    node_count = 32
+    length = 0.02
+    backend = _make_backend()
+    cfg = SimulationConfig(
+        grid=GridConfig(
+            ndim=2,
+            N=(node_count, node_count),
+            L=(length, length),
+            alpha_grid=2.0,
+            fitting_axes=(True, True),
+            fitting_alpha_grid=(2.0, 2.0),
+            wall_refinement_axes=(False, True),
+            wall_alpha_grid=(1.0, 1.3),
+            wall_eps_g_cells=(None, 4.0),
+        )
+    )
+    grid = Grid(cfg.grid, backend)
+    ccd = CCDSolver(grid, backend, bc_type=("periodic", "wall"))
+
+    x = np.linspace(0.0, length, node_count + 1)
+    y = np.linspace(0.0, length, node_count + 1)
+    X, Y = np.meshgrid(x, y, indexing="ij")
+    center_y = 0.47 * length
+    amplitude = 2.0e-4
+    wave_number = 2
+    interface_y = center_y + amplitude * np.cos(
+        2.0 * np.pi * wave_number * X / length
+    )
+    phi = Y - interface_y
+    eps = 1.5 * (length / node_count)
+    psi = 1.0 / (1.0 + np.exp(-phi / eps))
+
+    grid.update_from_levelset(psi, eps=eps, ccd=ccd)
+
+    X_after, Y_after = np.meshgrid(grid.coords[0], grid.coords[1], indexing="ij")
+    phi_after = Y_after - (
+        center_y
+        + amplitude * np.cos(2.0 * np.pi * wave_number * X_after / length)
+    )
+    sign_margin = float(np.min(np.abs(phi_after)))
+    assert sign_margin >= 0.01 * (length / node_count)
+    assert np.all(np.diff(grid.coords[0]) > 0.0)
+    assert np.all(np.diff(grid.coords[1]) > 0.0)
+
+
 def test_wall_refinement_wall_only_symmetric():
     """Wall-only monitor refines both non-periodic wall layers symmetrically."""
     node_count = 64

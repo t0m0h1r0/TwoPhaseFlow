@@ -62,6 +62,107 @@ def _face_div_linf(backend, div_op, faces) -> float:
     return _scalar(backend, xp.max(xp.abs(div)))
 
 
+def _capillary_metrics(backend, grid, state) -> dict[str, float]:
+    material = state.geometric_runtime_material
+    capillary = state.geometric_runtime_capillary
+    application = state.geometric_runtime_capillary_application
+    dx = np.diff(np.asarray(grid.coords[0], dtype=float))
+    dy = np.diff(np.asarray(grid.coords[1], dtype=float))
+    metrics = {
+        "grid_dx_min": float(np.min(dx)),
+        "grid_dx_max": float(np.max(dx)),
+        "grid_dy_min": float(np.min(dy)),
+        "grid_dy_max": float(np.max(dy)),
+        "ao_compat": 0.0,
+        "face_hodge_min": 0.0,
+        "face_hodge_max": 0.0,
+        "sign_margin": 0.0,
+        "jq_linf": 0.0,
+        "ds_linf": 0.0,
+        "row_norm_min": 0.0,
+        "row_norm_max": 0.0,
+        "cap_force": 0.0,
+        "cap_reaction": 0.0,
+        "cap_residual": 0.0,
+        "cap_face": 0.0,
+        "cap_reaction_face": 0.0,
+        "cap_balanced": 0.0,
+        "cap_balanced_max": 0.0,
+        "yl_normal": 0.0,
+    }
+    if material is not None:
+        metrics["ao_compat"] = _scalar(
+            backend,
+            material.phase_state.compatibility_residual_linf,
+        )
+        metrics["face_hodge_min"] = float(material.face_hodge.min_weight)
+        metrics["face_hodge_max"] = float(material.face_hodge.max_weight)
+    if capillary is not None:
+        derivatives = capillary.pressure_capillary_hodge.capillary_riesz.surface_covector.derivatives
+        xp = backend.xp
+        row_norm = xp.sum(derivatives.jq_local * derivatives.jq_local, axis=-1)
+        active = row_norm > 0.0
+        metrics.update(
+            {
+                "sign_margin": float(capillary.material.phase_state.geometry.sign_margin),
+                "jq_linf": _scalar(
+                    backend,
+                    xp.max(xp.abs(derivatives.jq_local)),
+                ),
+                "ds_linf": _scalar(
+                    backend,
+                    xp.max(xp.abs(derivatives.ds_local)),
+                ),
+                "row_norm_min": _scalar(
+                    backend,
+                    xp.min(xp.where(active, row_norm, xp.inf)),
+                ),
+                "row_norm_max": _scalar(
+                    backend,
+                    xp.max(row_norm),
+                ),
+                "cap_force": _scalar(
+                    backend,
+                    capillary.capillary_force_weighted_acceleration_l2,
+                ),
+                "cap_reaction": _scalar(
+                    backend,
+                    capillary.pressure_reaction_weighted_acceleration_l2,
+                ),
+                "cap_residual": _scalar(
+                    backend,
+                    capillary.weighted_residual_acceleration_l2,
+                ),
+                "cap_face": _scalar(
+                    backend,
+                    capillary.max_abs_capillary_force_face_covector,
+                ),
+                "cap_reaction_face": _scalar(
+                    backend,
+                    capillary.max_abs_pressure_reaction_face_covector,
+                ),
+                "yl_normal": _scalar(
+                    backend,
+                    capillary.young_laplace_normal_residual_linf,
+                ),
+            }
+        )
+    if application is not None:
+        metrics.update(
+            {
+                "cap_balanced": _scalar(
+                    backend,
+                    application.pressure_balanced_increment_weighted_l2,
+                ),
+                "cap_balanced_max": _scalar(
+                    backend,
+                    application.max_abs_pressure_balanced_face_increment,
+                ),
+            }
+        )
+    return metrics
+
+
 def _geometric_cell_div_linf(backend, grid, faces) -> float:
     """Return cell-centred geometric divergence for AO swept-volume faces."""
     if faces is None:
@@ -108,6 +209,7 @@ def _manual_step(
     rho_min, rho_max = _field_minmax(solver._backend, state.rho)
     mu_min, mu_max = _field_minmax(solver._backend, state.mu_field)
     state = solver._surface_tension_stage(state)
+    capillary_metrics = _capillary_metrics(solver._backend, solver._grid, state)
     history_metrics = {
         "conv_ab2_ready": float(bool(solver._conv_ab2_ready)),
         "velocity_bdf2_ready": float(bool(solver._velocity_bdf2_ready)),
@@ -146,6 +248,7 @@ def _manual_step(
         "rho_max": rho_max,
         "mu_min": mu_min,
         "mu_max": mu_max,
+        **capillary_metrics,
         **history_metrics,
         "viscous_dc_final_residual": float(
             viscous_diag.get("viscous_dc_final_residual", 0.0)
@@ -465,6 +568,26 @@ def main() -> None:
         "rho_max",
         "mu_min",
         "mu_max",
+        "grid_dx_min",
+        "grid_dx_max",
+        "grid_dy_min",
+        "grid_dy_max",
+        "ao_compat",
+        "face_hodge_min",
+        "face_hodge_max",
+        "sign_margin",
+        "jq_linf",
+        "ds_linf",
+        "row_norm_min",
+        "row_norm_max",
+        "cap_force",
+        "cap_reaction",
+        "cap_residual",
+        "cap_face",
+        "cap_reaction_face",
+        "cap_balanced",
+        "cap_balanced_max",
+        "yl_normal",
         "conv_ready",
         "velocity_ready",
         "velocity_prev",
@@ -547,6 +670,26 @@ def main() -> None:
             f"{predictor['rho_max']:.12e}",
             f"{predictor['mu_min']:.12e}",
             f"{predictor['mu_max']:.12e}",
+            f"{predictor['grid_dx_min']:.12e}",
+            f"{predictor['grid_dx_max']:.12e}",
+            f"{predictor['grid_dy_min']:.12e}",
+            f"{predictor['grid_dy_max']:.12e}",
+            f"{predictor['ao_compat']:.12e}",
+            f"{predictor['face_hodge_min']:.12e}",
+            f"{predictor['face_hodge_max']:.12e}",
+            f"{predictor['sign_margin']:.12e}",
+            f"{predictor['jq_linf']:.12e}",
+            f"{predictor['ds_linf']:.12e}",
+            f"{predictor['row_norm_min']:.12e}",
+            f"{predictor['row_norm_max']:.12e}",
+            f"{predictor['cap_force']:.12e}",
+            f"{predictor['cap_reaction']:.12e}",
+            f"{predictor['cap_residual']:.12e}",
+            f"{predictor['cap_face']:.12e}",
+            f"{predictor['cap_reaction_face']:.12e}",
+            f"{predictor['cap_balanced']:.12e}",
+            f"{predictor['cap_balanced_max']:.12e}",
+            f"{predictor['yl_normal']:.12e}",
             f"{predictor['conv_ab2_ready']:.12e}",
             f"{predictor['velocity_bdf2_ready']:.12e}",
             f"{predictor['velocity_prev_linf']:.12e}",

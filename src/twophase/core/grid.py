@@ -145,6 +145,9 @@ class Grid:
             for ax in range(self.ndim)
         )
         phi = None
+        old_coords_all = [
+            np.asarray(coords, dtype=float).copy() for coords in self.coords
+        ]
         if interface_active_any:
             # ψ → φ (logit inversion) on the active backend. Wall-only rebuilds
             # do not need φ and therefore avoid the extra GPU kernel/D2H path.
@@ -236,6 +239,16 @@ class Grid:
             node_dx[-1] = cell_dx[-1]
             node_dx[1:-1] = 0.5 * (cell_dx[:-1] + cell_dx[1:])
             self.h[ax] = node_dx
+
+        if interface_active_any:
+            assert phi is not None
+            phi_host = np.asarray(self.backend.to_host(phi), dtype=float)
+            self._enforce_regular_interface_stratum(
+                phi_host,
+                old_coords_all,
+                fitting_axes=fitting_axes,
+                fitting_dx_floor=fitting_dx_floor,
+            )
 
         self._build_metrics(ccd=ccd)
 
@@ -329,9 +342,9 @@ class Grid:
     ):
         """Backend-native closed-interface projection monitor.
 
-        This keeps dynamic fitted-grid rebuilds from transferring the full
-        two-dimensional ``φ`` field to host; only the final 1-D monitor is
-        copied for the host-side equidistribution step.
+        This keeps monitor construction from transferring the full
+        two-dimensional ``φ`` field to host; the regular-stratum guard later
+        materializes ``φ`` on host only after candidate coordinates exist.
         """
         coords_axis = xp.asarray(self.coords[axis])
         indicator = xp.zeros_like(coords_axis)
@@ -433,6 +446,174 @@ class Grid:
             return indicator
         distance = coords_axis.reshape(-1, 1) - projected.reshape(1, -1)
         return np.max(np.exp(-(distance * distance) / (eps_g * eps_g)), axis=1)
+
+    def _enforce_regular_interface_stratum(
+        self,
+        phi_source: np.ndarray,
+        source_coords: list[np.ndarray],
+        *,
+        fitting_axes: tuple[bool, ...],
+        fitting_dx_floor: tuple[float, ...],
+    ) -> None:
+        """Keep rebuilt nodes inside a regular P1 cut-geometry stratum.
+
+        The P1 cut-cell maps ``Q_h(phi)`` and ``S_h(phi)`` are smooth only while
+        the zero level set does not pass through a grid node.  Interface
+        monitors deliberately cluster nodes near ``phi=0``; this guard applies
+        the smallest coordinate-line correction needed to keep the rebuilt
+        tensor grid in that open sign stratum.
+        """
+        if self.ndim != 2 or not any(fitting_axes):
+            return
+        value_floor = self._regular_stratum_value_floor()
+        if value_floor <= 0.0:
+            return
+
+        active_axes = tuple(
+            axis
+            for axis, enabled in enumerate(fitting_axes)
+            if enabled and self.N[axis] > 1
+        )
+        if not active_axes:
+            return
+
+        for _sweep in range(4):
+            phi_new = self._interpolate_levelset_to_current_grid(
+                phi_source,
+                source_coords,
+            )
+            abs_phi = np.abs(phi_new)
+            sign_margin = float(np.min(abs_phi))
+            if sign_margin >= value_floor:
+                return
+            near_nodes = np.argwhere(abs_phi < value_floor)
+            if near_nodes.size == 0:
+                return
+            changed = False
+            for node in near_nodes[np.argsort(abs_phi[tuple(near_nodes.T)])]:
+                changed = self._move_node_coordinate_line_off_interface(
+                    phi_new,
+                    tuple(int(index) for index in node),
+                    active_axes=active_axes,
+                    value_floor=value_floor,
+                    fitting_dx_floor=fitting_dx_floor,
+                ) or changed
+            if not changed:
+                return
+        self._refresh_node_spacings()
+
+    def _regular_stratum_value_floor(self) -> float:
+        length_scale = min(
+            float(length) / max(int(count), 1)
+            for length, count in zip(self.L, self.N)
+        )
+        roundoff_floor = 64.0 * np.finfo(float).eps * max(float(max(self.L)), 1.0)
+        return max(0.02 * length_scale, roundoff_floor)
+
+    def _interpolate_levelset_to_current_grid(
+        self,
+        phi_source: np.ndarray,
+        source_coords: list[np.ndarray],
+    ) -> np.ndarray:
+        if phi_source.shape != tuple(count + 1 for count in self.N):
+            raise ValueError("level-set source shape does not match grid shape")
+        target_x = np.asarray(self.coords[0], dtype=float)
+        target_y = np.asarray(self.coords[1], dtype=float)
+        source_x = np.asarray(source_coords[0], dtype=float)
+        source_y = np.asarray(source_coords[1], dtype=float)
+        x_interp = np.empty((target_x.size, source_y.size), dtype=float)
+        for j in range(source_y.size):
+            x_interp[:, j] = np.interp(target_x, source_x, phi_source[:, j])
+        out = np.empty((target_x.size, target_y.size), dtype=float)
+        for i in range(target_x.size):
+            out[i, :] = np.interp(target_y, source_y, x_interp[i, :])
+        return out
+
+    def _move_node_coordinate_line_off_interface(
+        self,
+        phi: np.ndarray,
+        node: tuple[int, int],
+        *,
+        active_axes: tuple[int, ...],
+        value_floor: float,
+        fitting_dx_floor: tuple[float, ...],
+    ) -> bool:
+        phi_value = float(phi[node])
+        deficit = value_floor - abs(phi_value)
+        if deficit <= 0.0:
+            return False
+
+        candidates = []
+        for axis in active_axes:
+            index = node[axis]
+            if index <= 0 or index >= self.N[axis]:
+                continue
+            gradient = self._nodal_levelset_gradient(phi, node, axis)
+            if abs(gradient) <= 1.0e-14:
+                continue
+            candidates.append((abs(gradient), axis, gradient))
+        if not candidates:
+            return False
+        _magnitude, axis, gradient = max(candidates, key=lambda item: item[0])
+
+        coords_axis = np.asarray(self.coords[axis], dtype=float).copy()
+        index = node[axis]
+        floor = max(float(fitting_dx_floor[axis]), 1.0e-12 * float(self.L[axis]))
+        lower = coords_axis[index - 1] + floor
+        upper = coords_axis[index + 1] - floor
+        if not lower < upper:
+            return False
+
+        if phi_value == 0.0:
+            positive_room = upper - coords_axis[index]
+            negative_room = coords_axis[index] - lower
+            direction = 1.0 if positive_room >= negative_room else -1.0
+        else:
+            direction = np.sign(phi_value) * np.sign(gradient)
+        shift = direction * deficit / abs(gradient)
+        shifted = float(np.clip(coords_axis[index] + shift, lower, upper))
+        if shifted == coords_axis[index]:
+            return False
+
+        coords_axis[index] = shifted
+        self.coords[axis] = coords_axis
+        self._refresh_node_spacing(axis)
+        return True
+
+    def _nodal_levelset_gradient(
+        self,
+        phi: np.ndarray,
+        node: tuple[int, int],
+        axis: int,
+    ) -> float:
+        coords_axis = np.asarray(self.coords[axis], dtype=float)
+        index = node[axis]
+        selector_left = list(node)
+        selector_right = list(node)
+        if index <= 0:
+            selector_right[axis] = index + 1
+            distance = coords_axis[index + 1] - coords_axis[index]
+            return float((phi[tuple(selector_right)] - phi[node]) / distance)
+        if index >= self.N[axis]:
+            selector_left[axis] = index - 1
+            distance = coords_axis[index] - coords_axis[index - 1]
+            return float((phi[node] - phi[tuple(selector_left)]) / distance)
+        selector_left[axis] = index - 1
+        selector_right[axis] = index + 1
+        distance = coords_axis[index + 1] - coords_axis[index - 1]
+        return float((phi[tuple(selector_right)] - phi[tuple(selector_left)]) / distance)
+
+    def _refresh_node_spacings(self) -> None:
+        for axis in range(self.ndim):
+            self._refresh_node_spacing(axis)
+
+    def _refresh_node_spacing(self, axis: int) -> None:
+        cell_dx = np.diff(np.asarray(self.coords[axis], dtype=float))
+        node_dx = np.empty(self.N[axis] + 1)
+        node_dx[0] = cell_dx[0]
+        node_dx[-1] = cell_dx[-1]
+        node_dx[1:-1] = 0.5 * (cell_dx[:-1] + cell_dx[1:])
+        self.h[axis] = node_dx
 
     def _build_metrics(self, ccd=None) -> None:
         """Compute CCD metrics J = dxi/dx and dJ/dxi for each axis.
