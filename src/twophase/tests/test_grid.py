@@ -45,6 +45,45 @@ def _make_grid_and_ccd(n, L=1.0):
     return grid, ccd, backend
 
 
+class _NumpyGpuLikeBackend:
+    """NumPy-backed GPU contract probe that records explicit D2H boundaries."""
+
+    xp = np
+    device = "gpu"
+
+    def __init__(self):
+        self.to_host_shapes = []
+
+    def is_gpu(self):
+        return True
+
+    def to_host(self, arr):
+        self.to_host_shapes.append(tuple(np.asarray(arr).shape))
+        return arr
+
+
+class _MetricOnlyCCD:
+    """Small CCD stand-in for grid metric construction tests."""
+
+    xp = np
+
+    @staticmethod
+    def differentiate_raw(coords_ax, axis=0):
+        coords_ax = np.asarray(coords_ax, dtype=float)
+        dxi = 1.0 / max(coords_ax.size - 1, 1)
+        d1 = np.empty_like(coords_ax)
+        d1[1:-1] = (coords_ax[2:] - coords_ax[:-2]) / (2.0 * dxi)
+        d1[0] = (coords_ax[1] - coords_ax[0]) / dxi
+        d1[-1] = (coords_ax[-1] - coords_ax[-2]) / dxi
+        d2 = np.zeros_like(coords_ax)
+        d2[1:-1] = (coords_ax[2:] - 2.0 * coords_ax[1:-1] + coords_ax[:-2]) / (
+            dxi * dxi
+        )
+        d2[0] = d2[1]
+        d2[-1] = d2[-2]
+        return d1, d2
+
+
 # ── Test 1: 密度関数の形状 ────────────────────────────────────────────────────
 
 def test_density_function_paper_formula():
@@ -387,6 +426,104 @@ def test_update_from_levelset_keeps_wave_nodes_in_regular_p1_stratum():
     sign_margin = float(np.min(np.abs(phi_after)))
     assert sign_margin >= 0.01 * (length / node_count)
     assert np.all(np.diff(grid.coords[0]) > 0.0)
+    assert np.all(np.diff(grid.coords[1]) > 0.0)
+
+
+def test_gpu_equidistribution_matches_cpu_formula():
+    """Device CDF inversion is the same equidistribution map as the CPU path."""
+    xp = np
+    coords_old = np.linspace(0.0, 1.0, 17) ** 1.15
+    coords_old = coords_old / coords_old[-1]
+    omega = 1.0 + 2.0 * np.exp(-((coords_old - 0.37) ** 2) / 0.04 ** 2)
+
+    monitor_cell = 0.5 * (omega[:-1] + omega[1:]) * np.diff(coords_old)
+    monitor_cdf = np.zeros(coords_old.size)
+    monitor_cdf[1:] = np.cumsum(monitor_cell)
+    target = np.linspace(0.0, monitor_cdf[-1], coords_old.size)
+    expected = np.interp(target, monitor_cdf, coords_old)
+    expected[0] = 0.0
+    expected[-1] = 1.0
+
+    actual = Grid._equidistribute_coords_backend(
+        xp,
+        omega,
+        coords_old,
+        floor=0.0,
+        length=1.0,
+    )
+
+    np.testing.assert_allclose(actual, expected, rtol=1.0e-12, atol=1.0e-12)
+
+
+def test_gpu_update_from_levelset_avoids_field_d2h_in_hot_path():
+    """GPU grid rebuild may return coordinate metadata, not the full φ field."""
+    node_count = 16
+    length = 1.0
+    eps = 1.5 * length / node_count
+    backend = _NumpyGpuLikeBackend()
+    cfg = SimulationConfig(
+        grid=GridConfig(
+            ndim=2,
+            N=(node_count, node_count),
+            L=(length, length),
+            alpha_grid=2.0,
+            fitting_axes=(False, True),
+            fitting_alpha_grid=(1.0, 2.0),
+        )
+    )
+    grid = Grid(cfg.grid, backend)
+    coords = np.linspace(0.0, length, node_count + 1)
+    _, Y = np.meshgrid(coords, coords, indexing="ij")
+    phi = Y - 0.37
+    psi = 1.0 / (1.0 + np.exp(-phi / eps))
+
+    grid.update_from_levelset(psi, eps=eps, ccd=_MetricOnlyCCD())
+
+    assert grid.shape not in backend.to_host_shapes
+    assert backend.to_host_shapes == [(node_count + 1,), (node_count + 1,)]
+    np.testing.assert_allclose(grid.coords[0], coords)
+    assert np.all(np.diff(grid.coords[1]) > 0.0)
+    assert np.min(np.diff(grid.coords[1])) < length / node_count
+
+
+def test_real_gpu_update_from_levelset_only_transfers_coordinate_metadata():
+    """Real CuPy path keeps φ/monitor/guard work device-resident."""
+    try:
+        backend = Backend(use_gpu=True)
+    except RuntimeError:
+        pytest.skip("CuPy/CUDA unavailable")
+
+    node_count = 16
+    length = 1.0
+    eps = 1.5 * length / node_count
+    cfg = SimulationConfig(
+        grid=GridConfig(
+            ndim=2,
+            N=(node_count, node_count),
+            L=(length, length),
+            alpha_grid=2.0,
+            fitting_axes=(False, True),
+            fitting_alpha_grid=(1.0, 2.0),
+        )
+    )
+    grid = Grid(cfg.grid, backend)
+    coords = np.linspace(0.0, length, node_count + 1)
+    _, Y = np.meshgrid(coords, coords, indexing="ij")
+    phi = Y - 0.37
+    psi = 1.0 / (1.0 + np.exp(-phi / eps))
+
+    original_to_host = backend.to_host
+    transfer_shapes = []
+
+    def counted_to_host(arr):
+        transfer_shapes.append(tuple(arr.shape))
+        return original_to_host(arr)
+
+    backend.to_host = counted_to_host
+    grid.update_from_levelset(psi, eps=eps, ccd=_MetricOnlyCCD())
+
+    assert grid.shape not in transfer_shapes
+    assert transfer_shapes == [(node_count + 1,), (node_count + 1,)]
     assert np.all(np.diff(grid.coords[1]) > 0.0)
 
 

@@ -8,6 +8,8 @@ tags: [gpu, nonuniform_grid, grid_rebuild, interface_tracking, remap, metrics, c
 sources:
   - path: artifacts/A/ch14_gpu_grid_rebuild_theory_CHK-RA-CH14-AO-FASTVOL-053.md
     description: "Theory and implementation contract for GPU-resident fitted-grid updates"
+  - path: artifacts/A/ch14_gpu_grid_rebuild_implementation_CHK-RA-CH14-AO-FASTVOL-054.md
+    description: "First implementation of GPU-resident monitor/equidistribution/regular-stratum rebuild"
 depends_on:
   - "[[WIKI-X-050]]"
   - "[[WIKI-L-043]]"
@@ -94,6 +96,16 @@ beta = (L - N f) / sum_i max(Delta x_i - f, 0).
 - Invalidate and rebuild every grid-dependent solver cache at the same epoch:
   CCD factors/metrics, FCCD geometry, PPE operator caches, active geometry
   supports, pressure history, face states, and output coordinate metadata.
+
+## Implementation Status
+
+As of CHK-RA-CH14-AO-FASTVOL-054, `Grid.update_from_levelset` has a GPU backend
+path for monitor construction, monotone inverse-CDF equidistribution,
+cell-width projection, and fixed-sweep regular-P1-stratum guarding.  The final
+1-D coordinate vectors are copied to host because `Grid.coords` remains the
+metric-builder metadata source.  Conserved-field remap is a separate contract:
+future state remapping across accepted grid epochs must still use overlap
+weights rather than nodal interpolation.
 
 ## Negative Knowledge
 

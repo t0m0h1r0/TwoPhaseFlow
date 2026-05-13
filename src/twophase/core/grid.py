@@ -197,6 +197,26 @@ class Grid:
             fitting_axes[ax] and fitting_alpha[ax] > 1.0
             for ax in range(self.ndim)
         )
+        if self.backend.is_gpu():
+            self._update_from_levelset_backend(
+                psi_data,
+                eps,
+                ccd=ccd,
+                wall_contacts=wall_contacts,
+                fitting_axes=fitting_axes,
+                wall_axes=wall_axes,
+                fitting_alpha=fitting_alpha,
+                fitting_eps_factor=fitting_eps_factor,
+                fitting_eps_cells=fitting_eps_cells,
+                fitting_dx_floor=fitting_dx_floor,
+                wall_alpha=wall_alpha,
+                wall_eps_factor=wall_eps_factor,
+                wall_eps_cells=wall_eps_cells,
+                wall_sides=wall_sides,
+                interface_active_any=interface_active_any,
+            )
+            return
+
         phi = None
         old_coords_all = [
             np.asarray(coords, dtype=float).copy() for coords in self.coords
@@ -307,6 +327,137 @@ class Grid:
 
     # ── Private helpers ───────────────────────────────────────────────────
 
+    def _update_from_levelset_backend(
+        self,
+        psi_data,
+        eps: float,
+        *,
+        ccd=None,
+        wall_contacts=None,
+        fitting_axes: tuple[bool, ...],
+        wall_axes: tuple[bool, ...],
+        fitting_alpha: tuple[float, ...],
+        fitting_eps_factor: tuple[float, ...],
+        fitting_eps_cells: tuple[float | None, ...],
+        fitting_dx_floor: tuple[float, ...],
+        wall_alpha: tuple[float, ...],
+        wall_eps_factor: tuple[float, ...],
+        wall_eps_cells: tuple[float | None, ...],
+        wall_sides: tuple[tuple[str, ...], ...],
+        interface_active_any: bool,
+    ) -> None:
+        """GPU-resident fitted-grid rebuild with host coordinate metadata.
+
+        A3 mapping:
+        - Equation: monitor equidistribution in WIKI-T-171.
+        - Discretisation: prefix CDF and lower-width projection.
+        - Code: device arrays here; only final coordinate metadata is copied
+          to host because ``Grid.coords`` is the current metric builder SSoT.
+        """
+        from ..levelset.heaviside import invert_heaviside
+
+        xp = self.backend.xp
+        old_coords_host = [
+            np.asarray(coords, dtype=float).copy() for coords in self.coords
+        ]
+        old_coords_dev = [xp.asarray(coords) for coords in old_coords_host]
+        candidate_coords = list(old_coords_dev)
+        phi = (
+            invert_heaviside(xp, xp.asarray(psi_data), eps)
+            if interface_active_any
+            else None
+        )
+
+        for ax in range(self.ndim):
+            alpha_axis = fitting_alpha[ax]
+            interface_active = fitting_axes[ax] and alpha_axis > 1.0
+            wall_active = wall_axes[ax] and wall_alpha[ax] > 1.0
+            if not interface_active and not wall_active:
+                candidate_coords[ax] = xp.linspace(
+                    0.0,
+                    float(self._gc.L[ax]),
+                    int(self._gc.N[ax]) + 1,
+                    dtype=old_coords_dev[ax].dtype,
+                )
+                continue
+
+            coords_old = old_coords_dev[ax]
+            omega = xp.ones(int(self._gc.N[ax]) + 1, dtype=coords_old.dtype)
+
+            if interface_active:
+                assert phi is not None
+                eps_g_cells = fitting_eps_cells[ax]
+                if eps_g_cells is not None:
+                    h_uniform = self._gc.L[ax] / self._gc.N[ax]
+                    eps_g = eps_g_cells * h_uniform
+                else:
+                    eps_g = fitting_eps_factor[ax] * eps
+
+                axes_other = tuple(a for a in range(self.ndim) if a != ax)
+                phi_1d = xp.min(xp.abs(phi), axis=axes_other)
+                indicator_1d = xp.exp(-(phi_1d * phi_1d) / (eps_g * eps_g))
+                indicator_1d = xp.maximum(
+                    indicator_1d,
+                    self._closure_seed_indicator_1d_backend(
+                        xp,
+                        phi,
+                        ax,
+                        eps_g,
+                        coords=old_coords_dev,
+                    ),
+                )
+                if wall_contacts:
+                    indicator_1d = xp.maximum(
+                        indicator_1d,
+                        self._wall_contact_indicator_1d_backend(
+                            wall_contacts,
+                            ax,
+                            eps_g,
+                            coords_old,
+                        ),
+                    )
+                omega = omega + (alpha_axis - 1.0) * indicator_1d
+
+            if wall_active:
+                eps_w_cells = wall_eps_cells[ax]
+                if eps_w_cells is not None:
+                    h_uniform = self._gc.L[ax] / self._gc.N[ax]
+                    eps_w = eps_w_cells * h_uniform
+                else:
+                    eps_w = wall_eps_factor[ax] * eps
+                omega = omega + (wall_alpha[ax] - 1.0) * (
+                    self._physical_wall_indicator_1d_backend(
+                        xp,
+                        coords_old,
+                        float(self._gc.L[ax]),
+                        eps_w,
+                        wall_sides[ax],
+                    )
+                )
+
+            candidate_coords[ax] = self._equidistribute_coords_backend(
+                xp,
+                omega,
+                coords_old,
+                floor=fitting_dx_floor[ax],
+                length=float(self._gc.L[ax]),
+            )
+
+        if interface_active_any and phi is not None:
+            candidate_coords = self._enforce_regular_interface_stratum_backend(
+                xp,
+                phi,
+                old_coords_dev,
+                candidate_coords,
+                fitting_axes=fitting_axes,
+                fitting_dx_floor=fitting_dx_floor,
+            )
+
+        for ax, coords_dev in enumerate(candidate_coords):
+            self.coords[ax] = np.asarray(self.backend.to_host(coords_dev), dtype=float)
+            self._refresh_node_spacing(ax)
+        self._build_metrics(ccd=ccd)
+
     def _reset_axis_to_uniform(self, axis: int) -> None:
         """Keep an inactive fitting axis on the exact uniform coordinate map."""
         coords_axis = np.linspace(0.0, self._gc.L[axis], self._gc.N[axis] + 1)
@@ -392,6 +543,8 @@ class Grid:
         phi,
         axis: int,
         eps_g: float,
+        *,
+        coords=None,
     ):
         """Backend-native closed-interface projection monitor.
 
@@ -400,13 +553,24 @@ class Grid:
         materializes ``φ`` on host only after candidate coordinates exist.
         """
         phi_dtype = xp.asarray(phi).dtype
-        coords_axis = self.device_coords(axis, dtype=phi_dtype)
-        indicator = xp.zeros_like(coords_axis)
         if self.ndim != 2:
+            coords_axis = (
+                self.device_coords(axis, dtype=phi_dtype)
+                if coords is None
+                else xp.asarray(coords[axis], dtype=phi_dtype)
+            )
+            indicator = xp.zeros_like(coords_axis)
             return indicator
 
-        coords_x = self.device_coords(0, dtype=phi_dtype)
-        coords_y = self.device_coords(1, dtype=phi_dtype)
+        if coords is None:
+            coords_x = self.device_coords(0, dtype=phi_dtype)
+            coords_y = self.device_coords(1, dtype=phi_dtype)
+            coords_axis = coords_x if axis == 0 else coords_y
+        else:
+            coords_x = xp.asarray(coords[0], dtype=phi_dtype)
+            coords_y = xp.asarray(coords[1], dtype=phi_dtype)
+            coords_axis = coords_x if axis == 0 else coords_y
+        indicator = xp.zeros_like(coords_axis)
         eps_sq = xp.asarray(eps_g * eps_g, dtype=phi_dtype)
         zero = xp.asarray(0.0, dtype=phi_dtype)
         one = xp.asarray(1.0, dtype=phi_dtype)
@@ -458,6 +622,107 @@ class Grid:
             else xp.broadcast_to(coords_y[None, :], phi.shape)
         )
         return xp.maximum(indicator, projected_indicator(zero_projection, zero_mask))
+
+    @staticmethod
+    def _physical_wall_indicator_1d_backend(
+        xp,
+        coords_axis,
+        length: float,
+        eps_w: float,
+        sides: tuple[str, ...],
+    ):
+        """Backend-native wall monitor along one coordinate axis."""
+        indicator = xp.zeros_like(coords_axis)
+        if eps_w <= 0.0 or not sides:
+            return indicator
+        eps_sq = eps_w * eps_w
+        if "lower" in sides:
+            indicator = xp.maximum(indicator, xp.exp(-(coords_axis * coords_axis) / eps_sq))
+        if "upper" in sides:
+            distance = length - coords_axis
+            indicator = xp.maximum(indicator, xp.exp(-(distance * distance) / eps_sq))
+        return indicator
+
+    def _wall_contact_indicator_1d_backend(
+        self,
+        wall_contacts,
+        axis: int,
+        eps_g: float,
+        coords_axis,
+    ):
+        """Backend-native monitor contribution from pinned wall contacts."""
+        xp = self.backend.xp
+        indicator = xp.zeros_like(coords_axis)
+        if not wall_contacts:
+            return indicator
+        projected = wall_contacts.projected_coordinates(axis, self)
+        if projected.size == 0:
+            return indicator
+        projected_dev = xp.asarray(projected, dtype=coords_axis.dtype)
+        distance = coords_axis.reshape(-1, 1) - projected_dev.reshape(1, -1)
+        return xp.max(xp.exp(-(distance * distance) / (eps_g * eps_g)), axis=1)
+
+    @staticmethod
+    def _equidistribute_coords_backend(
+        xp,
+        omega,
+        coords_old,
+        *,
+        floor: float,
+        length: float,
+    ):
+        """Device implementation of monitor CDF inversion plus width floor."""
+        monitor_cell = 0.5 * (omega[:-1] + omega[1:]) * (coords_old[1:] - coords_old[:-1])
+        zero = xp.zeros((1,), dtype=coords_old.dtype)
+        monitor_cdf = xp.concatenate([zero, xp.cumsum(monitor_cell)])
+        target = xp.linspace(
+            0.0,
+            monitor_cdf[-1],
+            int(coords_old.size),
+            dtype=coords_old.dtype,
+        )
+        idx, frac = Grid._monotone_interval_indices_backend(xp, monitor_cdf, target)
+        coords = coords_old[idx] + frac * (coords_old[idx + 1] - coords_old[idx])
+        cell_dx = Grid._apply_cell_width_floor_backend(
+            xp,
+            coords[1:] - coords[:-1],
+            floor=floor,
+            length=length,
+        )
+        rebuilt = xp.concatenate([zero, xp.cumsum(cell_dx)])
+        rebuilt = rebuilt.copy()
+        rebuilt[0] = 0.0
+        rebuilt[-1] = length
+        return rebuilt
+
+    @staticmethod
+    def _apply_cell_width_floor_backend(xp, cell_widths, *, floor: float, length: float):
+        """Project cell widths to ``sum d_i=L`` and ``d_i>=floor`` on device."""
+        if floor <= 0.0:
+            return cell_widths
+        n_cells = int(cell_widths.size)
+        if floor * n_cells >= length:
+            return xp.full_like(cell_widths, length / n_cells)
+        surplus = xp.maximum(cell_widths - floor, 0.0)
+        total_surplus = xp.sum(surplus)
+        scale = (length - floor * n_cells) / xp.where(
+            total_surplus > 0.0,
+            total_surplus,
+            xp.asarray(1.0, dtype=cell_widths.dtype),
+        )
+        return floor + surplus * scale
+
+    @staticmethod
+    def _monotone_interval_indices_backend(xp, coords, target):
+        """Find monotone interpolation intervals without host-side search."""
+        leq_count = xp.sum(coords[:, None] <= target[None, :], axis=0)
+        idx = xp.asarray(leq_count - 1, dtype=xp.int64)
+        idx = xp.clip(idx, 0, int(coords.size) - 2)
+        left = coords[idx]
+        right = coords[idx + 1]
+        denom = xp.where(right > left, right - left, xp.asarray(1.0, dtype=coords.dtype))
+        frac = xp.clip((target - left) / denom, 0.0, 1.0)
+        return idx, frac
 
     def _physical_wall_indicator_1d(
         self,
@@ -555,6 +820,146 @@ class Grid:
             if not changed:
                 return
         self._refresh_node_spacings()
+
+    def _enforce_regular_interface_stratum_backend(
+        self,
+        xp,
+        phi_source,
+        source_coords,
+        candidate_coords,
+        *,
+        fitting_axes: tuple[bool, ...],
+        fitting_dx_floor: tuple[float, ...],
+    ):
+        """Fixed-sweep device guard for the regular P1 interface stratum."""
+        if self.ndim != 2 or not any(fitting_axes):
+            return candidate_coords
+        value_floor = self._regular_stratum_value_floor()
+        if value_floor <= 0.0:
+            return candidate_coords
+        active_axes = tuple(
+            axis
+            for axis, enabled in enumerate(fitting_axes)
+            if enabled and self.N[axis] > 1
+        )
+        if not active_axes:
+            return candidate_coords
+
+        coords = list(candidate_coords)
+        value_floor_dev = xp.asarray(value_floor, dtype=xp.asarray(phi_source).dtype)
+        for _sweep in range(4):
+            phi_new = self._interpolate_levelset_to_grid_backend(
+                xp,
+                phi_source,
+                source_coords,
+                coords,
+            )
+            violation = xp.abs(phi_new) < value_floor_dev
+            for axis in active_axes:
+                gradient = self._nodal_levelset_gradient_backend(
+                    xp,
+                    phi_new,
+                    coords[axis],
+                    axis,
+                )
+                coords[axis] = self._apply_regular_stratum_line_shift_backend(
+                    xp,
+                    coords[axis],
+                    phi_new,
+                    gradient,
+                    violation,
+                    axis,
+                    value_floor_dev,
+                    floor=max(
+                        float(fitting_dx_floor[axis]),
+                        1.0e-12 * float(self.L[axis]),
+                    ),
+                )
+        return coords
+
+    @staticmethod
+    def _interpolate_levelset_to_grid_backend(
+        xp,
+        phi_source,
+        source_coords,
+        target_coords,
+    ):
+        """Separable tensor-product linear interpolation on backend arrays."""
+        idx_x, frac_x = Grid._monotone_interval_indices_backend(
+            xp,
+            source_coords[0],
+            target_coords[0],
+        )
+        left_x = xp.take(phi_source, idx_x, axis=0)
+        right_x = xp.take(phi_source, idx_x + 1, axis=0)
+        x_interp = left_x + frac_x[:, None] * (right_x - left_x)
+
+        idx_y, frac_y = Grid._monotone_interval_indices_backend(
+            xp,
+            source_coords[1],
+            target_coords[1],
+        )
+        left_y = xp.take(x_interp, idx_y, axis=1)
+        right_y = xp.take(x_interp, idx_y + 1, axis=1)
+        return left_y + frac_y[None, :] * (right_y - left_y)
+
+    @staticmethod
+    def _nodal_levelset_gradient_backend(xp, phi, coords_axis, axis: int):
+        """Nonuniform nodal gradient along one axis on backend arrays."""
+        values = xp.moveaxis(phi, axis, 0)
+        grad = xp.empty_like(values)
+        grad[0] = (values[1] - values[0]) / (coords_axis[1] - coords_axis[0])
+        grad[-1] = (values[-1] - values[-2]) / (coords_axis[-1] - coords_axis[-2])
+        denom = coords_axis[2:] - coords_axis[:-2]
+        grad[1:-1] = (values[2:] - values[:-2]) / denom.reshape(
+            (denom.size,) + (1,) * (values.ndim - 1)
+        )
+        return xp.moveaxis(grad, 0, axis)
+
+    @staticmethod
+    def _apply_regular_stratum_line_shift_backend(
+        xp,
+        coords_axis,
+        phi,
+        gradient,
+        violation,
+        axis: int,
+        value_floor,
+        *,
+        floor: float,
+    ):
+        """Apply one vectorized coordinate-line correction sweep."""
+        abs_grad = xp.abs(gradient)
+        valid = violation & (abs_grad > 1.0e-14)
+        deficit = xp.maximum(value_floor - xp.abs(phi), 0.0)
+        sign_phi = xp.where(phi >= 0.0, 1.0, -1.0)
+        sign_grad = xp.where(gradient >= 0.0, 1.0, -1.0)
+        proposed = sign_phi * sign_grad * deficit / xp.where(
+            abs_grad > 1.0e-14,
+            abs_grad,
+            1.0,
+        )
+        score = xp.where(valid, abs_grad, -1.0)
+        other_axis = 1 - axis
+        best = xp.argmax(score, axis=other_axis)
+        if axis == 0:
+            selected = xp.take_along_axis(proposed, best[:, None], axis=1)[:, 0]
+            has_valid = xp.any(valid, axis=1)
+        else:
+            selected = xp.take_along_axis(proposed, best[None, :], axis=0)[0, :]
+            has_valid = xp.any(valid, axis=0)
+
+        interior = xp.ones_like(coords_axis, dtype=bool)
+        interior[0] = False
+        interior[-1] = False
+        selected = xp.where(has_valid & interior, selected, 0.0)
+
+        lower = coords_axis.copy()
+        upper = coords_axis.copy()
+        lower[1:-1] = coords_axis[:-2] + floor
+        upper[1:-1] = coords_axis[2:] - floor
+        shifted = xp.clip(coords_axis + selected, lower, upper)
+        return xp.where(interior, shifted, coords_axis)
 
     def _regular_stratum_value_floor(self) -> float:
         length_scale = min(
