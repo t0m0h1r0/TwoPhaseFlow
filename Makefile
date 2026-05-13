@@ -29,7 +29,7 @@ help:
 	@echo "Meta-prompt ID lints (v7.1.0):"
 	@echo "  make lint-ids               No duplicate v7.1.0-namespaced IDs in ledger"
 	@echo "  make lint-id-refs           All CHK/ASM/KL refs are defined in ledger"
-	@echo "  make sync-research-agent    Download shared prompt kernel from research-agent"
+	@echo "  make sync-research-agent    Update prompts/meta research-agent submodule"
 	@echo ""
 	@echo "Variables:"
 	@echo "  EXP=<path>                  Experiment script path"

@@ -364,8 +364,8 @@ TheoryAuditor ══ AlgorithmSpecs.md ══► CodeWorkflowCoordinator
 ## 7. Regeneration Instructions
 
 - **To rebuild agents/:** `Execute EnvMetaBootstrapper Using prompts/meta/kernel-deploy.md Target [env]`; generated agents, skills, scripts, and templates are project-local outputs.
-- **To sync upstream kernel:** `make sync-research-agent` (default remote: `git@github.com:t0m0h1r0/research-agent.git`; syncs shared kernel files only and preserves `prompts/meta/kernel-project.md`)
-- **To update rules:** edit upstream `kernel/` or local `prompts/meta/kernel-project.md` first (A10); regenerate via EnvMetaBootstrapper. **Never edit docs/00_GLOBAL_RULES.md directly.**
+- **To sync upstream kernel:** `make sync-research-agent` updates the `prompts/meta` submodule from `research-agent`; review and commit the resulting gitlink.
+- **To update rules:** edit `prompts/meta/kernel-*.md` in the `research-agent` submodule first (A10); regenerate via EnvMetaBootstrapper. **Never edit docs/00_GLOBAL_RULES.md directly.**
 - **To retarget project:** replace `prompts/meta/kernel-project.md`; regenerate `docs/03_PROJECT_RULES.md`.
 - **To update project state:** append to `docs/01_PROJECT_MAP.md` or `docs/02_ACTIVE_LEDGER.md`.
 - **Immutable zones:** `<immutable_zone>` blocks in kernel-constitution.md (φ1–φ7, A1–A11) and kernel-ops.md (HAND-03 7-checks) are byte-locked — no edits without MetaEvolutionArchitect CHK session.
