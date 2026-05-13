@@ -48,6 +48,13 @@ def test_gpu_scalar_packet_uses_one_host_transfer():
     assert backend.host_transfer_count == 1
 
 
+def test_gpu_single_scalar_transfer_helper_fails_closed():
+    backend = _CountingBackend()
+    with pytest.raises(RuntimeError, match="single-scalar GPU host transfer"):
+        gpu_runtime._host_scalar_float(backend, np.asarray(1.0), "compatibility")
+    assert backend.host_transfer_count == 0
+
+
 def test_gpu_schur_pcg_respects_device_tolerance_mask():
     class GridStub:
         ndim = 2

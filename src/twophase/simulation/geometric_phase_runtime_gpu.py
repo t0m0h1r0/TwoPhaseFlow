@@ -1702,10 +1702,11 @@ def _validate_nonnegative_int(value, name):
 
 
 def _host_scalar_float(backend, value, name: str) -> float:
-    converted = float(np.asarray(backend.to_host(value)))
-    if not math.isfinite(converted):
-        raise ValueError(f"{name} must be finite")
-    return converted
+    del backend, value, name
+    raise RuntimeError(
+        "single-scalar GPU host transfer is forbidden; use "
+        "_host_scalar_packet_float at an explicit fail-close/reporting boundary"
+    )
 
 
 def _host_scalar_packet_float(backend, entries) -> dict[str, float]:

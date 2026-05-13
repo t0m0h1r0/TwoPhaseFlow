@@ -8,6 +8,8 @@ tags: [gpu, d2h, h2d, ao_fast, active_geometry, capillary, ch14]
 sources:
   - path: artifacts/A/ch14_capillary_gpu_transfer_minimization_CHK-RA-CH14-AO-FASTVOL-051.md
     description: "Chapter 14 capillary active-geometry transfer minimization"
+  - path: artifacts/A/ch14_gpu_scalar_transfer_batching_CHK-RA-CH14-AO-FASTVOL-052.md
+    description: "Fail-close guard against single-scalar GPU transfers"
 depends_on:
   - "[[WIKI-L-038]]"
   - "[[WIKI-L-039]]"
@@ -53,6 +55,9 @@ rebuild, output, or problem-size occupancy limit.
 - Device caches must be invalidated on the same metric epoch that rebuilds
   coordinates and nonuniform metrics.
 - Tests should forbid dynamic support discovery in fixed-shape GPU Schur paths.
+- GPU runtime code should not keep a usable single-scalar transfer helper; even
+  unavoidable scalar diagnostics should pass through a packet helper so future
+  additions naturally batch synchronization.
 - If unavoidable D2H remains, document the boundary: fail-close diagnostics,
   interface-tracking grid rebuild guards, and final output are different from
   inner Krylov or geometry kernels.
