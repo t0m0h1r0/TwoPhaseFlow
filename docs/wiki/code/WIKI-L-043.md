@@ -16,6 +16,8 @@ sources:
     description: "Block-resident AO-Fast Schur PCG for N=32 capillary route"
   - path: artifacts/A/ch14_future_active_pcg_on_support_CHK-RA-CH14-AO-FASTVOL-057.md
     description: "Future O(N) compact active-row Schur PCG design memory"
+  - path: artifacts/A/ch14_gpu_acceleration_theory_CHK-RA-CH14-AO-FASTVOL-058.md
+    description: "Post-transfer finite-stratum fusion acceleration theory"
 depends_on:
   - "[[WIKI-L-038]]"
   - "[[WIKI-L-039]]"
@@ -71,6 +73,11 @@ capillary route:
   preconditioned CG recurrence while eliminating Python-launched per-iteration
   Schur, dot, max, and update kernels.  Guard the optimization by row-space
   size; larger systems need a multi-block theory rather than accidental reuse.
+
+For the post-transfer acceleration rule, use [[WIKI-L-044]]: active geometry and
+swept-volume flux are finite-stratum maps and should be fused as exact local
+algebra, while sparse defect-correction analysis may only be reused inside an
+identical operator epoch.
 
 Do not confuse periodic nodal image count with Schur row count.  For an N=32
 periodic direction the nodal field may have an image shape such as `33 x 33`,

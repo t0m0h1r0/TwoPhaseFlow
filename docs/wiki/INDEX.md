@@ -1,4 +1,4 @@
-# Wiki Index — 374 entries
+# Wiki Index — 375 entries
 
 ## Active Retrieval Gate
 
@@ -18,9 +18,12 @@ or cache changes. For GPU implementation of fitted-grid updates, use
 [WIKI-T-171](theory/WIKI-T-171.md) so the nonuniform/interface-tracking
 contracts are ported to device rather than removed. For GPU optimization, use
 [WIKI-L-043](code/WIKI-L-043.md) before route-level retuning so hidden D2H/H2D
-boundaries are eliminated or justified first. Older cards remain listed for
-provenance, but cards marked SUPERSEDED or REFERENCE must not be used as current
-algorithm policy without their curation notes.
+boundaries are eliminated or justified first; once transfers are not dominant,
+use [WIKI-L-044](code/WIKI-L-044.md) so active geometry, swept flux, sparse
+analysis, and PCG scaling are accelerated by exact finite-stratum fusion and
+operator-epoch reuse. Older cards remain listed for provenance, but cards marked
+SUPERSEDED or REFERENCE must not be used as current algorithm policy without
+their curation notes.
 
 ## Theory (168)
 
@@ -382,7 +385,7 @@ algorithm policy without their curation notes.
 | [WIKI-M-030](meta/WIKI-M-030.md) | Meta-Prompt Evolution Needs Telemetry, Skills, and Tool-Trust Gates |
 | [WIKI-M-031](meta/WIKI-M-031.md) | Review Artifacts Close the Loop with Finding, Fix, and Validation |
 
-## Code (43)
+## Code (44)
 
 | REF-ID | Title |
 |--------|-------|
@@ -429,3 +432,4 @@ algorithm policy without their curation notes.
 | [WIKI-L-041](code/WIKI-L-041.md) | YAML Route Flags Make Numerical Contracts Auditable |
 | [WIKI-L-042](code/WIKI-L-042.md) | Single-Core CPU Saturation Does Not Imply CPU-Parallel GPU Relief |
 | [WIKI-L-043](code/WIKI-L-043.md) | GPU Optimization Starts by Removing Hidden D2H/H2D Boundaries |
+| [WIKI-L-044](code/WIKI-L-044.md) | Post-Transfer GPU Acceleration Uses Finite-Stratum Fusion |
