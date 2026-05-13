@@ -208,6 +208,62 @@ def test_gpu_masked_schur_raw_kernel_matches_vector_formula():
     cp.testing.assert_allclose(raw, vector, rtol=1.0e-12, atol=1.0e-12)
 
 
+def test_gpu_pcg_block_kernel_matches_vector_pcg():
+    cp = pytest.importorskip("cupy")
+    try:
+        if cp.cuda.runtime.getDeviceCount() < 1:
+            pytest.skip("CUDA device unavailable")
+    except cp.cuda.runtime.CUDARuntimeError as exc:
+        pytest.skip(str(exc))
+
+    class GridStub:
+        ndim = 2
+        N = (4, 4)
+        xp = cp
+
+    rng = np.random.default_rng(1618)
+    grid = GridStub()
+    active_np = np.ones(grid.N, dtype=bool)
+    jq_np = rng.normal(size=grid.N + (4,))
+    rhs_np = rng.normal(size=grid.N)
+    jq_local = cp.asarray(jq_np)
+    rhs = cp.asarray(rhs_np)
+    active = cp.asarray(active_np)
+    row_norm = cp.sum(jq_local * jq_local, axis=-1)
+    support = gpu_runtime._masked_schur_support_from_active(
+        grid,
+        cp,
+        jq_local,
+        row_norm,
+        active,
+    )
+
+    raw = gpu_runtime._solve_schur_pcg_block_raw_if_available(
+        cp,
+        jq_local,
+        rhs,
+        row_norm,
+        active,
+        None,
+        grid.N,
+        iterations=12,
+        tolerance=1.0e-12,
+        roundoff_floor=1.0e-14,
+    )
+    vector = gpu_runtime._solve_schur_pcg_fixed_gpu_vector(
+        cp,
+        rhs,
+        None,
+        support,
+        iterations=12,
+        tolerance=1.0e-12,
+        roundoff_floor=1.0e-14,
+    )
+
+    assert raw is not None
+    cp.testing.assert_allclose(raw, vector, rtol=1.0e-10, atol=1.0e-10)
+
+
 def test_gpu_schur_dc_and_dc_then_pcg_follow_yaml_scheme():
     class GridStub:
         ndim = 2

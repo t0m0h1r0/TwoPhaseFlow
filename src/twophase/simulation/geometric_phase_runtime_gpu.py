@@ -57,6 +57,7 @@ from .geometric_phase_runtime import (
 
 
 _SCHUR_RAW_KERNELS = {}
+_PCG_BLOCK_RAW_KERNELS = {}
 
 
 def build_geometric_phase_state_gpu(grid, phi, *, level: float = 0.0):
@@ -1655,6 +1656,41 @@ def _solve_schur_pcg_fixed_gpu(
     )
     if support.n_active == 0:
         return xp.zeros_like(rhs)
+    raw_solution = _solve_schur_pcg_block_raw_if_available(
+        xp,
+        support.jq_local,
+        rhs,
+        support.row_norm_A,
+        support.active,
+        initial_guess,
+        support.cell_shape,
+        iterations=iterations,
+        tolerance=tolerance,
+        roundoff_floor=roundoff_floor,
+    )
+    if raw_solution is not None:
+        return raw_solution
+    return _solve_schur_pcg_fixed_gpu_vector(
+        xp,
+        rhs,
+        initial_guess,
+        support,
+        iterations=iterations,
+        tolerance=tolerance,
+        roundoff_floor=roundoff_floor,
+    )
+
+
+def _solve_schur_pcg_fixed_gpu_vector(
+    xp,
+    rhs,
+    initial_guess,
+    support,
+    *,
+    iterations: int,
+    tolerance: float,
+    roundoff_floor: float | None,
+):
     b = support.gather_cells(rhs)
     diagonal = xp.where(
         support.row_norm_A > 0.0,
@@ -1698,6 +1734,246 @@ def _solve_schur_pcg_fixed_gpu(
         p = xp.where(active_iteration, z + beta * p, p)
         rz_old = xp.where(active_iteration, rz_new, rz_old)
     return support.scatter_cells(x)
+
+
+def _solve_schur_pcg_block_raw_if_available(
+    xp,
+    jq_local,
+    rhs,
+    row_norm,
+    active,
+    initial_guess,
+    cell_shape,
+    *,
+    iterations: int,
+    tolerance: float,
+    roundoff_floor: float | None,
+):
+    raw_kernel_type = getattr(xp, "RawKernel", None)
+    if raw_kernel_type is None:
+        return None
+    n_cells = int(cell_shape[0]) * int(cell_shape[1])
+    if n_cells < 1 or n_cells > 1024:
+        return None
+    rhs_values = xp.asarray(rhs).reshape(cell_shape)
+    dtype = np.dtype(rhs_values.dtype)
+    if dtype not in (np.dtype("float32"), np.dtype("float64")):
+        return None
+    jq = xp.ascontiguousarray(jq_local)
+    mask = xp.ascontiguousarray(active)
+    b = xp.ascontiguousarray(rhs_values)
+    row = xp.ascontiguousarray(row_norm)
+    if initial_guess is None:
+        initial = b
+        has_initial = np.int32(0)
+    else:
+        initial = xp.ascontiguousarray(xp.asarray(initial_guess).reshape(cell_shape))
+        has_initial = np.int32(1)
+    out = xp.empty(cell_shape, dtype=rhs_values.dtype)
+    threads = 1 << (n_cells - 1).bit_length()
+    algebra_floor = 1.0e-30 if roundoff_floor is None else max(
+        float(roundoff_floor) ** 2,
+        1.0e-30,
+    )
+    kernel = _pcg_block_raw_kernel(xp, dtype)
+    kernel(
+        (1,),
+        (threads,),
+        (
+            jq,
+            mask,
+            b,
+            row,
+            initial,
+            out,
+            np.int32(cell_shape[0]),
+            np.int32(cell_shape[1]),
+            np.int32(n_cells),
+            np.int32(iterations),
+            np.asarray(tolerance, dtype=dtype),
+            np.asarray(algebra_floor, dtype=dtype),
+            has_initial,
+        ),
+        shared_mem=6 * threads * dtype.itemsize,
+    )
+    return out
+
+
+def _pcg_block_raw_kernel(xp, dtype):
+    key = (id(xp), np.dtype(dtype).name, "pcg_block")
+    cached = _PCG_BLOCK_RAW_KERNELS.get(key)
+    if cached is not None:
+        return cached
+    scalar = "float" if np.dtype(dtype) == np.dtype("float32") else "double"
+    code = f"""
+__device__ __forceinline__ {scalar} abs_scalar({scalar} value) {{
+    return value < ({scalar})0 ? -value : value;
+}}
+
+__device__ __forceinline__ {scalar} schur_at(
+    const {scalar}* __restrict__ jq,
+    const bool* __restrict__ active,
+    const {scalar}* __restrict__ values,
+    const int idx,
+    const int nx,
+    const int ny
+) {{
+    int i = idx / ny;
+    int j = idx - i * ny;
+    {scalar} result = ({scalar})0;
+    for (int corner = 0; corner < 4; ++corner) {{
+        int ni = i + ((corner == 1 || corner == 2) ? 1 : 0);
+        int nj = j + ((corner == 2 || corner == 3) ? 1 : 0);
+        {scalar} nodal = ({scalar})0;
+        int cidx;
+        cidx = ni * ny + nj;
+        if (ni >= 0 && ni < nx && nj >= 0 && nj < ny && active[cidx]) {{
+            nodal += jq[4 * cidx + 0] * values[cidx];
+        }}
+        cidx = (ni - 1) * ny + nj;
+        if (ni - 1 >= 0 && ni - 1 < nx && nj >= 0 && nj < ny && active[cidx]) {{
+            nodal += jq[4 * cidx + 1] * values[cidx];
+        }}
+        cidx = (ni - 1) * ny + (nj - 1);
+        if (ni - 1 >= 0 && ni - 1 < nx && nj - 1 >= 0 && nj - 1 < ny
+                && active[cidx]) {{
+            nodal += jq[4 * cidx + 2] * values[cidx];
+        }}
+        cidx = ni * ny + (nj - 1);
+        if (ni >= 0 && ni < nx && nj - 1 >= 0 && nj - 1 < ny && active[cidx]) {{
+            nodal += jq[4 * cidx + 3] * values[cidx];
+        }}
+        result += jq[4 * idx + corner] * nodal;
+    }}
+    return result;
+}}
+
+__device__ __forceinline__ void reduce_sum({scalar}* values) {{
+    int tid = threadIdx.x;
+    __syncthreads();
+    for (int stride = blockDim.x >> 1; stride > 0; stride >>= 1) {{
+        if (tid < stride) {{
+            values[tid] += values[tid + stride];
+        }}
+        __syncthreads();
+    }}
+}}
+
+__device__ __forceinline__ void reduce_max({scalar}* values) {{
+    int tid = threadIdx.x;
+    __syncthreads();
+    for (int stride = blockDim.x >> 1; stride > 0; stride >>= 1) {{
+        if (tid < stride && values[tid + stride] > values[tid]) {{
+            values[tid] = values[tid + stride];
+        }}
+        __syncthreads();
+    }}
+}}
+
+extern "C" __global__
+void solve_schur_pcg_block_2d(
+    const {scalar}* __restrict__ jq,
+    const bool* __restrict__ active,
+    const {scalar}* __restrict__ rhs,
+    const {scalar}* __restrict__ row_norm,
+    const {scalar}* __restrict__ initial,
+    {scalar}* __restrict__ out,
+    const int nx,
+    const int ny,
+    const int n_cells,
+    const int iterations,
+    const {scalar} tolerance,
+    const {scalar} eps,
+    const int has_initial
+) {{
+    extern __shared__ unsigned char shared_raw[];
+    {scalar}* x = reinterpret_cast<{scalar}*>(shared_raw);
+    {scalar}* r = x + blockDim.x;
+    {scalar}* z = r + blockDim.x;
+    {scalar}* p = z + blockDim.x;
+    {scalar}* ap = p + blockDim.x;
+    {scalar}* reduction = ap + blockDim.x;
+
+    int tid = threadIdx.x;
+    bool inside = tid < n_cells;
+    bool is_active = inside && active[tid];
+    {scalar} diag = (
+        is_active && row_norm[tid] > ({scalar})0
+        ? row_norm[tid]
+        : ({scalar})1
+    );
+    x[tid] = (
+        is_active && has_initial
+        ? initial[tid]
+        : ({scalar})0
+    );
+    __syncthreads();
+
+    ap[tid] = (
+        is_active
+        ? schur_at(jq, active, x, tid, nx, ny)
+        : ({scalar})0
+    );
+    __syncthreads();
+    r[tid] = is_active ? rhs[tid] - ap[tid] : ({scalar})0;
+    z[tid] = r[tid] / diag;
+    p[tid] = z[tid];
+    reduction[tid] = inside ? r[tid] * z[tid] : ({scalar})0;
+    reduce_sum(reduction);
+    {scalar} rz_old = reduction[0];
+
+    for (int iter = 0; iter < iterations; ++iter) {{
+        ap[tid] = (
+            is_active
+            ? schur_at(jq, active, p, tid, nx, ny)
+            : ({scalar})0
+        );
+        __syncthreads();
+        reduction[tid] = inside ? p[tid] * ap[tid] : ({scalar})0;
+        reduce_sum(reduction);
+        {scalar} denom = reduction[0];
+        reduction[tid] = inside ? abs_scalar(r[tid]) : ({scalar})0;
+        reduce_max(reduction);
+        {scalar} residual_linf = reduction[0];
+        bool active_iteration = (
+            residual_linf > tolerance
+            && abs_scalar(denom) > eps
+            && abs_scalar(rz_old) > eps
+        );
+        if (!active_iteration) {{
+            break;
+        }}
+        {scalar} alpha = rz_old / denom;
+        if (is_active) {{
+            x[tid] += alpha * p[tid];
+            r[tid] -= alpha * ap[tid];
+            z[tid] = r[tid] / diag;
+        }} else {{
+            x[tid] = ({scalar})0;
+            r[tid] = ({scalar})0;
+            z[tid] = ({scalar})0;
+        }}
+        __syncthreads();
+        reduction[tid] = inside ? r[tid] * z[tid] : ({scalar})0;
+        reduce_sum(reduction);
+        {scalar} rz_new = reduction[0];
+        {scalar} beta = rz_new / rz_old;
+        if (is_active) {{
+            p[tid] = z[tid] + beta * p[tid];
+        }} else {{
+            p[tid] = ({scalar})0;
+        }}
+        rz_old = rz_new;
+        __syncthreads();
+    }}
+    if (inside) {{
+        out[tid] = is_active ? x[tid] : ({scalar})0;
+    }}
+}}
+"""
+    kernel = xp.RawKernel(code, "solve_schur_pcg_block_2d")
+    _PCG_BLOCK_RAW_KERNELS[key] = kernel
+    return kernel
 
 
 def _solve_schur_dc_fixed_gpu(

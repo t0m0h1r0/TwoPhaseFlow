@@ -12,6 +12,8 @@ sources:
     description: "Fail-close guard against single-scalar GPU transfers"
   - path: artifacts/A/ch14_gpu_geometry_schur_fusion_CHK-RA-CH14-AO-FASTVOL-055.md
     description: "Algebra-preserving AO-Fast geometry and Schur fusion"
+  - path: artifacts/A/ch14_gpu_pcg_block_kernel_CHK-RA-CH14-AO-FASTVOL-056.md
+    description: "Block-resident AO-Fast Schur PCG for N=32 capillary route"
 depends_on:
   - "[[WIKI-L-038]]"
   - "[[WIKI-L-039]]"
@@ -62,6 +64,11 @@ capillary route:
 - if a hot operator is exactly `J_A J_A^T`, implement the same P1 cell-node
   incidence sum directly or with a backend RawKernel, with all metric and
   nonuniform-grid dependence carried by `J_A`.
+- if a Krylov row space fits in one CUDA block, move the fixed PCG recurrence
+  and its reductions into one device loop.  This preserves the same
+  preconditioned CG recurrence while eliminating Python-launched per-iteration
+  Schur, dot, max, and update kernels.  Guard the optimization by row-space
+  size; larger systems need a multi-block theory rather than accidental reuse.
 
 ## Consequences
 
@@ -73,6 +80,8 @@ capillary route:
 - Tests should prove every fused algebraic path matches the unfused exact path:
   `Q_h`-only vs full geometry, batched candidates vs individual candidates, and
   fused Schur vs `J(J^T x)`.
+- Raw Krylov kernels should be tested against the vector recurrence on the same
+  backend before route-level timing is trusted.
 - GPU runtime code should not keep a usable single-scalar transfer helper; even
   unavoidable scalar diagnostics should pass through a packet helper so future
   additions naturally batch synchronization.
