@@ -46,6 +46,8 @@ sources:
     description: "U12/V11 AO-Fast capillary split gate results"
   - path: docs/wiki/cross-domain/WIKI-X-049.md
     description: "AO-Fast capillary admission and Chapter 14 YAML boundary"
+  - path: docs/wiki/cross-domain/WIKI-X-050.md
+    description: "Theory-first implementation debug priority for nonuniform metrics and grid rebuilds"
 depends_on:
   - "[[WIKI-X-037]]"
   - "[[WIKI-X-040]]"
@@ -77,6 +79,7 @@ depends_on:
   - "[[WIKI-X-045]]"
   - "[[WIKI-X-046]]"
   - "[[WIKI-X-049]]"
+  - "[[WIKI-X-050]]"
 consumers:
   - domain: theory
     usage: "Start here before using older theory cards for derivations"
@@ -112,6 +115,7 @@ algorithm policy.
 | ALE/remap energy | [[WIKI-T-162]], [[WIKI-T-160]], [[WIKI-T-155]], [[WIKI-T-157]], [[WIKI-T-159]], [[WIKI-T-161]], [[WIKI-T-163]] | Variational curvature work needs shared pressure-work pairing, labelled transport/reinit endpoints, named reinit residuals/defects, and step-local energy accounting; [[WIKI-T-162]] is the current closed-interface discretization policy, [[WIKI-T-163]] is the current reinit-free survey, and [[WIKI-T-161]] is negative knowledge about an abandoned retraction surface. |
 | Chapters 1-13 paper contract | [[WIKI-P-018]], [[WIKI-P-015]], [[WIKI-P-014]] | Current paper edits should preserve the failure-mode to contract to discretization to algorithm to V-series trace.  The standard route is per-variable: FCCD face-flux CLS transport, UCCD6 interior momentum, pressure-jump PPE/HFE/DC, capillary virtual-work face cochain, pressure-adjoint representative, and integrated V6/V7/V9 evidence. |
 | AO-Fast capillary admission | [[WIKI-X-049]], [[WIKI-T-169]], [[WIKI-E-063]] | Treat AO-Fast `geometric_cell_fraction` as a separate state-space candidate, not as an implicit Chapter 14 fallback.  Full pressure-image splitting can cancel non-static capillary drive exactly; U12/V11 therefore require a pressure-reaction subspace `R_p(q_T)` and residual-certified `r_sigma-Pi^{M_f}_{R_p}r_sigma`.  Chapter 14 production YAMLs explicitly declare `diffuse_cls`; graph/open-interface cases use `curvature_jump`, closed-interface cases use `closed_interface_riesz` plus `pressure_component_hodge`. |
+| Theory-first implementation debug | [[WIKI-X-050]], [[WIKI-T-094]], [[WIKI-T-096]], [[WIKI-T-135]] | When an implementation test violates a proven theory, first suspect nonuniform metric contracts and interface-tracking grid rebuild contracts. Use uniform-grid, static-grid/no-rebuild, `L != 1` metric, pre/post-remap conservation, face-Hodge, and cache-invalidation controls before tuning CFL, damping, tolerances, or solver iterations. |
 | Paper/wiki split | [[WIKI-X-046]], [[WIKI-X-048]], [[WIKI-E-061]] | Put successful contracts in the paper; preserve failed controls, falsified hypotheses, and trial variants in the wiki. |
 | Negative shortcuts | [[WIKI-X-045]] | Damping/CFL/smoothing/caps/hyperviscosity are retained as rejected detours, not paper success claims. |
 | Verification reading | [[WIKI-E-040]], [[WIKI-X-040]] | V-series labels encode what was certified; stale FFT/CCD-LU/CN readings are historical only. |
