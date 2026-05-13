@@ -1,0 +1,3 @@
+[submodule "prompts/meta"]
+	path = prompts/meta
+	url = https://github.com/t0m0h1r0/research-agent.git
