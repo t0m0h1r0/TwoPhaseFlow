@@ -1,4 +1,4 @@
-# Wiki Index — 371 entries
+# Wiki Index — 372 entries
 
 ## Active Retrieval Gate
 
@@ -8,8 +8,10 @@ paper-theory contract digest, then [WIKI-X-040](cross-domain/WIKI-X-040.md) for
 recent research findings.  For AO-Fast capillary admission and Chapter 14 YAML
 state-space boundaries, use [WIKI-X-049](cross-domain/WIKI-X-049.md),
 [WIKI-T-169](theory/WIKI-T-169.md), and
-[WIKI-E-063](experiment/WIKI-E-063.md).  When implementation tests violate
-theory, first use [WIKI-X-050](cross-domain/WIKI-X-050.md) to check nonuniform
+[WIKI-E-063](experiment/WIKI-E-063.md).  When a problem occurs, first use
+[WIKI-X-051](cross-domain/WIKI-X-051.md) for theory-first RCA and
+countermeasure design.  When implementation tests violate theory, then use
+[WIKI-X-050](cross-domain/WIKI-X-050.md) to check nonuniform
 metrics and interface-tracking grid rebuild contracts before tuning.  Use the
 same card as an implementation-review gate before accepting solver, GPU, YAML,
 or cache changes. Older cards remain listed for
@@ -245,6 +247,7 @@ algorithm policy without their curation notes.
 | [WIKI-X-048](cross-domain/WIKI-X-048.md) | Ch14 Capillary Hodge Trial Ledger: Knowledge, Failures, and Falsified Routes |
 | [WIKI-X-049](cross-domain/WIKI-X-049.md) | AO-Fast Capillary Admission and Chapter 14 YAML Boundary |
 | [WIKI-X-050](cross-domain/WIKI-X-050.md) | Theory-First Debug Priority: Nonuniform Metrics and Interface-Tracking Rebuilds |
+| [WIKI-X-051](cross-domain/WIKI-X-051.md) | Theory-First Problem RCA and Countermeasure Protocol |
 
 ## Experiment (63)
 
