@@ -115,8 +115,8 @@ def refresh_active_geometry_2d(grid, phi, cell_ids, *, level: float = 0.0):
 def _active_cell_corner_fields(xp, grid, phi, cell_ids):
     i = cell_ids[:, 0]
     j = cell_ids[:, 1]
-    x = xp.asarray(grid.coords[0], dtype=phi.dtype)
-    y = xp.asarray(grid.coords[1], dtype=phi.dtype)
+    x = _device_coord_1d(xp, grid, 0, phi.dtype)
+    y = _device_coord_1d(xp, grid, 1, phi.dtype)
     values = (
         phi[i, j],
         phi[i + 1, j],
@@ -130,6 +130,13 @@ def _active_cell_corner_fields(xp, grid, phi, cell_ids):
         (x[i], y[j + 1]),
     )
     return values, points
+
+
+def _device_coord_1d(xp, grid, axis: int, dtype):
+    getter = getattr(grid, "device_coords", None)
+    if callable(getter):
+        return getter(axis, dtype=dtype)
+    return xp.asarray(grid.coords[axis], dtype=dtype)
 
 
 def _active_cell_measures_from_points(points):

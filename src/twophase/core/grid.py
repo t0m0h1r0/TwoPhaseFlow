@@ -71,6 +71,10 @@ class Grid:
         self.shape: tuple = tuple(n + 1 for n in self.N)
         self._cell_volumes = None
         self._cell_volume_axes: tuple[str, ...] | None = None
+        self._device_coord_cache: dict[tuple, object] = {}
+        self._device_cell_width_cache: dict[tuple, object] = {}
+        self._device_metric_cache: dict[tuple, object] = {}
+        self._device_metric_gradient_cache: dict[tuple, object] = {}
         self.bc_type = getattr(grid_config, "bc_type", "wall")
 
         # Metrics (identity for uniform grid)
@@ -89,7 +93,56 @@ class Grid:
         metric-building path; conversion happens only at this boundary.
         """
         xp = self.xp
-        return xp.meshgrid(*[xp.asarray(c) for c in self.coords], indexing="ij")
+        return xp.meshgrid(
+            *[self.device_coords(axis) for axis in range(self.ndim)],
+            indexing="ij",
+        )
+
+    def device_coords(self, axis: int, dtype=None):
+        """Return a cached backend-native coordinate vector for one axis."""
+        coords = self.coords[axis]
+        dtype_key = np.dtype(dtype if dtype is not None else coords.dtype).str
+        key = (int(axis), dtype_key, id(coords), tuple(coords.shape))
+        cached = self._device_coord_cache.get(key)
+        if cached is None:
+            cached = self.xp.asarray(coords, dtype=np.dtype(dtype_key))
+            self._device_coord_cache[key] = cached
+        return cached
+
+    def device_cell_widths(self, axis: int, dtype=None):
+        """Return cached backend-native cell widths for one axis."""
+        coords = self.coords[axis]
+        dtype_key = np.dtype(dtype if dtype is not None else coords.dtype).str
+        key = (int(axis), dtype_key, id(coords), tuple(coords.shape))
+        cached = self._device_cell_width_cache.get(key)
+        if cached is None:
+            cached = self.xp.asarray(np.diff(coords), dtype=np.dtype(dtype_key))
+            self._device_cell_width_cache[key] = cached
+        return cached
+
+    def device_metric(self, axis: int, dtype=None):
+        """Return cached backend-native CCD metric ``J`` for one axis."""
+        metric = self.J[axis]
+        dtype_key = np.dtype(dtype if dtype is not None else metric.dtype).str
+        key = (int(axis), dtype_key, id(metric), tuple(metric.shape))
+        cached = self._device_metric_cache.get(key)
+        if cached is None:
+            cached = self.xp.asarray(metric, dtype=np.dtype(dtype_key))
+            self._device_metric_cache[key] = cached
+        return cached
+
+    def device_metric_gradient(self, axis: int, dtype=None):
+        """Return cached backend-native CCD metric derivative for one axis."""
+        metric_gradient = self.dJ_dxi[axis]
+        dtype_key = np.dtype(
+            dtype if dtype is not None else metric_gradient.dtype
+        ).str
+        key = (int(axis), dtype_key, id(metric_gradient), tuple(metric_gradient.shape))
+        cached = self._device_metric_gradient_cache.get(key)
+        if cached is None:
+            cached = self.xp.asarray(metric_gradient, dtype=np.dtype(dtype_key))
+            self._device_metric_gradient_cache[key] = cached
+        return cached
 
     def update_from_levelset(
         self,
@@ -346,16 +399,17 @@ class Grid:
         two-dimensional ``φ`` field to host; the regular-stratum guard later
         materializes ``φ`` on host only after candidate coordinates exist.
         """
-        coords_axis = xp.asarray(self.coords[axis])
+        phi_dtype = xp.asarray(phi).dtype
+        coords_axis = self.device_coords(axis, dtype=phi_dtype)
         indicator = xp.zeros_like(coords_axis)
         if self.ndim != 2:
             return indicator
 
-        coords_x = xp.asarray(self.coords[0])
-        coords_y = xp.asarray(self.coords[1])
-        eps_sq = xp.asarray(eps_g * eps_g, dtype=xp.asarray(phi).dtype)
-        zero = xp.asarray(0.0, dtype=xp.asarray(phi).dtype)
-        one = xp.asarray(1.0, dtype=xp.asarray(phi).dtype)
+        coords_x = self.device_coords(0, dtype=phi_dtype)
+        coords_y = self.device_coords(1, dtype=phi_dtype)
+        eps_sq = xp.asarray(eps_g * eps_g, dtype=phi_dtype)
+        zero = xp.asarray(0.0, dtype=phi_dtype)
+        one = xp.asarray(1.0, dtype=phi_dtype)
 
         def projected_indicator(projected, mask):
             distance = coords_axis.reshape((-1,) + (1,) * projected.ndim) - projected
@@ -620,6 +674,10 @@ class Grid:
 
         Delegates to core.metrics.compute_metrics() (SRP extraction).
         """
+        self._device_coord_cache.clear()
+        self._device_cell_width_cache.clear()
+        self._device_metric_cache.clear()
+        self._device_metric_gradient_cache.clear()
         self.J, self.dJ_dxi = compute_metrics(
             self.coords, self.h, self.N, self.ndim, self.uniform, ccd,
         )

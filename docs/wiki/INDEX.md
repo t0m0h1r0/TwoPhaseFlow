@@ -1,4 +1,4 @@
-# Wiki Index — 372 entries
+# Wiki Index — 373 entries
 
 ## Active Retrieval Gate
 
@@ -14,7 +14,9 @@ countermeasure design.  When implementation tests violate theory, then use
 [WIKI-X-050](cross-domain/WIKI-X-050.md) to check nonuniform
 metrics and interface-tracking grid rebuild contracts before tuning.  Use the
 same card as an implementation-review gate before accepting solver, GPU, YAML,
-or cache changes. Older cards remain listed for
+or cache changes. For GPU optimization, use
+[WIKI-L-043](code/WIKI-L-043.md) before route-level retuning so hidden D2H/H2D
+boundaries are eliminated or justified first. Older cards remain listed for
 provenance, but cards marked SUPERSEDED or REFERENCE must not be used as current
 algorithm policy without their curation notes.
 
@@ -377,7 +379,7 @@ algorithm policy without their curation notes.
 | [WIKI-M-030](meta/WIKI-M-030.md) | Meta-Prompt Evolution Needs Telemetry, Skills, and Tool-Trust Gates |
 | [WIKI-M-031](meta/WIKI-M-031.md) | Review Artifacts Close the Loop with Finding, Fix, and Validation |
 
-## Code (42)
+## Code (43)
 
 | REF-ID | Title |
 |--------|-------|
@@ -423,3 +425,4 @@ algorithm policy without their curation notes.
 | [WIKI-L-040](code/WIKI-L-040.md) | Remote GPU Runs Must Prove the GPU Route Is Active |
 | [WIKI-L-041](code/WIKI-L-041.md) | YAML Route Flags Make Numerical Contracts Auditable |
 | [WIKI-L-042](code/WIKI-L-042.md) | Single-Core CPU Saturation Does Not Imply CPU-Parallel GPU Relief |
+| [WIKI-L-043](code/WIKI-L-043.md) | GPU Optimization Starts by Removing Hidden D2H/H2D Boundaries |

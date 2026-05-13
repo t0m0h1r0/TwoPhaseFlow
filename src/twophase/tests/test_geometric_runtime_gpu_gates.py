@@ -9,6 +9,7 @@ from twophase.backend import Backend
 from twophase.config import GridConfig
 from twophase.core.grid import Grid
 from twophase.geometry.p1_cut_geometry import cut_geometry_2d
+from twophase.simulation import geometric_phase_runtime_gpu as gpu_runtime
 from twophase.simulation.geometric_phase_runtime_gpu import (
     _host_scalar_packet_float,
     _solve_schur_dc_fixed_gpu,
@@ -84,6 +85,43 @@ def test_gpu_schur_pcg_respects_device_tolerance_mask():
 
     np.testing.assert_allclose(converged_initially, 0.0)
     np.testing.assert_allclose(solved, 2.0)
+
+
+def test_gpu_schur_pcg_uses_fixed_shape_masked_support(monkeypatch):
+    class GridStub:
+        ndim = 2
+        N = (2, 2)
+        xp = np
+
+    grid = GridStub()
+    jq_local = np.zeros((2, 2, 4), dtype=float)
+    jq_local[0, 0, :] = 1.0
+    rhs = np.zeros((2, 2), dtype=float)
+    rhs[0, 0] = 8.0
+    row_norm = np.sum(jq_local * jq_local, axis=-1)
+    active = row_norm > 0.0
+
+    def _dynamic_support_must_not_run(*_args, **_kwargs):
+        raise AssertionError("dynamic active support discovery was called")
+
+    monkeypatch.setattr(np, "argwhere", _dynamic_support_must_not_run)
+    monkeypatch.setattr(np, "unique", _dynamic_support_must_not_run)
+
+    solved = gpu_runtime._solve_schur_pcg_fixed_gpu(
+        grid,
+        np,
+        jq_local,
+        rhs,
+        row_norm,
+        active,
+        max_iterations=4,
+        tolerance=1.0e-12,
+        roundoff_floor=1.0e-14,
+    )
+
+    expected = np.zeros((2, 2), dtype=float)
+    expected[0, 0] = 2.0
+    np.testing.assert_allclose(solved, expected)
 
 
 def test_gpu_schur_dc_and_dc_then_pcg_follow_yaml_scheme():

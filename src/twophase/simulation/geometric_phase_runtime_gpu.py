@@ -276,8 +276,17 @@ def materialise_geometric_runtime_capillary_state_gpu(
     )
     del geometry
 
-    energy_local = sigma * derivatives.ds_local
-    energy_nodal = scatter_local_to_nodes(grid, energy_local)
+    row_norm = xp.sum(derivatives.jq_local * derivatives.jq_local, axis=-1)
+    active = row_norm > 0.0
+    schur_support = _masked_schur_support_from_active(
+        grid,
+        xp,
+        derivatives.jq_local,
+        row_norm,
+        active,
+    )
+    energy_local_A = sigma * schur_support.gather_local(derivatives.ds_local)
+    energy_nodal = schur_support.scatter_local_to_nodes(energy_local_A)
     capillary_nodal = -energy_nodal
     surface_energy = sigma * xp.sum(phase_state.geometry.cell_surface_lengths)
     surface = GeometricSurfaceEnergyCovector(
@@ -290,9 +299,8 @@ def materialise_geometric_runtime_capillary_state_gpu(
         compatibility_residual_linf=phase_state.compatibility_residual_linf,
     )
 
-    row_norm = xp.sum(derivatives.jq_local * derivatives.jq_local, axis=-1)
-    active = row_norm > 0.0
-    rhs = _apply_jq_full(xp, derivatives.jq_local, capillary_nodal)
+    rhs_A = schur_support.apply_j(capillary_nodal)
+    rhs = schur_support.scatter_cells(rhs_A)
     pressure_cell = _solve_schur_for_active_policy_gpu(
         grid,
         xp,
@@ -307,15 +315,15 @@ def materialise_geometric_runtime_capillary_state_gpu(
         dc_tolerance=dc_tolerance,
         dc_max_iterations=dc_max_iterations,
         dc_relaxation=dc_relaxation,
+        support=schur_support,
     )
-    pressure_nodal = _apply_jq_transpose_full(grid, derivatives.jq_local, pressure_cell)
-    projected_rhs = _apply_jq_full(xp, derivatives.jq_local, pressure_nodal)
-    schur_residual = xp.where(active, projected_rhs - rhs, xp.zeros_like(rhs))
+    pressure_A = schur_support.gather_cells(pressure_cell)
+    pressure_nodal = schur_support.apply_j_transpose(pressure_A)
+    projected_rhs_A = schur_support.apply_schur(pressure_A)
+    schur_residual = schur_support.scatter_cells(projected_rhs_A - rhs_A)
     residual_nodal = energy_nodal + pressure_nodal
-    normal_residual = xp.where(
-        active,
-        _apply_jq_full(xp, derivatives.jq_local, residual_nodal),
-        xp.zeros_like(rhs),
+    normal_residual = schur_support.scatter_cells(
+        schur_support.apply_j(residual_nodal)
     )
 
     capillary_face = _face_incidence_adjoint_gpu(
@@ -743,6 +751,13 @@ def _project_q_phi_compatibility_fixed_gpu(
         row_norm_floor = xp.asarray(1.0e-12, dtype=phi.dtype) * xp.max(row_norm)
         active_rows = row_norm > row_norm_floor
         rhs = xp.where(active_rows, residual, xp.zeros_like(residual))
+        schur_support = _masked_schur_support_from_active(
+            grid,
+            xp,
+            derivatives.jq_local,
+            row_norm,
+            active_rows,
+        )
         lagrange = _solve_schur_for_active_policy_gpu(
             grid,
             xp,
@@ -757,8 +772,11 @@ def _project_q_phi_compatibility_fixed_gpu(
             dc_tolerance=dc_tolerance,
             dc_max_iterations=dc_max_iterations,
             dc_relaxation=dc_relaxation,
+            support=schur_support,
         )
-        delta_phi = _apply_jq_transpose_full(grid, derivatives.jq_local, lagrange)
+        delta_phi = schur_support.apply_j_transpose(
+            schur_support.gather_cells(lagrange)
+        )
         step = _residual_reducing_step_gpu(
             grid,
             xp,
@@ -859,8 +877,8 @@ def _construct_p1_swept_flux_gpu(
     phi_dev = xp.asarray(phi)
     phi_rel = phi_dev - float(level)
     velocity_x, velocity_y = _face_arrays(grid, face_velocity, dtype=phi_dev.dtype)
-    x = xp.asarray(grid.coords[0], dtype=phi_dev.dtype)
-    y = xp.asarray(grid.coords[1], dtype=phi_dev.dtype)
+    x = _grid_coord_device(grid, xp, 0, phi_dev.dtype)
+    y = _grid_coord_device(grid, xp, 1, phi_dev.dtype)
     dx = x[1:] - x[:-1]
     dy = y[1:] - y[:-1]
     flux_x = xp.zeros_like(velocity_x)
@@ -1088,10 +1106,8 @@ def _face_volume_fluxes_gpu(grid, face_velocity, *, boundary):
     del boundary
     xp = grid.xp
     velocity_x, velocity_y = _face_arrays(grid, face_velocity, dtype=float)
-    x = xp.asarray(grid.coords[0], dtype=velocity_x.dtype)
-    y = xp.asarray(grid.coords[1], dtype=velocity_x.dtype)
-    dx = x[1:] - x[:-1]
-    dy = y[1:] - y[:-1]
+    dx = _grid_cell_width_device(grid, xp, 0, velocity_x.dtype)
+    dy = _grid_cell_width_device(grid, xp, 1, velocity_x.dtype)
     return (
         velocity_x * dy.reshape((1, -1)),
         velocity_y * dx.reshape((-1, 1)),
@@ -1108,10 +1124,8 @@ def _common_mass_fluxes_gpu(xp, phase_fluxes, volume_fluxes, *, rho_l, rho_g):
 
 def _face_mass_hodge_gpu(grid, state, density, *, rho_l, rho_g, boundary):
     xp = grid.xp
-    x = xp.asarray(grid.coords[0], dtype=density.dtype)
-    y = xp.asarray(grid.coords[1], dtype=density.dtype)
-    dx = x[1:] - x[:-1]
-    dy = y[1:] - y[:-1]
+    dx = _grid_cell_width_device(grid, xp, 0, density.dtype)
+    dy = _grid_cell_width_device(grid, xp, 1, density.dtype)
 
     rho_x = xp.zeros((grid.N[0] + 1, grid.N[1]), dtype=density.dtype)
     if grid.N[0] > 1:
@@ -1230,11 +1244,24 @@ def _full_cell_ids(grid, xp):
 
 
 def _cell_measures_2d(grid, xp, dtype):
-    x = xp.asarray(grid.coords[0], dtype=dtype)
-    y = xp.asarray(grid.coords[1], dtype=dtype)
-    dx = x[1:] - x[:-1]
-    dy = y[1:] - y[:-1]
+    dx = _grid_cell_width_device(grid, xp, 0, dtype)
+    dy = _grid_cell_width_device(grid, xp, 1, dtype)
     return dx[:, None] * dy[None, :]
+
+
+def _grid_coord_device(grid, xp, axis: int, dtype):
+    getter = getattr(grid, "device_coords", None)
+    if callable(getter):
+        return getter(axis, dtype=dtype)
+    return xp.asarray(grid.coords[axis], dtype=dtype)
+
+
+def _grid_cell_width_device(grid, xp, axis: int, dtype):
+    getter = getattr(grid, "device_cell_widths", None)
+    if callable(getter):
+        return getter(axis, dtype=dtype)
+    coords = _grid_coord_device(grid, xp, axis, dtype)
+    return coords[1:] - coords[:-1]
 
 
 def _face_arrays(grid, arrays, *, dtype):
@@ -1265,6 +1292,78 @@ def _apply_jq_full(xp, jq_local, nodal_values):
     return xp.sum(jq_local * local, axis=-1)
 
 
+class _MaskedSchurSupport2D:
+    """Fixed-shape coordinates for the active Schur operator ``J_A J_A^T``.
+
+    A3 mapping:
+      Equation: AO-Fast solves the active normal equations
+      ``J_A J_A^T lambda_A = b_A`` on the fixed P1 cut stratum.
+      Discretization: inactive rows are represented by a backend mask rather
+      than discovered through ``argwhere``/``unique`` so the row space has fixed
+      shape and no dynamic support-count synchronization.
+      Code: masked ``J``/``J^T`` preserve the dense operator coefficients and
+      keep every Krylov recurrence on device-resident arrays.
+    """
+
+    def __init__(self, grid, xp, jq_local, row_norm, active):
+        if grid.ndim != 2:
+            raise ValueError("masked Schur support currently supports 2D grids")
+        self.grid = grid
+        self.xp = xp
+        self.cell_shape = tuple(grid.N)
+        self.node_shape = (int(grid.N[0]) + 1, int(grid.N[1]) + 1)
+        self.n_cells = int(grid.N[0]) * int(grid.N[1])
+        self.n_nodes = self.node_shape[0] * self.node_shape[1]
+        self.jq_local = xp.asarray(jq_local)
+        self.row_norm_A = xp.asarray(row_norm)
+        self.active = xp.asarray(active, dtype=bool)
+        self.dtype = self.jq_local.dtype
+        self.n_active = self.n_cells
+
+    def gather_cells(self, cell_values):
+        """Return fixed-shape active cell values with inactive rows zeroed."""
+        values = self.xp.asarray(cell_values).reshape(self.cell_shape)
+        return self.xp.where(self.active, values, self.xp.zeros_like(values))
+
+    def scatter_cells(self, active_values):
+        """Return dense cell values with inactive rows zeroed."""
+        xp = self.xp
+        values = xp.asarray(active_values).reshape(self.cell_shape)
+        return xp.where(self.active, values, xp.zeros_like(values))
+
+    def gather_local(self, local_values):
+        """Return fixed-shape local corner values with inactive rows zeroed."""
+        xp = self.xp
+        local = xp.asarray(local_values).reshape(self.cell_shape + (4,))
+        return xp.where(self.active[..., None], local, xp.zeros_like(local))
+
+    def scatter_local_to_nodes(self, local_values):
+        """Scatter active cell-local corner covectors to dense nodal values."""
+        return scatter_local_to_nodes(self.grid, self.gather_local(local_values))
+
+    def apply_j(self, nodal_values):
+        """Apply active ``J`` to a dense nodal vector."""
+        xp = self.xp
+        applied = _apply_jq_full(xp, self.jq_local, nodal_values)
+        return xp.where(self.active, applied, xp.zeros_like(applied))
+
+    def apply_j_transpose(self, cell_values):
+        """Apply active ``J^T`` and scatter to the dense nodal shape."""
+        return _apply_jq_transpose_full(
+            self.grid,
+            self.jq_local,
+            self.gather_cells(cell_values),
+        )
+
+    def apply_schur(self, cell_values):
+        """Apply masked ``J_A J_A^T`` to fixed-shape cell values."""
+        return self.apply_j(self.apply_j_transpose(cell_values))
+
+
+def _masked_schur_support_from_active(grid, xp, jq_local, row_norm, active):
+    return _MaskedSchurSupport2D(grid, xp, jq_local, row_norm, active)
+
+
 def _solve_schur_for_active_policy_gpu(
     grid,
     xp,
@@ -1280,6 +1379,7 @@ def _solve_schur_for_active_policy_gpu(
     dc_tolerance: float,
     dc_max_iterations: int,
     dc_relaxation: float,
+    support=None,
 ):
     """Dispatch the AO-Fast active Schur solve without hidden fallbacks."""
     scheme = str(solver_scheme).strip().lower()
@@ -1294,6 +1394,7 @@ def _solve_schur_for_active_policy_gpu(
             max_iterations=pcg_max_iterations,
             tolerance=pcg_tolerance,
             roundoff_floor=pcg_roundoff_floor,
+            support=support,
         )
     if scheme == "dc":
         return _solve_schur_dc_fixed_gpu(
@@ -1306,6 +1407,7 @@ def _solve_schur_for_active_policy_gpu(
             max_iterations=dc_max_iterations,
             tolerance=dc_tolerance,
             relaxation=dc_relaxation,
+            support=support,
         )
     if scheme == "dc_then_pcg":
         dc_guess = _solve_schur_dc_fixed_gpu(
@@ -1318,6 +1420,7 @@ def _solve_schur_for_active_policy_gpu(
             max_iterations=dc_max_iterations,
             tolerance=dc_tolerance,
             relaxation=dc_relaxation,
+            support=support,
         )
         return _solve_schur_pcg_fixed_gpu(
             grid,
@@ -1330,6 +1433,7 @@ def _solve_schur_for_active_policy_gpu(
             max_iterations=pcg_max_iterations,
             tolerance=pcg_tolerance,
             roundoff_floor=pcg_roundoff_floor,
+            support=support,
         )
     raise ValueError(
         "solver_scheme must be 'pcg', 'dc', or 'dc_then_pcg'"
@@ -1348,6 +1452,7 @@ def _solve_schur_pcg_fixed_gpu(
     tolerance: float,
     roundoff_floor: float | None = None,
     initial_guess=None,
+    support=None,
 ):
     """Solve ``J J^T x = rhs`` with a fixed device-resident PCG loop.
 
@@ -1365,14 +1470,27 @@ def _solve_schur_pcg_fixed_gpu(
         roundoff_floor = _validate_positive_float(roundoff_floor, "roundoff_floor")
         if roundoff_floor > tolerance:
             raise ValueError("roundoff_floor must not exceed tolerance")
-    b = xp.where(active, xp.asarray(rhs), xp.zeros_like(rhs))
-    diagonal = xp.where(active & (row_norm > 0.0), row_norm, xp.ones_like(row_norm))
+    support = support or _masked_schur_support_from_active(
+        grid,
+        xp,
+        jq_local,
+        row_norm,
+        active,
+    )
+    if support.n_active == 0:
+        return xp.zeros_like(rhs)
+    b = support.gather_cells(rhs)
+    diagonal = xp.where(
+        support.row_norm_A > 0.0,
+        support.row_norm_A,
+        xp.ones_like(support.row_norm_A),
+    )
     x = (
         xp.zeros_like(b)
         if initial_guess is None
-        else xp.where(active, xp.asarray(initial_guess), xp.zeros_like(b))
+        else support.gather_cells(initial_guess)
     )
-    r = b - _apply_schur_full_gpu(grid, xp, jq_local, x)
+    r = b - support.apply_schur(x)
     z = r / diagonal
     p = z
     rz_old = xp.sum(r * z)
@@ -1383,7 +1501,7 @@ def _solve_schur_pcg_fixed_gpu(
     eps = xp.asarray(algebra_floor, dtype=b.dtype)
     residual_tolerance = xp.asarray(tolerance, dtype=b.dtype)
     for _ in range(iterations):
-        ap = _apply_schur_full_gpu(grid, xp, jq_local, p)
+        ap = support.apply_schur(p)
         denom = xp.sum(p * ap)
         residual_linf = xp.max(xp.abs(r))
         active_iteration = (
@@ -1403,7 +1521,7 @@ def _solve_schur_pcg_fixed_gpu(
         beta = xp.where(active_iteration, rz_new / safe_rz_old, xp.zeros_like(rz_old))
         p = xp.where(active_iteration, z + beta * p, p)
         rz_old = xp.where(active_iteration, rz_new, rz_old)
-    return xp.where(active, x, xp.zeros_like(x))
+    return support.scatter_cells(x)
 
 
 def _solve_schur_dc_fixed_gpu(
@@ -1418,6 +1536,7 @@ def _solve_schur_dc_fixed_gpu(
     tolerance: float,
     relaxation: float,
     initial_guess=None,
+    support=None,
 ):
     """Residual-monotone Jacobi defect correction for active Schur rows."""
     iterations = _validate_positive_int(max_iterations, "max_iterations")
@@ -1425,29 +1544,39 @@ def _solve_schur_dc_fixed_gpu(
     relaxation = _validate_positive_float(relaxation, "relaxation")
     if relaxation > 1.0:
         raise ValueError("relaxation must not exceed 1.0")
-    b = xp.where(active, xp.asarray(rhs), xp.zeros_like(rhs))
-    diagonal = xp.where(active & (row_norm > 0.0), row_norm, xp.ones_like(row_norm))
+    support = support or _masked_schur_support_from_active(
+        grid,
+        xp,
+        jq_local,
+        row_norm,
+        active,
+    )
+    if support.n_active == 0:
+        return xp.zeros_like(rhs)
+    b = support.gather_cells(rhs)
+    diagonal = xp.where(
+        support.row_norm_A > 0.0,
+        support.row_norm_A,
+        xp.ones_like(support.row_norm_A),
+    )
     x = (
         xp.zeros_like(b)
         if initial_guess is None
-        else xp.where(active, xp.asarray(initial_guess), xp.zeros_like(b))
+        else support.gather_cells(initial_guess)
     )
-    residual = b - _apply_schur_full_gpu(grid, xp, jq_local, x)
-    residual = xp.where(active, residual, xp.zeros_like(residual))
+    residual = b - support.apply_schur(x)
     residual_linf = xp.max(xp.abs(residual))
     residual_tolerance = xp.asarray(tolerance, dtype=b.dtype)
     for _ in range(iterations):
         active_iteration = residual_linf > residual_tolerance
         candidate = x + relaxation * residual / diagonal
-        candidate = xp.where(active, candidate, xp.zeros_like(candidate))
-        candidate_residual = b - _apply_schur_full_gpu(grid, xp, jq_local, candidate)
-        candidate_residual = xp.where(active, candidate_residual, xp.zeros_like(residual))
+        candidate_residual = b - support.apply_schur(candidate)
         candidate_linf = xp.max(xp.abs(candidate_residual))
         accept = active_iteration & (candidate_linf <= residual_linf)
         x = xp.where(accept, candidate, x)
         residual = xp.where(accept, candidate_residual, residual)
         residual_linf = xp.where(accept, candidate_linf, residual_linf)
-    return xp.where(active, x, xp.zeros_like(x))
+    return support.scatter_cells(x)
 
 
 def _apply_schur_full_gpu(grid, xp, jq_local, cell_values):
