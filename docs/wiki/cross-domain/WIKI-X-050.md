@@ -3,7 +3,7 @@ ref_id: WIKI-X-050
 title: "Theory-First Debug Priority: Nonuniform Metrics and Interface-Tracking Rebuilds"
 domain: cross-domain
 status: ACTIVE
-tags: [rca, implementation_tests, nonuniform_grid, grid_rebuild, metrics, interface_tracking]
+tags: [rca, implementation_tests, implementation_review, nonuniform_grid, grid_rebuild, metrics, interface_tracking]
 sources:
   - path: artifacts/A/ch14_nonuniform_ccd_xi_metric_rca_CHK-RA-CH14-AO-FASTVOL-044.md
     description: "Ch14 capillary RCA showing nonuniform CCD used physical L/N where computational dxi=1/N was required"
@@ -22,7 +22,7 @@ depends_on:
   - "[[WIKI-X-043]]"
 consumers:
   - domain: code
-    usage: "When theory-predicted behavior fails in implementation tests, inspect nonuniform metric and rebuild contracts before tuning"
+    usage: "When implementing or reviewing solver changes, and when theory-predicted behavior fails in tests, inspect nonuniform metric and rebuild contracts before tuning"
   - domain: experiment
     usage: "Use uniform/static-grid controls to separate physics failure from coordinate/rebuild implementation defects"
   - domain: theory
@@ -78,6 +78,38 @@ Use this sequence for theory-first implementation debugging:
 
 Only after these checks pass should the RCA spend effort on timestep policy,
 solver iteration count, or physical-model alternatives.
+
+## Implementation Review Gate
+
+Use this card before approving any implementation that touches discretization,
+GPU kernels, solver policies, YAML wiring, cache lifetimes, or interface state.
+The common failure mode is forgetting that a change was tested on the fixed
+uniform grid while production Chapter 14 paths use nonuniform metrics and
+interface-tracking grid rebuilds.
+
+Required review questions:
+
+1. Does the implementation state which variables live on physical coordinates,
+   computational coordinates, cell cochains, face cochains, P1 nodes, and active
+   interface support?
+2. On nonuniform grids, is there one metric source of truth for `dx`, `dy`,
+   cell volumes, face measures, Hodge weights, and compact derivative scaling?
+3. Are compact derivatives built in the intended coordinate space?  In
+   particular, tests must include `L != 1` so `L/N` versus `1/N` mistakes cannot
+   pass dimensionally.
+4. If the interface-tracking grid rebuilds, are all transported variables,
+   pressure/history variables, geometry tables, active supports, and device
+   buffers rebuilt or invalidated on the same metric epoch?
+5. Does the first-rebuild or second-step test exercise the new code path?  A
+   one-step uniform smoke test is not sufficient for rebuild-sensitive logic.
+6. Does the YAML expose the scheme, parameters, and initial-state definition
+   instead of baking a hidden nonuniform/rebuild assumption into code?
+7. Does any GPU optimization assume uniform spacing, stale cached coordinates,
+   host-side geometry, or a fixed active support after the grid mutates?
+
+If any answer is unclear, stop and add a targeted nonuniform/rebuild regression
+before accepting the implementation.  Do not compensate with smaller timesteps,
+looser tolerances, more solver iterations, or physical damping.
 
 ## Red Flags
 

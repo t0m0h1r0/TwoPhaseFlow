@@ -10,7 +10,9 @@ state-space boundaries, use [WIKI-X-049](cross-domain/WIKI-X-049.md),
 [WIKI-T-169](theory/WIKI-T-169.md), and
 [WIKI-E-063](experiment/WIKI-E-063.md).  When implementation tests violate
 theory, first use [WIKI-X-050](cross-domain/WIKI-X-050.md) to check nonuniform
-metrics and interface-tracking grid rebuild contracts before tuning. Older cards remain listed for
+metrics and interface-tracking grid rebuild contracts before tuning.  Use the
+same card as an implementation-review gate before accepting solver, GPU, YAML,
+or cache changes. Older cards remain listed for
 provenance, but cards marked SUPERSEDED or REFERENCE must not be used as current
 algorithm policy without their curation notes.
 
