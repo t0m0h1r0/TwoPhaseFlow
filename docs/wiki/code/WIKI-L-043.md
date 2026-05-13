@@ -10,6 +10,8 @@ sources:
     description: "Chapter 14 capillary active-geometry transfer minimization"
   - path: artifacts/A/ch14_gpu_scalar_transfer_batching_CHK-RA-CH14-AO-FASTVOL-052.md
     description: "Fail-close guard against single-scalar GPU transfers"
+  - path: artifacts/A/ch14_gpu_geometry_schur_fusion_CHK-RA-CH14-AO-FASTVOL-055.md
+    description: "Algebra-preserving AO-Fast geometry and Schur fusion"
 depends_on:
   - "[[WIKI-L-038]]"
   - "[[WIKI-L-039]]"
@@ -48,6 +50,19 @@ fixed-shape route is still not faster, the conclusion is not "relax physics";
 it is that the measured cost is dominated by another algebraic kernel, grid
 rebuild, output, or problem-size occupancy limit.
 
+After transfer boundaries are removed, inspect whether the GPU route is still
+issuing many exact but tiny kernels.  The next admissible step is to fuse the
+same discrete algebra, not to change the problem.  Examples from the Chapter 14
+capillary route:
+
+- if a line-search theorem only needs exact `Q_h(phi)`, evaluate a `Q_h`-only
+  geometry packet instead of full `Q_h/S_h/J_q/dS_h`;
+- if the candidate set is fixed, evaluate all candidates in one backend packet
+  and choose the first accepted step with device masks;
+- if a hot operator is exactly `J_A J_A^T`, implement the same P1 cell-node
+  incidence sum directly or with a backend RawKernel, with all metric and
+  nonuniform-grid dependence carried by `J_A`.
+
 ## Consequences
 
 - Do not retune CFL, tolerances, pressure routes, smoothing, or damping to make
@@ -55,6 +70,9 @@ rebuild, output, or problem-size occupancy limit.
 - Device caches must be invalidated on the same metric epoch that rebuilds
   coordinates and nonuniform metrics.
 - Tests should forbid dynamic support discovery in fixed-shape GPU Schur paths.
+- Tests should prove every fused algebraic path matches the unfused exact path:
+  `Q_h`-only vs full geometry, batched candidates vs individual candidates, and
+  fused Schur vs `J(J^T x)`.
 - GPU runtime code should not keep a usable single-scalar transfer helper; even
   unavoidable scalar diagnostics should pass through a packet helper so future
   additions naturally batch synchronization.

@@ -20,7 +20,10 @@ from contextlib import nullcontext
 import numpy as np
 
 from ..backend import is_device_array
-from ..geometry.active_kernels import refresh_active_geometry_2d
+from ..geometry.active_kernels import (
+    refresh_active_geometry_2d,
+    refresh_active_volume_geometry_candidates_2d,
+)
 from ..geometry.bundle_capillary import (
     GeometricCapillaryRieszRepresentative,
     GeometricFaceMassHodge,
@@ -51,6 +54,9 @@ from .geometric_phase_runtime import (
     GeometricRuntimeCapillaryState,
     GeometricRuntimeCommonFluxState,
 )
+
+
+_SCHUR_RAW_KERNELS = {}
 
 
 def build_geometric_phase_state_gpu(grid, phi, *, level: float = 0.0):
@@ -672,6 +678,19 @@ def _geometry_and_derivatives_full(grid, phi, *, level: float):
     return geometry, derivatives
 
 
+def _geometry_q_candidates_full(grid, phi_candidates, *, level: float):
+    xp = grid.xp
+    phi_dev = xp.asarray(phi_candidates)
+    cell_ids = _full_cell_ids(grid, xp)
+    active = refresh_active_volume_geometry_candidates_2d(
+        grid,
+        phi_dev,
+        cell_ids,
+        level=level,
+    )
+    return active.q_A.reshape((phi_dev.shape[0],) + tuple(grid.N))
+
+
 def _phase_state_from_q_phi_gpu(grid, q, phi, *, level: float):
     xp = grid.xp
     phi_dev = xp.asarray(phi)
@@ -821,27 +840,21 @@ def _residual_reducing_step_gpu(
     """Pick the first fixed backtracking step that reduces exact ``Q_h`` error."""
     step = xp.minimum(xp.asarray(1.0, dtype=phi.dtype), step_cap)
     min_step = xp.asarray(1.0e-8, dtype=phi.dtype)
-    selected = xp.asarray(0.0, dtype=phi.dtype)
-    accepted = xp.asarray(False)
-    for _ in range(6):
-        valid_step = step >= min_step
-        candidate_phi = phi + step * delta_phi
-        candidate_geometry, candidate_derivatives = _geometry_and_derivatives_full(
-            grid,
-            candidate_phi,
-            level=level,
-        )
-        del candidate_derivatives
-        candidate_linf = _linf(xp, q_target - candidate_geometry.q)
-        accept = (
-            active_newton
-            & (~accepted)
-            & valid_step
-            & (candidate_linf < current_residual_linf)
-        )
-        selected = xp.where(accept, step, selected)
-        accepted = accepted | accept
-        step = 0.5 * step
+    factors = xp.asarray((1.0, 0.5, 0.25, 0.125, 0.0625, 0.03125), dtype=phi.dtype)
+    steps = step * factors
+    candidate_phi = phi[None, ...] + steps[:, None, None] * delta_phi[None, ...]
+    candidate_q = _geometry_q_candidates_full(grid, candidate_phi, level=level)
+    candidate_linf = xp.max(xp.abs(q_target[None, ...] - candidate_q), axis=(1, 2))
+    candidate_index = xp.arange(steps.shape[0], dtype=xp.int64)
+    sentinel = xp.asarray(steps.shape[0], dtype=xp.int64)
+    accept = (
+        active_newton
+        & (steps >= min_step)
+        & (candidate_linf < current_residual_linf)
+    )
+    first = xp.min(xp.where(accept, candidate_index, sentinel))
+    first_mask = candidate_index == first
+    selected = xp.sum(xp.where(first_mask, steps, xp.zeros_like(steps)))
     return selected
 
 
@@ -1357,11 +1370,174 @@ class _MaskedSchurSupport2D:
 
     def apply_schur(self, cell_values):
         """Apply masked ``J_A J_A^T`` to fixed-shape cell values."""
-        return self.apply_j(self.apply_j_transpose(cell_values))
+        return _apply_schur_masked_2d(
+            self.xp,
+            self.jq_local,
+            self.active,
+            cell_values,
+            self.cell_shape,
+            self.node_shape,
+        )
 
 
 def _masked_schur_support_from_active(grid, xp, jq_local, row_norm, active):
     return _MaskedSchurSupport2D(grid, xp, jq_local, row_norm, active)
+
+
+def _apply_schur_masked_2d(
+    xp,
+    jq_local,
+    active,
+    cell_values,
+    cell_shape,
+    node_shape,
+):
+    """Apply ``J_A J_A^T`` using the P1 cell-node incidence formula.
+
+    Algebraically this is identical to scatter-local-to-nodes followed by a
+    local gather, but it avoids constructing the intermediate local and stacked
+    nodal gather arrays in the Krylov hot loop.
+    """
+    values = xp.asarray(cell_values).reshape(cell_shape)
+    raw_result = _apply_schur_masked_2d_raw_if_available(
+        xp,
+        jq_local,
+        active,
+        values,
+        cell_shape,
+    )
+    if raw_result is not None:
+        return raw_result
+    return _apply_schur_masked_2d_vector(
+        xp,
+        jq_local,
+        active,
+        values,
+        cell_shape,
+        node_shape,
+    )
+
+
+def _apply_schur_masked_2d_vector(
+    xp,
+    jq_local,
+    active,
+    cell_values,
+    cell_shape,
+    node_shape,
+):
+    values = xp.asarray(cell_values).reshape(cell_shape)
+    active_values = xp.where(active, values, xp.zeros_like(values))
+    local = jq_local * active_values[..., None]
+    nodal = xp.zeros(node_shape, dtype=local.dtype)
+    nodal[:-1, :-1] = nodal[:-1, :-1] + local[..., 0]
+    nodal[1:, :-1] = nodal[1:, :-1] + local[..., 1]
+    nodal[1:, 1:] = nodal[1:, 1:] + local[..., 2]
+    nodal[:-1, 1:] = nodal[:-1, 1:] + local[..., 3]
+    applied = (
+        jq_local[..., 0] * nodal[:-1, :-1]
+        + jq_local[..., 1] * nodal[1:, :-1]
+        + jq_local[..., 2] * nodal[1:, 1:]
+        + jq_local[..., 3] * nodal[:-1, 1:]
+    )
+    return xp.where(active, applied, xp.zeros_like(applied))
+
+
+def _apply_schur_masked_2d_raw_if_available(
+    xp,
+    jq_local,
+    active,
+    values,
+    cell_shape,
+):
+    raw_kernel_type = getattr(xp, "RawKernel", None)
+    if raw_kernel_type is None:
+        return None
+    dtype = np.dtype(values.dtype)
+    if dtype not in (np.dtype("float32"), np.dtype("float64")):
+        return None
+    jq = xp.ascontiguousarray(jq_local)
+    mask = xp.ascontiguousarray(active)
+    cells = xp.ascontiguousarray(values)
+    out = xp.empty(cell_shape, dtype=values.dtype)
+    kernel = _schur_raw_kernel(xp, dtype)
+    n_cells = int(cell_shape[0]) * int(cell_shape[1])
+    threads = 128
+    blocks = (n_cells + threads - 1) // threads
+    kernel(
+        (blocks,),
+        (threads,),
+        (
+            jq,
+            mask,
+            cells,
+            out,
+            np.int32(cell_shape[0]),
+            np.int32(cell_shape[1]),
+            np.int32(n_cells),
+        ),
+    )
+    return out
+
+
+def _schur_raw_kernel(xp, dtype):
+    key = (id(xp), np.dtype(dtype).name)
+    cached = _SCHUR_RAW_KERNELS.get(key)
+    if cached is not None:
+        return cached
+    scalar = "float" if np.dtype(dtype) == np.dtype("float32") else "double"
+    code = f"""
+extern "C" __global__
+void apply_schur_masked_2d(
+    const {scalar}* __restrict__ jq,
+    const bool* __restrict__ active,
+    const {scalar}* __restrict__ values,
+    {scalar}* __restrict__ out,
+    const int nx,
+    const int ny,
+    const int n_cells
+) {{
+    int idx = blockDim.x * blockIdx.x + threadIdx.x;
+    if (idx >= n_cells) {{
+        return;
+    }}
+    if (!active[idx]) {{
+        out[idx] = ({scalar})0;
+        return;
+    }}
+    int i = idx / ny;
+    int j = idx - i * ny;
+    {scalar} result = ({scalar})0;
+    for (int corner = 0; corner < 4; ++corner) {{
+        int ni = i + ((corner == 1 || corner == 2) ? 1 : 0);
+        int nj = j + ((corner == 2 || corner == 3) ? 1 : 0);
+        {scalar} nodal = ({scalar})0;
+        int cidx;
+        cidx = ni * ny + nj;
+        if (ni >= 0 && ni < nx && nj >= 0 && nj < ny && active[cidx]) {{
+            nodal += jq[4 * cidx + 0] * values[cidx];
+        }}
+        cidx = (ni - 1) * ny + nj;
+        if (ni - 1 >= 0 && ni - 1 < nx && nj >= 0 && nj < ny && active[cidx]) {{
+            nodal += jq[4 * cidx + 1] * values[cidx];
+        }}
+        cidx = (ni - 1) * ny + (nj - 1);
+        if (ni - 1 >= 0 && ni - 1 < nx && nj - 1 >= 0 && nj - 1 < ny
+                && active[cidx]) {{
+            nodal += jq[4 * cidx + 2] * values[cidx];
+        }}
+        cidx = ni * ny + (nj - 1);
+        if (ni >= 0 && ni < nx && nj - 1 >= 0 && nj - 1 < ny && active[cidx]) {{
+            nodal += jq[4 * cidx + 3] * values[cidx];
+        }}
+        result += jq[4 * idx + corner] * nodal;
+    }}
+    out[idx] = result;
+}}
+"""
+    kernel = xp.RawKernel(code, "apply_schur_masked_2d")
+    _SCHUR_RAW_KERNELS[key] = kernel
+    return kernel
 
 
 def _solve_schur_for_active_policy_gpu(

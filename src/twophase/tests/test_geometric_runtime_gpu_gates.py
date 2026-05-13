@@ -131,6 +131,83 @@ def test_gpu_schur_pcg_uses_fixed_shape_masked_support(monkeypatch):
     np.testing.assert_allclose(solved, expected)
 
 
+def test_gpu_masked_schur_direct_formula_matches_j_jt_composition():
+    class GridStub:
+        ndim = 2
+        N = (3, 2)
+        xp = np
+
+    rng = np.random.default_rng(314)
+    grid = GridStub()
+    jq_local = rng.normal(size=(3, 2, 4))
+    active = np.asarray(
+        [[True, False], [True, True], [False, True]],
+        dtype=bool,
+    )
+    jq_local = np.where(active[..., None], jq_local, 0.0)
+    row_norm = np.sum(jq_local * jq_local, axis=-1)
+    cell = rng.normal(size=(3, 2))
+    support = gpu_runtime._masked_schur_support_from_active(
+        grid,
+        np,
+        jq_local,
+        row_norm,
+        active,
+    )
+
+    direct = support.apply_schur(cell)
+    composed = support.apply_j(support.apply_j_transpose(cell))
+
+    np.testing.assert_allclose(direct, composed, rtol=1.0e-14, atol=1.0e-14)
+
+
+def test_gpu_masked_schur_raw_kernel_matches_vector_formula():
+    cp = pytest.importorskip("cupy")
+    try:
+        if cp.cuda.runtime.getDeviceCount() < 1:
+            pytest.skip("CUDA device unavailable")
+    except cp.cuda.runtime.CUDARuntimeError as exc:
+        pytest.skip(str(exc))
+
+    class GridStub:
+        ndim = 2
+        N = (3, 2)
+        xp = cp
+
+    rng = np.random.default_rng(2718)
+    grid = GridStub()
+    active_np = np.asarray(
+        [[True, False], [True, True], [False, True]],
+        dtype=bool,
+    )
+    jq_np = rng.normal(size=(3, 2, 4))
+    jq_np = np.where(active_np[..., None], jq_np, 0.0)
+    cell_np = rng.normal(size=(3, 2))
+    jq_local = cp.asarray(jq_np)
+    active = cp.asarray(active_np)
+    cell = cp.asarray(cell_np)
+    row_norm = cp.sum(jq_local * jq_local, axis=-1)
+    support = gpu_runtime._masked_schur_support_from_active(
+        grid,
+        cp,
+        jq_local,
+        row_norm,
+        active,
+    )
+
+    raw = support.apply_schur(cell)
+    vector = gpu_runtime._apply_schur_masked_2d_vector(
+        cp,
+        jq_local,
+        active,
+        cell,
+        grid.N,
+        (grid.N[0] + 1, grid.N[1] + 1),
+    )
+
+    cp.testing.assert_allclose(raw, vector, rtol=1.0e-12, atol=1.0e-12)
+
+
 def test_gpu_schur_dc_and_dc_then_pcg_follow_yaml_scheme():
     class GridStub:
         ndim = 2

@@ -44,6 +44,15 @@ class P1ActiveGeometry:
     regular_mask_A: object
 
 
+@dataclass(frozen=True)
+class P1ActiveVolumeGeometry:
+    """Backend-native P1 cell volumes without surface/Jacobian work."""
+
+    q_A: object
+    case_code_A: object
+    cell_measure_A: object
+
+
 def active_cell_node_ids_2d(grid, cell_ids):
     """Return flattened Q1/P1 corner node ids for compact 2D cell ids."""
     xp = grid.xp
@@ -112,6 +121,77 @@ def refresh_active_geometry_2d(grid, phi, cell_ids, *, level: float = 0.0):
     )
 
 
+def refresh_active_volume_geometry_2d(grid, phi, cell_ids, *, level: float = 0.0):
+    """Evaluate only the active P1 cut-cell volumes ``Q_h(phi)_A``.
+
+    This is the exact same marching-squares volume formula used by
+    ``refresh_active_geometry_2d``.  It deliberately skips interface length and
+    derivative tables for line-search stages where the discrete equation only
+    asks whether the hard volume residual decreased.
+    """
+    if grid.ndim != 2:
+        raise ValueError(
+            "refresh_active_volume_geometry_2d currently supports 2D grids"
+        )
+    xp = grid.xp
+    phi_dev = xp.asarray(phi)
+    if tuple(phi_dev.shape) != (grid.N[0] + 1, grid.N[1] + 1):
+        raise ValueError("phi shape must match the grid nodal shape")
+    ids = xp.asarray(cell_ids, dtype=xp.int64)
+    if ids.ndim != 2 or ids.shape[1] != 2:
+        raise ValueError("cell_ids must have shape (n_active, 2)")
+
+    values, points = _active_cell_corner_fields(xp, grid, phi_dev - float(level), ids)
+    cell_measure_A = _active_cell_measures_from_points(points)
+    crossings = tuple(_edge_crossing(xp, values, points, edge) for edge in range(4))
+    case_code = _case_field(xp, values)
+    return P1ActiveVolumeGeometry(
+        q_A=_local_cut_areas(xp, values, points, crossings, case_code),
+        case_code_A=case_code,
+        cell_measure_A=cell_measure_A,
+    )
+
+
+def refresh_active_volume_geometry_candidates_2d(
+    grid,
+    phi_candidates,
+    cell_ids,
+    *,
+    level: float = 0.0,
+):
+    """Evaluate exact ``Q_h`` for a fixed batch of candidate P1 gauges."""
+    if grid.ndim != 2:
+        raise ValueError(
+            "refresh_active_volume_geometry_candidates_2d currently supports 2D grids"
+        )
+    xp = grid.xp
+    phi_dev = xp.asarray(phi_candidates)
+    expected_tail = (grid.N[0] + 1, grid.N[1] + 1)
+    if phi_dev.ndim != 3 or tuple(phi_dev.shape[-2:]) != expected_tail:
+        raise ValueError(
+            "phi_candidates must have shape (n_candidates, "
+            f"{expected_tail[0]}, {expected_tail[1]})"
+        )
+    ids = xp.asarray(cell_ids, dtype=xp.int64)
+    if ids.ndim != 2 or ids.shape[1] != 2:
+        raise ValueError("cell_ids must have shape (n_active, 2)")
+
+    values, points = _active_cell_corner_fields_batched(
+        xp,
+        grid,
+        phi_dev - float(level),
+        ids,
+    )
+    cell_measure_A = _active_cell_measures_from_points(points)
+    crossings = tuple(_edge_crossing(xp, values, points, edge) for edge in range(4))
+    case_code = _case_field(xp, values)
+    return P1ActiveVolumeGeometry(
+        q_A=_local_cut_areas(xp, values, points, crossings, case_code),
+        case_code_A=case_code,
+        cell_measure_A=cell_measure_A,
+    )
+
+
 def _active_cell_corner_fields(xp, grid, phi, cell_ids):
     i = cell_ids[:, 0]
     j = cell_ids[:, 1]
@@ -122,6 +202,26 @@ def _active_cell_corner_fields(xp, grid, phi, cell_ids):
         phi[i + 1, j],
         phi[i + 1, j + 1],
         phi[i, j + 1],
+    )
+    points = (
+        (x[i], y[j]),
+        (x[i + 1], y[j]),
+        (x[i + 1], y[j + 1]),
+        (x[i], y[j + 1]),
+    )
+    return values, points
+
+
+def _active_cell_corner_fields_batched(xp, grid, phi, cell_ids):
+    i = cell_ids[:, 0]
+    j = cell_ids[:, 1]
+    x = _device_coord_1d(xp, grid, 0, phi.dtype)
+    y = _device_coord_1d(xp, grid, 1, phi.dtype)
+    values = (
+        phi[:, i, j],
+        phi[:, i + 1, j],
+        phi[:, i + 1, j + 1],
+        phi[:, i, j + 1],
     )
     points = (
         (x[i], y[j]),
