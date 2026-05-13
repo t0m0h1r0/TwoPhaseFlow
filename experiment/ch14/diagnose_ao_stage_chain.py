@@ -314,6 +314,7 @@ def main() -> None:
     parser.add_argument("--force-predictor-startup", action="store_true")
     parser.add_argument("--drop-pressure-history", action="store_true")
     parser.add_argument("--uniform-grid", action="store_true")
+    parser.add_argument("--runner-initial-grid-rebuild", action="store_true")
     parser.add_argument("--backend", choices=("as_env", "cpu", "gpu"), default="as_env")
     args = parser.parse_args()
 
@@ -439,6 +440,17 @@ def main() -> None:
     u, v = solver.build_velocity(cfg, psi)
     bc_hook = solver.make_bc_hook(cfg)
     ph = cfg.physics
+    if args.runner_initial_grid_rebuild and solver._alpha_grid > 1.0:
+        psi, u, v = solver._rebuild_grid(psi, u, v, ph.rho_l, ph.rho_g)
+        if getattr(solver, "_geometric_phase_state", None) is not None:
+            psi = solver.build_ic(cfg)
+            u, v = solver.build_velocity(cfg, psi)
+            wall_contacts = WallContactSet.detect_from_psi(
+                np.asarray(backend.to_host(psi)),
+                solver._grid,
+                bc_type=solver.bc_type,
+            )
+            solver.set_wall_contacts(wall_contacts)
     p = None
     t = 0.0
 

@@ -1,11 +1,12 @@
-# N=32 water-air capillary-flow one-period benchmark for §14.
+# N=32 water-air capillary-flow quarter-period benchmark for §14.
 # SI scale: 20 mm x 20 mm tank, mode-2 wavelength lambda=10 mm,
 # and initial amplitude A0=0.2 mm.  With water-air properties at about
 # 20 C (rho_l=998.2, rho_g=1.204, sigma=0.0728), k=628.318530718 and
 # h_l=h_g=10 mm.  The rigid-wall two-layer dispersion relation gives the
 # continuum reference omega=134.419859151 and T=0.046742983863 s.  The paper
-# snapshot window is instead the signed mode-2 production response over one
+# full production snapshot window is the signed mode-2 response over one
 # observed cycle: upper crest -> flat -> lower crest -> flat -> upper crest.
+# This YAML currently runs the first quarter cycle: upper crest -> flat.
 # Production numerical stack: active-geometry capillary decomposition + FCCD PPE +
 # bundle Young-Laplace work + UCCD6.
 # - Active geometry: q is the transported physical cell volume, theta is its normalized
@@ -83,7 +84,7 @@ physics:
 run:
   momentum_form: conservative_common_flux
   time:
-    final: 0.035379718894
+    final: 0.008899695230
     # Multiplier on theory CFL constants; 1.0 uses the theory budget.
     cfl: 1.0
     print_every: 200
@@ -191,7 +192,7 @@ output:
   dir: results/ch14_capillary
   save_npz: true
   snapshots:
-    times: [0.0, 0.008899695230, 0.017677817828, 0.026630729902, 0.035379718894]
+    times: [0.0, 0.002224923808, 0.004449847615, 0.006674771423, 0.008899695230]
   figures:
     - type: time_series
       title: "Water-air capillary wave: signed mode amplitude"
