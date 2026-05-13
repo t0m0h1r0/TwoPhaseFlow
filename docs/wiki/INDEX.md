@@ -1,4 +1,4 @@
-# Wiki Index — 373 entries
+# Wiki Index — 374 entries
 
 ## Active Retrieval Gate
 
@@ -14,13 +14,15 @@ countermeasure design.  When implementation tests violate theory, then use
 [WIKI-X-050](cross-domain/WIKI-X-050.md) to check nonuniform
 metrics and interface-tracking grid rebuild contracts before tuning.  Use the
 same card as an implementation-review gate before accepting solver, GPU, YAML,
-or cache changes. For GPU optimization, use
+or cache changes. For GPU implementation of fitted-grid updates, use
+[WIKI-T-171](theory/WIKI-T-171.md) so the nonuniform/interface-tracking
+contracts are ported to device rather than removed. For GPU optimization, use
 [WIKI-L-043](code/WIKI-L-043.md) before route-level retuning so hidden D2H/H2D
 boundaries are eliminated or justified first. Older cards remain listed for
 provenance, but cards marked SUPERSEDED or REFERENCE must not be used as current
 algorithm policy without their curation notes.
 
-## Theory (167)
+## Theory (168)
 
 | REF-ID | Title |
 |--------|-------|
@@ -194,6 +196,7 @@ algorithm policy without their curation notes.
 | [WIKI-T-168](theory/WIKI-T-168.md) | Constrained Face-State Space Reformulation |
 | [WIKI-T-169](theory/WIKI-T-169.md) | Geometric Cell Fraction State-Space Reformulation |
 | [WIKI-T-170](theory/WIKI-T-170.md) | Residual-Minimizing Defect Correction for PPE |
+| [WIKI-T-171](theory/WIKI-T-171.md) | GPU-Resident Interface-Fitted Grid Rebuild Theory |
 
 ## Cross-Domain (50)
 
