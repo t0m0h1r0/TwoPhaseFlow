@@ -1,4 +1,4 @@
-# Wiki Index — 370 entries
+# Wiki Index — 373 entries
 
 ## Active Retrieval Gate
 
@@ -12,7 +12,7 @@ state-space boundaries, use [WIKI-X-049](cross-domain/WIKI-X-049.md),
 provenance, but cards marked SUPERSEDED or REFERENCE must not be used as current
 algorithm policy without their curation notes.
 
-## Theory (167)
+## Theory (170)
 
 | REF-ID | Title |
 |--------|-------|
@@ -273,7 +273,6 @@ algorithm policy without their curation notes.
 | [WIKI-E-026](experiment/WIKI-E-026.md) | xi-Space eps Validation: Zalesak, Single Vortex, Static Droplet (exp11-35/36, exp11-22/33, exp12-17/18) |
 | [WIKI-E-027](experiment/WIKI-E-027.md) | DGR Blowup Root-Cause: Interface Fold Cascade in Capillary Wave Benchmark |
 | [WIKI-E-028](experiment/WIKI-E-028.md) | Eikonal/ZSP/ξ-SDF/FMM/ε-Widening: Prosperetti Benchmark Results (CHK-136..139) |
-
 | [WIKI-E-029](experiment/WIKI-E-029.md) | exp13_17/16: 物理的水-空気系毛細管波（GFM, ρ=833:1） |
 | [WIKI-E-030](experiment/WIKI-E-030.md) | G^adj 後期ブローアップ: H-01 BF残差主因を確認した解決済み診断 |
 | [WIKI-E-031](experiment/WIKI-E-031.md) | ch13 Static α=2 Rising-Bubble Diagnosis: Hypothesis Matrix and Verdicts (RESOLVED) |
