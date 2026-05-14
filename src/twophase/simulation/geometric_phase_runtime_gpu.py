@@ -509,6 +509,202 @@ def materialise_geometric_runtime_capillary_state_gpu(
     )
 
 
+def materialise_geometric_graph_capillary_state_gpu(
+    grid,
+    material: GeometricRuntimeCommonFluxState,
+    *,
+    sigma: float,
+    tolerance: float = 1.0e-11,
+) -> GeometricRuntimeCapillaryState:
+    """Build the graph-endpoint AO capillary source on the GPU.
+
+    A3 mapping:
+      Equation: for an x-periodic/y-wall single graph, the state owner is the
+      column volume ``H_i(q)=y_min + sum_j q_ij / dx_i`` and the surface energy
+      is ``E_G=sigma sum_i sqrt(ds_i^2 + (H_{i+1}-H_i)^2)``.
+      Discretization: differentiate this graph energy in the column heights,
+      pull the variation back only to the cut cell carrying ``dH_i/dq_ij``,
+      then use the same finite-volume incidence adjoint and face Hodge as
+      swept-volume q transport.  This avoids the singular P1 cut-cell surface
+      derivative at graph cell-boundary crossings.
+      Code: all height, cut-cell, incidence, and Hodge operations are
+      backend-native; scalar host transfer remains limited to the existing
+      fail-close boundary.
+    """
+    _require_gpu_array_namespace(
+        grid.xp,
+        "materialise_geometric_graph_capillary_state_gpu",
+    )
+    sigma = _validate_sigma(sigma)
+    tolerance = _validate_positive_float(tolerance, "tolerance")
+    xp = grid.xp
+    phase_state = material.phase_state
+    q = xp.asarray(phase_state.q)
+    dtype = q.dtype
+    x = _grid_coord_device(grid, xp, 0, dtype)
+    y = _grid_coord_device(grid, xp, 1, dtype)
+    dx = x[1:] - x[:-1]
+    column_volume = xp.sum(q, axis=1)
+    height = y[0] + column_volume / dx
+    lower = y[0]
+    upper = y[-1]
+    height_bounds = _host_scalar_packet_float(
+        grid.backend,
+        [
+            ("graph height min", xp.min(height)),
+            ("graph height max", xp.max(height)),
+        ],
+    )
+    if height_bounds["graph height min"] < float(lower) - float(tolerance):
+        raise ValueError("graph capillary height fell below the y-wall domain")
+    if height_bounds["graph height max"] > float(upper) + float(tolerance):
+        raise ValueError("graph capillary height rose above the y-wall domain")
+
+    dx_next = xp.roll(dx, -1)
+    segment_dx = 0.5 * (dx + dx_next)
+    dh = xp.roll(height, -1) - height
+    segment_length = xp.sqrt(segment_dx * segment_dx + dh * dh)
+    surface_energy = sigma * xp.sum(segment_length)
+    slope_right = dh / segment_length
+    slope_left = xp.roll(slope_right, 1)
+    height_gradient = sigma * (slope_left - slope_right)
+
+    y_lower = y[:-1].reshape((1, -1))
+    y_upper = y[1:].reshape((1, -1))
+    height_col = height.reshape((-1, 1))
+    cut_mask = (height_col >= y_lower) & (height_col < y_upper)
+    top_cell = height_col >= y[-2]
+    cut_mask = xp.where(top_cell, y_upper == y[-1], cut_mask)
+    cut_count = xp.sum(cut_mask.astype(dtype), axis=1)
+    cut_violation = xp.max(xp.abs(cut_count - xp.ones_like(cut_count)))
+    if _host_scalar_packet_float(
+        grid.backend,
+        [("graph cut count violation", cut_violation)],
+    )["graph cut count violation"] > 0.5:
+        raise ValueError("graph capillary endpoint must have one cut cell per column")
+    cell_covector = xp.where(
+        cut_mask,
+        height_gradient.reshape((-1, 1)) / dx.reshape((-1, 1)),
+        xp.zeros_like(q),
+    )
+    incidence_covectors = _face_incidence_adjoint_gpu(
+        grid,
+        cell_covector,
+        boundary=material.face_hodge.boundary,
+    )
+    face_covectors = tuple(-xp.asarray(face) for face in incidence_covectors)
+    acceleration = tuple(
+        covector / weight
+        for covector, weight in zip(
+            face_covectors,
+            material.face_hodge.weights,
+            strict=True,
+        )
+    )
+
+    geometry, derivatives = _geometry_and_derivatives_full(
+        grid,
+        phase_state.phi,
+        level=phase_state.stratum.level,
+    )
+    del geometry
+    zero_nodes = xp.zeros_like(phase_state.phi)
+    zero_cells = xp.zeros_like(q)
+    zero_faces = tuple(xp.zeros_like(face) for face in face_covectors)
+    surface = GeometricSurfaceEnergyCovector(
+        state=phase_state,
+        derivatives=derivatives,
+        sigma=sigma,
+        surface_energy=surface_energy,
+        energy_nodal_covector=zero_nodes,
+        capillary_nodal_covector=zero_nodes,
+        compatibility_residual_linf=phase_state.compatibility_residual_linf,
+    )
+    capillary_riesz = GeometricCapillaryRieszRepresentative(
+        surface_covector=surface,
+        face_hodge=material.face_hodge,
+        face_covectors=face_covectors,
+        acceleration=acceleration,
+        schur_residual_linf=xp.asarray(0.0, dtype=dtype),
+        weighted_acceleration_l2=_face_weighted_l2_gpu(
+            xp,
+            acceleration,
+            material.face_hodge.weights,
+        ),
+        max_abs_face_covector=_max_abs_face_pair_gpu(xp, face_covectors),
+    )
+    young_laplace = GeometricYoungLaplaceResidual(
+        surface_covector=surface,
+        pressure=zero_cells,
+        pressure_nodal_covector=zero_nodes,
+        residual_nodal_covector=zero_nodes,
+        residual_linf=xp.asarray(0.0, dtype=dtype),
+        residual_l2=xp.asarray(0.0, dtype=dtype),
+        normal_residual_linf=xp.asarray(0.0, dtype=dtype),
+        active_cell_count=-1,
+        pressure_was_solved=False,
+    )
+    hodge = GeometricPressureCapillaryHodge(
+        capillary_riesz=capillary_riesz,
+        young_laplace_residual=young_laplace,
+        pressure_face_covectors=zero_faces,
+        pressure_acceleration=zero_faces,
+        residual_face_covectors=face_covectors,
+        residual_acceleration=acceleration,
+        max_abs_pressure_face_covector=xp.asarray(0.0, dtype=dtype),
+        max_abs_residual_face_covector=capillary_riesz.max_abs_face_covector,
+        weighted_pressure_acceleration_l2=xp.asarray(0.0, dtype=dtype),
+        weighted_residual_acceleration_l2=(
+            capillary_riesz.weighted_acceleration_l2
+        ),
+    )
+    component_reaction_accelerations = _single_cell_volume_reaction_accelerations_gpu(
+        grid,
+        phase_state,
+        material.face_hodge.weights,
+        boundary=material.face_hodge.boundary,
+    )
+    zero_surface_tension = sigma == 0.0
+    return GeometricRuntimeCapillaryState(
+        material=material,
+        pressure_capillary_hodge=hodge,
+        pressure_range_status=(
+            "pressure_exact_static"
+            if zero_surface_tension
+            else "pressure_reaction_projection_pending"
+        ),
+        pressure_exact_static=zero_surface_tension,
+        capillary_drive_present=not zero_surface_tension,
+        pressure_range_tolerance=tolerance,
+        capillary_force_face_covectors=face_covectors,
+        capillary_force_acceleration=acceleration,
+        pressure_reaction_face_covectors=zero_faces,
+        pressure_reaction_acceleration=zero_faces,
+        capillary_force_weighted_acceleration_l2=(
+            capillary_riesz.weighted_acceleration_l2
+        ),
+        pressure_reaction_weighted_acceleration_l2=xp.asarray(0.0, dtype=dtype),
+        max_abs_capillary_force_face_covector=(
+            capillary_riesz.max_abs_face_covector
+        ),
+        max_abs_pressure_reaction_face_covector=xp.asarray(0.0, dtype=dtype),
+        surface_energy_nodal_covector=zero_nodes,
+        pressure_reaction_nodal_covector=zero_nodes,
+        young_laplace_residual_nodal_covector=zero_nodes,
+        young_laplace_residual_linf=young_laplace.residual_linf,
+        young_laplace_residual_l2=young_laplace.residual_l2,
+        young_laplace_normal_residual_linf=young_laplace.normal_residual_linf,
+        weighted_residual_acceleration_l2=hodge.weighted_residual_acceleration_l2,
+        max_abs_residual_face_covector=hodge.max_abs_residual_face_covector,
+        component_reaction_accelerations=component_reaction_accelerations,
+        pressure_reaction_projection_status=(
+            "pressure_hodge_diagnostic"
+            if zero_surface_tension
+            else "pressure_reaction_projection_pending"
+        ),
+    )
+
+
 def materialise_geometric_runtime_capillary_application_state_gpu(
     grid,
     capillary: GeometricRuntimeCapillaryState,

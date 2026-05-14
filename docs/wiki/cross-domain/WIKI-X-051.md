@@ -6,6 +6,7 @@ status: ACTIVE
 tags: [rca, theory_first, root_cause, countermeasure_design, falsification, shortcut_rejection]
 sources:
   - description: "User directive, 2026-05-13: problem solving and countermeasures must be based on physics/mathematics, many hypotheses, verification, and no ad hoc fixes"
+  - description: "User directive, 2026-05-14: always recall this protocol during troubleshooting; reset to first-principles theory when a path may be a dead end"
   - path: docs/wiki/cross-domain/WIKI-X-043.md
     description: "RCA artifacts falsify shortcuts before authorizing fixes"
   - path: docs/wiki/cross-domain/WIKI-X-045.md
@@ -35,6 +36,11 @@ When a problem occurs, seek the shortest path to the real cause by reasoning
 from physics and mathematics first.  Generate as many plausible hypotheses as
 needed, test them, and identify the cause by falsification.  Do not treat
 symptom relief as a fix.
+
+This protocol is mandatory recall during troubleshooting.  If the investigation
+starts to follow implementation details without a named equation, conservation
+law, compatibility condition, energy identity, or discrete operator contract,
+stop and rebuild the argument from first principles before editing more code.
 
 When designing countermeasures, again start from the governing physical and
 mathematical contracts.  Generate multiple theory-consistent remedies, test

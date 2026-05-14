@@ -43,6 +43,19 @@ the rebuilt state no longer represented the previously projected face cochain.
 The valid repair is to transport the projection-native face cochain across the
 grid epoch and reproject it with the new face Hodge metric.
 
+The later 2026-05-14 zero-base review found a second, distinct contract
+violation.  For `tracking.primary: q` with `gauge_reconstruction:
+column_height_graph`, the capillary endpoint is not the generic P1 cut-cell
+surface functional.  The owned coordinate is the column height
+`H_i(q)=y_min+sum_j q_ij/dx_i`; therefore the discrete surface energy must be
+the graph length
+`sigma sum_i sqrt(ds_i^2+(H_{i+1}-H_i)^2)`, and its variation must be pulled
+back to the single cut cell in each column before applying the finite-volume
+incidence adjoint.  Using the generic P1 cut-cell surface derivative on a
+moving graph endpoint is finite-dimensional endpoint mixing: it can keep
+`q-Q_h(phi)` small while producing `O(10^4)` local capillary cochains when the
+graph crosses cell strata.
+
 ## Falsification Ledger
 
 | Hypothesis | Probe / Evidence | Result |
@@ -53,6 +66,7 @@ grid epoch and reproject it with the new face Hodge metric.
 | Nonuniform tiny cells caused the blowup. | `min_dx` and `min_dy` stayed finite, about `5.2e-4` and `3.8e-4`, while diagnostics exploded. | Falsified as immediate root cause. Nonuniform support remains mandatory. |
 | Interface-following rebuild is the trigger. | Static/no-rebuild control with `--grid-rebuild-frequency 0` stayed stable through 40 steps: `v_abs~1.07e-3`, `face_hodge_pre=0`, and `ppe_rhs=O(50)`. | Supported. The failure appears at metric-epoch transition. |
 | Rebuild loses the projected face state. | Before the fix, step 60 reached `v_abs_max=5.8e3`, `face_hodge_pre=4.6e7`, and `ppe_rhs=2.66e17`. After projected-face transport, step 60 stayed finite: `v_abs_max=2.39e-3`, `projected_face_linf=2.96e-3`, `face_hodge_pre=1.17e-3`, `ppe_rhs=88.7`, `compat=4.78e-13`. | Identified root cause. |
+| P1 cut-cell surface work is valid for q-owned graph tracking. | With projected-face transport fixed, both rebuild and no-rebuild 260-step probes still developed huge P1-source spikes (`raw_accel_cos` up to `O(10^4)`) from small interface motion. Replacing the source by the column-height graph Riesz kept `raw_accel_cos` near `14`, `v_abs_max` near `4.3e-3`, and `compat=O(1e-14)` through 260 steps. | Falsified. For graph gauges, capillary work must be graph-endpoint work. |
 
 ## Canonical Diagnosis
 
@@ -79,6 +93,8 @@ For future capillary AO-Fast failures, collect these before editing:
   `compat`;
 - pressure-history coordinate mode and whether physical jump pressure is
   decoded only at the face law;
+- capillary source discretization (`column_height_graph` versus generic
+  `p1_cut_bundle`) and whether it matches the YAML-selected gauge owner;
 - DC convergence status, not only DC iteration count;
 - GPU route evidence proving that nonuniform metrics and rebuilds were not
   silently disabled.
@@ -94,3 +110,5 @@ Do not use these as fixes:
 - replacing convergence gates with fixed iteration counts;
 - hidden PCG/DC/GPU fallback that would make a wrong route look successful;
 - remapping projected flow by nodal interpolation after a grid rebuild.
+- evaluating q-owned graph capillarity with the generic P1 cut-cell surface
+  derivative; this mixes endpoints and creates stratum-crossing source spikes.

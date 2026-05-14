@@ -47,6 +47,7 @@ from .geometric_phase_runtime_gpu import (
     build_geometric_phase_state_gpu,
     estimate_geometric_swept_capacity_dt_gpu,
     materialise_geometric_common_flux_state_gpu,
+    materialise_geometric_graph_capillary_state_gpu,
     materialise_geometric_runtime_capillary_application_state_gpu,
     materialise_geometric_runtime_capillary_state_gpu,
     project_geometric_phase_state_gpu,
@@ -1187,7 +1188,11 @@ class TwoPhaseNSSolver:
             ]
             supplied_shapes = tuple(tuple(component.shape) for component in supplied)
             if supplied_shapes == geometric_shapes:
-                return supplied
+                return self._project_geometric_cell_face_velocity(
+                    supplied,
+                    dt=state.dt,
+                    boundary=boundary,
+                )
             if supplied_shapes == projection_shapes:
                 return self._project_projection_faces_to_geometric_cell_faces(
                     supplied,
@@ -1229,7 +1234,11 @@ class TwoPhaseNSSolver:
             v,
             boundary=boundary,
         )
-        return [x_faces, y_faces]
+        return self._project_geometric_cell_face_velocity(
+            [x_faces, y_faces],
+            dt=state.dt,
+            boundary=boundary,
+        )
 
     def _project_projection_faces_to_geometric_cell_faces(
         self,
@@ -1251,13 +1260,15 @@ class TwoPhaseNSSolver:
             v,
             boundary=boundary,
         )
-        # The geometric Hodge PCG is an exact cell-face operator, but applying
-        # its correction only to phase transport changes the common flux without
-        # applying the same cochain to momentum and pressure history.  Until that
-        # coupled common-flux correction is admitted, production AO transport
-        # uses the projection-native velocity pullback and leaves the Hodge PCG
-        # as a certificate/test operator.
-        return [x_faces, y_faces]
+        # Projection-native incompressibility is not a commuting certificate on
+        # the moving geometric cell-face complex.  Transfer through the
+        # finite-volume Hodge projector so q transport consumes a closed volume
+        # cochain on its own nonuniform grid.
+        return self._project_geometric_cell_face_velocity(
+            [x_faces, y_faces],
+            dt=dt,
+            boundary=boundary,
+        )
 
     def _nodal_velocity_to_geometric_cell_faces(
         self,
@@ -1731,28 +1742,35 @@ class TwoPhaseNSSolver:
         state.rho = self._geometric_cell_to_node_view(material.density)
         state.conservative_density = state.rho
         self._last_geometric_runtime_material = material
-        capillary = (
-            materialise_geometric_runtime_capillary_state_gpu(
-                self._grid,
-                material,
-                sigma=state.sigma,
-                tolerance=self._active_projection_absolute_tolerance,
-                solver_scheme=self._active_projection_solver_scheme,
-                pcg_tolerance=self._active_projection_pcg_tolerance,
-                max_pcg_iterations=self._active_projection_pcg_max_iterations,
-                pcg_roundoff_floor=self._active_projection_pcg_roundoff_floor,
-                dc_tolerance=self._active_projection_dc_tolerance,
-                dc_max_iterations=self._active_projection_dc_max_iterations,
-                dc_relaxation=self._active_projection_dc_relaxation,
-            )
-            if self._backend.is_gpu()
-            else materialise_geometric_runtime_capillary_state(
+        if self._backend.is_gpu():
+            if self._geometric_graph_gauge_reconstruction_enabled(boundary):
+                capillary = materialise_geometric_graph_capillary_state_gpu(
+                    self._grid,
+                    material,
+                    sigma=state.sigma,
+                    tolerance=self._active_projection_absolute_tolerance,
+                )
+            else:
+                capillary = materialise_geometric_runtime_capillary_state_gpu(
+                    self._grid,
+                    material,
+                    sigma=state.sigma,
+                    tolerance=self._active_projection_absolute_tolerance,
+                    solver_scheme=self._active_projection_solver_scheme,
+                    pcg_tolerance=self._active_projection_pcg_tolerance,
+                    max_pcg_iterations=self._active_projection_pcg_max_iterations,
+                    pcg_roundoff_floor=self._active_projection_pcg_roundoff_floor,
+                    dc_tolerance=self._active_projection_dc_tolerance,
+                    dc_max_iterations=self._active_projection_dc_max_iterations,
+                    dc_relaxation=self._active_projection_dc_relaxation,
+                )
+        else:
+            capillary = materialise_geometric_runtime_capillary_state(
                 self._grid,
                 material,
                 sigma=state.sigma,
                 tolerance=1.0e-11,
             )
-        )
         state.geometric_runtime_capillary = capillary
         self._last_geometric_runtime_capillary = capillary
         application = (
@@ -1804,6 +1822,14 @@ class TwoPhaseNSSolver:
             "capillary_drive_present": capillary.capillary_drive_present,
             "capillary_pressure_range_tolerance": (
                 capillary.pressure_range_tolerance
+            ),
+            "capillary_source_discretization": (
+                "column_height_graph"
+                if (
+                    self._backend.is_gpu()
+                    and self._geometric_graph_gauge_reconstruction_enabled(boundary)
+                )
+                else "p1_cut_bundle"
             ),
             "capillary_force_weighted_acceleration_l2": (
                 capillary.capillary_force_weighted_acceleration_l2
@@ -2437,6 +2463,9 @@ class TwoPhaseNSSolver:
             else:
                 state = self._publish_conservative_state(state)
         self._projected_face_components = state.projected_face_components
+        self._last_conservative_transport_certificate = dict(
+            state.conservative_transport_certificate or {}
+        )
         self._record_step_diagnostics(state)
 
         p_out = (

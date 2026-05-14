@@ -309,6 +309,23 @@ def _split_pending_geometric_capillary_application(
         return application, "already_split"
     if ppe_solver is None:
         raise RuntimeError("AO pressure-reaction split requires the active PPE solver")
+    pressure_flux_kwargs = _pressure_face_flux_kwargs(
+        xp=xp,
+        state=state,
+        ppe_runtime=ppe_runtime,
+        interface_sigma=0.0,
+        curvature_method=curvature_method,
+    )
+    face_weights = capillary_pressure_adjoint_face_weights(
+        xp=xp,
+        div_op=div_op,
+        rho=state.rho,
+        pressure_flux_kwargs=pressure_flux_kwargs,
+    )
+    if face_weights is None:
+        raise RuntimeError(
+            "AO pressure-reaction split requires pressure-adjoint face weights"
+        )
     raw_acceleration, raw_face_space = _ao_capillary_acceleration_for_projection_faces(
         xp=xp,
         grid=grid,
@@ -336,23 +353,6 @@ def _split_pending_geometric_capillary_application(
             label=f"component-{index} reaction acceleration",
         )
         component_faces.append(faces)
-    pressure_flux_kwargs = _pressure_face_flux_kwargs(
-        xp=xp,
-        state=state,
-        ppe_runtime=ppe_runtime,
-        interface_sigma=0.0,
-        curvature_method=curvature_method,
-    )
-    face_weights = capillary_pressure_adjoint_face_weights(
-        xp=xp,
-        div_op=div_op,
-        rho=state.rho,
-        pressure_flux_kwargs=pressure_flux_kwargs,
-    )
-    if face_weights is None:
-        raise RuntimeError(
-            "AO pressure-reaction split requires pressure-adjoint face weights"
-        )
     split = build_geometric_capillary_reaction_split(
         xp=xp,
         div_op=div_op,
@@ -1557,32 +1557,15 @@ def compute_ns_predictor_stage(
                 )
                 state.conservative_transport_certificate = certificate
             else:
-                increments, increment_face_space = (
-                    _ao_predictor_increment_for_projection_faces(
-                        xp=xp,
-                        grid=grid,
-                        application=application,
-                        reference_faces=state.predictor_face_components,
-                    )
-                )
-                state.predictor_face_components = [
-                    predictor_face + increment
-                    for predictor_face, increment in zip(
-                        state.predictor_face_components,
-                        increments,
-                    )
-                ]
                 state.geometric_capillary_predictor_applied = True
-                ao_capillary_predictor_applied = True
                 certificate = dict(state.conservative_transport_certificate or {})
                 certificate.update(
                     {
-                        "ao_capillary_predictor_face_increment_applied": True,
+                        "ao_capillary_predictor_face_increment_applied": False,
                         "ao_capillary_predictor_increment_weighted_l2": (
                             application.predictor_increment_weighted_l2
                         ),
-                        "ao_capillary_predictor_face_space": increment_face_space,
-                        "ao_pressure_reaction_increment_pending": True,
+                        "ao_capillary_pressure_jump_injection_pending": True,
                     }
                 )
                 state.conservative_transport_certificate = certificate
@@ -1645,6 +1628,82 @@ def _pressure_stage_predictor_rhs(
                 bc_type=bc_type,
             )
     return div_op.divergence_from_faces(predictor_faces) / projection_dt
+
+
+def _prepare_nonstatic_geometric_capillary_jump(
+    state: NSStepState,
+    *,
+    backend,
+    xp,
+    div_op,
+    grid,
+    bc_type: str,
+    face_no_slip_boundary_state: bool,
+) -> None:
+    """Prepare the AO conservative capillary cochain for PPE/corrector use.
+
+    A3 mapping:
+      Equation: the active-geometry split yields the component-corrected
+      surface cochain ``c_sigma``.  The projection step solves
+      ``D_f G_A p = D_f u^*/dt + D_f c_sigma`` and the corrector evaluates
+      ``G_A p - c_sigma`` through the same face pressure operator.
+      Discretization: ``c_sigma`` is converted once to the projection face
+      lattice and kept as backend-native face acceleration arrays.
+      Code: the same arrays stored here are added to the PPE RHS and later
+      passed as ``capillary_jump_components`` to ``pressure_fluxes``.
+    """
+    if state.predictor_face_components is None:
+        raise ValueError(
+            "non-static AO capillary jump requires face-native predictor "
+            "components"
+        )
+    if not hasattr(div_op, "divergence_from_faces"):
+        raise RuntimeError("non-static AO capillary jump requires face divergence")
+    application = state.geometric_runtime_capillary_application
+    acceleration, face_space = _ao_capillary_acceleration_for_projection_faces(
+        xp=xp,
+        grid=grid,
+        face_pair=application.predictor_face_acceleration,
+        reference_faces=state.predictor_face_components,
+        boundary=_ao_application_boundary(application),
+        label="corrected conservative capillary jump acceleration",
+    )
+    if not is_all_periodic(bc_type, 2) and state.bc_hook is None:
+        if face_no_slip_boundary_state:
+            acceleration = zero_wall_velocity_face_components(
+                acceleration,
+                xp=xp,
+                bc_type=bc_type,
+            )
+        else:
+            acceleration = zero_wall_normal_face_components(
+                acceleration,
+                xp=xp,
+                bc_type=bc_type,
+            )
+    rhs = div_op.divergence_from_faces(acceleration)
+    state.geometric_capillary_jump_face_acceleration = acceleration
+    state.geometric_capillary_jump_rhs = rhs
+    state.geometric_capillary_jump_prepared = True
+    certificate = dict(state.conservative_transport_certificate or {})
+    certificate.update(
+        {
+            "ao_capillary_pressure_jump_injection_pending": False,
+            "ao_capillary_pressure_jump_prepared": True,
+            "ao_capillary_pressure_jump_face_space": face_space,
+            "ao_capillary_pressure_jump_acceleration_linf": _face_linf(
+                backend,
+                xp,
+                acceleration,
+            ),
+            "ao_capillary_pressure_jump_rhs_linf": _scalar_from_backend(
+                backend,
+                xp,
+                xp.max(xp.abs(rhs)),
+            ),
+        }
+    )
+    state.conservative_transport_certificate = certificate
 
 
 def _prepare_nonstatic_geometric_pressure_reaction(
@@ -1910,11 +1969,7 @@ def _smooth_pressure_history_base_without_ao_reaction(
     coordinate = state.geometric_capillary_pressure_reaction_coordinate
     if _uses_nonstatic_geometric_capillary_application(state):
         if coordinate is None:
-            raise ValueError(
-                "non-static AO pressure-coordinate history requires the "
-                "geometric pressure reaction coordinate to separate the "
-                "smooth HFE history variable"
-            )
+            return base
         return base - xp.asarray(coordinate)
     return base
 
@@ -2130,22 +2185,21 @@ def solve_ns_pressure_stage(
     if nonstatic_geometric_capillary:
         if not state.geometric_capillary_predictor_applied:
             raise ValueError(
-                "non-static AO capillary predictor requires face-native "
-                "predictor application before PPE"
+                "non-static AO capillary jump requires face-native "
+                "application admission before PPE"
             )
-        _prepare_nonstatic_geometric_pressure_reaction(
+        _prepare_nonstatic_geometric_capillary_jump(
             state,
             backend=backend,
             xp=xp,
             div_op=div_op,
             grid=_pressure_jump_grid(ppe_solver, div_op),
-            projection_dt=projection_dt,
             bc_type=bc_type,
             face_no_slip_boundary_state=face_no_slip_boundary_state,
         )
     rhs = predictor_rhs
     if nonstatic_geometric_capillary:
-        rhs = rhs - state.geometric_capillary_pressure_reaction_rhs
+        rhs = rhs + state.geometric_capillary_jump_rhs
     rhs = rhs + div_op.divergence([state.f_x / state.rho, state.f_y / state.rho])
     closed_interface_source = (
         capillary_force_source == "closed_interface_riesz"
@@ -2203,7 +2257,7 @@ def solve_ns_pressure_stage(
         certificate = dict(state.conservative_transport_certificate or {})
         certificate.update(
             {
-                "ao_pressure_reaction_rhs_subtracted": True,
+                "ao_capillary_pressure_jump_rhs_added": True,
                 "ao_scalar_ppe_rhs_linf": _scalar_from_backend(
                     backend,
                     xp,
@@ -2298,6 +2352,19 @@ def solve_ns_pressure_stage(
                 jump_context=jump_context,
             )
         )
+        if nonstatic_geometric_capillary:
+            if state.geometric_capillary_jump_face_acceleration is None:
+                raise RuntimeError(
+                    "non-static AO capillary jump was not prepared before "
+                    "pressure face evaluation"
+                )
+            pressure_flux_eval_kwargs = dict(pressure_flux_eval_kwargs)
+            pressure_flux_eval_kwargs["capillary_jump_components"] = (
+                state.geometric_capillary_jump_face_acceleration
+            )
+            certificate = dict(state.conservative_transport_certificate or {})
+            certificate["ao_capillary_pressure_jump_faces_bound"] = True
+            state.conservative_transport_certificate = certificate
         correction_pressure = (
             xp.asarray(base_increment)
             if pressure_coordinate_history
@@ -2354,19 +2421,9 @@ def solve_ns_pressure_stage(
                 **range_projection,
             )
     if nonstatic_geometric_capillary:
-        _embed_nonstatic_geometric_pressure_reaction_corrector(
-            state,
-            xp=xp,
-            div_op=div_op,
-            ppe_runtime=ppe_runtime,
-            curvature_method=curvature_method,
-            pressure_flux_kwargs=pressure_flux_eval_kwargs,
-        )
-        _install_nonstatic_geometric_pressure_coordinate(
-            state,
-            xp=xp,
-            ppe_solver=ppe_solver,
-        )
+        certificate = dict(state.conservative_transport_certificate or {})
+        certificate["ao_capillary_pressure_jump_corrector_bound"] = True
+        state.conservative_transport_certificate = certificate
     if pressure_coordinate_history and uses_affine_face_history:
         smooth_history_base = _smooth_pressure_history_base_without_ao_reaction(
             xp,

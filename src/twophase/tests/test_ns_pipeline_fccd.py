@@ -951,6 +951,53 @@ def test_geometric_cell_face_velocity_projection_preserves_full_cells():
     np.testing.assert_allclose(q_next, cell_volume, atol=1.0e-11)
 
 
+def test_geometric_common_flux_route_projects_supplied_cell_faces():
+    """AO q transport must consume a closed cochain on the geometric complex."""
+    solver = TwoPhaseNSSolver(
+        6, 5, 1.0, 1.0,
+        bc_type="periodic_wall",
+        grid_rebuild_freq=0,
+        use_gpu=False,
+    )
+    x = np.linspace(0.0, 1.0, solver._grid.N[0] + 1) ** 1.2
+    y = np.linspace(0.0, 1.0, solver._grid.N[1] + 1) ** 1.3
+    x[-1] = 1.0
+    y[-1] = 1.0
+    solver._grid.coords[0] = x
+    solver._grid.coords[1] = y
+    rng = np.random.default_rng(20260515)
+    vx = rng.normal(scale=0.02, size=(solver._grid.N[0] + 1, solver._grid.N[1]))
+    vy = rng.normal(scale=0.02, size=(solver._grid.N[0], solver._grid.N[1] + 1))
+    state = NSStepState(
+        psi=np.zeros(solver._grid.shape),
+        u=np.zeros(solver._grid.shape),
+        v=np.zeros(solver._grid.shape),
+        dt=1.0e-3,
+        rho_l=1.0,
+        rho_g=1.0,
+        sigma=0.0,
+        mu=1.0,
+        g_acc=0.0,
+        rho_ref=1.0,
+        mu_l=None,
+        mu_g=None,
+        bc_hook=None,
+        step_index=0,
+        face_velocity_components=[vx, vy],
+    )
+
+    projected = solver._geometric_face_velocity_for_common_flux(state)
+    dx = np.diff(solver._grid.coords[0])
+    dy = np.diff(solver._grid.coords[1])
+    flux_x = projected[0] * dy.reshape((1, -1))
+    flux_y = projected[1] * dx.reshape((-1, 1))
+    div = (flux_x[1:, :] - flux_x[:-1, :]) + (
+        flux_y[:, 1:] - flux_y[:, :-1]
+    )
+
+    assert np.max(np.abs(div)) * state.dt <= solver._active_projection_absolute_tolerance
+
+
 def test_geometric_volume_hodge_operator_is_spd_on_nonuniform_quotient():
     """The AO Hodge matrix must remain SPD modulo constants on nonuniform grids."""
     cases = [
@@ -1961,6 +2008,7 @@ def test_affine_jump_pressure_stage_stores_history_faces():
         p_prev_dev=None,
         surface_tension_scheme="pressure_jump",
         face_native_predictor_state=True,
+        bc_type="periodic",
         ppe_runtime=ppe_runtime,
     )
 
@@ -2062,6 +2110,7 @@ def test_affine_jump_pressure_history_faces_store_full_cochain():
         p_prev_dev=None,
         surface_tension_scheme="pressure_jump",
         face_native_predictor_state=True,
+        bc_type="periodic",
         ppe_runtime=ppe_runtime,
     )
 
@@ -2168,6 +2217,7 @@ def test_affine_jump_pressure_coordinate_history_solves_correction_only():
         p_prev_dev=None,
         surface_tension_scheme="pressure_jump",
         face_native_predictor_state=True,
+        bc_type="periodic",
         ppe_runtime=ppe_runtime,
     )
 
@@ -2382,6 +2432,130 @@ def test_component_hodge_augmented_capillary_jump_removes_static_reaction():
 
     np.testing.assert_allclose(state.pressure_accel_face_components[0], 0.0)
     np.testing.assert_allclose(state.pressure_correction_face_components[0], 0.0)
+
+
+def test_nonstatic_ao_capillary_uses_conservative_jump_in_ppe_and_corrector():
+    """AO non-static capillarity must enter as one corrected face cochain."""
+    from twophase.simulation.ns_step_services import solve_ns_pressure_stage
+    from twophase.simulation.ns_step_state import NSStepState
+
+    shape = (2, 2)
+    zero = np.zeros(shape)
+    jump_faces = [np.full(shape, 2.0), np.full(shape, -0.5)]
+
+    class JumpAwareFaceOperator:
+        def __init__(self):
+            self.jump_components = []
+
+        def divergence(self, components):
+            return np.zeros(shape)
+
+        def divergence_from_faces(self, face_components):
+            return np.asarray(face_components[0]) + np.asarray(face_components[1])
+
+        def pressure_fluxes(self, pressure, rho, **kwargs):
+            del rho
+            jump = kwargs.get("capillary_jump_components")
+            self.jump_components.append(jump)
+            pressure_arr = np.asarray(pressure)
+            if jump is None:
+                return [pressure_arr, pressure_arr]
+            return [
+                pressure_arr - np.asarray(jump[0]),
+                pressure_arr - np.asarray(jump[1]),
+            ]
+
+        def reconstruct_nodes(self, face_components):
+            return face_components
+
+    class RecordingProjectionSolver:
+        def __init__(self):
+            self.last_base_pressure = np.zeros(shape)
+            self.rhs = None
+
+        def solve(self, rhs, rho, dt=0.0, p_init=None):
+            del rho, dt, p_init
+            self.rhs = np.asarray(rhs)
+            self.last_base_pressure = np.zeros_like(self.rhs)
+            return np.zeros_like(self.rhs)
+
+    state = NSStepState(
+        psi=np.ones(shape),
+        u=zero,
+        v=zero,
+        dt=1.0e-3,
+        rho_l=1.0,
+        rho_g=1.0,
+        sigma=1.0,
+        mu=0.0,
+        g_acc=0.0,
+        rho_ref=1.0,
+        mu_l=None,
+        mu_g=None,
+        bc_hook=None,
+        step_index=0,
+        rho=np.ones(shape),
+        kappa=np.zeros(shape),
+        f_x=zero,
+        f_y=zero,
+        u_star=zero,
+        v_star=zero,
+        predictor_face_components=[zero.copy(), zero.copy()],
+        geometric_capillary_predictor_applied=True,
+        geometric_runtime_capillary_application=SimpleNamespace(
+            pressure_exact_static=False,
+            capillary_drive_present=True,
+            predictor_face_acceleration=jump_faces,
+            predictor_increment_weighted_l2=1.0,
+            pressure_reaction_projection_status="pressure_component_hodge_split",
+        ),
+        conservative_transport_certificate={
+            "ao_nonstatic_surface_tension_slot_bypassed": True,
+        },
+    )
+    backend = SimpleNamespace(
+        xp=np,
+        is_gpu=lambda: False,
+        to_host=lambda arr: arr,
+    )
+    div_op = JumpAwareFaceOperator()
+    ppe_solver = RecordingProjectionSolver()
+    ppe_runtime = SimpleNamespace(
+        ppe_solver_name="fccd_iterative",
+        ppe_coefficient_scheme="phase_separated",
+        ppe_interface_coupling_scheme="affine_jump",
+        pressure_history_mode="pressure_coordinate",
+        pressure_force_contract="variational_adjoint",
+    )
+
+    state, _, _ = solve_ns_pressure_stage(
+        state,
+        backend=backend,
+        div_op=div_op,
+        ppe_solver=ppe_solver,
+        p_prev_dev=None,
+        surface_tension_scheme="pressure_jump",
+        face_native_predictor_state=True,
+        bc_type="periodic",
+        ppe_runtime=ppe_runtime,
+    )
+
+    np.testing.assert_allclose(ppe_solver.rhs, jump_faces[0] + jump_faces[1])
+    assert any(jump is not None for jump in div_op.jump_components)
+    np.testing.assert_allclose(
+        state.pressure_correction_face_components[0],
+        -jump_faces[0],
+    )
+    np.testing.assert_allclose(
+        state.pressure_correction_face_components[1],
+        -jump_faces[1],
+    )
+    assert state.conservative_transport_certificate[
+        "ao_capillary_pressure_jump_rhs_added"
+    ]
+    assert state.conservative_transport_certificate[
+        "ao_capillary_pressure_jump_faces_bound"
+    ]
 
 
 def test_phase_separated_pressure_jump_stack_one_step_no_nan():

@@ -100,6 +100,9 @@ class NSStepState:
     geometric_capillary_pressure_reaction_rhs: Any = None
     geometric_capillary_pressure_residual_rhs: Any = None
     geometric_capillary_scalar_pressure_face_components: list[Any] | None = None
+    geometric_capillary_jump_prepared: bool = False
+    geometric_capillary_jump_face_acceleration: list[Any] | None = None
+    geometric_capillary_jump_rhs: Any = None
 
     @classmethod
     def from_inputs(cls, inputs: NSStepInputs | NSStepRequest, *, backend) -> "NSStepState":

@@ -141,6 +141,7 @@ def main() -> None:
     parser.add_argument("--grid-rebuild-frequency", type=int)
     parser.add_argument("--print-every", type=int, default=1)
     parser.add_argument("--residual-report-every", type=int, default=0)
+    parser.add_argument("--certificate-report-every", type=int, default=0)
     args = parser.parse_args()
 
     cfg = load_experiment_config(args.config)
@@ -496,6 +497,33 @@ def main() -> None:
                 f"{float(row_norm[imax]):.12e}",
                 f"{float(_to_host(backend, phase.q)[imax]):.12e}",
                 f"{float(_to_host(backend, phase.geometry.q)[imax]):.12e}",
+                sep=",",
+            )
+        if args.certificate_report_every > 0 and (
+            (step + 1) % int(args.certificate_report_every) == 0
+            or step + 1 == args.steps
+        ):
+            certificate = dict(
+                getattr(solver, "_last_conservative_transport_certificate", None)
+                or {}
+            )
+            keys = (
+                "ao_pressure_reaction_projection_raw_l2",
+                "ao_pressure_reaction_projection_corrected_l2",
+                "ao_pressure_reaction_projection_range_l2",
+                "ao_pressure_reaction_projection_balanced_l2",
+                "ao_pressure_reaction_projection_pressure_adjoint_residual",
+                "ao_pressure_reaction_projection_saddle_constraint_linf",
+                "ao_capillary_pressure_jump_acceleration_linf",
+                "ao_capillary_pressure_jump_rhs_linf",
+                "ao_scalar_ppe_rhs_linf",
+                "ao_projected_face_div_linf",
+            )
+            values = [certificate.get(key, float("nan")) for key in keys]
+            print(
+                "CERT",
+                step + 1,
+                *(f"{float(value):.12e}" for value in values),
                 sep=",",
             )
         if (step + 1) % max(int(args.print_every), 1) != 0 and step + 1 != args.steps:
