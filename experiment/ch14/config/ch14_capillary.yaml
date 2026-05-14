@@ -83,6 +83,10 @@ physics:
 run:
   momentum_form: conservative_common_flux
   time:
+    # Paper-facing one observed cycle of the current active-geometry
+    # capillary-wave response.  The continuum rigid-wall reference period is
+    # documented above, but this production window follows the validated
+    # signed mode-2 extrema/flat sequence used for §14 visualization.
     final: 0.035379718894
     # Multiplier on theory CFL constants; 1.0 uses the theory budget.
     cfl: 1.0
@@ -194,6 +198,7 @@ output:
   dir: results/ch14_capillary
   save_npz: true
   snapshots:
+    # upper crest -> flat -> lower crest -> flat -> upper crest
     times: [0.0, 0.008899695230, 0.017677817828, 0.026630729902, 0.035379718894]
   figures:
     - type: time_series

@@ -329,9 +329,15 @@ def test_ch14_capillary_yaml_loads_execution_stack():
     assert cfg.physics.mu_l == pytest.approx(1.002e-3)
     assert cfg.physics.mu_g == pytest.approx(1.825e-5)
     assert cfg.physics.sigma == pytest.approx(0.0728)
-    assert cfg.run.T_final == pytest.approx(0.008899695230)
+    assert cfg.run.T_final == pytest.approx(0.035379718894)
     assert cfg.run.snap_times == pytest.approx(
-        (0.0, 0.002224923808, 0.004449847615, 0.006674771423, 0.008899695230)
+        (
+            0.0,
+            0.008899695230,
+            0.017677817828,
+            0.026630729902,
+            0.035379718894,
+        )
     )
     assert "interface_amplitude" in cfg.diagnostics
     assert any(
