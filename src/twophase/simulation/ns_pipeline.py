@@ -1559,26 +1559,44 @@ class TwoPhaseNSSolver:
             )
 
         nx = int(self._grid.N[0])
-        height_nodes = xp.empty((nx + 1,), dtype=q_dev.dtype)
-        seam = (
-            dx[0] * height_cells[-1] + dx[-1] * height_cells[0]
-        ) / (dx[-1] + dx[0])
-        height_nodes[0] = seam
-        height_nodes[-1] = seam
-        if nx > 1:
-            denom = dx[:-1] + dx[1:]
-            left_weight = dx[1:] / denom
-            right_weight = dx[:-1] / denom
-            height_nodes[1:nx] = (
-                left_weight * height_cells[:-1]
-                + right_weight * height_cells[1:]
-            )
-        graph_total = xp.sum(
-            dx * (0.5 * (height_nodes[:-1] + height_nodes[1:]) - y_edges[0])
+        column_rhs = 2.0 * column_volume / dx
+        modes = xp.arange(nx, dtype=q_dev.dtype)
+        angles = (
+            2.0
+            * xp.asarray(np.pi, dtype=q_dev.dtype)
+            * modes
+            / xp.asarray(nx, dtype=q_dev.dtype)
         )
-        height_nodes = height_nodes + (
+        eigenvalues = 1.0 + xp.exp(1j * angles)
+        denom = xp.real(eigenvalues * xp.conj(eigenvalues))
+        denom_floor = (
+            xp.asarray(100.0 * np.finfo(np.dtype(q_dev.dtype)).eps, dtype=q_dev.dtype)
+            * xp.max(denom)
+        )
+        rhs_hat = xp.fft.fft(column_rhs)
+        height_hat = xp.where(
+            denom > denom_floor,
+            xp.conj(eigenvalues) * rhs_hat / denom,
+            xp.zeros_like(rhs_hat),
+        )
+        height_nodes_periodic = y_edges[0] + xp.real(xp.fft.ifft(height_hat))
+        graph_total = xp.sum(
+            dx
+            * (
+                0.5
+                * (
+                    height_nodes_periodic
+                    + xp.roll(height_nodes_periodic, -1)
+                )
+                - y_edges[0]
+            )
+        )
+        height_nodes_periodic = height_nodes_periodic + (
             xp.sum(column_volume) - graph_total
         ) / (x_edges[-1] - x_edges[0])
+        height_nodes = xp.empty((nx + 1,), dtype=q_dev.dtype)
+        height_nodes[:-1] = height_nodes_periodic
+        height_nodes[-1] = height_nodes_periodic[0]
 
         min_height = float(self._backend.to_host(xp.min(height_nodes)))
         max_height = float(self._backend.to_host(xp.max(height_nodes)))
@@ -1634,10 +1652,18 @@ class TwoPhaseNSSolver:
             return result
         transported = result.phase_transport.state
         phi = self._graph_phi_from_column_volume(transported.q)
-        projected = self._project_geometric_state_from_q_phi(
-            transported.q,
-            phi,
-            level=transported.stratum.level,
+        projected = (
+            build_geometric_phase_state_gpu(
+                self._grid,
+                phi,
+                level=transported.stratum.level,
+            )
+            if self._backend.is_gpu()
+            else self._project_geometric_state_from_q_phi(
+                transported.q,
+                phi,
+                level=transported.stratum.level,
+            )
         )
         phase_transport = replace(
             result.phase_transport,

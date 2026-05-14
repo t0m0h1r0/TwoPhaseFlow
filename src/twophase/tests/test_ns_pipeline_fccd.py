@@ -867,15 +867,15 @@ def test_column_height_graph_gauge_reconstruction_uses_q_column_volume():
     height_nodes = y[0] - phi[:, 0]
 
     np.testing.assert_allclose(height_nodes[0], height_nodes[-1])
-    expected_seam = (
-        dx[0] * height_cells[-1] + dx[-1] * height_cells[0]
-    ) / (dx[-1] + dx[0])
-    np.testing.assert_allclose(height_nodes[0], expected_seam)
-    denom = dx[:-1] + dx[1:]
-    expected_inner = (
-        dx[1:] * height_cells[:-1] + dx[:-1] * height_cells[1:]
-    ) / denom
-    np.testing.assert_allclose(height_nodes[1:-1], expected_inner)
+    graph_column_volume = dx * (
+        0.5 * (height_nodes[:-1] + height_nodes[1:]) - y[0]
+    )
+    np.testing.assert_allclose(
+        graph_column_volume,
+        np.sum(q, axis=1),
+        rtol=0.0,
+        atol=1.0e-13,
+    )
     target_volume = np.sum(q)
     graph_volume = np.sum(dx * 0.5 * (height_nodes[:-1] + height_nodes[1:]))
     np.testing.assert_allclose(graph_volume, target_volume)
