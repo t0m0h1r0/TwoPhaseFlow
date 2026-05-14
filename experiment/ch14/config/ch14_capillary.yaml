@@ -260,8 +260,12 @@ output:
     # face-Hodge cochain as physical scalar pressure.
     - type: snapshot_series
       field: pressure
+      pressure_reference: mean
       shared_scale: true
       symmetric_scale: true
+      color_scale: robust
+      color_vmax_percentile: 99.0
+      colorbar_label: "$p - \\langle p \\rangle$"
       file_prefix: pressure_t
 
 diagnostics:

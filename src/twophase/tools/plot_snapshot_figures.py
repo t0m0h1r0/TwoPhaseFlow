@@ -108,6 +108,37 @@ def remap_snapshot_field(context: SnapshotPlotContext, field) -> np.ndarray:
     return np.asarray(context.remapper.remap(field))
 
 
+def pressure_difference_field(pressure: np.ndarray, spec: dict) -> np.ndarray:
+    """Return the gauge-fixed pressure field requested by a figure spec."""
+    values = np.asarray(pressure, dtype=float)
+    if "pressure_reference_value" in spec:
+        return values - float(spec["pressure_reference_value"])
+    reference = str(
+        spec.get("pressure_reference", spec.get("reference", "raw"))
+    ).strip().lower()
+    if reference in {"raw", "none", "absolute"}:
+        return values
+    finite = values[np.isfinite(values)]
+    if finite.size == 0:
+        return values
+    if reference in {"mean", "spatial_mean"}:
+        return values - float(np.mean(finite))
+    if reference == "median":
+        return values - float(np.median(finite))
+    raise ValueError(
+        "pressure_reference must be 'raw', 'mean', 'spatial_mean', 'median', "
+        "or a numeric pressure_reference_value"
+    )
+
+
+def pressure_plot_field(context: SnapshotPlotContext, spec: dict) -> np.ndarray:
+    """Return the scalar pressure representation used for color plotting."""
+    return pressure_difference_field(
+        remap_snapshot_field(context, context.snap["p"]),
+        spec,
+    )
+
+
 def finite_min_max(arrays: list[np.ndarray]) -> tuple[float, float]:
     """Return finite min/max over a snapshot series."""
     finite_parts = []
@@ -245,9 +276,9 @@ def snapshot_series_field_array(
     if field == "psi":
         return context.psi
     if field == "pressure":
-        return remap_snapshot_field(context, context.snap["p"])
+        return pressure_plot_field(context, spec)
     if field == "pressure_hodge":
-        return pressure_hodge_field(context, spec)
+        return pressure_difference_field(pressure_hodge_field(context, spec), spec)
     if field == "density":
         rho = context.snap.get("rho")
         if rho is not None:
@@ -330,12 +361,28 @@ def build_snapshot_series_shared_spec(
 
     if field in {"pressure", "pressure_hodge"}:
         if "vmin" not in spec or "vmax" not in spec:
-            vmin, vmax = finite_min_max(arrays)
+            color_scale = str(spec.get("color_scale", "max")).strip().lower()
             if bool(spec.get("symmetric_scale", True)):
-                bound = max(abs(vmin), abs(vmax), 1.0e-14)
+                finite_values = np.concatenate(
+                    [np.asarray(array, dtype=float).ravel() for array in arrays]
+                )
+                if color_scale == "max":
+                    vmin, vmax = finite_min_max(arrays)
+                    bound = max(abs(vmin), abs(vmax), 1.0e-14)
+                elif color_scale == "robust":
+                    bound = positive_range(
+                        finite_values,
+                        percentile=float(spec.get("color_vmax_percentile", 99.0)),
+                        margin=float(spec.get("color_vmax_margin", 1.05)),
+                    )
+                else:
+                    raise ValueError(
+                        "snapshot_series pressure color_scale must be 'max' or 'robust'"
+                    )
                 shared.setdefault("vmin", -bound)
                 shared.setdefault("vmax", bound)
             else:
+                vmin, vmax = finite_min_max(arrays)
                 shared.setdefault("vmin", vmin)
                 shared.setdefault("vmax", vmax)
         return shared
@@ -507,7 +554,7 @@ def pressure_snapshot(
     """Render pressure color map with interface contour."""
     context = build_snapshot_plot_context(spec, results, cfg)
     grid = cfg.grid
-    p = remap_snapshot_field(context, context.snap["p"])
+    p = pressure_plot_field(context, spec)
     title = spec.get("title", f"Pressure at t = {context.t_val:.3f}")
     cmap = spec.get("cmap", "RdBu_r")
 
@@ -522,7 +569,7 @@ def pressure_snapshot(
         shading="nearest",
     )
     if spec.get("colorbar", True):
-        fig.colorbar(im, ax=ax, label="p")
+        fig.colorbar(im, ax=ax, label=spec.get("colorbar_label", "p"))
     if spec.get("contour", True):
         ax.contour(
             context.X, context.Y, context.psi.T, levels=[0.5], colors="k", linewidths=0.8
@@ -574,7 +621,7 @@ def pressure_hodge_snapshot(
     """Render a phase-wise Hodge pressure representative from face cochains."""
     context = build_snapshot_plot_context(spec, results, cfg)
     grid = cfg.grid
-    hodge_pressure = pressure_hodge_field(context, spec)
+    hodge_pressure = pressure_difference_field(pressure_hodge_field(context, spec), spec)
     title = spec.get("title", f"Hodge pressure at t = {context.t_val:.3f}")
     cmap = spec.get("cmap", "RdBu_r")
 
@@ -589,7 +636,11 @@ def pressure_hodge_snapshot(
         shading="nearest",
     )
     if spec.get("colorbar", True):
-        fig.colorbar(im, ax=ax, label="p (phase Hodge representative)")
+        fig.colorbar(
+            im,
+            ax=ax,
+            label=spec.get("colorbar_label", "p (phase Hodge representative)"),
+        )
     if spec.get("contour", True):
         ax.contour(
             context.X, context.Y, context.psi.T, levels=[0.5], colors="k", linewidths=0.8
