@@ -525,14 +525,19 @@ def test_ch14_canonical_yamls_share_base_numerical_stack():
         assert cfg.interface_state_space.kind == "geometric_cell_fraction", path.name
         assert cfg.interface_state_space.gpu_required is True, path.name
         assert cfg.interface_state_space.fallback_policy == "none", path.name
-        assert raw["numerics"]["projection"]["active_geometry"]["solver"]["scheme"] == (
-            "pcg"
-        ), path.name
+        active_solver = raw["numerics"]["projection"]["active_geometry"]["solver"]
+        assert active_solver["scheme"] == "pcg", path.name
         assert cfg.interface_state_space.active_projection_solver_scheme == (
             "pcg"
         ), path.name
         assert cfg.interface_state_space.active_projection_pcg_tolerance == (
-            pytest.approx(1.0e-13)
+            pytest.approx(active_solver["pcg"]["tolerance"])
+        ), path.name
+        assert cfg.interface_state_space.active_projection_pcg_max_iterations == (
+            active_solver["pcg"]["max_iterations"]
+        ), path.name
+        assert cfg.interface_state_space.active_projection_pcg_roundoff_floor == (
+            pytest.approx(active_solver["pcg"]["roundoff_floor"])
         ), path.name
         assert cfg.run.advection_scheme == "geometric_swept_volume", path.name
         assert cfg.run.interface_tracking_method == "q_cell_fraction", path.name
@@ -580,7 +585,21 @@ def test_ch14_canonical_yamls_share_base_numerical_stack():
         assert cfg.run.pressure_force_contract == "variational_adjoint", path.name
         assert cfg.run.scalar_operator_pairing == "variational_operator", path.name
         assert cfg.run.ppe_defect_correction is True, path.name
-        assert cfg.run.ppe_dc_max_iterations == 12, path.name
+        ppe_corrections = raw["numerics"]["projection"]["poisson"]["solver"][
+            "corrections"
+        ]
+        assert cfg.run.ppe_dc_max_iterations == (
+            ppe_corrections["max_iterations"]
+        ), path.name
+        assert cfg.run.ppe_dc_max_iterations >= 12, path.name
+        assert cfg.run.ppe_dc_tolerance == pytest.approx(
+            ppe_corrections["tolerance"]
+        ), path.name
+        assert cfg.run.ppe_dc_relaxation == pytest.approx(
+            ppe_corrections["relaxation"]
+        ), path.name
+        assert ppe_corrections["fail_close"] is True, path.name
+        assert cfg.run.ppe_dc_fail_close is True, path.name
 
 
 def test_ch14_rayleigh_taylor_yaml_uses_periodic_wall_common_flux_route():

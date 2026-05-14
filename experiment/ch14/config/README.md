@@ -382,9 +382,10 @@ user.
   scheme in the same `transport:` block.
 - `interface.geometry.curvature.method: face_implicit` — scalar face-native
   Young-Laplace diagnostic geometry on fitted grids.
-- `interface.reinitialization.schedule.every_steps` — Ridge--Eikonal profile
-  restoration is disabled (`0`) for active-geometry Chapter 14 YAMLs; geometry compatibility
-  projection is not a diffuse redistance fallback.
+- `interface.reinitialization.algorithm: compatibility_projection` with
+  `schedule.every_steps: 1` — the active-geometry q/theta/phi compatibility
+  projection is applied every step.  This is not Ridge--Eikonal diffuse
+  redistance and must not be replaced by a hidden profile-restoration fallback.
 - `momentum.terms.convection.spatial: uccd6` + `time_integrator: imex_bdf2` —
   WIKI-T-062 positions UCCD6 as the order-preserving upwind CCD remedy for
   transport/Gibbs control.
@@ -434,6 +435,9 @@ viscosity:
   with the low-order FD `L_L` operator. The FD matrix factor is reused within
   one outer DC solve, matching the paper's grid-defect method without
   re-entering the legacy FVM direct sparse solve for every correction RHS.
+  `corrections.max_iterations` is a user-owned cap, not a success criterion;
+  convergence is accepted only through the residual tolerance, and
+  `corrections.fail_close: true` keeps non-convergence visible.
 - `projection.active_geometry.solver` selects the active q/phi compatibility
   projection solver policy.  This is separate from `interface.state_space`:
   the state-space key selects active geometry, while this block selects how the

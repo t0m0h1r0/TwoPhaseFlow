@@ -179,6 +179,7 @@ numerics:
           max_iterations: 12
           tolerance: 1.0e-8
           relaxation: 0.7
+          fail_close: true
         base_solver:
           discretization: fd
           kind: direct
