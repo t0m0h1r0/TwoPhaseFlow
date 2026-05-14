@@ -7,6 +7,7 @@ tags: [rca, theory_first, root_cause, countermeasure_design, falsification, shor
 sources:
   - description: "User directive, 2026-05-13: problem solving and countermeasures must be based on physics/mathematics, many hypotheses, verification, and no ad hoc fixes"
   - description: "User directive, 2026-05-14: always recall this protocol during troubleshooting; reset to first-principles theory when a path may be a dead end"
+  - description: "User directive, 2026-05-15: when a real problem occurs, always zero-base the issue, return to physics/mathematics, generate and verify many hypotheses, then design and test multiple theory-based countermeasures before implementation"
   - path: docs/wiki/cross-domain/WIKI-X-043.md
     description: "RCA artifacts falsify shortcuts before authorizing fixes"
   - path: docs/wiki/cross-domain/WIKI-X-045.md
@@ -25,10 +26,37 @@ consumers:
   - domain: theory
     usage: "Ensures fixes restore named equations, invariants, or theorem preconditions"
 compiled_by: ResearchArchitect
-compiled_at: 2026-05-13
+compiled_at: 2026-05-15
 ---
 
 # Theory-First Problem RCA and Countermeasure Protocol
+
+## Mandatory Incident Recall
+
+When a real problem occurs, recall this card before touching code, YAML,
+parameters, tolerances, solver families, GPU routes, diagnostics, or plots.
+
+The mandatory sequence is:
+
+1. Reset to zero base: list the observed facts, unknowns, assumptions, and the
+   governing physical/mathematical contracts from first principles.
+2. Diagnose from theory: generate as many plausible causes as needed from
+   physics and mathematics, then identify the root cause by falsification.
+3. Only after the cause is identified, design remedies from the same theory:
+   generate multiple countermeasures, compare them by contract restoration, and
+   test the selected remedy before implementation is accepted.
+4. Treat ad hoc symptom control as forbidden: no tolerance weakening, extra
+   iterations without proof, damping, smoothing, micro-offsets, solver-family
+   substitutions, hidden fallbacks, plot-only fixes, or physical retuning.
+
+The exact recall prompt is:
+
+> ゼロベースで問題点を整理して、理論の原点に戻って検討して。
+> 問題の原因を物理学・数学の理論に基づいて仮説考案し推理してください。
+> 仮説をできるだけ多数創出し、それを検証することで問題特定を行なってください。
+> 問題特定できたら、その問題への対策をを物理学・数学の理論に基づいて立案し推理してください。
+> 対策案をできるだけ多数創出し、それを検証することで実装を行なってください。
+> どちらも理論を絶対視し、小手先の技で修正するのは絶対に禁止です。
 
 ## Canonical Policy
 

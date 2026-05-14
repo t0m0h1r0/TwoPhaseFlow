@@ -9,8 +9,9 @@ recent research findings.  For AO-Fast capillary admission and Chapter 14 YAML
 state-space boundaries, use [WIKI-X-049](cross-domain/WIKI-X-049.md),
 [WIKI-T-169](theory/WIKI-T-169.md), and
 [WIKI-E-063](experiment/WIKI-E-063.md).  When a problem occurs, first use
-[WIKI-X-051](cross-domain/WIKI-X-051.md) for theory-first RCA and
-countermeasure design.  When implementation tests violate theory, then use
+[WIKI-X-051](cross-domain/WIKI-X-051.md) as the mandatory incident-recall
+protocol for zero-base, theory-first RCA and countermeasure design.  When
+implementation tests violate theory, then use
 [WIKI-X-050](cross-domain/WIKI-X-050.md) to check nonuniform
 metrics and interface-tracking grid rebuild contracts before tuning.  Use the
 same card as an implementation-review gate before accepting solver, GPU, YAML,
