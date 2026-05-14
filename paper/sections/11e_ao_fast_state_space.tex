@@ -145,28 +145,30 @@ $E_\sigma(\phi)=\sigma S_h(\phi)$ であり，
   =
   r_\sigma-\Pi_{R_p}^{M_G}r_\sigma
 \]
-と書けば，幾何面上の加速度と速度増分は
+と書けば，幾何面上の体積流束加速度 cochain とその増分は
 \begin{equation}
-  a_{\sigma,G}=M_G^{-1}r_{\sigma,\mathrm{bal}},
+  A_{\sigma,G}=M_G^{-1}r_{\sigma,\mathrm{bal}},
   \qquad
-  \Delta f_{\sigma,G}=\Delta t\,a_{\sigma,G}
+  \Delta W_{\sigma,G}=\Delta t\,A_{\sigma,G}
   \label{eq:ao_hodge_divided_face_increment}
 \end{equation}
-である．投影格子の面空間を $F_P$ とし，非一様距離に基づく
-面間補間を $\mathcal{I}_{G\to P}:F_G\to F_P$ とすれば，
+である．ここで $A_{\sigma,G}$ は点の法線加速度ではなく，
+2次元では面長を含む体積流束加速度である．したがって
+投影格子の面空間を $F_P$ とし，幾何面 cochain を点面速度へ戻す
+面長除算を $\mathcal{C}_{G}$，
+非一様距離に基づく面間補間を $\mathcal{I}_{G\to P}:F_G\to F_P$ とすれば，
 予測面速度への寄与は
 \begin{equation}
   f_P^* \leftarrow
-  f_P^*+\mathcal{I}_{G\to P}\Delta f_{\sigma,G}.
+  f_P^*+\mathcal{I}_{G\to P}\mathcal{C}_{G}\Delta W_{\sigma,G}.
   \label{eq:ao_projection_face_bridge}
 \end{equation}
-ここで $\mathcal{I}_{G\to P}$ は同じ物理次元を持つ
-Hodge 逆適用済み面加速度（または面速度増分）を補間する写像であり，
-面長で割る cochain--velocity 変換ではない．
-式~\eqref{eq:ao_hodge_divided_face_increment} の後でさらに
-$\Delta x_f^{-1}$ や $\Delta y_f^{-1}$ を掛けると，
-$M_G^{-1}$ を二重に作用させるのと同じ単位破壊になり，
-非一様格子では $\Ord{1/h}$ の過大な毛管予測子を作る．
+ここで $\mathcal{C}_{G}$ は $x$ 面では面長 $\Delta y_f$，
+$y$ 面では面長 $\Delta x_f$ で一度だけ割る cochain--velocity
+変換である．この変換を省くと毛管予測子は $\Ord{h}$ だけ過小となり，
+界面がほぼ静止して見える．逆に，点速度へ変換済みの量へ再度
+$\mathcal{C}_{G}$ を掛けると，非一様格子では $\Ord{1/h}$ の過大な
+毛管予測子を作る．
 
 静的平衡は，あるセル圧力座標 $\pi$ が存在して
 \begin{equation}

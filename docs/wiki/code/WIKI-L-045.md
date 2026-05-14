@@ -141,13 +141,15 @@ Visual breakage after optimization is not automatically a stability or solver
 iteration problem.  First re-check the dimensional contract at every bridge
 between active geometry and the NS projection lattice.  In particular,
 `GeometricRuntimeCapillaryApplicationState.predictor_face_acceleration` and
-`predictor_face_increment` are already geometric-face-Hodge-divided samples
-`M_G^{-1} r_sigma` and `dt M_G^{-1} r_sigma`; they are not integrated
-face-volume cochains.  The projection bridge must interpolate them with
-nonuniform metric weights but must not divide by face length again.  A second
-division by `dx` or `dy` is an O(1/h) amplification and can look like a broken
-velocity direction, frozen interface, or exploding pressure plot on the fitted
-N32 capillary grid.
+`predictor_face_increment` are geometric-face-Hodge-divided integrated
+face-volume cochains, not point face velocities.  In 2-D,
+`M_G^{-1} r_sigma` still carries the normal face length:
+`x_face = a_x dy` and `y_face = a_y dx`.  The projection bridge must divide by
+that physical face length exactly once before nonuniform interpolation onto
+the projection-native face lattice.  Omitting this cochain-to-point conversion
+is an O(h) under-drive and can leave the capillary interface visually frozen;
+applying it a second time is an O(1/h) over-drive and can look like a broken
+velocity direction or exploding pressure plot on the fitted N32 capillary grid.
 
 Known remaining scalar synchronization points:
 

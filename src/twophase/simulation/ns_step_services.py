@@ -129,15 +129,16 @@ def _geometric_to_projection_face_pair_2d(
 
     A3 mapping:
       Equation: ``u_f^* += Pi_AF(dt M_G^{-1} r_sigma)``.
-      Discretization: AO capillary application packets have already applied
-      the geometric face Hodge inverse, so inputs here are acceleration or
-      velocity-increment samples on geometric cell faces
-      ``((Nx+1,Ny),(Nx,Ny+1))``.  The NS projection uses the dual face lattice
-      ``((Nx,Ny+1),(Nx+1,Ny))``.  ``Pi_AF`` therefore only interpolates the
-      already-Hodge-divided face field with nonuniform metric weights; it must
-      not divide by physical face length a second time.
-      Code: this backend-native slice kernel performs tensor P1 interpolation
-      before wall-face projection and PPE use.
+      Discretization: the AO geometry layer uses integrated cell-face volume
+      cochains.  After the geometric Hodge inverse, the input still carries
+      the normal face measure: ``x_face = a_x |f_x|`` and
+      ``y_face = a_y |f_y|``.  The NS projection face lattice consumes point
+      normal acceleration/velocity samples, so ``Pi_AF`` divides by the
+      physical face length exactly once and then interpolates between
+      ``((Nx+1,Ny),(Nx,Ny+1))`` and ``((Nx,Ny+1),(Nx+1,Ny))`` with nonuniform
+      metric weights.
+      Code: this backend-native slice kernel performs the cochain-to-point
+      conversion and tensor P1 interpolation before PPE use.
     """
     if grid is None or getattr(grid, "ndim", None) != 2:
         raise ValueError("AO capillary face bridge requires a 2D grid")
@@ -153,8 +154,8 @@ def _geometric_to_projection_face_pair_2d(
 
     dx = xp.asarray(grid.coords[0][1:] - grid.coords[0][:-1], dtype=x_face.dtype)
     dy = xp.asarray(grid.coords[1][1:] - grid.coords[1][:-1], dtype=x_face.dtype)
-    x_velocity = x_face
-    y_velocity = y_face
+    x_velocity = x_face / dy.reshape((1, ny))
+    y_velocity = y_face / dx.reshape((nx, 1))
 
     x_mid = 0.5 * (x_velocity[:-1, :] + x_velocity[1:, :])
     projected_x = xp.empty((nx, ny + 1), dtype=x_face.dtype)
