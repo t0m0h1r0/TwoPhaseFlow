@@ -184,7 +184,10 @@ numerics:
       solver:
         kind: defect_correction
         corrections:
-          max_iterations: 64
+          # Safety cap only: convergence is still judged by the high-order
+          # FCCD residual.  The moving nonuniform grid widens the L_L^{-1}L_H
+          # spectrum, so the cap must not preempt the residual criterion.
+          max_iterations: 512
           tolerance: 1.0e-8
           relaxation: 0.7
           fail_close: true
