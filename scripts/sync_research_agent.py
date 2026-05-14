@@ -1,91 +1,59 @@
 #!/usr/bin/env python3
-"""Download and sync the shared research-agent metaprompt kernel.
+"""Update the research-agent submodule that backs prompts/meta.
 
-The upstream repository owns reusable prompt assets. This project keeps
-``prompts/meta/kernel-project.md`` local, so normal sync must preserve it and
-then run project-local redeploy/audit checks before generated agents are used.
+The shared kernel now lives as a Git submodule at ``prompts/meta``. This helper
+initializes the submodule when needed and advances it to the configured remote
+HEAD; callers should review and commit the resulting gitlink change.
 """
 
 from __future__ import annotations
 
 import argparse
-import shutil
 import subprocess
-import sys
-import tempfile
 from pathlib import Path
 
 
-DEFAULT_REMOTE = "git@github.com:t0m0h1r0/research-agent.git"
-DEFAULT_FALLBACK = "https://github.com/t0m0h1r0/research-agent.git"
+DEFAULT_SUBMODULE_PATH = "prompts/meta"
 
 
-def run(cmd: list[str], cwd: Path | None = None) -> None:
+def run(cmd: list[str], cwd: Path) -> None:
     subprocess.run(cmd, cwd=cwd, check=True)
 
 
-def clone(remote: str, destination: Path) -> None:
-    run(["git", "clone", "--depth", "1", remote, str(destination)])
-
-
-def fetch_upstream(remote: str, fallback: str | None, keep_checkout: Path | None) -> Path:
-    if keep_checkout is not None:
-        if keep_checkout.exists():
-            run(["git", "pull", "--ff-only"], cwd=keep_checkout)
-            return keep_checkout
-        keep_checkout.parent.mkdir(parents=True, exist_ok=True)
-        try:
-            clone(remote, keep_checkout)
-        except subprocess.CalledProcessError:
-            if not fallback:
-                raise
-            clone(fallback, keep_checkout)
-        return keep_checkout
-
-    tmp = Path(tempfile.mkdtemp(prefix="research-agent-"))
-    checkout = tmp / "repo"
-    try:
-        clone(remote, checkout)
-    except subprocess.CalledProcessError:
-        if not fallback:
-            shutil.rmtree(tmp, ignore_errors=True)
-            raise
-        clone(fallback, checkout)
-    return checkout
+def capture(cmd: list[str], cwd: Path) -> str:
+    return subprocess.check_output(cmd, cwd=cwd, text=True).strip()
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--target", default=".", help="Project repository root")
-    parser.add_argument("--remote", default=DEFAULT_REMOTE)
-    parser.add_argument("--fallback", default=DEFAULT_FALLBACK)
-    parser.add_argument(
-        "--groups",
-        default="kernel",
-        help="Comma-separated upstream groups passed to scripts/sync_to_project.py",
-    )
+    parser.add_argument("--path", default=DEFAULT_SUBMODULE_PATH, help="Submodule path")
     parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument(
-        "--keep-checkout",
-        type=Path,
-        help="Optional reusable checkout path for the upstream repository",
-    )
+    parser.add_argument("--remote", help=argparse.SUPPRESS)
+    parser.add_argument("--fallback", help=argparse.SUPPRESS)
+    parser.add_argument("--groups", help=argparse.SUPPRESS)
+    parser.add_argument("--keep-checkout", help=argparse.SUPPRESS)
     args = parser.parse_args()
 
     target = Path(args.target).resolve()
-    checkout = fetch_upstream(args.remote, args.fallback, args.keep_checkout)
-    sync_script = checkout / "scripts" / "sync_to_project.py"
-    if not sync_script.exists():
-        raise SystemExit(f"missing upstream sync script: {sync_script}")
+    submodule_path = args.path
+    submodule = target / submodule_path
 
-    cmd = [sys.executable, str(sync_script), "--target", str(target), "--groups", args.groups]
+    if not (target / ".gitmodules").exists():
+        raise SystemExit("missing .gitmodules; research-agent submodule is not configured")
+
     if args.dry_run:
-        cmd.append("--dry-run")
-    run(cmd)
+        run(["git", "submodule", "status", submodule_path], cwd=target)
+        print(f"Dry run: would update submodule {submodule_path}")
+        return 0
+
+    run(["git", "submodule", "update", "--init", submodule_path], cwd=target)
+    run(["git", "submodule", "update", "--remote", submodule_path], cwd=target)
+    revision = capture(["git", "-C", str(submodule), "rev-parse", "HEAD"], cwd=target)
 
     print()
-    print("Next: run project-local agent redeploy/audit checks.")
-    print("Guard: prompts/meta/kernel-project.md must remain unchanged.")
+    print(f"{submodule_path} is at {revision}.")
+    print("Next: review the submodule diff, commit the gitlink, then redeploy/audit generated prompts if kernel content changed.")
     return 0
 
 

@@ -85,4 +85,4 @@ Error taxonomy: **THEORY_ERR** (solver/equation) vs **IMPL_ERR** (adapter/infras
 - Git lifecycle: DRAFT → REVIEWED → VALIDATED → merge to main
 - Merge criteria: tests pass + compile + logs attached
 - Execution loop: PLAN → EXECUTE → VERIFY → AUDIT (no phase skipped)
-- Upstream sync: `make sync-research-agent` pulls shared kernel files only; generated agents/skills/scripts remain project-local and require redeploy/audit
+- Upstream sync: `make sync-research-agent` updates the `prompts/meta` research-agent submodule; generated agents/skills/scripts remain project-local and require redeploy/audit

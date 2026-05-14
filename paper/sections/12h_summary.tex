@@ -36,9 +36,9 @@ ID & テスト & \shortstack{期待・判定\\基準} & \shortstack{実測・観
 \midrule
 \multicolumn{5}{l}{\textbf{Tier I：空間離散・一様格子}} \\
 \midrule
-U1-a & CCD 2D tensor-product MMS（周期, $x$ 軸評価）  & $\Ord{h^6}$  & $\Ord{h^{6.00}}$/$\Ord{h^{5.97}}$（d1/d2） & \checkmark \\
-U1-b & DCCD modified wavenumber & $H(\pi)=0$（$\varepsilon_d=1/4$）& $H(\pi)=0.000$ & \checkmark \\
-U1-c & FCCD face value/grad   & $\Ord{h^4}$（面演算子設計次数；§\ref{sec:fccd_derivation}） & $\Ord{h^{4.00}}$/$\Ord{h^{4.00}}$        & \checkmark \\
+U1-a & CCD 2D テンソル積 MMS（周期, $x$ 軸評価）  & $\Ord{h^6}$  & $\Ord{h^{6.00}}$/$\Ord{h^{5.97}}$（d1/d2） & \checkmark \\
+U1-b & DCCD 修正波数 & $H(\pi)=0$（$\varepsilon_d=1/4$）& $H(\pi)=0.000$ & \checkmark \\
+U1-c & FCCD 面値/面勾配   & $\Ord{h^4}$（面演算子設計次数；§\ref{sec:fccd_derivation}） & $\Ord{h^{4.00}}$/$\Ord{h^{4.00}}$        & \checkmark \\
 U1-d & UCCD6 nodal            & $\Ord{h^6}$（内部点）   & $\Ord{h^{7.00}}$（対称性スーパー収束）        & \checkmark \\
 U2-a & Poisson MMS（DC $k=1,2,3$） & $\Ord{h^2}$/$\Ord{h^4}$/$\Ord{h^7}$ & $2.00/4.18/6.90$ & \checkmark \\
 U2-b & 縮約 FVM--PPE + Neumann ゲージ & $\Ord{h^2}$  & $\Ord{h^{2.00}}$        & \checkmark \\
@@ -46,12 +46,12 @@ U2-b & 縮約 FVM--PPE + Neumann ゲージ & $\Ord{h^2}$  & $\Ord{h^{2.00}}$    
 \multicolumn{5}{l}{\textbf{Tier II：空間離散・非一様格子}} \\
 \midrule
 U3-a & CCD on stretched grid + 2D $D_{xy}$ + GCL & $\Ord{h^6}$ + GCL $\sim\varepsilon_\mathrm{mach}$ & $\Ord{h^{5.98}}$ + GCL $2.13\!\times\!10^{-13}$ & \checkmark \\
-U3-b & FCCD non-uniform face   & $\Ord{h^4}$（面演算子設計次数；非一様格子）          & $\Ord{h^{4.00}}$/$\Ord{h^{4.09}}$        & \checkmark \\
-U3-c & Ridge--Eikonal D1--D4 metric & 一様極限 $\to 0$，$\alpha>1$ で $D_4$ のみ発火 & $D_1$--$D_3 \lesssim 5\!\times\!10^{-14}$（最大 $D_1=4.3\!\times\!10^{-14}$ at $\alpha\!=\!1.5$；倍精度 round-off floor）, $D_4 \le 4.5\!\times\!10^{-11}$（$\alpha\!=\!1.5$） & \checkmark \\
+U3-b & 非一様格子 FCCD 面評価   & $\Ord{h^4}$（面演算子設計次数；非一様格子）          & $\Ord{h^{4.00}}$/$\Ord{h^{4.09}}$        & \checkmark \\
+U3-c & Ridge--Eikonal D1--D4 計量 & 一様極限 $\to 0$，$\alpha>1$ で $D_4$ のみ発火 & $D_1$--$D_3 \lesssim 5\!\times\!10^{-14}$（最大 $D_1=4.3\!\times\!10^{-14}$ at $\alpha\!=\!1.5$；倍精度 round-off floor）, $D_4 \le 4.5\!\times\!10^{-11}$（$\alpha\!=\!1.5$） & \checkmark \\
 \midrule
 \multicolumn{5}{l}{\textbf{Tier III：界面処理要素}} \\
 \midrule
-U4-a & Godunov Eikonal reinit $|\nabla\phi|=1$ 復元 & band 残差 $\sim h$ & $n_\tau=20$: $2.19\times10^{-2}$, $100$: $9.16\times10^{-3}$ & \checkmark \\
+U4-a & Godunov Eikonal 再初期化 $|\nabla\phi|=1$ 復元 & バンド残差 $\sim h$ & $n_\tau=20$: $2.19\times10^{-2}$, $100$: $9.16\times10^{-3}$ & \checkmark \\
 U4-b & DGR バンド厚補正 & $\varepsilon_{\eff}/\varepsilon^\star \to 1$ & $2.0 \to 1.0000033$ & \checkmark \\
 U5-a & $\delta_\varepsilon$ 0/1 次モーメント & 0 次 $=1$ / 1 次 $=x_\mathrm{int}$（$\varepsilon=1.5h$ Richardson 残差 saturation；0 次 $\sim 1.6\!\times\!10^{-11}$，1 次 $\sim 8.2\!\times\!10^{-12}$） & 0 次 $1.64\!\times\!10^{-11}$ / 1 次 $8.19\!\times\!10^{-12}$（$N\!\ge\!128$ で saturation 到達） & \checkmark \\
 U5-b & $\delta_\varepsilon$ vs $h$ scaling（$c=\varepsilon/h$ 最適性）& $c \in [1.5, 2]$ で $M_0$ 誤差最小化 & $c=2$, $N=128$ で $M_0 = 1.83\!\times\!10^{-14}$（double-precision floor 近傍） & \checkmark \\
@@ -66,7 +66,7 @@ U6-b2 & HFE 2D band 診断       & 幾何込み条件付き & effective slope ma
 \midrule
 U7-a1 & 縮約 BF 整合：$j_{gl}=-\sigma\kappa_{lg}$ vs 計算値 & $N\ge64$ で ${<}3\%$ & $0.61\%$（$N=128$） & \checkmark \\
 U7-a2 & BF mismatch one-step 負対照 & 合格経路ではなく判別力の低さを示す & FD2 mismatch でも $N\ge64$ で ${<}3\%$ に見えるため長時間 V5 へ送る & $\bullet$ \\
-U7-b & face $\mu$ 補間 3 種 & $\Ord{h^2}$ 安定    & $1.91/1.81/1.91$       & \checkmark \\
+U7-b & 面 $\mu$ 補間 3 種 & $\Ord{h^2}$ 安定    & $1.91/1.81/1.91$       & \checkmark \\
 \midrule
 \multicolumn{5}{l}{\textbf{Tier VI：時間積分}} \\
 \midrule
@@ -113,11 +113,11 @@ $\times$（不合格）は本章では該当なし．主要結果：
         UCCD6 は $\Ord{h^{7.0}}$，PPE Dirichlet DC $k=3$ は $\Ord{h^{6.90}}$，
         縮約 FVM--PPE + Neumann ゲージは $\Ord{h^{2.00}}$．
   \item \textbf{空間（非一様）：}CCD $\Ord{h^{5.98}}$，
-        FCCD face value/grad $\Ord{h^{4.00}}$/$\Ord{h^{4.09}}$，
+        FCCD 面値/面勾配 $\Ord{h^{4.00}}$/$\Ord{h^{4.09}}$，
         GCL は $2.13 \times 10^{-13}$ 機械精度（閾値 $3\!\times\!10^{-13}$ 内），
         Ridge--Eikonal $D_1$--$D_3 \lesssim 5\!\times\!10^{-14}$（最大 $D_1\!=\!4.3\!\times\!10^{-14}$ at $\alpha\!=\!1.5$；倍精度丸め床），連鎖律補正 $D_4$ のみ
         $\alpha\!=\!1.5$ で $4.5\!\times\!10^{-11}$（最大），$\alpha\!=\!2$ で $2.9\!\times\!10^{-11}$．
-  \item \textbf{界面：}Godunov Eikonal reinit は band 残差を
+  \item \textbf{界面：}Godunov Eikonal 再初期化はバンド残差を
         $n_\tau=20$ で $2.19\times10^{-2}$，$n_\tau=100$ で $9.16\times10^{-3}$ へ減衰し，
         DGR は $\varepsilon_{\eff}/\varepsilon^\star = 2.0 \to 1.0000033$ を達成．
         $\delta_\varepsilon$ は 0 次・1 次モーメントとも $\varepsilon=1.5h$ 配置で
@@ -145,7 +145,7 @@ $\times$（不合格）は本章では該当なし．主要結果：
         $R_p$ 未確定の分解は標準経路へ入れないことを確認した．
   \item \textbf{coupling：}縮約 BF match の Laplace 圧は $N=128$ で $0.61\%$，
         FD2 mismatch は 1-step 指標で分離できない負対照として長時間 V5 に送る．
-        face $\mu$ 補間は算術/調和/VoF で slope $1.91/1.81/1.91$．
+        面 $\mu$ 補間は算術/調和/VoF で slope $1.91/1.81/1.91$．
 \end{itemize}
 \end{tcolorbox}
 
@@ -182,13 +182,13 @@ U 系列と V 系列の対応は，単なる章番号の継承ではなく
 \toprule
 結合効果 & 主に引き継ぐ U 要素 & §13 での再検査 \\
 \midrule
-単相・縮約 PPE 時間速度結合 & U2-b, U8 & V1-b（Taylor--Green 渦；単相 PPE の $O(\Delta t)$ trend）と V2（Kovasznay 残差）． \\
+単相・縮約 PPE 時間速度結合 & U2-b, U8 & V1-b（Taylor--Green 渦；単相 PPE の $O(\Delta t)$ 傾向）と V2（Kovasznay 残差）． \\
 運動量対流・全応力粘性の NS 残差 & U1, U8 & V1/V2（単相 NS）と V7（二相結合系時間診断）． \\
 BF 圧力--界面バランス & U5, U7, U9 & V3/V5（静止液滴と寄生流れ），V8（非一様静止液滴）． \\
-高密度比の圧力ジャンプ・毛管射影結合系 & U6, U8, U9（U7 は縮約 BF 対照） & V6（密度比 sweep）と V7（FCCD, HFE, 分相 PPE/DC, 毛管成分の圧力勾配射影, 射影後面速度閉包, アフィン圧力履歴面加速度を含む結合系時間精度）．U7 は Neumann BF 縮約との差分整理にのみ用いる． \\
+高密度比の圧力ジャンプ・毛管射影結合系 & U6, U8, U9（U7 は縮約 BF 対照） & V6（密度比掃引）と V7（FCCD, HFE, 分相 PPE/DC, 毛管成分の圧力勾配射影, 射影後面速度閉包, アフィン圧力履歴面加速度を含む結合系時間精度）．U7 は Neumann BF 縮約との差分整理にのみ用いる． \\
 非一様格子・局所厚み & U3, U5 & V8（非一様 NS 静止）と V9（圧力ジャンプ・毛管射影結合系条件下の基準/局所 $\varepsilon$ 切替）． \\
-CLS 保存移流 & U4, U5, U8 & V10-a/V10-b（一様格子・NS 非連成 CLS 強変形移流；非一様 moving-interface CLS は本章の保証範囲外）． \\
-保存形共通フラックス台帳 & U10 & 第13章の V 系列には追加せず，第~\ref{sec:benchmarks}章の保存形共通フラックス物理経路へ送る． \\
+CLS 保存移流 & U4, U5, U8 & V10-a/V10-b（一様格子・NS 非連成 CLS 強変形移流；非一様移動界面 CLS は本章の保証範囲外）． \\
+保存形共通フラックス台帳 & U10 & 第13章の V 系列に新しい物理検証として追加せず，第~\ref{sec:benchmarks}章の保存形共通フラックス物理経路へ送る． \\
 制約付き面速度状態 / 周期壁商空間 & U11 & V6/V7/V9 の壁付き圧力ジャンプ/HFE 統合経路の状態空間前提を支える．周期壁の有限振幅物理応答は第~\ref{sec:benchmarks}章で扱う． \\
 アクティブ幾何毛管分解の受理境界 & U12 & V11 で全圧力像への過射影を棄却し，$R_p$，移動格子面共鎖，圧力履歴座標，DC 収束判定を採用境界にする． \\
 7 ステップ更新順序・面データ引き渡し & U1--U12 全体 & V1--V11 と表~\ref{tab:v_accuracy_summary}（更新順序，射影後面速度閉包，アフィン圧力履歴面加速度，圧力ジャンプ結合系の適用限界，アクティブ幾何毛管分解の最終契約）． \\

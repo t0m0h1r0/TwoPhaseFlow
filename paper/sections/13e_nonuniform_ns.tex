@@ -23,7 +23,7 @@ V10 は $\alpha=1$ の固定一様格子上 CLS 移流である．
 静止液滴 BF 平衡が長時間維持されること（\autoref{sec:U3_nonuniform_suite}）．
 $\alpha = 1$ で一様格子と一致し，$\alpha = 2$ で界面付近 $h_{\min} = 0.5\, h_{\mathrm{avg}}$．
 本 V8 は §\ref{sec:verification} 縮約路線 (ii)（二相縮約 BF；CCD 微分 + Neumann FVM PPE
-+ CSF $\kappa_{lg}$，pressure-jump PPE は含まない）を非一様格子に拡張した縮約検証である．
++ CSF $\kappa_{lg}$，圧力ジャンプ PPE は含まない）を非一様格子に拡張した縮約検証である．
 出力 $p$ は物理圧力であり，判定は Laplace 圧 $\sigma/(r\,\mathrm{We})$ に対する
 相対誤差 $\Delta p_{\mathrm{rel}}$ を用いる．
 
@@ -159,7 +159,7 @@ $|\Delta p_{\mathrm{corr}}|/(\sigma/R)$ & $|\Delta V|/V_0$ \\
         局所幅切替による体積誤差悪化は見られない．
   \item ただし本 V9 は縮約静止液滴の確認であり，水--空気級の物性ベンチマーク
         そのものではない．局所幅 $\varepsilon$ の効果を保証理由として使うには，
-        HFE curvature と pressure-jump PPE が同時に有効な構成で，かつ移動界面または
+        HFE 曲率と圧力ジャンプ PPE が同時に有効な構成で，かつ移動界面または
         再初期化が実際に局所厚みを経由する別検証を要求する．
         CSF 経路では使用禁止であり，移動界面の長時間保証には
         非一様移流ベンチマークと圧力ジャンプ/HFE 統計評価を別途要求する．
