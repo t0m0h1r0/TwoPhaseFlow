@@ -27,7 +27,10 @@ face-cochain and pressure-history contract, use
 [WIKI-T-172](theory/WIKI-T-172.md); for the literature-survey-backed
 capillary-wave route, use [WIKI-T-173](theory/WIKI-T-173.md); for the latest
 zero-base capillary boundary-state RCA, use
-[WIKI-X-053](cross-domain/WIKI-X-053.md); for the remaining AO-Fast GPU
+[WIKI-X-053](cross-domain/WIKI-X-053.md), which records that Chapter 14
+capillary fixes must preserve phase-separated PPE + HFE/DC rather than
+switching to GMRES, monolithic FD, or non-HFE pressure handling; for the
+remaining AO-Fast GPU
 efficiency bottleneck, use
 [WIKI-L-045](code/WIKI-L-045.md). Older cards remain listed for
 provenance, but cards marked

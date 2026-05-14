@@ -160,6 +160,53 @@ def test_variational_fccd_pressure_reaction_pairs_with_lvar_wall():
     )
 
 
+def test_impermeable_fccd_pressure_operator_embeds_wall_normal_equations():
+    """Free-slip PPE must solve on the same no-through face space as correction."""
+    backend, grid, fccd = _make_nonuniform_fccd_wall_stack()
+    div_op = FCCDDivergenceOperator(fccd)
+    cfg = type(
+        "Cfg",
+        (),
+        {
+            "ppe_coefficient_scheme": "phase_density",
+            "ppe_interface_coupling_scheme": "none",
+            "pressure_force_contract": "variational_adjoint",
+            "scalar_operator_pairing": "variational_operator",
+            "boundary_face_space": "impermeable_face",
+        },
+    )()
+    ppe = PPESolverFCCDMatrixFree(backend, cfg, grid, fccd)
+    rng = np.random.default_rng(57722)
+    pressure = rng.standard_normal(grid.shape)
+    rho = 1.0 + rng.uniform(0.0, 0.5, grid.shape)
+
+    ppe.prepare_operator(rho)
+    ppe_apply = np.asarray(ppe._apply_operator_core(np.asarray(pressure))).ravel()
+    pressure_faces = div_op.pressure_fluxes(
+        pressure,
+        rho,
+        pressure_gradient="fccd",
+        pressure_force_contract="variational_adjoint",
+        boundary_face_space="impermeable_face",
+    )
+    projection_apply = np.asarray(
+        div_op.divergence_from_faces(pressure_faces)
+    ).ravel()
+
+    assert np.max(np.abs(pressure_faces[0][0, :])) == pytest.approx(0.0)
+    assert np.max(np.abs(pressure_faces[0][-1, :])) == pytest.approx(0.0)
+    assert np.max(np.abs(pressure_faces[1][:, 0])) == pytest.approx(0.0)
+    assert np.max(np.abs(pressure_faces[1][:, -1])) == pytest.approx(0.0)
+    mask = np.ones_like(ppe_apply, dtype=bool)
+    mask[ppe._pin_dof] = False
+    np.testing.assert_allclose(
+        projection_apply[mask],
+        ppe_apply[mask],
+        rtol=1.0e-12,
+        atol=1.0e-12,
+    )
+
+
 def test_fccd_projection_rejects_unknown_face_options():
     """Chapter 8 face subsystem must fail closed instead of changing locus."""
     backend, grid, fccd = _make_nonuniform_fccd_wall_stack()
@@ -838,6 +885,7 @@ def test_ch14_capillary_yaml_builds_solver():
     assert solver._interface_runtime.reinit_every == 1
     assert isinstance(solver._ppe_solver, PPESolverDefectCorrection)
     assert isinstance(solver._ppe_solver.operator, PPESolverFCCDMatrixFree)
+    assert solver._ppe_solver.operator.boundary_face_space == "impermeable_face"
     assert isinstance(solver._ppe_solver.base_solver, PPESolverFDDirect)
     assert solver._div_op is solver._fccd_div_op
     assert solver._viscous_spatial_scheme == "ccd_bulk"
@@ -1336,13 +1384,17 @@ def test_ch14_canonical_yamls_build_shared_common_flux_contract():
         assert solver._capillary_force_source == "bundle_virtual_work", path.name
         assert solver._momentum_form == "conservative_common_flux", path.name
         assert solver._cn_buoyancy_predictor_assembly_mode == "none", path.name
-        assert solver._face_no_slip_boundary_state is True, path.name
+        free_slip = (cfg.boundary_condition or {}).get("type") in {
+            "free_slip",
+            "slip",
+        }
+        assert solver._face_no_slip_boundary_state is (not free_slip), path.name
         assert solver._preserve_projected_faces is True, path.name
         assert solver._boundary_hodge_mode == "off", path.name
-        assert solver._boundary_hodge_state_space == "constrained_face", path.name
-        assert solver._boundary_hodge_pressure_pairing == (
-            "restricted_variational_adjoint"
-        ), path.name
+        expected_state_space = "impermeable_face" if free_slip else "constrained_face"
+        expected_pairing = "restricted_variational_adjoint"
+        assert solver._boundary_hodge_state_space == expected_state_space, path.name
+        assert solver._boundary_hodge_pressure_pairing == expected_pairing, path.name
         if path.name in gravity_configs:
             assert solver._scheme_runtime.gravity_formulation == (
                 "variational_potential"
@@ -1678,6 +1730,7 @@ def test_ch14_capillary_yaml_uses_true_low_order_defect_base():
     assert solver._ppe_dc_relaxation == pytest.approx(0.7)
     assert isinstance(solver._ppe_solver, PPESolverDefectCorrection)
     assert isinstance(solver._ppe_solver.operator, PPESolverFCCDMatrixFree)
+    assert solver._ppe_solver.operator.boundary_face_space == "impermeable_face"
     assert isinstance(solver._ppe_solver.base_solver, PPESolverFDDirect)
 
 
@@ -1695,6 +1748,24 @@ def test_mixed_periodic_wall_velocity_hook_zeroes_wall_and_syncs_periodic_axis()
     assert v[-1, 2] == pytest.approx(v[0, 2])
     np.testing.assert_allclose(u[:, 0], 0.0)
     np.testing.assert_allclose(u[:, -1], 0.0)
+    np.testing.assert_allclose(v[:, 0], 0.0)
+    np.testing.assert_allclose(v[:, -1], 0.0)
+
+
+def test_free_slip_velocity_hook_keeps_wall_tangential_velocity():
+    from twophase.simulation.runtime_setup import free_slip_bc_hook
+
+    u = np.ones((4, 5))
+    v = np.ones((4, 5))
+    u[:, 0] = 3.0
+    u[:, -1] = 4.0
+    v[:, 0] = 5.0
+    v[:, -1] = 6.0
+
+    free_slip_bc_hook(u, v, bc_type="periodic_wall")
+
+    np.testing.assert_allclose(u[:, 0], 3.0)
+    np.testing.assert_allclose(u[:, -1], 4.0)
     np.testing.assert_allclose(v[:, 0], 0.0)
     np.testing.assert_allclose(v[:, -1], 0.0)
 

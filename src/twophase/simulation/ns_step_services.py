@@ -70,6 +70,29 @@ def _backend_is_gpu(backend) -> bool:
     return bool(getattr(backend, "is_gpu", lambda: False)())
 
 
+def _apply_wall_face_state(
+    face_components,
+    *,
+    xp,
+    bc_type: str,
+    face_no_slip_boundary_state: bool,
+):
+    """Project wall faces into the boundary space used by the pressure solve."""
+    if is_all_periodic(bc_type, 2):
+        return face_components
+    if face_no_slip_boundary_state:
+        return zero_wall_velocity_face_components(
+            face_components,
+            xp=xp,
+            bc_type=bc_type,
+        )
+    return zero_wall_normal_face_components(
+        face_components,
+        xp=xp,
+        bc_type=bc_type,
+    )
+
+
 def _apply_solver_interface_jump(ppe_solver, base_pressure):
     """Map a base pressure to the solver's physical pressure representation."""
     applier = getattr(ppe_solver, "apply_interface_jump", None)
@@ -631,6 +654,9 @@ def _pressure_face_flux_kwargs(
     )
     if pressure_force_contract != "raw_compact_gradient":
         kwargs["pressure_force_contract"] = pressure_force_contract
+    boundary_face_space = getattr(ppe_runtime, "boundary_face_space", "full_face")
+    if boundary_face_space != "full_face":
+        kwargs["boundary_face_space"] = boundary_face_space
     if getattr(ppe_runtime, "ppe_coefficient_scheme", None) == "phase_separated":
         kwargs["coefficient_scheme"] = "phase_separated"
     if getattr(ppe_runtime, "ppe_interface_coupling_scheme", "none") == "affine_jump":
@@ -1230,21 +1256,12 @@ def compute_ns_predictor_stage(
             gravity_axis=1,
         )
         gravity_accel_faces = gravity_faces.acceleration_components
-        if not is_all_periodic(bc_type, 2) and (
-            face_no_slip_boundary_state or state.bc_hook is None
-        ):
-            if face_no_slip_boundary_state:
-                gravity_accel_faces = zero_wall_velocity_face_components(
-                    gravity_accel_faces,
-                    xp=xp,
-                    bc_type=bc_type,
-                )
-            else:
-                gravity_accel_faces = zero_wall_normal_face_components(
-                    gravity_accel_faces,
-                    xp=xp,
-                    bc_type=bc_type,
-                )
+        gravity_accel_faces = _apply_wall_face_state(
+            gravity_accel_faces,
+            xp=xp,
+            bc_type=bc_type,
+            face_no_slip_boundary_state=face_no_slip_boundary_state,
+        )
         state.gravity_covector_face_components = gravity_faces.covector_components
         state.gravity_accel_face_components = gravity_accel_faces
         state.gravity_face_density_components = gravity_faces.face_density_components
@@ -1571,21 +1588,12 @@ def compute_ns_predictor_stage(
                     }
                 )
                 state.conservative_transport_certificate = certificate
-        if not is_all_periodic(bc_type, 2) and (
-            face_no_slip_boundary_state or state.bc_hook is None
-        ):
-            if face_no_slip_boundary_state:
-                state.predictor_face_components = zero_wall_velocity_face_components(
-                    state.predictor_face_components,
-                    xp=xp,
-                    bc_type=bc_type,
-                )
-            else:
-                state.predictor_face_components = zero_wall_normal_face_components(
-                    state.predictor_face_components,
-                    xp=xp,
-                    bc_type=bc_type,
-                )
+        state.predictor_face_components = _apply_wall_face_state(
+            state.predictor_face_components,
+            xp=xp,
+            bc_type=bc_type,
+            face_no_slip_boundary_state=face_no_slip_boundary_state,
+        )
         if ao_capillary_predictor_applied and hasattr(div_op, "reconstruct_nodes"):
             state.u_star, state.v_star = div_op.reconstruct_nodes(
                 state.predictor_face_components
@@ -1618,22 +1626,41 @@ def _pressure_stage_predictor_rhs(
         predictor_faces = state.predictor_face_components
     if predictor_faces is None or not hasattr(div_op, "divergence_from_faces"):
         return div_op.divergence([state.u_star, state.v_star]) / projection_dt
-    if not is_all_periodic(bc_type, 2) and (
-        face_no_slip_boundary_state or state.bc_hook is None
-    ):
-        if face_no_slip_boundary_state:
-            predictor_faces = zero_wall_velocity_face_components(
-                predictor_faces,
-                xp=xp,
-                bc_type=bc_type,
-            )
-        else:
-            predictor_faces = zero_wall_normal_face_components(
-                predictor_faces,
-                xp=xp,
-                bc_type=bc_type,
-            )
+    predictor_faces = _apply_wall_face_state(
+        predictor_faces,
+        xp=xp,
+        bc_type=bc_type,
+        face_no_slip_boundary_state=face_no_slip_boundary_state,
+    )
     return div_op.divergence_from_faces(predictor_faces) / projection_dt
+
+
+def _pressure_stage_force_rhs(
+    state: NSStepState,
+    *,
+    xp,
+    div_op,
+    ppe_runtime,
+    bc_type: str,
+    face_no_slip_boundary_state: bool,
+):
+    """Return body-force divergence in the same direct face boundary space."""
+    force_components = [state.f_x / state.rho, state.f_y / state.rho]
+    boundary_face_space = getattr(ppe_runtime, "boundary_face_space", "full_face")
+    if (
+        boundary_face_space != "full_face"
+        and hasattr(div_op, "face_fluxes")
+        and hasattr(div_op, "divergence_from_faces")
+    ):
+        force_faces = div_op.face_fluxes(force_components)
+        force_faces = _apply_wall_face_state(
+            force_faces,
+            xp=xp,
+            bc_type=bc_type,
+            face_no_slip_boundary_state=face_no_slip_boundary_state,
+        )
+        return div_op.divergence_from_faces(force_faces)
+    return div_op.divergence(force_components)
 
 
 def _prepare_nonstatic_geometric_capillary_jump(
@@ -1674,21 +1701,12 @@ def _prepare_nonstatic_geometric_capillary_jump(
         boundary=_ao_application_boundary(application),
         label="corrected conservative capillary jump acceleration",
     )
-    if not is_all_periodic(bc_type, 2) and (
-        face_no_slip_boundary_state or state.bc_hook is None
-    ):
-        if face_no_slip_boundary_state:
-            acceleration = zero_wall_velocity_face_components(
-                acceleration,
-                xp=xp,
-                bc_type=bc_type,
-            )
-        else:
-            acceleration = zero_wall_normal_face_components(
-                acceleration,
-                xp=xp,
-                bc_type=bc_type,
-            )
+    acceleration = _apply_wall_face_state(
+        acceleration,
+        xp=xp,
+        bc_type=bc_type,
+        face_no_slip_boundary_state=face_no_slip_boundary_state,
+    )
     rhs = div_op.divergence_from_faces(acceleration)
     state.geometric_capillary_jump_face_acceleration = acceleration
     state.geometric_capillary_jump_rhs = rhs
@@ -1753,21 +1771,12 @@ def _prepare_nonstatic_geometric_pressure_reaction(
             reference_faces=state.predictor_face_components,
         )
     )
-    if not is_all_periodic(bc_type, 2) and (
-        face_no_slip_boundary_state or state.bc_hook is None
-    ):
-        if face_no_slip_boundary_state:
-            increments = zero_wall_velocity_face_components(
-                increments,
-                xp=xp,
-                bc_type=bc_type,
-            )
-        else:
-            increments = zero_wall_normal_face_components(
-                increments,
-                xp=xp,
-                bc_type=bc_type,
-            )
+    increments = _apply_wall_face_state(
+        increments,
+        xp=xp,
+        bc_type=bc_type,
+        face_no_slip_boundary_state=face_no_slip_boundary_state,
+    )
     acceleration = [increment / projection_dt for increment in increments]
     rhs = div_op.divergence_from_faces(acceleration)
     reaction_coordinate = getattr(
@@ -2210,7 +2219,14 @@ def solve_ns_pressure_stage(
     rhs = predictor_rhs
     if nonstatic_geometric_capillary:
         rhs = rhs + state.geometric_capillary_jump_rhs
-    rhs = rhs + div_op.divergence([state.f_x / state.rho, state.f_y / state.rho])
+    rhs = rhs + _pressure_stage_force_rhs(
+        state,
+        xp=xp,
+        div_op=div_op,
+        ppe_runtime=ppe_runtime,
+        bc_type=bc_type,
+        face_no_slip_boundary_state=face_no_slip_boundary_state,
+    )
     closed_interface_source = (
         capillary_force_source == "closed_interface_riesz"
         and not _uses_geometric_capillary_surface_slot(state)
@@ -2749,15 +2765,12 @@ def correct_ns_velocity_stage(
                     force_faces,
                 )
             ]
-            if (
-                not is_all_periodic(bc_type, 2)
-                and face_no_slip_boundary_state
-            ):
-                state.projected_face_components = zero_wall_velocity_face_components(
-                    state.projected_face_components,
-                    xp=xp,
-                    bc_type=bc_type,
-                )
+            state.projected_face_components = _apply_wall_face_state(
+                state.projected_face_components,
+                xp=xp,
+                bc_type=bc_type,
+                face_no_slip_boundary_state=face_no_slip_boundary_state,
+            )
             _apply_boundary_hodge_projection(
                 state,
                 xp=xp,
@@ -2795,15 +2808,12 @@ def correct_ns_velocity_stage(
                 [state.f_x / state.rho, state.f_y / state.rho],
                 **project_kwargs,
             )
-            if (
-                not is_all_periodic(bc_type, 2)
-                and face_no_slip_boundary_state
-            ):
-                state.projected_face_components = zero_wall_velocity_face_components(
-                    state.projected_face_components,
-                    xp=xp,
-                    bc_type=bc_type,
-                )
+            state.projected_face_components = _apply_wall_face_state(
+                state.projected_face_components,
+                xp=xp,
+                bc_type=bc_type,
+                face_no_slip_boundary_state=face_no_slip_boundary_state,
+            )
             _apply_boundary_hodge_projection(
                 state,
                 xp=xp,

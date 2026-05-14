@@ -65,6 +65,9 @@ def _face_hodge_pressure_kwargs(*, ppe_runtime, interface_stress_context):
     )
     if contract != "raw_compact_gradient":
         kwargs["pressure_force_contract"] = contract
+    boundary_face_space = getattr(ppe_runtime, "boundary_face_space", "full_face")
+    if boundary_face_space != "full_face":
+        kwargs["boundary_face_space"] = boundary_face_space
     coefficient = getattr(ppe_runtime, "ppe_coefficient_scheme", "phase_density")
     if coefficient == "phase_separated":
         kwargs["coefficient_scheme"] = "phase_separated"
@@ -83,6 +86,16 @@ def _face_hodge_pressure_kwargs(*, ppe_runtime, interface_stress_context):
             f"coupling, got {coupling!r}"
         )
     return kwargs
+
+
+def _face_hodge_projection_solver(ppe_solver: "IPPESolver", *, ppe_runtime):
+    """Return the operator whose face space matches the requested projection."""
+    boundary_face_space = getattr(ppe_runtime, "boundary_face_space", "full_face")
+    if boundary_face_space != "full_face":
+        operator = getattr(ppe_solver, "operator", None)
+        if operator is not None:
+            return operator
+    return ppe_solver
 
 
 class LegacyReprojector(IVelocityReprojector):
@@ -326,14 +339,23 @@ class FaceHodgeReprojector(IVelocityReprojector):
                 faces = boundary_projector(faces, xp=xp, bc_type=bc_type)
             rhs = div_op.divergence_from_faces(faces)
             pre_linf = xp.max(xp.abs(rhs))
-            phi = ppe_solver.solve(rhs, rho, dt=1.0, p_init=None)
+            projection_solver = _face_hodge_projection_solver(
+                ppe_solver,
+                ppe_runtime=ppe_runtime,
+            )
+            phi = projection_solver.solve(rhs, rho, dt=1.0, p_init=None)
             pressure_faces = div_op.pressure_fluxes(phi, rho, **pressure_kwargs)
             projected_faces = [
                 face - xp.asarray(pressure_face)
                 for face, pressure_face in zip(faces, pressure_faces, strict=True)
             ]
-            if face_no_slip_boundary_state and not is_all_periodic(bc_type, 2):
-                projected_faces = zero_wall_velocity_face_components(
+            if not is_all_periodic(bc_type, 2):
+                boundary_projector = (
+                    zero_wall_velocity_face_components
+                    if face_no_slip_boundary_state
+                    else zero_wall_normal_face_components
+                )
+                projected_faces = boundary_projector(
                     projected_faces,
                     xp=xp,
                     bc_type=bc_type,

@@ -62,6 +62,15 @@ _FACE_ZERO_DIAGNOSTICS = {
 }
 
 
+def _pressure_projection_solver(ppe_solver, pressure_flux_kwargs: dict[str, Any]):
+    """Return the solver whose operator matches the requested face space."""
+    if pressure_flux_kwargs.get("boundary_face_space", "full_face") != "full_face":
+        operator = getattr(ppe_solver, "operator", None)
+        if operator is not None:
+            return operator
+    return ppe_solver
+
+
 def zero_reinit_projection_diagnostics() -> dict[str, float]:
     """Return the default no-projection diagnostic row."""
     return dict(_REINIT_ZERO_DIAGNOSTICS)
@@ -379,7 +388,13 @@ def capillary_jump_range_projection(
     try:
         _invalidate_solver_graph_cache(ppe_solver)
         _set_zero_jump_solver_context(ppe_solver, zero_jump_kwargs)
-        projected_pressure = xp.asarray(ppe_solver.solve(source, rho, dt=0.0, p_init=None))
+        projection_solver = _pressure_projection_solver(
+            ppe_solver,
+            zero_jump_kwargs,
+        )
+        projected_pressure = xp.asarray(
+            projection_solver.solve(source, rho, dt=0.0, p_init=None)
+        )
         range_projection_faces = div_op.pressure_fluxes(
             projected_pressure,
             rho,
@@ -590,7 +605,13 @@ def _external_hodge_split(
     pressure_flux_kwargs: dict[str, Any],
 ):
     source = div_op.divergence_from_faces(face_components)
-    projected_pressure = xp.asarray(ppe_solver.solve(source, rho, dt=0.0, p_init=None))
+    projection_solver = _pressure_projection_solver(
+        ppe_solver,
+        pressure_flux_kwargs,
+    )
+    projected_pressure = xp.asarray(
+        projection_solver.solve(source, rho, dt=0.0, p_init=None)
+    )
     range_projection_faces = div_op.pressure_fluxes(
         projected_pressure,
         rho,

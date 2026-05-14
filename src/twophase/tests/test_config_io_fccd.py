@@ -329,14 +329,14 @@ def test_ch14_capillary_yaml_loads_execution_stack():
     assert cfg.physics.mu_l == pytest.approx(1.002e-3)
     assert cfg.physics.mu_g == pytest.approx(1.825e-5)
     assert cfg.physics.sigma == pytest.approx(0.0728)
-    assert cfg.run.T_final == pytest.approx(0.035379718894)
+    assert cfg.run.T_final == pytest.approx(0.046742983863)
     assert cfg.run.snap_times == pytest.approx(
         (
             0.0,
-            0.008899695230,
-            0.017677817828,
-            0.026630729902,
-            0.035379718894,
+            0.011685745966,
+            0.023371491932,
+            0.035057237897,
+            0.046742983863,
         )
     )
     assert "interface_amplitude" in cfg.diagnostics
@@ -379,10 +379,11 @@ def test_ch14_capillary_yaml_loads_execution_stack():
     assert cfg.run.face_flux_projection is True
     assert cfg.run.canonical_face_state is True
     assert cfg.run.face_native_predictor_state is True
-    assert cfg.run.face_no_slip_boundary_state is True
+    assert cfg.run.face_no_slip_boundary_state is False
     assert cfg.run.preserve_projected_faces is True
     assert cfg.run.boundary_hodge_mode == "off"
-    assert cfg.run.boundary_hodge_state_space == "constrained_face"
+    assert cfg.run.boundary_hodge_state_space == "impermeable_face"
+    assert cfg.run.boundary_face_space == "impermeable_face"
     assert cfg.run.boundary_hodge_pressure_pairing == "restricted_variational_adjoint"
     assert cfg.run.pressure_history_mode == "pressure_coordinate"
     assert cfg.run.pressure_history_extrapolation == "bdf2"
@@ -563,14 +564,20 @@ def test_ch14_canonical_yamls_share_base_numerical_stack():
         assert cfg.run.face_flux_projection is True, path.name
         assert cfg.run.canonical_face_state is True, path.name
         assert cfg.run.face_native_predictor_state is True, path.name
-        assert cfg.run.face_no_slip_boundary_state is True, path.name
+        free_slip = (raw.get("boundary_condition") or {}).get("type") in {
+            "free_slip",
+            "slip",
+        }
+        assert cfg.run.face_no_slip_boundary_state is (not free_slip), path.name
         assert cfg.run.preserve_projected_faces is True, path.name
         assert cfg.run.boundary_hodge_mode == "off", path.name
-        assert cfg.run.boundary_hodge_state_space == "constrained_face", path.name
-        assert (
-            cfg.run.boundary_hodge_pressure_pairing
-            == "restricted_variational_adjoint"
+        expected_state_space = "impermeable_face" if free_slip else "constrained_face"
+        expected_pairing = "restricted_variational_adjoint"
+        assert cfg.run.boundary_hodge_state_space == expected_state_space, path.name
+        assert cfg.run.boundary_face_space == (
+            "impermeable_face" if free_slip else "full_face"
         ), path.name
+        assert cfg.run.boundary_hodge_pressure_pairing == expected_pairing, path.name
         assert cfg.run.pressure_history_mode == "pressure_coordinate", path.name
         assert cfg.run.pressure_history_extrapolation == "bdf2", path.name
         assert cfg.run.pressure_scheme == "fccd_matrixfree", path.name
@@ -712,6 +719,26 @@ def test_constrained_face_state_rejects_disabled_no_slip_face_state():
                     "boundary_hodge": {
                         "mode": "off",
                         "state_space": "constrained_face",
+                    },
+                },
+            },
+        }))
+
+
+def test_impermeable_face_state_rejects_no_slip_face_state():
+    with pytest.raises(ValueError, match="face_no_slip_boundary_state=false"):
+        ExperimentConfig.from_dict(_minimal({
+            "numerics": {
+                "projection": {
+                    "mode": "face_hodge",
+                    "face_flux_projection": True,
+                    "canonical_face_state": True,
+                    "face_native_predictor_state": True,
+                    "face_no_slip_boundary_state": True,
+                    "preserve_projected_faces": True,
+                    "boundary_hodge": {
+                        "mode": "off",
+                        "state_space": "impermeable_face",
                     },
                 },
             },

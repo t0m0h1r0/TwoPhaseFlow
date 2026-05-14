@@ -3,9 +3,9 @@
 # and initial amplitude A0=0.2 mm.  With water-air properties at about
 # 20 C (rho_l=998.2, rho_g=1.204, sigma=0.0728), k=628.318530718 and
 # h_l=h_g=10 mm.  The rigid-wall two-layer dispersion relation gives the
-# continuum reference omega=134.419859151 and T=0.046742983863 s.  The paper
-# full production snapshot window is the signed mode-2 response over one observed
-# cycle: upper crest -> flat -> lower crest -> flat -> upper crest.
+# free-slip rigid-wall continuum reference omega=134.419859151 and
+# T=0.046742983863 s.  The paper production window follows this linear
+# capillary-wave period: upper crest -> flat -> lower crest -> flat -> upper crest.
 # Production numerical stack: active-geometry capillary decomposition + FCCD PPE +
 # bundle Young-Laplace work + UCCD6.
 # - Active geometry: q is the transported physical cell volume, theta is its normalized
@@ -83,11 +83,8 @@ physics:
 run:
   momentum_form: conservative_common_flux
   time:
-    # Paper-facing one observed cycle of the current active-geometry
-    # capillary-wave response.  The continuum rigid-wall reference period is
-    # documented above, but this production window follows the validated
-    # signed mode-2 extrema/flat sequence used for §14 visualization.
-    final: 0.035379718894
+    # Paper-facing one continuum free-slip capillary-wave period.
+    final: 0.046742983863
     # Multiplier on theory CFL constants; 1.0 uses the theory budget.
     cfl: 1.0
     print_every: 200
@@ -153,14 +150,14 @@ numerics:
     face_flux_projection: true
     canonical_face_state: true
     face_native_predictor_state: true
-    face_no_slip_boundary_state: true
+    face_no_slip_boundary_state: false
     preserve_projected_faces: true
     boundary_hodge:
-      # SP-AN state-space contract shared by ch14 production YAMLs.  The
-      # production restricted solve remains off; for x-periodic/y-wall runs
-      # this records the quotient-compatible wall face space explicitly.
+      # Capillary-wave reference dispersion assumes impermeable free-slip
+      # rigid walls, so the face state keeps wall-normal flux constrained but
+      # does not impose a no-slip tangential wall trace.
       mode: off
-      state_space: constrained_face
+      state_space: impermeable_face
       wall_trace: reconstruct_nodes
       wall_retraction: metric_projection
       metric: transported_face_mass
@@ -200,7 +197,7 @@ output:
   save_npz: true
   snapshots:
     # upper crest -> flat -> lower crest -> flat -> upper crest
-    times: [0.0, 0.008899695230, 0.017677817828, 0.026630729902, 0.035379718894]
+    times: [0.0, 0.011685745966, 0.023371491932, 0.035057237897, 0.046742983863]
   figures:
     - type: time_series
       title: "Water-air capillary wave: signed mode amplitude"
@@ -287,4 +284,4 @@ initial_condition:
 
 initial_velocity: null
 boundary_condition:
-  type: wall
+  type: free_slip

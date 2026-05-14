@@ -10,6 +10,7 @@ A3 chain:
 from __future__ import annotations
 
 import numpy as np
+import pytest
 
 from twophase.backend import Backend
 from twophase.ccd.ccd_solver import CCDSolver
@@ -1021,3 +1022,125 @@ def test_affine_jump_ppe_rhs_keeps_nonzero_cut_face_drive():
     assert ppe._phase_threshold is None
     assert np.max(np.abs(rhs)) > 0.0
     np.testing.assert_allclose(ppe.apply_interface_jump(np.zeros(grid.shape)), 0.0)
+
+
+def test_affine_jump_ppe_rhs_respects_impermeable_face_space():
+    """HFE affine RHS must use the same boundary face space as ``D P_B A G``."""
+    backend = Backend(use_gpu=False)
+    cfg = SimulationConfig(
+        grid=GridConfig(ndim=2, N=(2, 2), L=(2.0, 2.0)),
+    )
+    grid = Grid(cfg.grid, backend)
+    ccd = CCDSolver(grid, backend, bc_type="wall")
+    fccd = FCCDSolver(grid, backend, bc_type="wall", ccd_solver=ccd)
+    div_op = FCCDDivergenceOperator(fccd)
+    psi = np.ones(grid.shape)
+    psi[1:, :] = 0.0
+    kappa = np.full(grid.shape, 2.0)
+    rho = np.ones(grid.shape)
+    rho[psi >= 0.5] = 1000.0
+
+    common_cfg = {
+        "ppe_coefficient_scheme": "phase_separated",
+        "ppe_interface_coupling_scheme": "affine_jump",
+        "pressure_force_contract": "variational_adjoint",
+        "scalar_operator_pairing": "variational_operator",
+        "ppe_preconditioner": "none",
+    }
+    full_cfg = type("Cfg", (), {**common_cfg, "boundary_face_space": "full_face"})()
+    full_ppe = PPESolverFCCDMatrixFree(backend, full_cfg, grid, fccd)
+    full_ppe.set_interface_jump_context(psi=psi, kappa=kappa, sigma=3.0)
+    full_ppe.prepare_operator(rho)
+    full_rhs = full_ppe._add_affine_interface_jump_rhs(np.zeros(grid.shape))
+    assert np.max(np.abs(full_rhs)) > 0.0
+
+    restricted_cfg = type(
+        "Cfg",
+        (),
+        {**common_cfg, "boundary_face_space": "impermeable_face"},
+    )()
+    restricted_ppe = PPESolverFCCDMatrixFree(backend, restricted_cfg, grid, fccd)
+    restricted_ppe.set_interface_jump_context(psi=psi, kappa=kappa, sigma=3.0)
+    restricted_ppe.prepare_operator(rho)
+    rhs = restricted_ppe._add_affine_interface_jump_rhs(np.zeros(grid.shape))
+
+    operator_faces = div_op.pressure_fluxes(
+        np.zeros(grid.shape),
+        rho,
+        pressure_gradient="fccd",
+        pressure_force_contract="variational_adjoint",
+        coefficient_scheme="phase_separated",
+        interface_coupling_scheme="affine_jump",
+        interface_stress_context=restricted_ppe._interface_stress_context,
+        boundary_face_space="impermeable_face",
+    )
+    expected_rhs = -div_op.divergence_from_faces(operator_faces)
+
+    np.testing.assert_allclose(operator_faces[0][0, :], 0.0)
+    np.testing.assert_allclose(operator_faces[0][-1, :], 0.0)
+    np.testing.assert_allclose(rhs, expected_rhs, rtol=1.0e-12, atol=1.0e-12)
+    np.testing.assert_allclose(rhs, 0.0, atol=1.0e-14)
+
+
+@pytest.mark.gpu
+def test_affine_jump_impermeable_gpu_hot_path_has_no_host_transfer(
+    gpu_backend,
+    monkeypatch,
+):
+    """Boundary-restricted affine HFE faces must stay device-resident."""
+    xp = gpu_backend.xp
+    cfg = SimulationConfig(
+        grid=GridConfig(ndim=2, N=(4, 4), L=(2.0, 2.0)),
+    )
+    grid = Grid(cfg.grid, gpu_backend)
+    ccd = CCDSolver(grid, gpu_backend, bc_type="wall")
+    fccd = FCCDSolver(grid, gpu_backend, bc_type="wall", ccd_solver=ccd)
+    div_op = FCCDDivergenceOperator(fccd)
+    ppe_cfg = type(
+        "Cfg",
+        (),
+        {
+            "ppe_coefficient_scheme": "phase_separated",
+            "ppe_interface_coupling_scheme": "affine_jump",
+            "pressure_force_contract": "variational_adjoint",
+            "scalar_operator_pairing": "variational_operator",
+            "boundary_face_space": "impermeable_face",
+            "ppe_preconditioner": "none",
+        },
+    )()
+    ppe = PPESolverFCCDMatrixFree(gpu_backend, ppe_cfg, grid, fccd)
+    psi = np.ones(grid.shape)
+    psi[1:, :] = 0.0
+    kappa = np.full(grid.shape, 2.0)
+    rho = np.ones(grid.shape)
+    rho[psi >= 0.5] = 1000.0
+    psi_dev = xp.asarray(psi)
+    kappa_dev = xp.asarray(kappa)
+    rho_dev = xp.asarray(rho)
+    pressure = xp.zeros(grid.shape)
+
+    ppe.set_interface_jump_context(psi=psi_dev, kappa=kappa_dev, sigma=3.0)
+    ppe.prepare_operator(rho_dev)
+
+    def _forbid_host_transfer(*args, **kwargs):
+        raise AssertionError("GPU hot path attempted a host transfer")
+
+    monkeypatch.setattr(gpu_backend, "to_host", _forbid_host_transfer)
+    monkeypatch.setattr(gpu_backend, "asnumpy", _forbid_host_transfer)
+
+    rhs = ppe._add_affine_interface_jump_rhs(xp.zeros(grid.shape))
+    applied = ppe._apply_operator_core(pressure)
+    faces = div_op.pressure_fluxes(
+        pressure,
+        rho_dev,
+        pressure_gradient="fccd",
+        pressure_force_contract="variational_adjoint",
+        coefficient_scheme="phase_separated",
+        interface_coupling_scheme="affine_jump",
+        interface_stress_context=ppe._interface_stress_context,
+        boundary_face_space="impermeable_face",
+    )
+
+    assert hasattr(rhs, "__cuda_array_interface__")
+    assert hasattr(applied, "__cuda_array_interface__")
+    assert all(hasattr(face, "__cuda_array_interface__") for face in faces)

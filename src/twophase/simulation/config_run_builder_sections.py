@@ -22,7 +22,7 @@ THEORY_CFL_ADVECTIVE = 0.10
 THEORY_CFL_CAPILLARY = 0.05
 THEORY_CFL_VISCOUS = 1.0
 _BOUNDARY_HODGE_MODES = ("off", "wall_trace_projection")
-_BOUNDARY_HODGE_STATE_SPACES = ("full_face", "constrained_face")
+_BOUNDARY_HODGE_STATE_SPACES = ("full_face", "impermeable_face", "constrained_face")
 _BOUNDARY_HODGE_WALL_TRACES = ("reconstruct_nodes",)
 _BOUNDARY_HODGE_WALL_RETRACTIONS = ("metric_projection",)
 _BOUNDARY_HODGE_METRICS = ("transported_face_mass",)
@@ -127,24 +127,25 @@ def _parse_boundary_hodge(projection: dict[str, Any]) -> dict[str, Any]:
         "numerics.projection.boundary_hodge.metric",
     )
     pressure_default = (
-        "restricted_variational_adjoint"
-        if state_space == "constrained_face"
-        else "active_variational_adjoint"
+        "active_variational_adjoint"
+        if state_space == "full_face"
+        else "restricted_variational_adjoint"
     )
     pressure_pairing = validate_choice(
         str(raw.get("pressure_pairing", pressure_default)).strip().lower(),
         _BOUNDARY_HODGE_PRESSURE_PAIRINGS,
         "numerics.projection.boundary_hodge.pressure_pairing",
     )
-    if state_space == "constrained_face" and pressure_pairing != "restricted_variational_adjoint":
+    if state_space != "full_face" and pressure_pairing != "restricted_variational_adjoint":
         raise ValueError(
-            "numerics.projection.boundary_hodge.state_space='constrained_face' "
+            "numerics.projection.boundary_hodge.state_space="
+            f"{state_space!r} "
             "requires pressure_pairing='restricted_variational_adjoint'."
         )
-    if mode == "wall_trace_projection" and state_space == "constrained_face":
+    if mode == "wall_trace_projection" and state_space != "full_face":
         raise ValueError(
             "boundary_hodge.mode='wall_trace_projection' is a post-pressure "
-            "diagnostic and must not be combined with state_space='constrained_face'."
+            "diagnostic and must not be combined with a restricted face state."
         )
     solver = validate_choice(
         str(raw.get("solver", "matrix_free_cg")).strip().lower(),
@@ -207,6 +208,12 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
             "requires numerics.projection.face_no_slip_boundary_state=true so "
             "the stored face cochain and the nodal no-slip state live in the same "
             "boundary space."
+        )
+    if boundary_hodge["state_space"] == "impermeable_face" and face_no_slip_boundary_state:
+        raise ValueError(
+            "numerics.projection.boundary_hodge.state_space='impermeable_face' "
+            "is the free-slip/no-through face space and requires "
+            "numerics.projection.face_no_slip_boundary_state=false."
         )
 
     tracking_redist = tracking_redistance(options.tracking)
@@ -308,6 +315,11 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
         capillary_reaction_projection=options.operator_settings["capillary_reaction_projection"],
         pressure_force_contract=options.operator_settings["pressure_force_contract"],
         scalar_operator_pairing=options.operator_settings["scalar_operator_pairing"],
+        boundary_face_space=(
+            "impermeable_face"
+            if boundary_hodge["state_space"] == "impermeable_face"
+            else "full_face"
+        ),
         pressure_history_mode=options.operator_settings["pressure_history_mode"],
         pressure_history_extrapolation=options.operator_settings[
             "pressure_history_extrapolation"

@@ -44,6 +44,10 @@ from ..simulation.pressure_complex import (
     normalise_scalar_operator_pairing,
     variational_pressure_reaction_faces,
 )
+from ..simulation.face_boundary import (
+    apply_direct_face_boundary_space,
+    normalise_boundary_face_space,
+)
 from .interfaces import IPPESolver
 from .fccd_matrixfree_helpers import (
     apply_fccd_interface_jump,
@@ -143,6 +147,9 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         )
         self.scalar_operator_pairing = normalise_scalar_operator_pairing(
             getattr(solver_cfg, "scalar_operator_pairing", None)
+        )
+        self.boundary_face_space = normalise_boundary_face_space(
+            getattr(solver_cfg, "boundary_face_space", "full_face")
         )
         if (
             self.scalar_operator_pairing == SCALAR_OPERATOR_PAIRING_REQUIRE_CERTIFIED
@@ -365,14 +372,28 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             return self._apply_variational_operator_core(p_dev)
         xp = self.xp
         out = xp.zeros_like(p_dev)
+        if self.boundary_face_space == "full_face":
+            for axis in range(self.ndim):
+                grad_face = self.fccd.face_gradient(p_dev, axis)
+                self._accumulate_weighted_face_gradient_divergence(
+                    out,
+                    grad_face,
+                    self._coeff_face[axis],
+                    axis,
+                )
+            return out
+        faces = []
         for axis in range(self.ndim):
             grad_face = self.fccd.face_gradient(p_dev, axis)
-            self._accumulate_weighted_face_gradient_divergence(
-                out,
-                grad_face,
-                self._coeff_face[axis],
-                axis,
-            )
+            faces.append(self._coeff_face[axis] * grad_face)
+        faces = apply_direct_face_boundary_space(
+            faces,
+            xp=xp,
+            bc_type=self.fccd.bc_type,
+            boundary_face_space=self.boundary_face_space,
+        )
+        for axis, face in enumerate(faces):
+            self._accumulate_face_flux_divergence(out, face, axis)
         return out
 
     def _apply_variational_operator_core(self, p_dev):
@@ -385,6 +406,12 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             bc_type=self.fccd.bc_type,
             pressure=p_dev,
             coeff_faces=self._coeff_face,
+        )
+        pressure_faces = apply_direct_face_boundary_space(
+            pressure_faces,
+            xp=xp,
+            bc_type=self.fccd.bc_type,
+            boundary_face_space=self.boundary_face_space,
         )
         for axis, face in enumerate(pressure_faces):
             self._accumulate_face_flux_divergence(out, face, axis)
@@ -402,7 +429,7 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         return rhs_dev - self._apply_operator_core(jump_pressure)
 
     def _add_affine_interface_jump_rhs(self, rhs_dev, *, force: bool = False):
-        """Apply affine jump closure: solve ``L(p)=rhs+D_f α_f B_Γ(j)``."""
+        """Apply affine jump closure in the same direct face space as ``L``."""
         if (self._defer_interface_jump and not force) or not (
             self.interface_coupling_scheme == "affine_jump"
             and interface_stress_context_is_active(self._interface_stress_context)
@@ -415,6 +442,7 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             fccd=self.fccd,
         )
         affine_rhs = self.xp.zeros_like(rhs_dev)
+        affine_faces = []
         for axis in range(self.ndim):
             jump_gradient = signed_pressure_jump_gradient(
                 xp=self.xp,
@@ -424,12 +452,15 @@ class PPESolverFCCDMatrixFree(IPPESolver):
                 face_curvature_lg=face_curvature_lg,
                 fccd=self.fccd,
             )
-            self._accumulate_weighted_face_gradient_divergence(
-                affine_rhs,
-                jump_gradient,
-                self._coeff_face[axis],
-                axis,
-            )
+            affine_faces.append(self._coeff_face[axis] * jump_gradient)
+        affine_faces = apply_direct_face_boundary_space(
+            affine_faces,
+            xp=self.xp,
+            bc_type=self.fccd.bc_type,
+            boundary_face_space=self.boundary_face_space,
+        )
+        for axis, face in enumerate(affine_faces):
+            self._accumulate_face_flux_divergence(affine_rhs, face, axis)
         return rhs_dev + affine_rhs
 
     def solve(self, rhs, rho, dt: float = 0.0, p_init=None):

@@ -46,6 +46,7 @@ class NSPPERuntimeState:
     capillary_reaction_projection: str
     pressure_force_contract: str
     scalar_operator_pairing: str
+    boundary_face_space: str
     pressure_history_mode: str
     pressure_history_extrapolation: str
     ppe_tolerance: float
@@ -228,6 +229,9 @@ def normalise_ns_ppe_runtime(
     scalar_operator_pairing = str(
         getattr(options, "scalar_operator_pairing", "legacy")
     ).strip().lower()
+    boundary_face_space = str(
+        getattr(options, "boundary_face_space", "full_face")
+    ).strip().lower().replace("-", "_")
     pressure_history_mode = str(
         getattr(options, "pressure_history_mode", "face_acceleration")
     ).strip().lower()
@@ -297,6 +301,14 @@ def normalise_ns_ppe_runtime(
             f"'{getattr(options, 'scalar_operator_pairing', None)}'. "
             "Use legacy|require_certified|variational_operator."
         )
+    if boundary_face_space in {"free_slip", "slip", "impermeable", "no_through"}:
+        boundary_face_space = "impermeable_face"
+    if boundary_face_space not in {"full_face", "impermeable_face"}:
+        raise ValueError(
+            "Unsupported boundary_face_space="
+            f"'{getattr(options, 'boundary_face_space', None)}'. "
+            "Use full_face|impermeable_face."
+        )
     if (
         pressure_force_contract == "raw_compact_gradient"
         and scalar_operator_pairing != "legacy"
@@ -353,6 +365,7 @@ def normalise_ns_ppe_runtime(
         capillary_reaction_projection=capillary_reaction_projection,
         pressure_force_contract=pressure_force_contract,
         scalar_operator_pairing=scalar_operator_pairing,
+        boundary_face_space=boundary_face_space,
         pressure_history_mode=pressure_history_mode,
         pressure_history_extrapolation=pressure_history_extrapolation,
         ppe_tolerance=float(options.ppe_tolerance),

@@ -163,6 +163,7 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             scalar_operator_pairing=str(
                 getattr(run, "scalar_operator_pairing", "legacy")
             ),
+            boundary_face_space=str(getattr(run, "boundary_face_space", "full_face")),
             pressure_history_mode=str(
                 getattr(run, "pressure_history_mode", "face_acceleration")
             ),

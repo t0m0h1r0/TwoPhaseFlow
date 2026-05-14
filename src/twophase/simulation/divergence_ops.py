@@ -18,6 +18,7 @@ from .face_projection import (
     reconstruct_nodes_from_faces,
     zero_face_components,
 )
+from .face_boundary import apply_direct_face_boundary_space
 from .gradient_operator import IDivergenceOperator
 from ..coupling.interface_stress_closure import (
     affine_jump_face_inverse_density,
@@ -281,6 +282,7 @@ class FCCDDivergenceOperator(IDivergenceOperator):
         interface_coupling_scheme: str = "none",
         interface_stress_context=None,
         capillary_jump_components=None,
+        boundary_face_space: str = "full_face",
     ) -> list["array"]:
         """Compute PPE-consistent face pressure fluxes."""
         xp = self._fccd.xp
@@ -406,6 +408,12 @@ class FCCDDivergenceOperator(IDivergenceOperator):
                     )
         else:
             faces = coeff_faces
+        faces = apply_direct_face_boundary_space(
+            faces,
+            xp=xp,
+            bc_type=self._fccd.bc_type,
+            boundary_face_space=boundary_face_space,
+        )
         return faces
 
     def project(
@@ -422,6 +430,7 @@ class FCCDDivergenceOperator(IDivergenceOperator):
         interface_coupling_scheme: str = "none",
         interface_stress_context=None,
         capillary_jump_components=None,
+        boundary_face_space: str = "full_face",
     ) -> list["array"]:
         """FCCD face-flux projection (WIKI-T-068 §5)."""
         return self.reconstruct_nodes(
@@ -438,6 +447,7 @@ class FCCDDivergenceOperator(IDivergenceOperator):
                 interface_coupling_scheme=interface_coupling_scheme,
                 interface_stress_context=interface_stress_context,
                 capillary_jump_components=capillary_jump_components,
+                boundary_face_space=boundary_face_space,
             )
         )
 
@@ -455,6 +465,7 @@ class FCCDDivergenceOperator(IDivergenceOperator):
         interface_coupling_scheme: str = "none",
         interface_stress_context=None,
         capillary_jump_components=None,
+        boundary_face_space: str = "full_face",
     ) -> list["array"]:
         """Apply FCCD face-flux projection and keep corrected faces."""
         xp = self._fccd.xp
@@ -474,6 +485,7 @@ class FCCDDivergenceOperator(IDivergenceOperator):
             interface_coupling_scheme=interface_coupling_scheme,
             interface_stress_context=interface_stress_context,
             capillary_jump_components=capillary_jump_components,
+            boundary_face_space=boundary_face_space,
         )
         return apply_pressure_projection(u_faces, p_faces, f_faces, dt)
 
