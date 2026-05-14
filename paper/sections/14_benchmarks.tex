@@ -42,6 +42,7 @@ Rayleigh--Taylor では，浮力が安定化ではなく不安定成長を作る
         幾何セル分率 $q_C$ を主状態とし，
         bundle Young--Laplace work と
         pressure-component Hodge reaction で毛管面共鎖を構成，
+        Hodge 逆適用済み面増分を投影面空間へ同次元補間，
   \item Ridge--Eikonal 再初期化を各ベンチマークの設定に従って適用し，
         本章の毛管波と振動液滴では毎 step profile restoration を行う，
   \item 向き付き pressure-jump
@@ -166,6 +167,7 @@ $3.402\times10^{-11}$ から最大 $1.659\times10^{-5}$ まで増加し，
 終端 $1.132\times10^{-9}$ であり，掲載窓では丸め誤差に近い水準へ保たれる．
 この結果は，幾何セル分率輸送，bundle Young--Laplace work，
 pressure-component Hodge reaction，pressure-coordinate history，
+Hodge 逆適用済み面補間，
 および格子再構築時の投影済み面共鎖移送を同時に使う
 アクティブ幾何毛管分解の完走を示す．
 ただし，U12 で棄却した全圧力像への過射影を成功と読むものではない．
