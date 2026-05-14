@@ -140,13 +140,13 @@ def validate_geometric_runtime_capillary_application_admitted(
         and status == "pressure_reaction_projection_pending"
     ):
         return
-    if status == "pressure_component_hodge_split":
+    if status in {"pressure_component_hodge_split", "pressure_jump_affine"}:
         if (
             application.pressure_balanced_increment_weighted_l2 <= tolerance
             and application.max_abs_pressure_balanced_face_increment <= tolerance
         ):
             raise ValueError(
-                "non-static AO capillary split has zero pressure-balanced "
+                "non-static AO capillary packet has zero pressure-balanced "
                 "drive; classify it as pressure-exact static before the "
                 "predictor stage"
             )

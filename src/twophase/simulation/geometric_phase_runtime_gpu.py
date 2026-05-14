@@ -671,7 +671,7 @@ def materialise_geometric_graph_capillary_state_gpu(
         pressure_range_status=(
             "pressure_exact_static"
             if zero_surface_tension
-            else "pressure_reaction_projection_pending"
+            else "pressure_jump_affine"
         ),
         pressure_exact_static=zero_surface_tension,
         capillary_drive_present=not zero_surface_tension,
@@ -700,7 +700,7 @@ def materialise_geometric_graph_capillary_state_gpu(
         pressure_reaction_projection_status=(
             "pressure_hodge_diagnostic"
             if zero_surface_tension
-            else "pressure_reaction_projection_pending"
+            else "pressure_jump_affine"
         ),
     )
 

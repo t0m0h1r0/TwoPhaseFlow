@@ -599,7 +599,11 @@ def test_nonstatic_ao_capillary_runtime_allows_pending_split_only_at_boundary():
     )
 
 
-def test_nonstatic_ao_capillary_runtime_accepts_completed_split():
+@pytest.mark.parametrize(
+    "status",
+    ("pressure_component_hodge_split", "pressure_jump_affine"),
+)
+def test_nonstatic_ao_capillary_runtime_accepts_admitted_routes(status):
     zeros = (np.zeros((1, 1)), np.zeros((1, 1)))
     application = GeometricRuntimeCapillaryApplicationState(
         capillary=SimpleNamespace(pressure_range_tolerance=1.0e-11),
@@ -615,7 +619,7 @@ def test_nonstatic_ao_capillary_runtime_accepts_completed_split():
         max_abs_pressure_balanced_face_increment=1.0,
         pressure_exact_static=False,
         capillary_drive_present=True,
-        pressure_reaction_projection_status="pressure_component_hodge_split",
+        pressure_reaction_projection_status=status,
     )
 
     validate_geometric_runtime_capillary_application_admitted(application)
