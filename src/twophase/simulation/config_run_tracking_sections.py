@@ -5,16 +5,18 @@ from __future__ import annotations
 from typing import Any
 
 _PROJECTION_MODES = (
-    "legacy", "variable_density", "gfm", "consistent_gfm",
+    "legacy", "variable_density", "face_hodge", "gfm", "consistent_gfm",
 )
 _PROJECTION_MODE_ALIASES = {
     "standard": "legacy",
     "variable_density_only": "variable_density",
+    "projection_native_face_hodge": "face_hodge",
     "pressure_jump": "consistent_gfm",
 }
 _PROJECTION_TO_REPROJECT_MODE = {
     "legacy": "legacy",
     "variable_density": "variable_density_only",
+    "face_hodge": "face_hodge",
     "gfm": "gfm",
     "consistent_gfm": "consistent_gfm",
 }

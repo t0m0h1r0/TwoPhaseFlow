@@ -376,6 +376,7 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
         ppe_dc_max_iterations=options.operator_settings["ppe_dc_max_iterations"],
         ppe_dc_tolerance=options.operator_settings["ppe_dc_tolerance"],
         ppe_dc_relaxation=options.operator_settings["ppe_dc_relaxation"],
+        ppe_dc_fail_close=options.operator_settings["ppe_dc_fail_close"],
         debug_diagnostics=bool(options.debug.get("step_diagnostics", False)),
     )
     if cfg.gravity_formulation == "variational_potential":

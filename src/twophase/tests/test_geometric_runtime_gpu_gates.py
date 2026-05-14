@@ -9,6 +9,7 @@ from twophase.backend import Backend
 from twophase.config import GridConfig
 from twophase.core.grid import Grid
 from twophase.geometry.p1_cut_geometry import cut_geometry_2d
+from twophase.geometry.phase_state import GeometricPhaseState
 from twophase.geometry.swept_flux import (
     _axis_aligned_strip_area,
     _axis_aligned_strip_area_unfused,
@@ -85,6 +86,33 @@ def test_gpu_swept_flux_rejects_receiver_overfill_without_clipping():
             tolerance=1.0e-12,
         )
     assert GridStub.backend.host_transfer_count == 1
+
+
+def test_geometric_capacity_dt_uses_exact_swept_volume_bound():
+    backend = Backend(use_gpu=False)
+    grid = Grid(GridConfig(ndim=2, N=(2, 1), L=(2.0, 1.0)), backend)
+    phi = -np.ones((3, 2), dtype=float)
+    q = np.asarray([[1.0], [0.8]], dtype=float)
+    state = GeometricPhaseState.from_q_phi(
+        grid,
+        q,
+        phi,
+        require_compatible=False,
+    )
+    velocity_x = np.asarray([[0.0], [0.5], [0.0]], dtype=float)
+    velocity_y = np.zeros((2, 2), dtype=float)
+
+    dt = gpu_runtime.estimate_geometric_swept_capacity_dt_gpu(
+        grid,
+        state,
+        (velocity_x, velocity_y),
+        dt_upper=1.0,
+        boundary=("wall", "wall"),
+        tolerance=1.0e-12,
+        bisection_iterations=24,
+    )
+
+    assert dt == pytest.approx(0.4, rel=1.0e-5)
 
 
 def test_gpu_schur_pcg_respects_device_tolerance_mask():

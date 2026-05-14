@@ -45,6 +45,7 @@ from .geometric_phase_runtime import (
 )
 from .geometric_phase_runtime_gpu import (
     build_geometric_phase_state_gpu,
+    estimate_geometric_swept_capacity_dt_gpu,
     materialise_geometric_common_flux_state_gpu,
     materialise_geometric_runtime_capillary_application_state_gpu,
     materialise_geometric_runtime_capillary_state_gpu,
@@ -209,6 +210,7 @@ class TwoPhaseNSSolver:
         ppe_dc_max_iterations: int = 3,
         ppe_dc_tolerance: float = 1.0e-8,
         ppe_dc_relaxation: float = 0.8,
+        ppe_dc_fail_close: bool = False,
         surface_tension_scheme: str = "pressure_jump",
         capillary_force_source: str = "curvature_jump",
         curvature_method: str = "psi_direct_filtered",
@@ -333,6 +335,7 @@ class TwoPhaseNSSolver:
                 ppe_dc_max_iterations=ppe_dc_max_iterations,
                 ppe_dc_tolerance=ppe_dc_tolerance,
                 ppe_dc_relaxation=ppe_dc_relaxation,
+                ppe_dc_fail_close=ppe_dc_fail_close,
             ),
             schemes=SolverSchemeOptions(
                 hfe_C=hfe_C,
@@ -622,8 +625,11 @@ class TwoPhaseNSSolver:
             reinitializer=self._reinit,
             ppe_solver=self._ppe_solver,
             fccd_div_op=self._fccd_div_op,
+            div_op=self._div_op,
+            ppe_runtime=self._ppe_runtime,
             reprojector=self._reprojector,
             wall_contacts=self._wall_contacts,
+            projected_face_components=self._projected_face_components,
             bc_type=self.bc_type,
         )
         self._finalize_grid_rebuild(result)
@@ -651,9 +657,12 @@ class TwoPhaseNSSolver:
             reinitializer=self._reinit,
             ppe_solver=self._ppe_solver,
             fccd_div_op=self._fccd_div_op,
+            div_op=self._div_op,
+            ppe_runtime=self._ppe_runtime,
             reprojector=self._reprojector,
             wall_contacts=self._wall_contacts,
             conservative_momentum_components=state.conservative_momentum_components,
+            projected_face_components=state.projected_face_components,
             bc_type=self.bc_type,
         )
         self._finalize_grid_rebuild(result)
@@ -674,6 +683,7 @@ class TwoPhaseNSSolver:
         self._p_prev_dev = None
         self._p_base_prev_dev = None
         self._p_prev_accel_face_components = None
+        self._projected_face_components = result.projected_face_components
         self._conv_prev = None
         self._conv_ab2_ready = False
         self._velocity_prev = None
@@ -827,7 +837,7 @@ class TwoPhaseNSSolver:
         cfl_viscous: float = 1.0,
     ):
         """Return per-operator timestep candidates and active limiter."""
-        return compute_runtime_timestep_budget(
+        budget = compute_runtime_timestep_budget(
             self._runtime_timestep_context(),
             u,
             v,
@@ -837,6 +847,51 @@ class TwoPhaseNSSolver:
             cfl_capillary=cfl_capillary,
             cfl_viscous=cfl_viscous,
         )
+        return self._with_geometric_capacity_dt_budget(
+            budget,
+            u,
+            v,
+        )
+
+    def _with_geometric_capacity_dt_budget(self, budget, u, v):
+        """Admit the AO swept-volume invariant-domain timestep when active."""
+        phase_state = getattr(self, "_geometric_phase_state", None)
+        if (
+            not self._geometric_phase_runtime_enabled()
+            or phase_state is None
+            or not self._backend.is_gpu()
+            or not np.isfinite(budget.dt)
+            or budget.dt <= 0.0
+        ):
+            return budget
+        xp = self._backend.xp
+        boundary = boundary_axes(self.bc_type, self._grid.ndim)
+        face_velocity = self._nodal_velocity_to_geometric_cell_faces(
+            xp.asarray(u),
+            xp.asarray(v),
+            boundary=boundary,
+        )
+        capacity_dt = estimate_geometric_swept_capacity_dt_gpu(
+            self._grid,
+            phase_state,
+            face_velocity,
+            dt_upper=budget.dt,
+            boundary=boundary,
+            tolerance=self._active_projection_absolute_tolerance,
+        )
+        if capacity_dt <= 0.0:
+            raise ValueError(
+                "GPU AO geometric-capacity timestep fail-close: no positive "
+                "timestep preserves donor/receiver cell-volume bounds"
+            )
+        if capacity_dt < budget.dt:
+            return replace(
+                budget,
+                dt=capacity_dt,
+                limiter="geometric_capacity",
+                dt_geometric_capacity=capacity_dt,
+            )
+        return replace(budget, dt_geometric_capacity=capacity_dt)
 
     def _runtime_setup_context(self) -> NSRuntimeSetupContext:
         """Build the convenience-service context for setup-facing helpers."""
@@ -940,6 +995,71 @@ class TwoPhaseNSSolver:
             and int(step_index) % self._interface_runtime.rebuild_freq == 0
         )
 
+    def _pressure_coordinate_history_enabled(self) -> bool:
+        """Return whether pressure history can be regenerated on a new grid."""
+        return str(
+            getattr(self._ppe_runtime, "pressure_history_mode", "face_acceleration")
+        ).strip().lower() == "pressure_coordinate"
+
+    def prepare_geometric_grid_for_timestep(
+        self,
+        psi,
+        u,
+        v,
+        *,
+        dt: float,
+        rho_l: float,
+        rho_g: float,
+        sigma: float,
+        mu: float,
+        g_acc: float,
+        rho_ref: float,
+        mu_l: float,
+        mu_g: float,
+        bc_hook,
+        step_index: int,
+    ):
+        """Apply beginning-of-step AO grid rebuild before timestep selection."""
+        if not self._geometric_phase_grid_rebuild_due(step_index):
+            return psi, u, v, False
+        if not self._pressure_coordinate_history_enabled():
+            raise ValueError(
+                "geometric_cell_fraction interface-following grid rebuild "
+                "requires pressure_history.form='pressure_coordinate'; "
+                "face-acceleration pressure history is a metric-complex "
+                "cochain and cannot be reused after grid rebuild"
+            )
+        state = NSStepState.from_inputs(
+            NSStepInputs(
+                psi=psi,
+                u=u,
+                v=v,
+                dt=dt,
+                rho_l=rho_l,
+                rho_g=rho_g,
+                sigma=sigma,
+                mu=mu,
+                g_acc=g_acc,
+                rho_ref=rho_ref,
+                mu_l=mu_l,
+                mu_g=mu_g,
+                bc_hook=bc_hook,
+                step_index=step_index,
+            ),
+            backend=self._backend,
+        )
+        if (
+            (self._canonical_face_state or self._preserve_projected_faces)
+            and self._projected_face_components is not None
+        ):
+            state.projected_face_components = [
+                self._backend.xp.asarray(component)
+                for component in self._projected_face_components
+            ]
+        rebuilt = self._rebuild_grid_from_geometric_phase_state(state)
+        self._prepared_geometric_grid_rebuild_step = int(step_index)
+        return rebuilt.psi, rebuilt.u, rebuilt.v, True
+
     def _rebuild_grid_from_geometric_phase_state(
         self,
         state: NSStepState,
@@ -951,6 +1071,16 @@ class TwoPhaseNSSolver:
         xp = self._backend.xp
         old_coords = [coords.copy() for coords in self._grid.coords]
         old_phi = xp.asarray(phase_state.phi)
+        remap_pressure_coordinate_history = self._pressure_coordinate_history_enabled()
+        old_p_prev = self._p_prev_dev if remap_pressure_coordinate_history else None
+        old_p_base_prev = (
+            self._p_base_prev_dev if remap_pressure_coordinate_history else None
+        )
+        old_p_base_prev2 = (
+            getattr(self, "_p_base_prev2_dev", None)
+            if remap_pressure_coordinate_history
+            else None
+        )
         context = self._runtime_setup_context()
         state.psi = context.reconstruct_base.psi_from_phi(-old_phi)
         state.rho = xp.asarray(
@@ -964,13 +1094,34 @@ class TwoPhaseNSSolver:
             state.rho * xp.asarray(state.v),
         ]
         state = self._rebuild_grid_conservative(state)
+        # Face cochains are metric-complex objects.  The rebuild path may only
+        # keep them after explicitly remapping them on face coordinates and
+        # reprojecting them in the new Hodge metric.
+        state.face_velocity_components = None
         remapper = build_grid_remapper(self._backend, old_coords, self._grid.coords)
+        if remap_pressure_coordinate_history:
+            # Physical affine-jump pressure is discontinuous and cannot be
+            # remapped across a rebuilt interface-fitted grid.  The base
+            # history below is stored in the reduced smooth HFE coordinate.
+            self._p_prev_dev = None
+            self._p_prev = None
+            self._p_base_prev_dev = (
+                None
+                if old_p_base_prev is None
+                else xp.asarray(remapper.remap(old_p_base_prev))
+            )
+            self._p_base_prev2_dev = (
+                None
+                if old_p_base_prev2 is None
+                else xp.asarray(remapper.remap(old_p_base_prev2))
+            )
         phi = remapper.remap(old_phi)
         self._geometric_phase_state = (
             build_geometric_phase_state_gpu(self._grid, phi)
             if self._backend.is_gpu()
             else GeometricPhaseState.from_phi(self._grid, phi)
         )
+        state.projected_face_components = self._projected_face_components
         state.psi = self._geometric_cell_to_node_view(
             self._geometric_phase_state.theta
         )
@@ -1011,11 +1162,7 @@ class TwoPhaseNSSolver:
             ]
             supplied_shapes = tuple(tuple(component.shape) for component in supplied)
             if supplied_shapes == geometric_shapes:
-                return self._project_geometric_cell_face_velocity(
-                    supplied,
-                    dt=state.dt,
-                    boundary=boundary,
-                )
+                return supplied
             if supplied_shapes == projection_shapes:
                 return self._project_projection_faces_to_geometric_cell_faces(
                     supplied,
@@ -1057,11 +1204,7 @@ class TwoPhaseNSSolver:
             v,
             boundary=boundary,
         )
-        return self._project_geometric_cell_face_velocity(
-            [x_faces, y_faces],
-            dt=state.dt,
-            boundary=boundary,
-        )
+        return [x_faces, y_faces]
 
     def _project_projection_faces_to_geometric_cell_faces(
         self,
@@ -1083,11 +1226,13 @@ class TwoPhaseNSSolver:
             v,
             boundary=boundary,
         )
-        return self._project_geometric_cell_face_velocity(
-            [x_faces, y_faces],
-            dt=dt,
-            boundary=boundary,
-        )
+        # The geometric Hodge PCG is an exact cell-face operator, but applying
+        # its correction only to phase transport changes the common flux without
+        # applying the same cochain to momentum and pressure history.  Until that
+        # coupled common-flux correction is admitted, production AO transport
+        # uses the projection-native velocity pullback and leaves the Hodge PCG
+        # as a certificate/test operator.
+        return [x_faces, y_faces]
 
     def _nodal_velocity_to_geometric_cell_faces(
         self,
@@ -1451,7 +1596,15 @@ class TwoPhaseNSSolver:
         self._last_geometric_runtime_capillary = None
         self._last_geometric_runtime_capillary_application = None
         if self._geometric_phase_grid_rebuild_due(state.step_index):
-            state = self._rebuild_grid_from_geometric_phase_state(state)
+            prepared_step = getattr(
+                self,
+                "_prepared_geometric_grid_rebuild_step",
+                None,
+            )
+            if prepared_step == int(state.step_index):
+                self._prepared_geometric_grid_rebuild_step = None
+            else:
+                state = self._rebuild_grid_from_geometric_phase_state(state)
         phase_state = getattr(self, "_geometric_phase_state", None)
         if phase_state is None:
             raise ValueError(
@@ -2134,7 +2287,11 @@ class TwoPhaseNSSolver:
             capillary_force_source=self._capillary_force_source,
         )
         self._p_base_prev2_dev = self._p_base_prev_dev
-        self._p_base_prev_dev = state.pressure_base
+        self._p_base_prev_dev = (
+            state.pressure_history_storage_base
+            if state.pressure_history_storage_base is not None
+            else state.pressure_base
+        )
         self._p_prev_accel_face_components = state.pressure_accel_face_components
         return state
 

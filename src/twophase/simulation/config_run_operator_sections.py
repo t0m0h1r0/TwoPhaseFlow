@@ -557,6 +557,7 @@ def parse_run_operator_settings(
         "ppe_dc_max_iterations": poisson_settings["ppe_dc_max_iterations"],
         "ppe_dc_tolerance": poisson_settings["ppe_dc_tolerance"],
         "ppe_dc_relaxation": poisson_settings["ppe_dc_relaxation"],
+        "ppe_dc_fail_close": poisson_settings["ppe_dc_fail_close"],
         "pressure_gradient_scheme": surface_settings["pressure_gradient_scheme"],
         "surface_tension_scheme": surface_settings["surface_tension_scheme"],
         "capillary_force_source": surface_settings["capillary_force_source"],

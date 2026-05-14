@@ -31,14 +31,19 @@ from twophase.simulation.ns_step_state import NSStepState
 from twophase.simulation.ns_step_services import (
     _capillary_interface_psi,
     _capillary_interface_psi_previous,
+    _decode_affine_pressure_history_coordinate,
+    _encode_affine_pressure_history_coordinate,
     _interface_supported_curvature,
+    _smooth_pressure_history_base_without_ao_reaction,
 )
+from twophase.coupling.interface_stress_closure import build_interface_stress_context
 from twophase.levelset.curvature_psi import CurvatureCalculatorPsi
 from twophase.levelset.fccd_advection import FCCDLevelSetAdvection
 from twophase.simulation.config_io import ExperimentConfig
 from twophase.simulation.face_projection import reconstruct_nodes_from_faces
 from twophase.levelset.transport_strategy import PhiPrimaryTransport, PsiDirectTransport
 from twophase.simulation.velocity_reprojector import (
+    FaceHodgeReprojector,
     IVelocityReprojector,
     VariableDensityReprojector,
 )
@@ -804,6 +809,8 @@ def test_ch14_capillary_yaml_builds_solver():
 
     assert cfg.interface_state_space.kind == "geometric_cell_fraction"
     assert solver._fccd is not None
+    assert cfg.run.reproject_mode == "face_hodge"
+    assert isinstance(solver._reprojector, FaceHodgeReprojector)
     assert solver._advection_scheme == "geometric_swept_volume"
     assert solver._interface_tracking_method == "q_cell_fraction"
     assert solver._interface_gauge_reconstruction == "column_height_graph"
@@ -1099,6 +1106,64 @@ def test_ch14_capillary_rebuild_refreshes_ao_state_metric_owner():
     y_high = int(np.argmin(np.abs(y_coords - 0.75 * cfg.grid.LY)))
     assert theta_nodes[x0, y_low] > 0.5
     assert theta_nodes[x0, y_high] < 0.5
+
+
+def test_geometric_grid_rebuild_remaps_projected_face_cochains():
+    """Projected faces cross grid rebuild only through explicit face remap."""
+    path = (
+        Path(__file__).resolve().parents[3]
+        / "experiment/ch14/config/ch14_capillary.yaml"
+    )
+    cfg = ExperimentConfig.from_yaml(path)
+    solver = TwoPhaseNSSolver.from_config(cfg)
+    psi = solver.build_ic(cfg)
+    u, v = solver.build_velocity(cfg, psi)
+    psi, u, v = solver._rebuild_grid(
+        psi,
+        u,
+        v,
+        rho_l=cfg.physics.rho_l,
+        rho_g=cfg.physics.rho_g,
+    )
+    nx, ny = solver._grid.N
+    solver._projected_face_components = [
+        np.ones((nx, ny + 1)),
+        np.ones((nx + 1, ny)),
+    ]
+    state = NSStepState(
+        psi=psi,
+        u=u,
+        v=v,
+        dt=1.0e-5,
+        rho_l=cfg.physics.rho_l,
+        rho_g=cfg.physics.rho_g,
+        sigma=cfg.physics.sigma,
+        mu=cfg.physics.mu_l,
+        g_acc=0.0,
+        rho_ref=cfg.physics.rho_l,
+        mu_l=cfg.physics.mu_l,
+        mu_g=cfg.physics.mu_g,
+        bc_hook=None,
+        step_index=1,
+        face_velocity_components=[
+            np.ones((nx, ny + 1)),
+            np.ones((nx + 1, ny)),
+        ],
+        projected_face_components=[
+            np.ones((nx, ny + 1)),
+            np.ones((nx + 1, ny)),
+        ],
+    )
+
+    rebuilt = solver._rebuild_grid_from_geometric_phase_state(state)
+
+    assert rebuilt.face_velocity_components is None
+    assert rebuilt.projected_face_components is not None
+    assert solver._projected_face_components is not None
+    assert tuple(component.shape for component in rebuilt.projected_face_components) == (
+        (nx, ny + 1),
+        (nx + 1, ny),
+    )
 
 
 def test_ch14_rayleigh_taylor_yaml_builds_ao_initial_state():
@@ -2372,6 +2437,68 @@ def test_affine_jump_pressure_stack_one_step_no_nan():
     assert diag["ppe_interface_coupling_affine_jump"] == 1.0
 
 
+def test_affine_pressure_history_coordinate_strips_jump_offset():
+    xp = np
+    psi = np.asarray([[0.0, 1.0], [0.0, 1.0]])
+    jump = np.full_like(psi, 3.0)
+    smooth_coordinate = np.asarray([[1.0, 2.0], [4.0, 8.0]])
+    physical_pressure = smooth_coordinate + jump * (1.0 - psi)
+    context = build_interface_stress_context(
+        xp=xp,
+        psi=psi,
+        pressure_jump_gas_minus_liquid=jump,
+    )
+    kwargs = {
+        "interface_coupling_scheme": "affine_jump",
+        "interface_stress_context": context,
+    }
+
+    encoded = _encode_affine_pressure_history_coordinate(
+        xp,
+        physical_pressure,
+        kwargs,
+    )
+    decoded = _decode_affine_pressure_history_coordinate(xp, encoded, kwargs)
+
+    np.testing.assert_allclose(encoded, smooth_coordinate)
+    np.testing.assert_allclose(decoded, physical_pressure)
+
+
+def test_nonstatic_ao_pressure_history_excludes_constraint_reaction_coordinate():
+    xp = np
+    smooth_pressure = np.asarray([[1.0, 2.0], [4.0, 8.0]])
+    reaction_coordinate = np.asarray([[0.5, -0.25], [0.125, -0.0625]])
+    state = NSStepState(
+        psi=np.ones_like(smooth_pressure),
+        u=np.zeros_like(smooth_pressure),
+        v=np.zeros_like(smooth_pressure),
+        dt=1.0e-3,
+        rho_l=1.0,
+        rho_g=1.0,
+        sigma=1.0,
+        mu=0.0,
+        g_acc=0.0,
+        rho_ref=1.0,
+        mu_l=None,
+        mu_g=None,
+        bc_hook=None,
+        step_index=0,
+        pressure_base=smooth_pressure + reaction_coordinate,
+        geometric_capillary_pressure_reaction_coordinate=reaction_coordinate,
+        geometric_runtime_capillary_application=SimpleNamespace(
+            pressure_exact_static=False,
+            capillary_drive_present=True,
+        ),
+        conservative_transport_certificate={
+            "ao_nonstatic_surface_tension_slot_bypassed": True,
+        },
+    )
+
+    history_base = _smooth_pressure_history_base_without_ao_reaction(xp, state)
+
+    np.testing.assert_allclose(history_base, smooth_pressure)
+
+
 def test_fccd_not_constructed_when_unused():
     """Baseline path: no FCCDSolver allocated when both schemes are legacy."""
     from twophase.ns_terms.convection import ConvectionTerm
@@ -2711,6 +2838,9 @@ class _ArrayBackend:
     def to_host(self, arr):
         return np.asarray(arr)
 
+    def asnumpy(self, arr):
+        return np.asarray(arr)
+
 
 def test_consistent_iim_reprojector_fails_closed_without_matrix_contract():
     """IIM reprojection must not silently switch to a base projection scheme."""
@@ -2841,6 +2971,81 @@ def test_variable_density_reprojector_requires_explicit_densities():
             ccd=_DerivativeOnlyCCD(),
             backend=_ArrayBackend(),
         )
+
+
+def test_face_hodge_reprojector_uses_projection_native_complex():
+    reprojector = FaceHodgeReprojector()
+    psi = np.zeros((3, 3))
+    u = np.full_like(psi, 3.0)
+    v = np.full_like(psi, -1.0)
+
+    class ProjectionNativeDiv:
+        def __init__(self):
+            self.pressure_kwargs = None
+
+        def face_fluxes(self, components):
+            return [np.asarray(component) for component in components]
+
+        def divergence_from_faces(self, face_components):
+            return np.asarray(face_components[0]) + np.asarray(face_components[1])
+
+        def pressure_fluxes(self, pressure, rho, **kwargs):
+            del rho
+            self.pressure_kwargs = kwargs
+            return [np.asarray(pressure), np.asarray(pressure)]
+
+        def reconstruct_nodes(self, face_components):
+            return [np.asarray(component) for component in face_components]
+
+    class NeutralJumpPPE:
+        def __init__(self):
+            self.events = []
+            self.operator = self
+            self._interface_stress_context = None
+
+        def set_interface_jump_context(self, **kwargs):
+            self.events.append(("set", kwargs["sigma"]))
+            self._interface_stress_context = object()
+
+        def clear_interface_jump_context(self):
+            self.events.append(("clear", None))
+            self._interface_stress_context = None
+
+        def solve(self, rhs, rho, dt=0.0, p_init=None):
+            del rho, dt, p_init
+            self.events.append(("solve", None))
+            return 0.5 * np.asarray(rhs)
+
+    ppe = NeutralJumpPPE()
+    div_op = ProjectionNativeDiv()
+    runtime = SimpleNamespace(
+        ppe_solver_name="fccd_iterative",
+        ppe_coefficient_scheme="phase_separated",
+        ppe_interface_coupling_scheme="affine_jump",
+        pressure_force_contract="variational_adjoint",
+    )
+
+    u_proj, v_proj = reprojector.reproject(
+        psi,
+        u,
+        v,
+        ppe,
+        ccd=None,
+        backend=_ArrayBackend(),
+        rho_l=2.0,
+        rho_g=1.0,
+        div_op=div_op,
+        ppe_runtime=runtime,
+        bc_type="periodic",
+    )
+
+    np.testing.assert_allclose(u_proj + v_proj, 0.0)
+    assert reprojector.stats["post_div_linf"] == pytest.approx(0.0)
+    assert ppe.events == [("set", 0.0), ("solve", None), ("clear", None)]
+    assert div_op.pressure_kwargs["pressure_gradient"] == "fccd"
+    assert div_op.pressure_kwargs["coefficient_scheme"] == "phase_separated"
+    assert div_op.pressure_kwargs["interface_coupling_scheme"] == "affine_jump"
+    assert div_op.pressure_kwargs["pressure_force_contract"] == "variational_adjoint"
 
 
 def test_consistent_gfm_reprojector_fails_closed_until_implemented():

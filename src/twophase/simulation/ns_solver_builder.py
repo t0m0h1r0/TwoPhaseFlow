@@ -180,6 +180,7 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             ppe_dc_max_iterations=int(getattr(run, "ppe_dc_max_iterations", 3)),
             ppe_dc_tolerance=float(getattr(run, "ppe_dc_tolerance", 1.0e-8)),
             ppe_dc_relaxation=float(getattr(run, "ppe_dc_relaxation", 0.8)),
+            ppe_dc_fail_close=bool(getattr(run, "ppe_dc_fail_close", False)),
         ),
         schemes=SolverSchemeOptions(
             cn_viscous=getattr(run, "cn_viscous", False),

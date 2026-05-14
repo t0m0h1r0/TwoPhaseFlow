@@ -244,6 +244,8 @@ def test_conservative_grid_rebuild_preserves_phase_and_momentum_integrals():
             },
         )(),
         fccd_div_op=type("Div", (), {"update_weights": lambda self: None})(),
+        div_op=None,
+        ppe_runtime=None,
         reprojector=type(
             "Reprojector",
             (),

@@ -168,6 +168,29 @@ def run_simulation(
     while t < T and (max_steps is None or step < max_steps):
         current_pre_step_frame = None
         dt_budget = None
+        step_index = step
+        prepare_grid = getattr(solver, "prepare_geometric_grid_for_timestep", None)
+        if callable(prepare_grid):
+            psi, u, v, grid_will_rebuild = prepare_grid(
+                psi,
+                u,
+                v,
+                dt=0.0,
+                rho_l=ph.rho_l,
+                rho_g=ph.rho_g,
+                sigma=ph.sigma,
+                mu=ph.mu,
+                g_acc=ph.g_acc,
+                rho_ref=ph.rho_ref,
+                mu_l=ph.mu_l,
+                mu_g=ph.mu_g,
+                bc_hook=bc_hook,
+                step_index=step_index,
+            )
+        else:
+            grid_will_rebuild = False
+        if grid_will_rebuild:
+            control_volumes = solver._grid.cell_volumes()
         if cfg.run.dt_fixed is not None:
             dt_candidate = float(cfg.run.dt_fixed)
         else:
@@ -234,13 +257,6 @@ def run_simulation(
             will_snapshot and _snapshot_needs_projection_fields(cfg)
         )
 
-        step_index = step
-        grid_will_rebuild = (
-            solver._alpha_grid > 1.0
-            and solver._rebuild_freq > 0
-            and step_index > 0
-            and (step_index % solver._rebuild_freq == 0)
-        )
         psi, u, v, p = solver.step_request(
             NSStepRequest(
                 psi=psi,
@@ -326,6 +342,7 @@ def run_simulation(
                     f"          dt_adv={dt_budget.dt_advective:.3e}  "
                     f"dt_visc={dt_budget.dt_viscous:.3e}  "
                     f"dt_cap={dt_budget.dt_capillary:.3e}  "
+                    f"dt_geom={dt_budget.dt_geometric_capacity:.3e}  "
                     f"limiter={dt_budget.limiter}"
                 )
             d = solver._step_diag.last

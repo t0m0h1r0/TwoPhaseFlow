@@ -161,6 +161,7 @@ class RunCfg:
     ppe_dc_max_iterations: int = 3
     ppe_dc_tolerance: float = 1.0e-8
     ppe_dc_relaxation: float = 0.8
+    ppe_dc_fail_close: bool = False
     debug_diagnostics: bool = False
 
 

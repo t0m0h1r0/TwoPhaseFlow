@@ -41,6 +41,10 @@ class IVelocityReprojector(SchemeRegistryMixin, ABC):
         backend: "Backend",
         rho_l: float | None = None,
         rho_g: float | None = None,
+        *,
+        div_op=None,
+        ppe_runtime=None,
+        bc_type: str = "wall",
     ) -> tuple[np.ndarray, np.ndarray]:
         """Reproject velocity to satisfy ∇·u = 0 on remapped grid.
 
@@ -52,6 +56,9 @@ class IVelocityReprojector(SchemeRegistryMixin, ABC):
         ccd : CCDSolver  CCD differentiation instance
         backend : Backend  array backend (CPU/GPU)
         rho_l, rho_g : float or None  densities (only used by variable-density modes)
+        div_op : optional  active face divergence/pressure-reaction complex
+        ppe_runtime : optional  projection settings paired with ``ppe_solver``
+        bc_type : str  boundary convention for face-state wall treatment
 
         Returns
         -------
@@ -65,6 +72,7 @@ class IVelocityReprojector(SchemeRegistryMixin, ABC):
 from .velocity_reprojector_basic import (
     ConsistentGFMReprojector,
     ConsistentGFMReprojectorLegacy,
+    FaceHodgeReprojector,
     LegacyReprojector,
     VariableDensityReprojector,
 )
@@ -73,6 +81,7 @@ __all__ = [
     "IVelocityReprojector",
     "LegacyReprojector",
     "VariableDensityReprojector",
+    "FaceHodgeReprojector",
     "ConsistentGFMReprojectorLegacy",
     "ConsistentGFMReprojector",
 ]

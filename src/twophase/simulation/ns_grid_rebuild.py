@@ -19,6 +19,7 @@ class NSGridRebuildResult:
     Y: object
     density: object | None = None
     momentum_components: tuple[object, ...] | None = None
+    projected_face_components: tuple[object, ...] | None = None
 
 
 def _sharp_volume_target(reinitializer, psi) -> float | None:
@@ -56,9 +57,12 @@ def rebuild_ns_grid(
     reinitializer,
     ppe_solver,
     fccd_div_op,
+    div_op,
+    ppe_runtime,
     reprojector,
     wall_contacts=None,
     conservative_momentum_components=None,
+    projected_face_components=None,
     bc_type=None,
 ) -> NSGridRebuildResult:
     """Fit the grid to the supplied interface and remap primary fields.
@@ -86,6 +90,11 @@ def rebuild_ns_grid(
                 None
                 if conservative_momentum_components is None
                 else tuple(backend.xp.asarray(c) for c in conservative_momentum_components)
+            ),
+            projected_face_components=(
+                None
+                if projected_face_components is None
+                else tuple(backend.xp.asarray(c) for c in projected_face_components)
             ),
         )
 
@@ -162,6 +171,16 @@ def rebuild_ns_grid(
     else:
         u_remapped = xp.asarray(remapper.remap(u))
         v_remapped = xp.asarray(remapper.remap(v))
+    projected_faces_remapped = (
+        None
+        if projected_face_components is None
+        else _remap_projection_face_components(
+            backend,
+            old_coords,
+            grid.coords,
+            projected_face_components,
+        )
+    )
     X, Y = grid.meshgrid()
 
     if use_local_eps:
@@ -172,16 +191,39 @@ def rebuild_ns_grid(
     if fccd_div_op is not None:
         fccd_div_op.update_weights()
 
-    u_reprojected, v_reprojected = reprojector.reproject(
-        psi_remapped,
-        u_remapped,
-        v_remapped,
-        ppe_solver,
-        ccd,
-        backend,
-        rho_l=rho_l,
-        rho_g=rho_g,
-    )
+    projected_faces_new = None
+    if projected_faces_remapped is not None:
+        reproject_faces = getattr(reprojector, "reproject_faces", None)
+        if not callable(reproject_faces):
+            raise RuntimeError(
+                "grid rebuild received projection-native face history but the "
+                "active reprojector cannot reproject face cochains"
+            )
+        u_reprojected, v_reprojected, projected_faces_new = reproject_faces(
+            psi_remapped,
+            projected_faces_remapped,
+            ppe_solver,
+            backend,
+            rho_l=rho_l,
+            rho_g=rho_g,
+            div_op=div_op,
+            ppe_runtime=ppe_runtime,
+            bc_type=bc_type or "wall",
+        )
+    else:
+        u_reprojected, v_reprojected = reprojector.reproject(
+            psi_remapped,
+            u_remapped,
+            v_remapped,
+            ppe_solver,
+            ccd,
+            backend,
+            rho_l=rho_l,
+            rho_g=rho_g,
+            div_op=div_op,
+            ppe_runtime=ppe_runtime,
+            bc_type=bc_type or "wall",
+        )
     if conservative_momentum is not None:
         density_remapped = xp.asarray(rho_g + (rho_l - rho_g) * psi_remapped)
         momentum_remapped = (
@@ -196,7 +238,33 @@ def rebuild_ns_grid(
         Y=Y,
         density=density_remapped,
         momentum_components=momentum_remapped,
+        projected_face_components=projected_faces_new,
     )
+
+
+def _projection_face_coords(coords, axis: int):
+    return [
+        0.5 * (coord[:-1] + coord[1:]) if idx == axis else coord
+        for idx, coord in enumerate(coords)
+    ]
+
+
+def _remap_projection_face_components(
+    backend,
+    old_coords,
+    new_coords,
+    face_components,
+):
+    """Move projection-native normal face cochains to the rebuilt face lattice."""
+    remapped = []
+    for axis, component in enumerate(face_components):
+        mapper = build_grid_remapper(
+            backend,
+            _projection_face_coords(old_coords, axis),
+            _projection_face_coords(new_coords, axis),
+        )
+        remapped.append(backend.xp.asarray(mapper.remap(component)))
+    return tuple(remapped)
 
 
 def _apply_integral_correction(xp, field, dV, target):

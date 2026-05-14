@@ -60,6 +60,7 @@ class NSStepState:
     previous_previous_base_pressure: Any = None
     pressure_extrapolated_base: Any = None
     pressure_history_face_components: list[Any] | None = None
+    pressure_history_storage_base: Any = None
     previous_pressure_accel_face_components: list[Any] | None = None
     pressure: Any = None
     pressure_base: Any = None

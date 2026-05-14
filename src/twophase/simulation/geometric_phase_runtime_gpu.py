@@ -1325,6 +1325,109 @@ def _directional_capacity_margins_2d_gpu(
     return donor_margin, receiver_margin
 
 
+def estimate_geometric_swept_capacity_dt_gpu(
+    grid,
+    state: GeometricPhaseState,
+    face_velocity,
+    *,
+    dt_upper: float,
+    boundary: tuple[str, str] = ("wall", "wall"),
+    tolerance: float = 1.0e-11,
+    bisection_iterations: int = 20,
+) -> float:
+    """Return the largest tested timestep preserving swept-volume bounds.
+
+    The bound is the invariant-domain condition for the explicit finite-volume
+    update of the geometric liquid cell volume ``q``.  At each candidate
+    timestep the same P1 swept phase flux used by production transport is
+    constructed, then the donor liquid capacity, receiver gas capacity, and
+    transported cell-volume bounds are checked.  If ``dt_upper`` is already
+    admissible it is returned unchanged; otherwise a monotone bisection returns
+    the last candidate that satisfied the exact swept-geometry certificate.
+    """
+    dt_upper = _validate_positive_float(dt_upper, "dt_upper")
+    tolerance = _validate_nonnegative_float(tolerance, "tolerance")
+    bisection_iterations = _validate_nonnegative_int(
+        bisection_iterations,
+        "bisection_iterations",
+    )
+    boundary = _normalize_boundary(boundary)
+    xp = grid.xp
+    q_dev = xp.asarray(state.q)
+    cell_measures = _cell_measures_2d(grid, xp, q_dev.dtype)
+    input_margin = xp.min(xp.minimum(q_dev, cell_measures - q_dev))
+    input_scalars = _host_scalar_packet_float(
+        grid.backend,
+        [("geometric capacity input q bound margin", input_margin)],
+    )
+    if input_scalars["geometric capacity input q bound margin"] < -tolerance:
+        raise ValueError(
+            "GPU AO geometric-capacity timestep fail-close: input q lies "
+            "outside physical cell-volume bounds"
+        )
+
+    def capacity_scalars(dt_value: float) -> dict[str, float]:
+        swept_flux = _construct_p1_swept_flux_gpu(
+            grid,
+            state.phi,
+            face_velocity,
+            dt=dt_value,
+            boundary=boundary,
+            level=state.stratum.level,
+            tolerance=tolerance,
+        )
+        flux_x, flux_y = tuple(
+            xp.asarray(face, dtype=q_dev.dtype)
+            for face in swept_flux.phase_fluxes
+        )
+        swept_x = dt_value * flux_x
+        swept_y = dt_value * flux_y
+        donor_margin, receiver_margin = _directional_capacity_margins_2d_gpu(
+            xp,
+            q_dev,
+            cell_measures,
+            swept_x,
+            swept_y,
+            boundary,
+        )
+        divergence = (swept_x[1:, :] - swept_x[:-1, :]) + (
+            swept_y[:, 1:] - swept_y[:, :-1]
+        )
+        q_next = q_dev - divergence
+        transported_margin = xp.min(xp.minimum(q_next, cell_measures - q_next))
+        return _host_scalar_packet_float(
+            grid.backend,
+            [
+                ("geometric capacity donor margin", donor_margin),
+                ("geometric capacity receiver margin", receiver_margin),
+                ("geometric capacity transported q bound margin", transported_margin),
+            ],
+        )
+
+    def admissible(scalars: dict[str, float]) -> bool:
+        return (
+            scalars["geometric capacity donor margin"] >= -tolerance
+            and scalars["geometric capacity receiver margin"] >= -tolerance
+            and scalars["geometric capacity transported q bound margin"] >= -tolerance
+        )
+
+    upper_scalars = capacity_scalars(dt_upper)
+    if admissible(upper_scalars):
+        return dt_upper
+
+    lower = 0.0
+    upper = dt_upper
+    for _ in range(int(bisection_iterations)):
+        candidate = 0.5 * (lower + upper)
+        if candidate <= 0.0:
+            break
+        if admissible(capacity_scalars(candidate)):
+            lower = candidate
+        else:
+            upper = candidate
+    return lower
+
+
 def _face_mass_hodge_gpu(grid, state, density, *, rho_l, rho_g, boundary):
     xp = grid.xp
     dx = _grid_cell_width_device(grid, xp, 0, density.dtype)

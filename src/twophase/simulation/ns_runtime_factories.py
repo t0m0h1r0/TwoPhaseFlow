@@ -30,6 +30,7 @@ class NSPPEFactoryOptions:
     dc_max_iterations: int
     dc_tolerance: float
     dc_relaxation: float
+    dc_fail_close: bool
 
 
 @dataclass(frozen=True)
@@ -169,6 +170,7 @@ def build_ns_ppe_solver(
             max_corrections=options.dc_max_iterations,
             tolerance=options.dc_tolerance,
             relaxation=options.dc_relaxation,
+            fail_on_nonconvergence=options.dc_fail_close,
         )
     return build_ns_plain_ppe_solver(
         backend=backend,

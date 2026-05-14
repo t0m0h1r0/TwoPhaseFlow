@@ -391,37 +391,36 @@ def solve_geometric_volume_flux_projection_pcg(
     p = z.copy()
     rz = xp.sum(r * z)
     rhs_linf = xp.max(xp.abs(rhs))
-    residual_tolerance = xp.asarray(pcg_tolerance, dtype=rhs.dtype) * xp.maximum(
-        rhs_linf,
-        xp.asarray(1.0, dtype=rhs.dtype),
+    tolerance = xp.maximum(
+        xp.asarray(1.0e-30, dtype=rhs.dtype),
+        xp.asarray(pcg_tolerance, dtype=rhs.dtype)
+        * xp.maximum(rhs_linf, xp.asarray(1.0, dtype=rhs.dtype)),
     )
     algebra_floor = 1.0e-30 if roundoff_floor is None else max(
         float(roundoff_floor) ** 2,
         1.0e-30,
     )
     eps = xp.asarray(algebra_floor, dtype=rhs.dtype)
+    active = rz > tolerance * tolerance
     for _ in range(int(max_iterations)):
         ap = apply_operator(p)
         denom = xp.sum(p * ap)
-        residual_linf = xp.max(xp.abs(r))
-        active_iteration = (
-            (residual_linf > residual_tolerance)
-            & (xp.abs(denom) > eps)
-            & (xp.abs(rz) > eps)
-        )
-        safe_denom = xp.where(active_iteration, denom, xp.ones_like(denom))
-        alpha = xp.where(active_iteration, rz / safe_denom, xp.zeros_like(denom))
+        step_active = active & (denom > eps)
+        safe_denom = xp.where(step_active, denom, xp.ones_like(denom))
+        alpha = xp.where(step_active, rz / safe_denom, xp.zeros_like(denom))
         x_next = x + alpha * p
         r_next = r - alpha * ap
         z_next = r_next / diag
         rz_next = xp.sum(r_next * z_next)
-        safe_rz = xp.where(active_iteration, rz, xp.ones_like(rz))
-        beta = xp.where(active_iteration, rz_next / safe_rz, xp.zeros_like(rz))
-        x = xp.where(active_iteration, x_next, x)
-        r = xp.where(active_iteration, r_next, r)
-        z = xp.where(active_iteration, z_next, z)
-        p = xp.where(active_iteration, z_next + beta * p, p)
-        rz = xp.where(active_iteration, rz_next, rz)
+        safe_rz = xp.where(step_active, rz, xp.ones_like(rz))
+        beta = xp.where(step_active, rz_next / safe_rz, xp.zeros_like(rz))
+        p_next = z_next + beta * p
+        x = xp.where(active, x_next, x)
+        r = xp.where(active, r_next, r)
+        z = xp.where(active, z_next, z)
+        p = xp.where(active, p_next, p)
+        rz = xp.where(active, rz_next, rz)
+        active = active & (rz > tolerance * tolerance)
     return x
 
 

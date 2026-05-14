@@ -38,6 +38,7 @@ class PPESolverDefectCorrection(IPPESolver):
         max_corrections: int = 3,
         tolerance: float = 1.0e-8,
         relaxation: float = 1.0,
+        fail_on_nonconvergence: bool = False,
     ) -> None:
         if max_corrections <= 0:
             raise ValueError("max_corrections must be > 0")
@@ -55,6 +56,7 @@ class PPESolverDefectCorrection(IPPESolver):
         self.max_corrections = int(max_corrections)
         self.tolerance = float(tolerance)
         self.relaxation = float(relaxation)
+        self.fail_on_nonconvergence = bool(fail_on_nonconvergence)
         self._pin_dof = operator._pin_dof
         self._pin_dofs = getattr(operator, "_pin_dofs", (self._pin_dof,))
         if hasattr(self.base_solver, "_defer_interface_jump"):
@@ -338,6 +340,13 @@ class PPESolverDefectCorrection(IPPESolver):
             final_residual_linf=final_residual_linf,
             corrections_applied=corrections_applied,
         )
+        if self.last_stalled and self.fail_on_nonconvergence:
+            raise RuntimeError(
+                "PPESolverDefectCorrection did not converge: "
+                f"relative_l2={final_residual_norm / scale:.3e}, "
+                f"linf={final_residual_linf:.3e}, "
+                f"max_corrections={self.max_corrections}"
+            )
         if hasattr(self.operator, "apply_interface_jump"):
             pressure = self.operator.apply_interface_jump(pressure)
         return self._enforce_periodic_pressure(pressure)

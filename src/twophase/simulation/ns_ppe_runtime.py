@@ -34,6 +34,7 @@ def make_ns_ppe_factory_options(
         dc_max_iterations=state.ppe_dc_max_iterations,
         dc_tolerance=state.ppe_dc_tolerance,
         dc_relaxation=state.ppe_dc_relaxation,
+        dc_fail_close=state.ppe_dc_fail_close,
     )
 
 

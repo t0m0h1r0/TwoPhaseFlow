@@ -134,6 +134,7 @@ numerics:
             constraints: [cell_volume]
             fail_close: true
   projection:
+    mode: face_hodge
     active_geometry:
       solver:
         scheme: pcg
@@ -165,7 +166,7 @@ numerics:
       max_iterations: 80
       gate: diagnostic
     pressure_history:
-      form: face_acceleration
+      form: pressure_coordinate
       extrapolation: bdf2
       reaction: variational_adjoint
       metric: transported_face_mass
@@ -182,9 +183,10 @@ numerics:
       solver:
         kind: defect_correction
         corrections:
-          max_iterations: 12
+          max_iterations: 64
           tolerance: 1.0e-8
           relaxation: 0.7
+          fail_close: true
         base_solver:
           discretization: fd
           kind: direct

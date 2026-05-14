@@ -58,6 +58,7 @@ class NSPPERuntimeState:
     ppe_dc_max_iterations: int
     ppe_dc_tolerance: float
     ppe_dc_relaxation: float
+    ppe_dc_fail_close: bool
     pressure_scheme: str
 
 
@@ -149,11 +150,11 @@ def normalise_ns_interface_runtime(options) -> NSInterfaceRuntimeState:
 
     reproject_mode = str(options.reproject_mode).strip().lower()
     if reproject_mode not in {
-        "legacy", "variable_density_only", "gfm", "consistent_gfm",
+        "legacy", "variable_density_only", "face_hodge", "gfm", "consistent_gfm",
     }:
         raise ValueError(
             f"Unsupported reproject_mode='{options.reproject_mode}'. "
-            "Use legacy|variable_density_only|gfm|consistent_gfm."
+            "Use legacy|variable_density_only|face_hodge|gfm|consistent_gfm."
         )
     if reproject_variable_density and reproject_mode == "legacy":
         reproject_mode = "variable_density_only"
@@ -364,6 +365,7 @@ def normalise_ns_ppe_runtime(
         ppe_dc_max_iterations=int(options.ppe_dc_max_iterations),
         ppe_dc_tolerance=float(options.ppe_dc_tolerance),
         ppe_dc_relaxation=float(options.ppe_dc_relaxation),
+        ppe_dc_fail_close=bool(getattr(options, "ppe_dc_fail_close", False)),
         pressure_scheme=pressure_scheme_for_ppe_solver(ppe_solver_name),
     )
 

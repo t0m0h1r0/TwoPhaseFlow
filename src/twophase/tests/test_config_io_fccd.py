@@ -377,10 +377,10 @@ def test_ch14_capillary_yaml_loads_execution_stack():
     assert cfg.run.boundary_hodge_mode == "off"
     assert cfg.run.boundary_hodge_state_space == "constrained_face"
     assert cfg.run.boundary_hodge_pressure_pairing == "restricted_variational_adjoint"
-    assert cfg.run.pressure_history_mode == "face_acceleration"
+    assert cfg.run.pressure_history_mode == "pressure_coordinate"
     assert cfg.run.pressure_history_extrapolation == "bdf2"
     assert cfg.run.reinit_method == "compatibility_projection"
-    assert cfg.run.reproject_mode == "variable_density_only"
+    assert cfg.run.reproject_mode == "face_hodge"
     assert cfg.run.ppe_solver == "fccd_iterative"
     assert cfg.run.pressure_scheme == "fccd_matrixfree"
     assert cfg.run.ppe_coefficient_scheme == "phase_separated"
@@ -558,12 +558,7 @@ def test_ch14_canonical_yamls_share_base_numerical_stack():
             cfg.run.boundary_hodge_pressure_pairing
             == "restricted_variational_adjoint"
         ), path.name
-        expected_history = (
-            "face_acceleration"
-            if path.name == "ch14_capillary.yaml"
-            else "pressure_coordinate"
-        )
-        assert cfg.run.pressure_history_mode == expected_history, path.name
+        assert cfg.run.pressure_history_mode == "pressure_coordinate", path.name
         assert cfg.run.pressure_history_extrapolation == "bdf2", path.name
         assert cfg.run.pressure_scheme == "fccd_matrixfree", path.name
         assert cfg.run.ppe_coefficient_scheme == "phase_separated", path.name

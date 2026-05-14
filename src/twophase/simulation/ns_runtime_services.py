@@ -48,6 +48,7 @@ class NSTimestepBudget:
     dt_capillary: float
     h_min: float
     advective_rate: float
+    dt_geometric_capacity: float = float("inf")
 
     def diagnostics(self) -> dict[str, float]:
         """Return scalar diagnostics with numeric limiter code."""
@@ -55,12 +56,14 @@ class NSTimestepBudget:
             "advective": 1.0,
             "viscous": 2.0,
             "capillary": 3.0,
+            "geometric_capacity": 4.0,
         }.get(self.limiter, 0.0)
         return {
             "dt_limit": self.dt,
             "dt_advective": self.dt_advective,
             "dt_viscous": self.dt_viscous,
             "dt_capillary": self.dt_capillary,
+            "dt_geometric_capacity": self.dt_geometric_capacity,
             "dt_limiter_code": limiter_code,
             "h_min": self.h_min,
             "advective_rate": self.advective_rate,

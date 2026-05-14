@@ -706,6 +706,58 @@ def _pressure_coordinate_history_base(*, xp, state: NSStepState, ppe_runtime):
     return previous
 
 
+def _affine_pressure_history_jump_offset(xp, pressure_flux_kwargs: dict | None):
+    """Return the nodal jump offset stripped from smooth pressure history.
+
+    Affine-jump face laws consume the physical discontinuous pressure in
+    ``G(p)-B(j)``.  Grid-rebuild history, however, must transport the smooth
+    phase pressure representative.  The same reduced coordinate as the HFE
+    split is ``p_reduced = p_physical - j_gl (1-psi)``.
+    """
+    if not pressure_flux_kwargs:
+        return None
+    if pressure_flux_kwargs.get("interface_coupling_scheme") != "affine_jump":
+        return None
+    context = pressure_flux_kwargs.get("interface_stress_context")
+    if context is None:
+        return None
+    psi = getattr(context, "psi", None)
+    if psi is None:
+        return None
+    pressure_jump = getattr(context, "pressure_jump_gas_minus_liquid", None)
+    if pressure_jump is None:
+        kappa = getattr(context, "kappa_lg", None)
+        sigma = float(getattr(context, "sigma", 0.0))
+        if kappa is None or sigma == 0.0:
+            return None
+        pressure_jump = -sigma * xp.asarray(kappa)
+    return xp.asarray(pressure_jump) * (1.0 - xp.asarray(psi))
+
+
+def _decode_affine_pressure_history_coordinate(
+    xp,
+    pressure_coordinate,
+    pressure_flux_kwargs: dict | None,
+):
+    """Convert the smooth stored history coordinate to physical pressure."""
+    offset = _affine_pressure_history_jump_offset(xp, pressure_flux_kwargs)
+    if offset is None:
+        return pressure_coordinate
+    return xp.asarray(pressure_coordinate) + offset
+
+
+def _encode_affine_pressure_history_coordinate(
+    xp,
+    physical_pressure,
+    pressure_flux_kwargs: dict | None,
+):
+    """Convert physical affine-jump pressure to the smooth stored coordinate."""
+    offset = _affine_pressure_history_jump_offset(xp, pressure_flux_kwargs)
+    if offset is None:
+        return physical_pressure
+    return xp.asarray(physical_pressure) - offset
+
+
 def _pressure_coordinate_history_faces(
     *,
     xp,
@@ -768,7 +820,8 @@ def _pressure_coordinate_history_faces(
         interface_psi_previous=interface_psi_previous,
         transport_variational_temporaries=transport_temporaries,
     )
-    return base, div_op.pressure_fluxes(base, state.rho, **kwargs)
+    physical_base = _decode_affine_pressure_history_coordinate(xp, base, kwargs)
+    return physical_base, div_op.pressure_fluxes(physical_base, state.rho, **kwargs)
 
 
 def _closed_interface_trace_projection_diagnostics(projection) -> dict:
@@ -1822,11 +1875,12 @@ def _install_nonstatic_geometric_pressure_coordinate(
 ) -> None:
     """Store the scalar AO pressure coordinate after face embedding.
 
-    The face corrector has already consumed ``a_pi`` directly.  Adding the
-    pressure-range coordinate to ``pressure_base`` makes the next
-    ``pressure_coordinate`` history step reconstruct the same pressure-adjoint
-    cochain from the scalar variable instead of silently dropping the AO
-    reaction from the history state.
+    The face corrector has already consumed ``a_pi`` directly.  The scalar
+    coordinate is retained in ``pressure_base`` only as the current-step full
+    pressure representation.  It must not become pressure history: AO geometric
+    pressure reaction is a constraint response recomputed from the current
+    active geometry, not a smooth hydrodynamic phase pressure to extrapolate
+    through HFE/affine history.
     """
     coordinate = state.geometric_capillary_pressure_reaction_coordinate
     if coordinate is None:
@@ -1843,6 +1897,24 @@ def _install_nonstatic_geometric_pressure_coordinate(
         }
     )
     state.conservative_transport_certificate = certificate
+
+
+def _smooth_pressure_history_base_without_ao_reaction(
+    xp,
+    state: NSStepState,
+):
+    """Return the smooth pressure coordinate admissible for history storage."""
+    base = xp.asarray(state.pressure_base)
+    coordinate = state.geometric_capillary_pressure_reaction_coordinate
+    if _uses_nonstatic_geometric_capillary_application(state):
+        if coordinate is None:
+            raise ValueError(
+                "non-static AO pressure-coordinate history requires the "
+                "geometric pressure reaction coordinate to separate the "
+                "smooth HFE history variable"
+            )
+        return base - xp.asarray(coordinate)
+    return base
 
 
 def _install_pressure_jump_context(
@@ -2292,6 +2364,18 @@ def solve_ns_pressure_stage(
             state,
             xp=xp,
             ppe_solver=ppe_solver,
+        )
+    if pressure_coordinate_history and uses_affine_face_history:
+        smooth_history_base = _smooth_pressure_history_base_without_ao_reaction(
+            xp,
+            state,
+        )
+        state.pressure_history_storage_base = (
+            _encode_affine_pressure_history_coordinate(
+                xp,
+                smooth_history_base,
+                pressure_flux_eval_kwargs,
+            )
         )
     next_p_prev_dev = xp.copy(state.pressure)
     next_p_prev = (

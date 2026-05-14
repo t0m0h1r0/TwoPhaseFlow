@@ -24,7 +24,6 @@ A3 chain:
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-import warnings
 
 import numpy as np
 
@@ -510,12 +509,6 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             tolerance=self.tol,
         )
 
-        if info != 0:
-            warnings.warn(
-                f"PPESolverFCCDMatrixFree did not converge cleanly (info={info}).",
-                RuntimeWarning,
-                stacklevel=2,
-            )
         sol = xp.asarray(sol_flat).reshape(self.grid.shape)
         if self._uses_phase_mean_gauge():
             sol = self._project_phase_means(sol)
@@ -529,6 +522,15 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             residual=linear_residual,
             rhs=rhs_dev,
         )
+        if info != 0:
+            diag = self.last_diagnostics
+            raise RuntimeError(
+                "PPESolverFCCDMatrixFree did not converge: "
+                f"info={info}, "
+                f"relative_l2={diag.get('ppe_linear_relative_l2', float('nan')):.3e}, "
+                f"linf={diag.get('ppe_linear_residual_linf', float('nan')):.3e}, "
+                f"maxiter={self.maxiter}"
+            )
         self.last_base_pressure = xp.copy(sol)
         if not self._defer_interface_jump:
             sol = self.apply_interface_jump(sol)

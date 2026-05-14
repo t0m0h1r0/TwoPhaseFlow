@@ -70,6 +70,7 @@ def initialise_ns_solver_from_options(solver, options) -> None:
     solver._conservative_momentum_components = None
     solver._p_prev_accel_face_components = None
     solver._p_base_prev2_dev = None
+    solver._prepared_geometric_grid_rebuild_step = None
     solver._active_projection_solver_scheme = str(
         getattr(options.interface, "active_projection_solver_scheme", "pcg")
     ).strip().lower()

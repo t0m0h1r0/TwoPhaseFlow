@@ -32,6 +32,10 @@ def _to_host(backend, value):
     return np.asarray(backend.to_host(value))
 
 
+def _min_grid_spacing(grid):
+    return tuple(float(np.min(np.diff(np.asarray(coords)))) for coords in grid.coords)
+
+
 def _interface_samples(psi, field, x_coord, y_coord, *, y_mid: float):
     psi = np.asarray(psi)
     field = np.asarray(field)
@@ -126,7 +130,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)
     parser.add_argument("--steps", type=int, default=4)
-    parser.add_argument("--pressure-history", choices=("as_config", "face_acceleration", "pressure_coordinate"), default="face_acceleration")
+    parser.add_argument("--pressure-history", choices=("as_config", "face_acceleration", "pressure_coordinate"), default="as_config")
     parser.add_argument("--history-extrapolation", choices=("as_config", "constant", "bdf2"), default="constant")
     parser.add_argument("--runner-initial-grid-rebuild", action="store_true")
     parser.add_argument("--runner-reset-after-grid-rebuild", action="store_true")
@@ -205,8 +209,10 @@ def main() -> None:
 
     print(
         "step,t,dt,eta_cos,eta_theta_cos,eta_phi_cos,v_cos,v_abs_max,"
+        "min_dx,min_dy,"
         "compat_linf,div_u,raw_accel_cos,predictor_accel_cos,"
-        "reaction_accel_cos,balanced_accel_cos,projected_face_linf,yl_normal"
+        "reaction_accel_cos,balanced_accel_cos,projected_face_linf,yl_normal,"
+        "ppe_dc_linf,ppe_dc_conv,ppe_rhs,face_hodge_pre,face_hodge_post"
     )
     t = 0.0
     eta_mode, v_mode, v_abs = _interface_mode_projection(
@@ -227,6 +233,13 @@ def main() -> None:
         f"{eta_mode:.12e}",
         f"{v_mode:.12e}",
         f"{v_abs:.12e}",
+        f"{_min_grid_spacing(solver._grid)[0]:.12e}",
+        f"{_min_grid_spacing(solver._grid)[1]:.12e}",
+        "0.000000000000e+00",
+        "0.000000000000e+00",
+        "0.000000000000e+00",
+        "0.000000000000e+00",
+        "0.000000000000e+00",
         "0.000000000000e+00",
         "0.000000000000e+00",
         "0.000000000000e+00",
@@ -239,6 +252,22 @@ def main() -> None:
     )
 
     for step in range(args.steps):
+        psi, u, v, _grid_rebuilt = solver.prepare_geometric_grid_for_timestep(
+            psi,
+            u,
+            v,
+            dt=0.0,
+            rho_l=ph.rho_l,
+            rho_g=ph.rho_g,
+            sigma=ph.sigma,
+            mu=ph.mu,
+            g_acc=ph.g_acc,
+            rho_ref=ph.rho_ref,
+            mu_l=ph.mu_l,
+            mu_g=ph.mu_g,
+            bc_hook=bc_hook,
+            step_index=step,
+        )
         budget = solver.dt_budget(
             u,
             v,
@@ -471,6 +500,7 @@ def main() -> None:
             )
         if (step + 1) % max(int(args.print_every), 1) != 0 and step + 1 != args.steps:
             continue
+        min_dx, min_dy = _min_grid_spacing(grid)
         print(
             step + 1,
             f"{t:.12e}",
@@ -480,6 +510,8 @@ def main() -> None:
             f"{eta_phi_mode:.12e}",
             f"{v_mode:.12e}",
             f"{v_abs:.12e}",
+            f"{min_dx:.12e}",
+            f"{min_dy:.12e}",
             f"{compat:.12e}",
             f"{step_diag.get('div_u_max', 0.0):.12e}",
             f"{raw_accel_mode:.12e}",
@@ -488,6 +520,11 @@ def main() -> None:
             f"{balanced_accel_mode:.12e}",
             f"{projected_linf:.12e}",
             f"{float(np.asarray(backend.to_host(cap.young_laplace_normal_residual_linf))):.12e}",
+            f"{step_diag.get('ppe_dc_final_residual_linf', 0.0):.12e}",
+            f"{step_diag.get('ppe_dc_converged', 0.0):.12e}",
+            f"{step_diag.get('ppe_rhs_max', 0.0):.12e}",
+            f"{solver.reproject_stats.get('pre_div_linf', 0.0):.12e}",
+            f"{solver.reproject_stats.get('post_div_linf', 0.0):.12e}",
             sep=",",
         )
 
