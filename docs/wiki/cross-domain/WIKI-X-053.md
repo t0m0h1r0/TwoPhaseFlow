@@ -86,6 +86,15 @@ iteration-count problem.  The valid remedy is to thread the HFE/interface-stress
 context into the FDDirect/PPEBuilder coefficient assembly, including nonuniform
 and periodic faces, while keeping the computation backend-resident.
 
+The same context rule applies to homogeneous velocity reprojection during grid
+rebuild.  A zero physical pressure jump is not the same as no affine context:
+`j=0` removes the affine RHS contribution, but `psi` is still required to
+define cut-face `theta` and therefore `a_f^Gamma`.  Reprojection paths must
+install a neutral zero-jump interface-stress context when the configured PPE is
+`phase_separated + affine_jump`; clearing the context is a mixed-operator bug.
+High-order and low-order PPE assembly must both fail closed if the affine
+context is absent.
+
 ## Hypothesis Matrix
 
 | Hypothesis | Theoretical test | Evidence / verdict |

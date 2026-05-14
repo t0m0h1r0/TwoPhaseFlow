@@ -430,10 +430,19 @@ class PPESolverFCCDMatrixFree(IPPESolver):
 
     def _add_affine_interface_jump_rhs(self, rhs_dev, *, force: bool = False):
         """Apply affine jump closure in the same direct face space as ``L``."""
-        if (self._defer_interface_jump and not force) or not (
-            self.interface_coupling_scheme == "affine_jump"
-            and interface_stress_context_is_active(self._interface_stress_context)
+        if self.interface_coupling_scheme != "affine_jump":
+            return rhs_dev
+        if self._defer_interface_jump and not force:
+            return rhs_dev
+        if (
+            self._interface_stress_context is None
+            or getattr(self._interface_stress_context, "psi", None) is None
         ):
+            raise RuntimeError(
+                "phase_separated affine-jump FCCD PPE requires an "
+                "interface-stress context before applying affine RHS"
+            )
+        if not interface_stress_context_is_active(self._interface_stress_context):
             return rhs_dev
         face_curvature_lg = evaluate_interface_face_curvature_lg(
             xp=self.xp,

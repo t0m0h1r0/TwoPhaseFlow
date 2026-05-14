@@ -2858,6 +2858,11 @@ def test_pipeline_can_solve_fccd_ppe_smoke():
     rhs[2, 3] = 1.0
     rhs[3, 3] = -1.0
     rhs.ravel()[solver._ppe_solver._pin_dof] = 0.0
+    solver._ppe_solver.set_interface_jump_context(
+        psi=np.ones(solver._grid.shape),
+        kappa=np.zeros(solver._grid.shape),
+        sigma=0.0,
+    )
 
     pressure = solver._ppe_solver.solve(rhs, rho, dt=1.0)
     residual = solver._backend.to_host(solver._ppe_solver.apply(pressure) - rhs)
@@ -3215,12 +3220,19 @@ class _ContextRecordingPPESolver(IPPESolver):
         return np.zeros_like(rhs)
 
 
+class _AffineContextRecordingPPESolver(_ContextRecordingPPESolver):
+    interface_coupling_scheme = "affine_jump"
+
+    def set_interface_jump_context(self, **kwargs) -> None:
+        self.events.append(("set", float(kwargs["sigma"])))
+
+
 class _DerivativeOnlyCCD:
     def first_derivative(self, field, axis):
         return np.zeros_like(field)
 
 
-def test_reprojector_clears_interface_jump_context_before_ppe_solve():
+def test_reprojector_clears_interface_jump_context_around_ppe_solve():
     reprojector = VariableDensityReprojector()
     ppe = _ContextRecordingPPESolver()
     psi = np.zeros((4, 4))
@@ -3238,7 +3250,28 @@ def test_reprojector_clears_interface_jump_context_before_ppe_solve():
         rho_g=1.0,
     )
 
-    assert ppe.events == ["clear", "solve"]
+    assert ppe.events == ["clear", "solve", "clear"]
+
+
+def test_reprojector_sets_neutral_affine_context_before_ppe_solve():
+    reprojector = VariableDensityReprojector()
+    ppe = _AffineContextRecordingPPESolver()
+    psi = np.zeros((4, 4))
+    u = np.zeros_like(psi)
+    v = np.zeros_like(psi)
+
+    reprojector.reproject(
+        psi,
+        u,
+        v,
+        ppe,
+        ccd=_DerivativeOnlyCCD(),
+        backend=_ArrayBackend(),
+        rho_l=2.0,
+        rho_g=1.0,
+    )
+
+    assert ppe.events == [("set", 0.0), "solve", "clear"]
 
 
 def test_variable_density_reprojector_requires_explicit_densities():

@@ -1007,6 +1007,58 @@ def test_fd_direct_affine_base_fails_closed_without_context():
         fd.ppb.build(rho)
 
 
+def test_fccd_affine_operator_fails_closed_without_context():
+    """Affine high-order PPE must not silently revert to harmonic coefficients."""
+    grid, div_op = _make_two_cell_operator()
+    rho = np.ones(grid.shape)
+    ppe_cfg = type(
+        "Cfg",
+        (),
+        {
+            "ppe_coefficient_scheme": "phase_separated",
+            "ppe_interface_coupling_scheme": "affine_jump",
+            "ppe_preconditioner": "none",
+        },
+    )()
+    ppe = PPESolverFCCDMatrixFree(grid.backend, ppe_cfg, grid, div_op._fccd)
+
+    with pytest.raises(RuntimeError, match="interface-stress context"):
+        ppe.prepare_operator(rho)
+
+
+def test_fccd_affine_neutral_context_keeps_cut_face_resistance():
+    """Zero physical jump still carries ψ for affine cut-face coefficients."""
+    grid, div_op = _make_two_cell_operator()
+    psi = np.ones(grid.shape)
+    psi[0, :] = 0.25
+    kappa = np.zeros(grid.shape)
+    rho = np.full(grid.shape, 1000.0)
+    rho[psi < 0.5] = 1.2
+    ppe_cfg = type(
+        "Cfg",
+        (),
+        {
+            "ppe_coefficient_scheme": "phase_separated",
+            "ppe_interface_coupling_scheme": "affine_jump",
+            "ppe_preconditioner": "none",
+        },
+    )()
+    ppe = PPESolverFCCDMatrixFree(grid.backend, ppe_cfg, grid, div_op._fccd)
+
+    ppe.set_interface_jump_context(psi=psi, kappa=kappa, sigma=0.0)
+    ppe.prepare_operator(rho)
+
+    theta = (0.5 - psi[0, 0]) / (psi[1, 0] - psi[0, 0])
+    expected_coeff = 1.0 / (theta * rho[0, 0] + (1.0 - theta) * rho[1, 0])
+    harmonic_coeff = 2.0 / (rho[0, 0] + rho[1, 0])
+    np.testing.assert_allclose(ppe._coeff_face[0][0, :], expected_coeff)
+    assert not np.allclose(ppe._coeff_face[0][0, :], harmonic_coeff)
+
+    rhs = np.ones(grid.shape)
+    adjusted = ppe._add_affine_interface_jump_rhs(rhs.copy(), force=True)
+    np.testing.assert_allclose(adjusted, rhs)
+
+
 def test_affine_jump_flux_vanishes_for_static_gas_bubble_sign():
     """For ``κ_lg<0``, the same law makes gas pressure higher."""
     grid, div_op = _make_two_cell_operator()

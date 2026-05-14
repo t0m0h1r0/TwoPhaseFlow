@@ -51,6 +51,43 @@ def _set_neutral_affine_context_for_reprojection(ppe_solver: "IPPESolver", *, xp
     return getattr(operator, "_interface_stress_context", None)
 
 
+def _uses_affine_jump_reprojection(ppe_solver: "IPPESolver", *, ppe_runtime) -> bool:
+    """Return whether homogeneous reprojection still needs affine geometry."""
+    coupling = getattr(ppe_runtime, "ppe_interface_coupling_scheme", None)
+    if coupling is not None:
+        return str(coupling).strip().lower() == "affine_jump"
+    candidates = (
+        ppe_solver,
+        getattr(ppe_solver, "operator", None),
+        getattr(ppe_solver, "base_solver", None),
+    )
+    for solver in candidates:
+        if solver is None:
+            continue
+        coupling = getattr(solver, "interface_coupling_scheme", None)
+        if coupling is not None:
+            return str(coupling).strip().lower() == "affine_jump"
+    return False
+
+
+def _prepare_interface_for_reprojection(
+    ppe_solver: "IPPESolver",
+    *,
+    ppe_runtime,
+    xp,
+    psi,
+):
+    """Prepare the PPE interface context for a homogeneous reprojection solve."""
+    if _uses_affine_jump_reprojection(ppe_solver, ppe_runtime=ppe_runtime):
+        return _set_neutral_affine_context_for_reprojection(
+            ppe_solver,
+            xp=xp,
+            psi=psi,
+        )
+    _clear_interface_for_reprojection(ppe_solver)
+    return None
+
+
 def _face_hodge_pressure_kwargs(*, ppe_runtime, interface_stress_context):
     if ppe_runtime is None:
         raise RuntimeError("face_hodge reprojection requires ppe_runtime")
@@ -127,7 +164,7 @@ class LegacyReprojector(IVelocityReprojector):
         face_no_slip_boundary_state: bool = False,
     ) -> tuple[np.ndarray, np.ndarray]:
         self._stats["calls"] += 1
-        del div_op, ppe_runtime, bc_type, face_no_slip_boundary_state
+        del div_op, bc_type, face_no_slip_boundary_state
 
         xp = backend.xp
         psi_d = _device_array(psi, backend)
@@ -139,8 +176,16 @@ class LegacyReprojector(IVelocityReprojector):
         div = (xp.asarray(du_dx) + xp.asarray(dv_dy)) / 1.0
 
         rho = xp.ones_like(psi_d)
-        _clear_interface_for_reprojection(ppe_solver)
-        phi = ppe_solver.solve(div, rho)
+        _prepare_interface_for_reprojection(
+            ppe_solver,
+            ppe_runtime=ppe_runtime,
+            xp=xp,
+            psi=psi_d,
+        )
+        try:
+            phi = ppe_solver.solve(div, rho)
+        finally:
+            _clear_interface_for_reprojection(ppe_solver)
 
         dp_dx = ccd.first_derivative(phi, 0)
         dp_dy = ccd.first_derivative(phi, 1)
@@ -182,7 +227,7 @@ class VariableDensityReprojector(IVelocityReprojector):
         face_no_slip_boundary_state: bool = False,
     ) -> tuple[np.ndarray, np.ndarray]:
         self._stats["calls"] += 1
-        del div_op, ppe_runtime, bc_type, face_no_slip_boundary_state
+        del div_op, bc_type, face_no_slip_boundary_state
 
         xp = backend.xp
         psi_d = _device_array(psi, backend)
@@ -200,8 +245,16 @@ class VariableDensityReprojector(IVelocityReprojector):
         dv_dy = ccd.first_derivative(v_d, 1)
         div = (xp.asarray(du_dx) + xp.asarray(dv_dy)) / 1.0
 
-        _clear_interface_for_reprojection(ppe_solver)
-        phi = ppe_solver.solve(div, rho)
+        _prepare_interface_for_reprojection(
+            ppe_solver,
+            ppe_runtime=ppe_runtime,
+            xp=xp,
+            psi=psi_d,
+        )
+        try:
+            phi = ppe_solver.solve(div, rho)
+        finally:
+            _clear_interface_for_reprojection(ppe_solver)
 
         rho_inv = 1.0 / xp.where(xp.abs(rho) > 1e-30, rho, 1.0)
         dp_dx = ccd.first_derivative(phi, 0)

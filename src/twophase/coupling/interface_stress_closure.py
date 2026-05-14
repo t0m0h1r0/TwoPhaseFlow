@@ -255,7 +255,10 @@ def affine_jump_face_inverse_density(
     rho_hi = rho_arr[sl(1, n_cells + 1)]
     base_coeff = 2.0 / (rho_lo + rho_hi)
     if context is None or context.psi is None:
-        return base_coeff
+        raise RuntimeError(
+            "phase_separated affine-jump face coefficient requires an "
+            "interface-stress context"
+        )
 
     psi = xp.asarray(context.psi)
     psi_lo = psi[sl(0, n_cells)]
