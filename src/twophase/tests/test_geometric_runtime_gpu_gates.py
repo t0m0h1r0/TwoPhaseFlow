@@ -8,8 +8,9 @@ import numpy as np
 from twophase.backend import Backend
 from twophase.config import GridConfig
 from twophase.core.grid import Grid
-from twophase.geometry.p1_cut_geometry import cut_geometry_2d
-from twophase.geometry.phase_state import GeometricPhaseState
+from twophase.geometry.p1_cut_geometry import P1CutGeometry, cut_geometry_2d
+from twophase.geometry.p1_cut_jacobian import P1CutDerivatives
+from twophase.geometry.phase_state import GeometricPhaseState, GeometricPhaseStratum
 from twophase.geometry.swept_flux import (
     _axis_aligned_strip_area,
     _axis_aligned_strip_area_unfused,
@@ -59,6 +60,98 @@ def test_gpu_single_scalar_transfer_helper_fails_closed():
     with pytest.raises(RuntimeError, match="single-scalar GPU host transfer"):
         gpu_runtime._host_scalar_float(backend, np.asarray(1.0), "compatibility")
     assert backend.host_transfer_count == 0
+
+
+def test_active_projection_stops_before_noop_schur_work(monkeypatch):
+    backend = _CountingBackend()
+
+    class GridStub:
+        ndim = 2
+        N = (2, 2)
+        xp = np
+        coords = (
+            np.asarray([0.0, 1.0, 2.0]),
+            np.asarray([0.0, 1.0, 2.0]),
+        )
+
+    grid = GridStub()
+    grid.backend = backend
+    q = np.ones((2, 2), dtype=float)
+    phi = np.ones((3, 3), dtype=float)
+    geometry = P1CutGeometry(
+        q=q.copy(),
+        theta=q.copy(),
+        surface_length=0.0,
+        cell_surface_lengths=np.zeros_like(q),
+        sign_margin=1.0,
+    )
+    derivatives = P1CutDerivatives(
+        jq_local=np.ones((2, 2, 4), dtype=float),
+        ds_local=np.zeros((2, 2, 4), dtype=float),
+    )
+    state = GeometricPhaseState(
+        q=q.copy(),
+        phi=phi.copy(),
+        theta=q.copy(),
+        geometry=geometry,
+        stratum=GeometricPhaseStratum(
+            node_signs=np.ones_like(phi, dtype=np.int8),
+            cell_cases=np.zeros_like(q, dtype=np.int8),
+            sign_margin=1.0,
+            level=0.0,
+        ),
+        compatibility_residual_linf=0.0,
+        compatibility_residual_l2=0.0,
+        ledger=None,
+    )
+    geometry_calls = []
+
+    def compatible_geometry(_grid, _phi, *, level):
+        geometry_calls.append(level)
+        return geometry, derivatives
+
+    def forbidden_schur(*_args, **_kwargs):
+        raise AssertionError("converged active projection must not solve Schur")
+
+    def forbidden_line_search(*_args, **_kwargs):
+        raise AssertionError("converged active projection must not line-search")
+
+    monkeypatch.setattr(gpu_runtime, "_require_gpu_array_namespace", lambda *_: None)
+    monkeypatch.setattr(
+        gpu_runtime,
+        "_geometry_and_derivatives_full",
+        compatible_geometry,
+    )
+    monkeypatch.setattr(
+        gpu_runtime,
+        "_solve_schur_for_active_policy_gpu",
+        forbidden_schur,
+    )
+    monkeypatch.setattr(
+        gpu_runtime,
+        "_residual_reducing_step_gpu",
+        forbidden_line_search,
+    )
+
+    projected = gpu_runtime._project_q_phi_compatibility_fixed_gpu(
+        grid,
+        state,
+        tolerance=1.0e-11,
+        relative_tolerance=0.0,
+        max_newton_iterations=128,
+        solver_scheme="pcg",
+        pcg_tolerance=1.0e-13,
+        pcg_max_iterations=512,
+        pcg_roundoff_floor=1.0e-15,
+        dc_tolerance=1.0e-11,
+        dc_max_iterations=8,
+        dc_relaxation=1.0,
+    )
+
+    assert geometry_calls == [0.0]
+    assert backend.host_transfer_count == 1
+    np.testing.assert_allclose(projected.phi, phi)
+    assert projected.compatibility_residual_linf == pytest.approx(0.0)
 
 
 def test_gpu_swept_flux_rejects_receiver_overfill_without_clipping():

@@ -751,8 +751,30 @@ def _phase_state_from_q_phi_gpu(grid, q, phi, *, level: float):
     q_dev = xp.asarray(q, dtype=phi_dev.dtype)
     geometry, derivatives = _geometry_and_derivatives_full(grid, phi_dev, level=level)
     del derivatives
-    cell_measures = _cell_measures_2d(grid, xp, phi_dev.dtype)
     residual = q_dev - geometry.q
+    return _phase_state_from_current_geometry_gpu(
+        grid,
+        q_dev,
+        phi_dev,
+        geometry,
+        residual,
+        level=level,
+    )
+
+
+def _phase_state_from_current_geometry_gpu(
+    grid,
+    q,
+    phi,
+    geometry,
+    residual,
+    *,
+    level: float,
+):
+    xp = grid.xp
+    phi_dev = xp.asarray(phi)
+    q_dev = xp.asarray(q, dtype=phi_dev.dtype)
+    cell_measures = _cell_measures_2d(grid, xp, phi_dev.dtype)
     return GeometricPhaseState(
         q=q_dev,
         phi=phi_dev,
@@ -793,8 +815,9 @@ def _project_q_phi_compatibility_fixed_gpu(
       residual-monotone active-set refresh instead of freezing the old sign
       stratum or applying a coordinate offset.
       Code: this routine keeps the Schur solve and line-search candidates in
-      the backend namespace; convergence is certified later by the exact
-      active-interface ``q/phi`` residual gate on the returned state.
+      the backend namespace; each Newton sweep starts with a batched scalar
+      fail-close check and skips the Schur/line-search work once the exact
+      active-interface ``q/phi`` residual has already met the contract.
     """
     _require_gpu_array_namespace(grid.xp, "_project_q_phi_compatibility_fixed_gpu")
     tolerance = _validate_positive_float(tolerance, "tolerance")
@@ -831,6 +854,18 @@ def _project_q_phi_compatibility_fixed_gpu(
             xp.where(active_rows, xp.abs(residual), xp.zeros_like(residual))
         )
         active_newton = residual_linf > residual_tolerance
+        convergence = _host_scalar_packet_float(
+            grid.backend,
+            [
+                ("active projection residual_linf", residual_linf),
+                ("active projection residual_tolerance", residual_tolerance),
+            ],
+        )
+        if (
+            convergence["active projection residual_linf"]
+            <= convergence["active projection residual_tolerance"]
+        ):
+            break
         rhs = xp.where(active_rows, residual, xp.zeros_like(residual))
         schur_support = _masked_schur_support_from_active(
             grid,
@@ -874,7 +909,14 @@ def _project_q_phi_compatibility_fixed_gpu(
         geometry, derivatives = _geometry_and_derivatives_full(grid, phi, level=level)
         residual = q_target - geometry.q
 
-    return _phase_state_from_q_phi_gpu(grid, q_target, phi, level=level)
+    return _phase_state_from_current_geometry_gpu(
+        grid,
+        q_target,
+        phi,
+        geometry,
+        residual,
+        level=level,
+    )
 
 
 def _sign_margin_step_fraction_gpu(xp, phi_rel, delta_phi, *, sign_safety: float):

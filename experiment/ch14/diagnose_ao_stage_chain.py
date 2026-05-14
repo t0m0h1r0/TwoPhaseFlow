@@ -12,7 +12,10 @@ from __future__ import annotations
 import argparse
 import os
 import pathlib
+import subprocess
 import sys
+import threading
+import time
 
 import numpy as np
 
@@ -26,6 +29,84 @@ from twophase.simulation.ns_pipeline import (  # noqa: E402
     _apply_bc,
 )
 from twophase.simulation.ns_step_state import NSStepRequest  # noqa: E402
+
+
+class _GpuUtilSampler:
+    """Optional lightweight ``nvidia-smi`` sampler for route profiling."""
+
+    def __init__(self, interval: float):
+        self.interval = float(interval)
+        self.samples: list[tuple[float, float, float]] = []
+        self._stop = threading.Event()
+        self._thread: threading.Thread | None = None
+
+    def start(self) -> None:
+        if self.interval <= 0.0:
+            return
+        self._thread = threading.Thread(target=self._run, daemon=True)
+        self._thread.start()
+
+    def stop(self) -> None:
+        if self._thread is None:
+            return
+        self._stop.set()
+        self._thread.join(timeout=max(1.0, 2.0 * self.interval))
+        self._thread = None
+
+    def summary(self) -> dict[str, float]:
+        if not self.samples:
+            return {
+                "gpu_util_avg": 0.0,
+                "gpu_util_max": 0.0,
+                "gpu_mem_avg": 0.0,
+                "gpu_mem_max": 0.0,
+                "gpu_power_avg": 0.0,
+                "gpu_power_max": 0.0,
+            }
+        data = np.asarray(self.samples, dtype=float)
+        return {
+            "gpu_util_avg": float(np.mean(data[:, 0])),
+            "gpu_util_max": float(np.max(data[:, 0])),
+            "gpu_mem_avg": float(np.mean(data[:, 1])),
+            "gpu_mem_max": float(np.max(data[:, 1])),
+            "gpu_power_avg": float(np.mean(data[:, 2])),
+            "gpu_power_max": float(np.max(data[:, 2])),
+        }
+
+    def _run(self) -> None:
+        while not self._stop.is_set():
+            sample = self._sample_once()
+            if sample is not None:
+                self.samples.append(sample)
+            self._stop.wait(self.interval)
+
+    @staticmethod
+    def _sample_once() -> tuple[float, float, float] | None:
+        try:
+            completed = subprocess.run(
+                [
+                    "nvidia-smi",
+                    "--query-gpu=utilization.gpu,utilization.memory,power.draw",
+                    "--format=csv,noheader,nounits",
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                timeout=1.0,
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            return None
+        if completed.returncode != 0:
+            return None
+        for line in completed.stdout.splitlines():
+            fields = [field.strip() for field in line.split(",")]
+            if len(fields) < 3:
+                continue
+            try:
+                return float(fields[0]), float(fields[1]), float(fields[2])
+            except ValueError:
+                continue
+        return None
 
 
 def _scalar(backend, value) -> float:
@@ -187,12 +268,16 @@ def _manual_step(
     force_predictor_startup: bool = False,
     drop_pressure_history: bool = False,
 ):
+    timing: dict[str, float] = {}
+    stage_start = time.perf_counter()
     if drop_pressure_history:
         solver._p_prev_dev = None
         solver._p_base_prev_dev = None
         solver._p_base_prev2_dev = None
         solver._p_prev_accel_face_components = None
     state = solver._prepare_step_inputs(request)
+    timing["time_prepare_inputs"] = time.perf_counter() - stage_start
+    stage_start = time.perf_counter()
     prepared_geometric_faces = solver._geometric_face_velocity_for_common_flux(state)
     prepared_previous_face_linf = _face_linf(
         solver._backend,
@@ -205,11 +290,17 @@ def _manual_step(
     )
     state = solver._advance_interface_stage(state)
     solver._last_interface_projection_fields = state.interface_projection_fields
+    timing["time_interface"] = time.perf_counter() - stage_start
+    stage_start = time.perf_counter()
     state = solver._materialise_step_fields(state)
     rho_min, rho_max = _field_minmax(solver._backend, state.rho)
     mu_min, mu_max = _field_minmax(solver._backend, state.mu_field)
+    timing["time_materialise"] = time.perf_counter() - stage_start
+    stage_start = time.perf_counter()
     state = solver._surface_tension_stage(state)
     capillary_metrics = _capillary_metrics(solver._backend, solver._grid, state)
+    timing["time_surface"] = time.perf_counter() - stage_start
+    stage_start = time.perf_counter()
     history_metrics = {
         "conv_ab2_ready": float(bool(solver._conv_ab2_ready)),
         "velocity_bdf2_ready": float(bool(solver._velocity_bdf2_ready)),
@@ -227,6 +318,8 @@ def _manual_step(
         solver._velocity_prev = None
     state = solver._predict_velocity_stage(state)
     _apply_bc(state.u_star, state.v_star, state.bc_hook, solver.bc_type)
+    timing["time_predictor"] = time.perf_counter() - stage_start
+    stage_start = time.perf_counter()
     viscous_diag = getattr(solver._viscous_predictor, "last_diagnostics", {})
     viscous_history = list(getattr(solver._viscous_predictor, "last_residual_history", []))
     viscous_residual0 = float(viscous_history[0]) if viscous_history else 0.0
@@ -285,6 +378,8 @@ def _manual_step(
         ),
     }
     state = solver._solve_pressure_stage(state)
+    timing["time_pressure"] = time.perf_counter() - stage_start
+    stage_start = time.perf_counter()
     pressure_metrics = {
         "pressure_increment_linf": _field_linf(
             solver._backend,
@@ -365,7 +460,8 @@ def _manual_step(
         "diag_ppe_rhs": solver._step_diag.last.get("ppe_rhs_max", 0.0),
         "diag_div_u": solver._step_diag.last.get("div_u_max", 0.0),
     }
-    return state, predictor_metrics, pressure_metrics, corrector_metrics
+    timing["time_corrector_commit"] = time.perf_counter() - stage_start
+    return state, predictor_metrics, pressure_metrics, corrector_metrics, timing
 
 
 def main() -> None:
@@ -419,6 +515,17 @@ def main() -> None:
     parser.add_argument("--uniform-grid", action="store_true")
     parser.add_argument("--runner-initial-grid-rebuild", action="store_true")
     parser.add_argument("--prepare-grid-each-step", action="store_true")
+    parser.add_argument(
+        "--gpu-sampling-interval",
+        type=float,
+        default=0.0,
+        help="Seconds between nvidia-smi samples; 0 disables GPU utilization sampling.",
+    )
+    parser.add_argument(
+        "--summary-only",
+        action="store_true",
+        help="Print only aggregate timing/GPU metrics for quick profiling.",
+    )
     parser.add_argument("--backend", choices=("as_env", "cpu", "gpu"), default="as_env")
     args = parser.parse_args()
 
@@ -619,8 +726,24 @@ def main() -> None:
         "ppe_dc_final_l2",
         "ppe_dc_rel",
         "ppe_dc_converged",
+        "step_wall",
+        "time_prepare_inputs",
+        "time_interface",
+        "time_materialise",
+        "time_surface",
+        "time_predictor",
+        "time_pressure",
+        "time_corrector_commit",
+        "gpu_util_avg",
+        "gpu_util_max",
+        "gpu_mem_avg",
+        "gpu_mem_max",
+        "gpu_power_avg",
+        "gpu_power_max",
     ]
-    print(",".join(columns))
+    if not args.summary_only:
+        print(",".join(columns))
+    profile_rows: list[dict[str, float]] = []
     for step in range(args.steps):
         if args.prepare_grid_each_step:
             prepare_grid = getattr(solver, "prepare_geometric_grid_for_timestep", None)
@@ -651,8 +774,11 @@ def main() -> None:
             cfl_viscous=cfg.run.cfl_viscous,
         )
         dt = float(budget.dt)
+        sampler = _GpuUtilSampler(args.gpu_sampling_interval)
+        step_start = time.perf_counter()
+        sampler.start()
         try:
-            state, predictor, pressure, corrector = _manual_step(
+            state, predictor, pressure, corrector, timing = _manual_step(
                 solver,
                 NSStepRequest(
                     psi=psi,
@@ -674,72 +800,164 @@ def main() -> None:
                 drop_pressure_history=args.drop_pressure_history,
             )
         except ValueError as exc:
+            sampler.stop()
             print("FAIL_CLOSE", step + 1, f"{t:.12e}", f"{dt:.12e}", str(exc), sep=",")
             break
+        sampler.stop()
+        step_wall = time.perf_counter() - step_start
+        gpu_summary = sampler.summary()
+        profile_rows.append(
+            {
+                "step_wall": step_wall,
+                "time_prepare_inputs": timing["time_prepare_inputs"],
+                "time_interface": timing["time_interface"],
+                "time_materialise": timing["time_materialise"],
+                "time_surface": timing["time_surface"],
+                "time_predictor": timing["time_predictor"],
+                "time_pressure": timing["time_pressure"],
+                "time_corrector_commit": timing["time_corrector_commit"],
+                "gpu_util_avg": gpu_summary["gpu_util_avg"],
+                "gpu_util_max": gpu_summary["gpu_util_max"],
+                "gpu_mem_avg": gpu_summary["gpu_mem_avg"],
+                "gpu_mem_max": gpu_summary["gpu_mem_max"],
+                "gpu_power_avg": gpu_summary["gpu_power_avg"],
+                "gpu_power_max": gpu_summary["gpu_power_max"],
+                "ao_compat": predictor["ao_compat"],
+                "yl_normal": predictor["yl_normal"],
+                "div_u": corrector["diag_div_u"],
+                "ppe_dc_iterations": pressure["ppe_dc_iterations"],
+            }
+        )
         t += dt
         psi, u, v, p = state.psi, state.u, state.v, state.pressure
         del p
+        if not args.summary_only:
+            print(
+                step + 1,
+                f"{t:.12e}",
+                f"{dt:.12e}",
+                f"{predictor['prepared_previous_face_linf']:.12e}",
+                f"{predictor['prepared_previous_face_div']:.12e}",
+                f"{predictor['prepared_geometric_div']:.12e}",
+                f"{predictor['rho_min']:.12e}",
+                f"{predictor['rho_max']:.12e}",
+                f"{predictor['mu_min']:.12e}",
+                f"{predictor['mu_max']:.12e}",
+                f"{predictor['grid_dx_min']:.12e}",
+                f"{predictor['grid_dx_max']:.12e}",
+                f"{predictor['grid_dy_min']:.12e}",
+                f"{predictor['grid_dy_max']:.12e}",
+                f"{predictor['ao_compat']:.12e}",
+                f"{predictor['face_hodge_min']:.12e}",
+                f"{predictor['face_hodge_max']:.12e}",
+                f"{predictor['sign_margin']:.12e}",
+                f"{predictor['jq_linf']:.12e}",
+                f"{predictor['ds_linf']:.12e}",
+                f"{predictor['row_norm_min']:.12e}",
+                f"{predictor['row_norm_max']:.12e}",
+                f"{predictor['cap_force']:.12e}",
+                f"{predictor['cap_reaction']:.12e}",
+                f"{predictor['cap_residual']:.12e}",
+                f"{predictor['cap_face']:.12e}",
+                f"{predictor['cap_reaction_face']:.12e}",
+                f"{predictor['cap_balanced']:.12e}",
+                f"{predictor['cap_balanced_max']:.12e}",
+                f"{predictor['yl_normal']:.12e}",
+                f"{predictor['conv_ab2_ready']:.12e}",
+                f"{predictor['velocity_bdf2_ready']:.12e}",
+                f"{predictor['velocity_prev_linf']:.12e}",
+                f"{predictor['viscous_dc_final_residual']:.12e}",
+                f"{predictor['viscous_dc_initial_residual']:.12e}",
+                f"{predictor['viscous_dc_min_residual']:.12e}",
+                f"{predictor['viscous_dc_growth']:.12e}",
+                f"{predictor['viscous_dc_corrections']:.12e}",
+                f"{predictor['viscous_dc_converged']:.12e}",
+                f"{predictor['viscous_gmres_info']:.12e}",
+                f"{max(predictor['u_star_linf'], predictor['v_star_linf']):.12e}",
+                f"{predictor['predictor_face_linf']:.12e}",
+                f"{predictor['predictor_face_div']:.12e}",
+                f"{predictor['pressure_history_face_linf']:.12e}",
+                f"{predictor['pressure_history_face_div']:.12e}",
+                f"{pressure['pressure_increment_linf']:.12e}",
+                f"{pressure['pressure_base_linf']:.12e}",
+                f"{pressure['pressure_face_linf']:.12e}",
+                f"{pressure['pressure_face_div']:.12e}",
+                f"{corrector['projected_face_linf']:.12e}",
+                f"{corrector['projected_face_div']:.12e}",
+                f"{corrector['geometric_div']:.12e}",
+                f"{max(corrector['u_linf'], corrector['v_linf']):.12e}",
+                f"{corrector['diag_ppe_rhs']:.12e}",
+                f"{corrector['diag_div_u']:.12e}",
+                f"{pressure['ppe_dc_iterations']:.12e}",
+                f"{pressure['ppe_dc_initial_l2']:.12e}",
+                f"{pressure['ppe_dc_final_l2']:.12e}",
+                f"{pressure['ppe_dc_relative_l2']:.12e}",
+                f"{pressure['ppe_dc_converged']:.12e}",
+                f"{step_wall:.12e}",
+                f"{timing['time_prepare_inputs']:.12e}",
+                f"{timing['time_interface']:.12e}",
+                f"{timing['time_materialise']:.12e}",
+                f"{timing['time_surface']:.12e}",
+                f"{timing['time_predictor']:.12e}",
+                f"{timing['time_pressure']:.12e}",
+                f"{timing['time_corrector_commit']:.12e}",
+                f"{gpu_summary['gpu_util_avg']:.12e}",
+                f"{gpu_summary['gpu_util_max']:.12e}",
+                f"{gpu_summary['gpu_mem_avg']:.12e}",
+                f"{gpu_summary['gpu_mem_max']:.12e}",
+                f"{gpu_summary['gpu_power_avg']:.12e}",
+                f"{gpu_summary['gpu_power_max']:.12e}",
+                sep=",",
+            )
+
+    if args.summary_only and profile_rows:
+        summary_columns = [
+            "steps",
+            "total_step_wall",
+            "mean_step_wall",
+            "max_step_wall",
+            "mean_time_surface",
+            "mean_time_predictor",
+            "mean_time_pressure",
+            "mean_time_corrector_commit",
+            "mean_gpu_util",
+            "max_gpu_util",
+            "mean_gpu_mem",
+            "max_gpu_mem",
+            "mean_gpu_power",
+            "max_gpu_power",
+            "max_ao_compat",
+            "max_yl_normal",
+            "max_div_u",
+            "mean_ppe_dc_iterations",
+        ]
+        print(",".join(summary_columns))
+
+        def mean(name: str) -> float:
+            return float(np.mean([row[name] for row in profile_rows]))
+
+        def max_value(name: str) -> float:
+            return float(np.max([row[name] for row in profile_rows]))
+
         print(
-            step + 1,
-            f"{t:.12e}",
-            f"{dt:.12e}",
-            f"{predictor['prepared_previous_face_linf']:.12e}",
-            f"{predictor['prepared_previous_face_div']:.12e}",
-            f"{predictor['prepared_geometric_div']:.12e}",
-            f"{predictor['rho_min']:.12e}",
-            f"{predictor['rho_max']:.12e}",
-            f"{predictor['mu_min']:.12e}",
-            f"{predictor['mu_max']:.12e}",
-            f"{predictor['grid_dx_min']:.12e}",
-            f"{predictor['grid_dx_max']:.12e}",
-            f"{predictor['grid_dy_min']:.12e}",
-            f"{predictor['grid_dy_max']:.12e}",
-            f"{predictor['ao_compat']:.12e}",
-            f"{predictor['face_hodge_min']:.12e}",
-            f"{predictor['face_hodge_max']:.12e}",
-            f"{predictor['sign_margin']:.12e}",
-            f"{predictor['jq_linf']:.12e}",
-            f"{predictor['ds_linf']:.12e}",
-            f"{predictor['row_norm_min']:.12e}",
-            f"{predictor['row_norm_max']:.12e}",
-            f"{predictor['cap_force']:.12e}",
-            f"{predictor['cap_reaction']:.12e}",
-            f"{predictor['cap_residual']:.12e}",
-            f"{predictor['cap_face']:.12e}",
-            f"{predictor['cap_reaction_face']:.12e}",
-            f"{predictor['cap_balanced']:.12e}",
-            f"{predictor['cap_balanced_max']:.12e}",
-            f"{predictor['yl_normal']:.12e}",
-            f"{predictor['conv_ab2_ready']:.12e}",
-            f"{predictor['velocity_bdf2_ready']:.12e}",
-            f"{predictor['velocity_prev_linf']:.12e}",
-            f"{predictor['viscous_dc_final_residual']:.12e}",
-            f"{predictor['viscous_dc_initial_residual']:.12e}",
-            f"{predictor['viscous_dc_min_residual']:.12e}",
-            f"{predictor['viscous_dc_growth']:.12e}",
-            f"{predictor['viscous_dc_corrections']:.12e}",
-            f"{predictor['viscous_dc_converged']:.12e}",
-            f"{predictor['viscous_gmres_info']:.12e}",
-            f"{max(predictor['u_star_linf'], predictor['v_star_linf']):.12e}",
-            f"{predictor['predictor_face_linf']:.12e}",
-            f"{predictor['predictor_face_div']:.12e}",
-            f"{predictor['pressure_history_face_linf']:.12e}",
-            f"{predictor['pressure_history_face_div']:.12e}",
-            f"{pressure['pressure_increment_linf']:.12e}",
-            f"{pressure['pressure_base_linf']:.12e}",
-            f"{pressure['pressure_face_linf']:.12e}",
-            f"{pressure['pressure_face_div']:.12e}",
-            f"{corrector['projected_face_linf']:.12e}",
-            f"{corrector['projected_face_div']:.12e}",
-            f"{corrector['geometric_div']:.12e}",
-            f"{max(corrector['u_linf'], corrector['v_linf']):.12e}",
-            f"{corrector['diag_ppe_rhs']:.12e}",
-            f"{corrector['diag_div_u']:.12e}",
-            f"{pressure['ppe_dc_iterations']:.12e}",
-            f"{pressure['ppe_dc_initial_l2']:.12e}",
-            f"{pressure['ppe_dc_final_l2']:.12e}",
-            f"{pressure['ppe_dc_relative_l2']:.12e}",
-            f"{pressure['ppe_dc_converged']:.12e}",
+            len(profile_rows),
+            f"{sum(row['step_wall'] for row in profile_rows):.12e}",
+            f"{mean('step_wall'):.12e}",
+            f"{max_value('step_wall'):.12e}",
+            f"{mean('time_surface'):.12e}",
+            f"{mean('time_predictor'):.12e}",
+            f"{mean('time_pressure'):.12e}",
+            f"{mean('time_corrector_commit'):.12e}",
+            f"{mean('gpu_util_avg'):.12e}",
+            f"{max_value('gpu_util_max'):.12e}",
+            f"{mean('gpu_mem_avg'):.12e}",
+            f"{max_value('gpu_mem_max'):.12e}",
+            f"{mean('gpu_power_avg'):.12e}",
+            f"{max_value('gpu_power_max'):.12e}",
+            f"{max_value('ao_compat'):.12e}",
+            f"{max_value('yl_normal'):.12e}",
+            f"{max_value('div_u'):.12e}",
+            f"{mean('ppe_dc_iterations'):.12e}",
             sep=",",
         )
 

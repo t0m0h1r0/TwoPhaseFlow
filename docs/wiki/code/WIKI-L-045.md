@@ -19,6 +19,10 @@ sources:
     description: "Fused swept-strip area evaluator"
   - path: src/twophase/ppe/fd_direct.py
     description: "Explicit prepared SpSM solve-plan reuse"
+  - path: src/twophase/simulation/geometric_phase_runtime_gpu.py
+    description: "AO compatibility projection fail-close early-stop after exact residual certification"
+  - path: experiment/ch14/diagnose_ao_stage_chain.py
+    description: "Stage timing and optional nvidia-smi GPU utilization probe for the capillary AO route"
 depends_on:
   - "[[WIKI-L-043]]"
   - "[[WIKI-L-044]]"
@@ -41,6 +45,44 @@ nonuniform grids, interface-following rebuilds, active geometry, or convergence
 gates.
 
 ## Measurements
+
+2026-05-14 follow-up after restoring the one-time face-Hodge bridge:
+`_project_q_phi_compatibility_fixed_gpu` now checks the exact active
+`q-Q_h(phi)` residual at the start of each Newton sweep with one batched scalar
+packet.  If the residual already satisfies the configured absolute/relative
+contract, it stops before Schur solve, line-search candidate geometry, and
+another full geometry refresh.  This is result-preserving: the old device
+predicate `active_newton = residual_linf > residual_tolerance` already made
+the update a no-op in exactly the same state; the optimization only avoids
+computing the no-op.
+
+Thirty-step stage-chain diagnostic, same N32 nonuniform/rebuild-enabled
+capillary route:
+
+| Metric | Before | After |
+|---|---:|---:|
+| command wall time | `82.364 s` | `11.731 s` |
+| speedup | — | `7.0x` |
+| summed step wall time | — | `8.384 s` |
+| mean step wall time | — | `0.279 s` |
+| mean surface/capillary stage time | dominant via compatibility loop | `4.78e-4 s` |
+| mean predictor stage time | — | `0.180 s` |
+| mean pressure stage time | — | `0.069 s` |
+| mean GPU utilization with 0.2 s sampling | about `25%` in earlier profile | `42.6%` |
+| max GPU utilization | `62%` | `59%` |
+| max AO compatibility residual | — | `8.10e-14` |
+| max Young--Laplace normal residual | — | `9.81e-14` |
+| max velocity-divergence diagnostic | — | `7.84e-14` |
+
+Quick verification command:
+
+```bash
+make run EXP=experiment/ch14/diagnose_ao_stage_chain.py ARGS='--config experiment/ch14/config/ch14_capillary.yaml --steps 30 --runner-initial-grid-rebuild --prepare-grid-each-step --backend gpu --summary-only'
+```
+
+Add `--gpu-sampling-interval 0.2` to report utilization and power.  Use the
+summary output for fast regression checks, and the full CSV when localising a
+stage regression.
 
 Minimal 40-step loop:
 
@@ -86,6 +128,15 @@ compatibility loop.  D2H/H2D transfer cleanup was necessary, but it is not the
 dominant remaining issue.  The residual CPU time mostly represents Python
 control and launch orchestration around device work.
 
+After the fail-close early-stop, the compatibility loop is no longer the
+dominant N32 cost.  Remaining utilization below 100% is not by itself evidence
+of CPU fallback: the route still has small-grid GPU work, pressure/predictor
+launch granularity, and small active Schur solves.  For the checked-in N32
+capillary wave, optimizing for wall time and exact residual certificates is
+more meaningful than trying to raise utilization by adding work.  Larger grids
+or future multiblock/O(N) Schur solvers are the appropriate path for saturating
+more SMs without changing the numerical method.
+
 Visual breakage after optimization is not automatically a stability or solver
 iteration problem.  First re-check the dimensional contract at every bridge
 between active geometry and the NS projection lattice.  In particular,
@@ -116,6 +167,9 @@ Allowed:
 - replace fixed full compatibility loops with chunked fail-close convergence:
   run a small device chunk, transfer one residual/status packet, and continue
   only if the mathematical convergence gate requires it;
+- stop a Newton compatibility sweep immediately after an exact residual packet
+  certifies `residual_linf <= residual_tolerance`; this removes only work that
+  would have been masked by `active_newton=false`;
 - keep `max_iterations` as a safety cap, but make YAML defaults reflect the
   smallest theory-validated cap for the production route after an integrated
   quarter-period check;
