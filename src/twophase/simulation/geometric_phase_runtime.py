@@ -140,7 +140,7 @@ def validate_geometric_runtime_capillary_application_admitted(
         and status == "pressure_reaction_projection_pending"
     ):
         return
-    if status in {"pressure_component_hodge_split", "pressure_jump_affine"}:
+    if status == "pressure_component_hodge_split":
         if (
             application.pressure_balanced_increment_weighted_l2 <= tolerance
             and application.max_abs_pressure_balanced_face_increment <= tolerance
