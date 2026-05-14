@@ -179,6 +179,83 @@ def test_corrector_reconstructed_face_state_satisfies_wall_trace():
     np.testing.assert_allclose(state.v[1:-1, 1:-1], -2.0)
 
 
+def test_corrector_no_slip_face_state_stores_wall_constrained_faces():
+    from twophase.backend import Backend
+    from twophase.simulation.ns_step_services import correct_ns_velocity_stage
+    from twophase.simulation.ns_step_state import NSStepInputs, NSStepState
+    from twophase.simulation.runtime_setup import apply_velocity_bc
+
+    backend = Backend(use_gpu=False)
+    xp = backend.xp
+    shape = (N + 1, N + 1)
+    predictor_x = xp.ones((N, N + 1))
+    predictor_y = -2.0 * xp.ones((N + 1, N))
+    zero_x = xp.zeros_like(predictor_x)
+    zero_y = xp.zeros_like(predictor_y)
+
+    class ZeroGradient:
+        def gradient(self, pressure, axis):
+            del axis
+            return xp.zeros_like(pressure)
+
+    class FaceProjection:
+        def pressure_fluxes(self, pressure, rho, **kwargs):
+            del pressure, rho, kwargs
+            return [zero_x, zero_y]
+
+        def face_fluxes(self, components):
+            del components
+            return [zero_x, zero_y]
+
+        def reconstruct_nodes(self, face_components):
+            return xp.zeros(shape), xp.zeros(shape)
+
+    state = NSStepState.from_inputs(
+        NSStepInputs(
+            psi=xp.ones(shape),
+            u=xp.zeros(shape),
+            v=xp.zeros(shape),
+            dt=0.1,
+            rho_l=1.0,
+            rho_g=1.0,
+            sigma=0.0,
+            mu=1.0,
+            bc_hook=lambda _u, _v: None,
+        ),
+        backend=backend,
+    )
+    state.rho = xp.ones(shape)
+    state.u_star = xp.zeros(shape)
+    state.v_star = xp.zeros(shape)
+    state.p_corrector = xp.zeros(shape)
+    state.f_x = xp.zeros(shape)
+    state.f_y = xp.zeros(shape)
+    state.predictor_face_components = [predictor_x, predictor_y]
+    state.pressure_correction_face_components = [zero_x, zero_y]
+
+    state = correct_ns_velocity_stage(
+        state,
+        backend=backend,
+        pressure_grad_op=ZeroGradient(),
+        face_flux_projection=True,
+        canonical_face_state=True,
+        face_native_predictor_state=True,
+        face_no_slip_boundary_state=True,
+        preserve_projected_faces=False,
+        fccd_div_op=None,
+        div_op=FaceProjection(),
+        ppe_runtime=None,
+        bc_type="wall",
+        apply_velocity_bc=apply_velocity_bc,
+    )
+
+    face_x, face_y = state.projected_face_components
+    assert np.max(np.abs(face_x[:, 0])) == pytest.approx(0.0)
+    assert np.max(np.abs(face_x[:, -1])) == pytest.approx(0.0)
+    assert np.max(np.abs(face_y[0, :])) == pytest.approx(0.0)
+    assert np.max(np.abs(face_y[-1, :])) == pytest.approx(0.0)
+
+
 def test_construction_nonuniform():
     s = _make_solver(alpha_grid=2.0)
     assert s._alpha_grid == 2.0

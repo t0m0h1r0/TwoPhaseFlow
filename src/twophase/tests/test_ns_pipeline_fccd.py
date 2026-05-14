@@ -1240,6 +1240,8 @@ def test_geometric_grid_rebuild_remaps_projected_face_cochains():
         rtol=0.0,
         atol=1.0e-11,
     )
+    assert np.all(np.isfinite(np.asarray(solver._backend.to_host(rebuilt.u))))
+    assert np.all(np.isfinite(np.asarray(solver._backend.to_host(rebuilt.v))))
     assert tuple(component.shape for component in rebuilt.projected_face_components) == (
         (nx, ny + 1),
         (nx + 1, ny),
@@ -1334,6 +1336,7 @@ def test_ch14_canonical_yamls_build_shared_common_flux_contract():
         assert solver._capillary_force_source == "bundle_virtual_work", path.name
         assert solver._momentum_form == "conservative_common_flux", path.name
         assert solver._cn_buoyancy_predictor_assembly_mode == "none", path.name
+        assert solver._face_no_slip_boundary_state is True, path.name
         assert solver._preserve_projected_faces is True, path.name
         assert solver._boundary_hodge_mode == "off", path.name
         assert solver._boundary_hodge_state_space == "constrained_face", path.name
@@ -3253,6 +3256,55 @@ def test_face_hodge_reprojector_uses_projection_native_complex():
     assert div_op.pressure_kwargs["coefficient_scheme"] == "phase_separated"
     assert div_op.pressure_kwargs["interface_coupling_scheme"] == "affine_jump"
     assert div_op.pressure_kwargs["pressure_force_contract"] == "variational_adjoint"
+
+
+def test_face_hodge_reprojector_preserves_no_slip_face_space_when_requested():
+    reprojector = FaceHodgeReprojector()
+    psi = np.zeros((4, 4))
+    faces = (np.ones_like(psi), 2.0 * np.ones_like(psi))
+
+    class ProjectionNativeDiv:
+        def divergence_from_faces(self, face_components):
+            return np.zeros_like(np.asarray(face_components[0]))
+
+        def pressure_fluxes(self, pressure, rho, **kwargs):
+            del pressure, rho, kwargs
+            return [np.zeros_like(component) for component in faces]
+
+        def reconstruct_nodes(self, face_components):
+            return [np.asarray(component) for component in face_components]
+
+    class ZeroPPE:
+        def solve(self, rhs, rho, dt=0.0, p_init=None):
+            del rho, dt, p_init
+            return np.zeros_like(rhs)
+
+    runtime = SimpleNamespace(
+        ppe_solver_name="fccd_iterative",
+        ppe_coefficient_scheme="phase_density",
+        ppe_interface_coupling_scheme="none",
+        pressure_force_contract="raw_compact_gradient",
+    )
+
+    _, _, projected_faces = reprojector.reproject_faces(
+        psi,
+        faces,
+        ZeroPPE(),
+        _ArrayBackend(),
+        rho_l=2.0,
+        rho_g=1.0,
+        div_op=ProjectionNativeDiv(),
+        ppe_runtime=runtime,
+        bc_type="wall",
+        face_no_slip_boundary_state=True,
+    )
+
+    for original, projected in zip(faces, projected_faces, strict=True):
+        np.testing.assert_allclose(projected[0, :], 0.0)
+        np.testing.assert_allclose(projected[-1, :], 0.0)
+        np.testing.assert_allclose(projected[:, 0], 0.0)
+        np.testing.assert_allclose(projected[:, -1], 0.0)
+        np.testing.assert_allclose(projected[1:-1, 1:-1], original[1:-1, 1:-1])
 
 
 def test_consistent_gfm_reprojector_fails_closed_until_implemented():

@@ -10,6 +10,7 @@ from twophase.ccd.ccd_solver import CCDSolver
 from twophase.ccd.fccd import FCCDSolver
 from twophase.config import GridConfig
 from twophase.core.grid import Grid
+from twophase.core.grid_remap import build_grid_remapper
 from twophase.levelset.fccd_advection import FCCDLevelSetAdvection
 from twophase.simulation.conservative_transport import (
     ConservativeCommonFluxTransport,
@@ -217,9 +218,20 @@ def test_conservative_grid_rebuild_preserves_phase_and_momentum_integrals():
     v = -0.1 + 0.05 * y
     momentum = (density * u, density * v)
     dV_old = grid.cell_volumes()
+    old_coords = [coords.copy() for coords in grid.coords]
     q_target = float(xp.sum(psi * dV_old))
     m_targets = [float(xp.sum(component * dV_old)) for component in momentum]
 
+    class Reprojector:
+        def __init__(self):
+            self.face_no_slip_boundary_state = None
+
+        def reproject(self, psi, u, v, *args, **kwargs):
+            del psi, args
+            self.face_no_slip_boundary_state = kwargs["face_no_slip_boundary_state"]
+            return u, v
+
+    reprojector = Reprojector()
     result = rebuild_ns_grid(
         backend=backend,
         grid=grid,
@@ -246,15 +258,13 @@ def test_conservative_grid_rebuild_preserves_phase_and_momentum_integrals():
         fccd_div_op=type("Div", (), {"update_weights": lambda self: None})(),
         div_op=None,
         ppe_runtime=None,
-        reprojector=type(
-            "Reprojector",
-            (),
-            {"reproject": lambda self, psi, u, v, *args, **kwargs: (u, v)},
-        )(),
+        reprojector=reprojector,
         conservative_momentum_components=momentum,
         bc_type="wall",
+        face_no_slip_boundary_state=True,
     )
 
+    assert reprojector.face_no_slip_boundary_state is True
     dV_new = grid.cell_volumes()
     assert float(xp.sum(result.psi * dV_new)) == pytest.approx(q_target, abs=1.0e-12)
     assert result.momentum_components is not None
@@ -263,6 +273,25 @@ def test_conservative_grid_rebuild_preserves_phase_and_momentum_integrals():
     np.testing.assert_allclose(result.density, rho_g + (rho_l - rho_g) * result.psi)
     np.testing.assert_allclose(result.u, result.momentum_components[0] / result.density)
     np.testing.assert_allclose(result.v, result.momentum_components[1] / result.density)
+    remapper = build_grid_remapper(backend, old_coords, grid.coords)
+    dV_new = grid.cell_volumes()
+    density_mass = xp.sum(result.density * dV_new)
+    for component, velocity, target in zip(
+        momentum,
+        (result.u, result.v),
+        m_targets,
+        strict=True,
+    ):
+        raw_momentum = xp.asarray(remapper.remap(component))
+        expected_velocity_shift = (
+            target - float(xp.sum(raw_momentum * dV_new))
+        ) / float(density_mass)
+        np.testing.assert_allclose(
+            velocity - raw_momentum / result.density,
+            expected_velocity_shift,
+            rtol=0.0,
+            atol=1.0e-12,
+        )
 
 
 def test_common_flux_rejects_density_not_affine_in_phase():

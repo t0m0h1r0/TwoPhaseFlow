@@ -15,7 +15,10 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from ..core.boundary import is_all_periodic
-from .face_boundary import zero_wall_normal_face_components
+from .face_boundary import (
+    zero_wall_normal_face_components,
+    zero_wall_velocity_face_components,
+)
 from .velocity_reprojector import IVelocityReprojector, _device_array
 
 if TYPE_CHECKING:
@@ -108,9 +111,10 @@ class LegacyReprojector(IVelocityReprojector):
         div_op=None,
         ppe_runtime=None,
         bc_type: str = "wall",
+        face_no_slip_boundary_state: bool = False,
     ) -> tuple[np.ndarray, np.ndarray]:
         self._stats["calls"] += 1
-        del div_op, ppe_runtime, bc_type
+        del div_op, ppe_runtime, bc_type, face_no_slip_boundary_state
 
         xp = backend.xp
         psi_d = _device_array(psi, backend)
@@ -162,9 +166,10 @@ class VariableDensityReprojector(IVelocityReprojector):
         div_op=None,
         ppe_runtime=None,
         bc_type: str = "wall",
+        face_no_slip_boundary_state: bool = False,
     ) -> tuple[np.ndarray, np.ndarray]:
         self._stats["calls"] += 1
-        del div_op, ppe_runtime, bc_type
+        del div_op, ppe_runtime, bc_type, face_no_slip_boundary_state
 
         xp = backend.xp
         psi_d = _device_array(psi, backend)
@@ -242,6 +247,7 @@ class FaceHodgeReprojector(IVelocityReprojector):
         div_op=None,
         ppe_runtime=None,
         bc_type: str = "wall",
+        face_no_slip_boundary_state: bool = False,
     ) -> tuple[np.ndarray, np.ndarray]:
         del ccd
         if div_op is None or not hasattr(div_op, "face_fluxes"):
@@ -260,6 +266,7 @@ class FaceHodgeReprojector(IVelocityReprojector):
             div_op=div_op,
             ppe_runtime=ppe_runtime,
             bc_type=bc_type,
+            face_no_slip_boundary_state=face_no_slip_boundary_state,
         )
         return u_proj, v_proj
 
@@ -275,6 +282,7 @@ class FaceHodgeReprojector(IVelocityReprojector):
         div_op=None,
         ppe_runtime=None,
         bc_type: str = "wall",
+        face_no_slip_boundary_state: bool = False,
     ):
         self._stats["calls"] += 1
         if div_op is None:
@@ -310,7 +318,12 @@ class FaceHodgeReprojector(IVelocityReprojector):
         try:
             faces = [xp.asarray(component) for component in face_components]
             if not is_all_periodic(bc_type, 2):
-                faces = zero_wall_normal_face_components(faces, xp=xp, bc_type=bc_type)
+                boundary_projector = (
+                    zero_wall_velocity_face_components
+                    if face_no_slip_boundary_state
+                    else zero_wall_normal_face_components
+                )
+                faces = boundary_projector(faces, xp=xp, bc_type=bc_type)
             rhs = div_op.divergence_from_faces(faces)
             pre_linf = xp.max(xp.abs(rhs))
             phi = ppe_solver.solve(rhs, rho, dt=1.0, p_init=None)
@@ -319,6 +332,12 @@ class FaceHodgeReprojector(IVelocityReprojector):
                 face - xp.asarray(pressure_face)
                 for face, pressure_face in zip(faces, pressure_faces, strict=True)
             ]
+            if face_no_slip_boundary_state and not is_all_periodic(bc_type, 2):
+                projected_faces = zero_wall_velocity_face_components(
+                    projected_faces,
+                    xp=xp,
+                    bc_type=bc_type,
+                )
             post_div = div_op.divergence_from_faces(projected_faces)
             post_linf = xp.max(xp.abs(post_div))
             stats = backend.asnumpy(xp.stack([pre_linf, post_linf]))
@@ -367,9 +386,10 @@ class ConsistentGFMReprojectorLegacy(IVelocityReprojector):
         div_op=None,
         ppe_runtime=None,
         bc_type: str = "wall",
+        face_no_slip_boundary_state: bool = False,
     ) -> tuple[np.ndarray, np.ndarray]:
         self._stats["calls"] += 1
-        del div_op, ppe_runtime, bc_type
+        del div_op, ppe_runtime, bc_type, face_no_slip_boundary_state
         raise RuntimeError(
             "consistent_gfm velocity reprojection is not implemented; "
             "no alternate reprojection scheme was applied."

@@ -379,6 +379,7 @@ def test_ch14_capillary_yaml_loads_execution_stack():
     assert cfg.run.face_flux_projection is True
     assert cfg.run.canonical_face_state is True
     assert cfg.run.face_native_predictor_state is True
+    assert cfg.run.face_no_slip_boundary_state is True
     assert cfg.run.preserve_projected_faces is True
     assert cfg.run.boundary_hodge_mode == "off"
     assert cfg.run.boundary_hodge_state_space == "constrained_face"
@@ -562,6 +563,7 @@ def test_ch14_canonical_yamls_share_base_numerical_stack():
         assert cfg.run.face_flux_projection is True, path.name
         assert cfg.run.canonical_face_state is True, path.name
         assert cfg.run.face_native_predictor_state is True, path.name
+        assert cfg.run.face_no_slip_boundary_state is True, path.name
         assert cfg.run.preserve_projected_faces is True, path.name
         assert cfg.run.boundary_hodge_mode == "off", path.name
         assert cfg.run.boundary_hodge_state_space == "constrained_face", path.name
@@ -672,6 +674,7 @@ def test_ch14_rising_bubble_yaml_loads_execution_stack():
     assert cfg.run.face_flux_projection is True
     assert cfg.run.canonical_face_state is True
     assert cfg.run.face_native_predictor_state is True
+    assert cfg.run.face_no_slip_boundary_state is True
     assert cfg.run.preserve_projected_faces is True
     assert cfg.run.boundary_hodge_mode == "off"
     assert cfg.run.boundary_hodge_state_space == "constrained_face"
@@ -693,6 +696,26 @@ def test_ch14_rising_bubble_yaml_loads_execution_stack():
     assert cfg.run.capillary_closed_interface_metric == "pressure_adjoint"
     assert cfg.run.capillary_closed_interface_constraints == ("cell_volume",)
     assert cfg.run.capillary_closed_interface_fail_close is True
+
+
+def test_constrained_face_state_rejects_disabled_no_slip_face_state():
+    with pytest.raises(ValueError, match="face_no_slip_boundary_state=true"):
+        ExperimentConfig.from_dict(_minimal({
+            "numerics": {
+                "projection": {
+                    "mode": "face_hodge",
+                    "face_flux_projection": True,
+                    "canonical_face_state": True,
+                    "face_native_predictor_state": True,
+                    "face_no_slip_boundary_state": False,
+                    "preserve_projected_faces": True,
+                    "boundary_hodge": {
+                        "mode": "off",
+                        "state_space": "constrained_face",
+                    },
+                },
+            },
+        }))
 
 
 def test_capillary_range_projection_parses_and_requires_affine_jump():

@@ -15,6 +15,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from twophase.levelset.wall_contact import WallContactSet  # noqa: E402
 from twophase.simulation.config_io import load_experiment_config  # noqa: E402
 from twophase.simulation.ns_pipeline import TwoPhaseNSSolver  # noqa: E402
+from twophase.simulation.boundary_hodge import wall_trace_from_faces  # noqa: E402
 from twophase.simulation.ns_step_services import (  # noqa: E402
     _geometric_to_projection_face_pair_2d,
 )
@@ -126,6 +127,31 @@ def _face_y_mode(
     return _weighted_cos_projection(x, values, mode=mode, length=length)
 
 
+def _face_wall_linf(backend, div_op, grid, face_pair, *, boundary, bc_type: str):
+    if face_pair is None:
+        return 0.0
+    xp = backend.xp
+    faces = [xp.asarray(component) for component in face_pair]
+    geometric_shapes = ((int(grid.N[0]) + 1, int(grid.N[1])), (int(grid.N[0]), int(grid.N[1]) + 1))
+    projection_shapes = ((int(grid.N[0]), int(grid.N[1]) + 1), (int(grid.N[0]) + 1, int(grid.N[1])))
+    shapes = tuple(tuple(face.shape) for face in faces)
+    if shapes == geometric_shapes:
+        projected = _geometric_to_projection_face_pair_2d(
+            xp=xp,
+            grid=grid,
+            face_pair=faces,
+            boundary=boundary,
+        )
+    elif shapes == projection_shapes:
+        projected = faces
+    else:
+        return float("nan")
+    trace = wall_trace_from_faces(xp, grid, projected, bc_type)
+    if getattr(trace, "size", 0) == 0:
+        return 0.0
+    return float(np.asarray(backend.to_host(xp.max(xp.abs(trace)))))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)
@@ -213,7 +239,8 @@ def main() -> None:
         "min_dx,min_dy,"
         "compat_linf,div_u,raw_accel_cos,predictor_accel_cos,"
         "reaction_accel_cos,balanced_accel_cos,projected_face_linf,yl_normal,"
-        "ppe_dc_linf,ppe_dc_conv,ppe_rhs,face_hodge_pre,face_hodge_post"
+        "ppe_dc_linf,ppe_dc_conv,ppe_rhs,face_hodge_pre,face_hodge_post,"
+        "projected_wall_linf,predictor_wall_linf,reaction_wall_linf,balanced_wall_linf"
     )
     t = 0.0
     eta_mode, v_mode, v_abs = _interface_mode_projection(
@@ -236,6 +263,10 @@ def main() -> None:
         f"{v_abs:.12e}",
         f"{_min_grid_spacing(solver._grid)[0]:.12e}",
         f"{_min_grid_spacing(solver._grid)[1]:.12e}",
+        "0.000000000000e+00",
+        "0.000000000000e+00",
+        "0.000000000000e+00",
+        "0.000000000000e+00",
         "0.000000000000e+00",
         "0.000000000000e+00",
         "0.000000000000e+00",
@@ -464,6 +495,45 @@ def main() -> None:
             y_mid=y_mid,
             boundary=boundary,
         )
+        projected_wall_linf = _face_wall_linf(
+            backend,
+            solver._div_op,
+            grid,
+            projected_faces,
+            boundary=boundary,
+            bc_type=solver.bc_type,
+        )
+        predictor_wall_linf = _face_wall_linf(
+            backend,
+            solver._div_op,
+            grid,
+            app.predictor_face_acceleration,
+            boundary=boundary,
+            bc_type=solver.bc_type,
+        )
+        reaction_wall_linf = _face_wall_linf(
+            backend,
+            solver._div_op,
+            grid,
+            app.pressure_reaction_face_acceleration,
+            boundary=boundary,
+            bc_type=solver.bc_type,
+        )
+        balanced_wall_linf = _face_wall_linf(
+            backend,
+            solver._div_op,
+            grid,
+            [
+                xp.asarray(left) - xp.asarray(right)
+                for left, right in zip(
+                    app.predictor_face_acceleration,
+                    app.pressure_reaction_face_acceleration,
+                    strict=True,
+                )
+            ],
+            boundary=boundary,
+            bc_type=solver.bc_type,
+        )
         compat = float(np.asarray(backend.to_host(phase.compatibility_residual_linf)))
         if args.residual_report_every > 0 and (
             (step + 1) % int(args.residual_report_every) == 0
@@ -553,6 +623,10 @@ def main() -> None:
             f"{step_diag.get('ppe_rhs_max', 0.0):.12e}",
             f"{solver.reproject_stats.get('pre_div_linf', 0.0):.12e}",
             f"{solver.reproject_stats.get('post_div_linf', 0.0):.12e}",
+            f"{projected_wall_linf:.12e}",
+            f"{predictor_wall_linf:.12e}",
+            f"{reaction_wall_linf:.12e}",
+            f"{balanced_wall_linf:.12e}",
             sep=",",
         )
 

@@ -21,6 +21,8 @@ sources:
     description: "Explicit prepared SpSM solve-plan reuse"
   - path: src/twophase/simulation/geometric_phase_runtime_gpu.py
     description: "AO compatibility projection fail-close early-stop after exact residual certification"
+  - path: src/twophase/simulation/geometric_volume_hodge.py
+    description: "Single-block RawKernel PCG for N32 geometric volume-flux Hodge projection"
   - path: experiment/ch14/diagnose_ao_stage_chain.py
     description: "Stage timing and optional nvidia-smi GPU utilization probe for the capillary AO route"
 depends_on:
@@ -74,6 +76,37 @@ capillary route:
 | max Young--Laplace normal residual | — | `9.81e-14` |
 | max velocity-divergence diagnostic | — | `7.84e-14` |
 
+2026-05-14 later pass: after the compatibility loop was no longer dominant,
+the next mathematically clean target was the finite-volume Hodge projection
+used by AO common-flux transport,
+
+```text
+min 1/2 ||F-F0||^2_Mg  subject to  B_g F = 0,
+A p = -B_g F0,  A = -B_g G_g.
+```
+
+For the current ch14 N32 route this is a 1024-cell nonuniform
+periodic-wall scalar PCG.  The old vectorised CuPy loop launched many small
+kernels per PCG iteration; the new path solves the same Jacobi-preconditioned
+PCG recurrence inside one CUDA block and returns the same potential to the
+existing projection/residual certificate.  It is size-gated (`n_cells <= 1024`)
+and falls back to the existing vector route for larger grids until the planned
+O(N)/multiblock solver exists.
+
+Same 60-step stage-chain diagnostic, nonuniform grid rebuild every step:
+
+| Route | Mean step | Interface | Predictor | Pressure | Corrector/commit | Total step wall |
+|---|---:|---:|---:|---:|---:|---:|
+| vector geometric-volume PCG | `1.166 s` | `0.595 s` | `0.203 s` | `0.0699 s` | `0.296 s` | `69.96 s` |
+| RawKernel geometric-volume PCG | `0.296 s` | `0.0158 s` | `0.201 s` | `0.0703 s` | `0.0080 s` | `17.78 s` |
+| speedup | `3.94x` | `37.6x` | neutral | neutral | `36.9x` | `3.94x` |
+
+The residual diagnostics stayed in the same class (`max_div_u ~ 3.8e-05` in
+this diagnostic; `ao_compat=0`, `yl_normal=0`), so this is a launch-granularity
+optimization rather than a numerical-method change.  The remaining dominant
+costs after this pass are predictor viscosity (`~0.20 s/step`) and PPE defect
+correction (`~0.07 s/step`).
+
 Quick verification command:
 
 ```bash
@@ -83,6 +116,10 @@ make run EXP=experiment/ch14/diagnose_ao_stage_chain.py ARGS='--config experimen
 Add `--gpu-sampling-interval 0.2` to report utilization and power.  Use the
 summary output for fast regression checks, and the full CSV when localising a
 stage regression.
+
+Use `--disable-geometric-volume-raw-pcg` to benchmark the old vectorised
+geometric-volume PCG route against the RawKernel path without changing
+production YAML.
 
 Minimal 40-step loop:
 
@@ -177,6 +214,9 @@ Allowed:
   quarter-period check;
 - fuse line-search and candidate geometry refresh when the fused kernel
   evaluates the exact same finite-stratum formulas;
+- fuse small fixed-shape PCG recurrences only when the RawKernel is an exact
+  implementation of the same operator, metric, boundary quotient, tolerance,
+  and roundoff-floor policy;
 - preallocate and explicitly pass scratch arrays through the route;
 - batch scalar convergence/status transfers into one packet per outer chunk;
 - keep diagnostic statistics optional or behind explicit profiling flags.

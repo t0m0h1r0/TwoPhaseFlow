@@ -1230,7 +1230,9 @@ def compute_ns_predictor_stage(
             gravity_axis=1,
         )
         gravity_accel_faces = gravity_faces.acceleration_components
-        if not is_all_periodic(bc_type, 2) and state.bc_hook is None:
+        if not is_all_periodic(bc_type, 2) and (
+            face_no_slip_boundary_state or state.bc_hook is None
+        ):
             if face_no_slip_boundary_state:
                 gravity_accel_faces = zero_wall_velocity_face_components(
                     gravity_accel_faces,
@@ -1569,7 +1571,9 @@ def compute_ns_predictor_stage(
                     }
                 )
                 state.conservative_transport_certificate = certificate
-        if not is_all_periodic(bc_type, 2) and state.bc_hook is None:
+        if not is_all_periodic(bc_type, 2) and (
+            face_no_slip_boundary_state or state.bc_hook is None
+        ):
             if face_no_slip_boundary_state:
                 state.predictor_face_components = zero_wall_velocity_face_components(
                     state.predictor_face_components,
@@ -1614,7 +1618,9 @@ def _pressure_stage_predictor_rhs(
         predictor_faces = state.predictor_face_components
     if predictor_faces is None or not hasattr(div_op, "divergence_from_faces"):
         return div_op.divergence([state.u_star, state.v_star]) / projection_dt
-    if not is_all_periodic(bc_type, 2) and state.bc_hook is None:
+    if not is_all_periodic(bc_type, 2) and (
+        face_no_slip_boundary_state or state.bc_hook is None
+    ):
         if face_no_slip_boundary_state:
             predictor_faces = zero_wall_velocity_face_components(
                 predictor_faces,
@@ -1668,7 +1674,9 @@ def _prepare_nonstatic_geometric_capillary_jump(
         boundary=_ao_application_boundary(application),
         label="corrected conservative capillary jump acceleration",
     )
-    if not is_all_periodic(bc_type, 2) and state.bc_hook is None:
+    if not is_all_periodic(bc_type, 2) and (
+        face_no_slip_boundary_state or state.bc_hook is None
+    ):
         if face_no_slip_boundary_state:
             acceleration = zero_wall_velocity_face_components(
                 acceleration,
@@ -1745,7 +1753,9 @@ def _prepare_nonstatic_geometric_pressure_reaction(
             reference_faces=state.predictor_face_components,
         )
     )
-    if not is_all_periodic(bc_type, 2) and state.bc_hook is None:
+    if not is_all_periodic(bc_type, 2) and (
+        face_no_slip_boundary_state or state.bc_hook is None
+    ):
         if face_no_slip_boundary_state:
             increments = zero_wall_velocity_face_components(
                 increments,
@@ -2741,7 +2751,6 @@ def correct_ns_velocity_stage(
             ]
             if (
                 not is_all_periodic(bc_type, 2)
-                and state.bc_hook is None
                 and face_no_slip_boundary_state
             ):
                 state.projected_face_components = zero_wall_velocity_face_components(
@@ -2786,6 +2795,15 @@ def correct_ns_velocity_stage(
                 [state.f_x / state.rho, state.f_y / state.rho],
                 **project_kwargs,
             )
+            if (
+                not is_all_periodic(bc_type, 2)
+                and face_no_slip_boundary_state
+            ):
+                state.projected_face_components = zero_wall_velocity_face_components(
+                    state.projected_face_components,
+                    xp=xp,
+                    bc_type=bc_type,
+                )
             _apply_boundary_hodge_projection(
                 state,
                 xp=xp,

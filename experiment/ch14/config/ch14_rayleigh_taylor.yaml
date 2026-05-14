@@ -143,6 +143,7 @@ numerics:
     face_flux_projection: true
     canonical_face_state: true
     face_native_predictor_state: true
+    face_no_slip_boundary_state: true
     preserve_projected_faces: true
     boundary_hodge:
       # SP-AN state-space contract shared by ch14 production YAMLs.  The

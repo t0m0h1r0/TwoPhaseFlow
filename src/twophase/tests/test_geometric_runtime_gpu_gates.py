@@ -17,6 +17,7 @@ from twophase.geometry.swept_flux import (
 )
 from twophase.ppe.fd_direct import _PreparedCuPySuperLUSolve
 from twophase.simulation import geometric_phase_runtime_gpu as gpu_runtime
+from twophase.simulation import geometric_volume_hodge as volume_hodge
 from twophase.simulation.geometric_phase_runtime_gpu import (
     _host_scalar_packet_float,
     _solve_schur_dc_fixed_gpu,
@@ -425,6 +426,60 @@ def test_gpu_pcg_block_kernel_matches_vector_pcg():
         iterations=12,
         tolerance=1.0e-12,
         roundoff_floor=1.0e-14,
+    )
+
+    assert raw is not None
+    cp.testing.assert_allclose(raw, vector, rtol=1.0e-10, atol=1.0e-10)
+
+
+def test_gpu_geometric_volume_pcg_block_kernel_matches_vector_pcg(monkeypatch):
+    cp = pytest.importorskip("cupy")
+    try:
+        if cp.cuda.runtime.getDeviceCount() < 1:
+            pytest.skip("CUDA device unavailable")
+    except cp.cuda.runtime.CUDARuntimeError as exc:
+        pytest.skip(str(exc))
+
+    rng = np.random.default_rng(1217)
+    nx, ny = 5, 4
+    x_edges = np.cumsum(np.r_[0.0, rng.uniform(0.04, 0.2, size=nx)])
+    y_edges = np.cumsum(np.r_[0.0, rng.uniform(0.05, 0.18, size=ny)])
+    metrics = volume_hodge.build_geometric_volume_metrics(
+        cp,
+        (x_edges, y_edges),
+        (nx, ny),
+        dtype=cp.float64,
+        boundary=("periodic", "wall"),
+    )
+    rhs = cp.asarray(rng.normal(size=(nx, ny)))
+    rhs = rhs - cp.mean(rhs)
+    diag = volume_hodge.geometric_volume_flux_projection_diagonal(
+        cp,
+        metrics,
+        dtype=cp.float64,
+    )
+    raw = volume_hodge._solve_geometric_volume_flux_projection_pcg_raw_if_available(
+        cp,
+        metrics,
+        rhs,
+        diag,
+        pcg_tolerance=1.0e-13,
+        max_iterations=96,
+        roundoff_floor=1.0e-15,
+    )
+    monkeypatch.setattr(
+        volume_hodge,
+        "_solve_geometric_volume_flux_projection_pcg_raw_if_available",
+        lambda *args, **kwargs: None,
+    )
+    vector = volume_hodge.solve_geometric_volume_flux_projection_pcg(
+        cp,
+        metrics,
+        rhs,
+        diag,
+        pcg_tolerance=1.0e-13,
+        max_iterations=96,
+        roundoff_floor=1.0e-15,
     )
 
     assert raw is not None

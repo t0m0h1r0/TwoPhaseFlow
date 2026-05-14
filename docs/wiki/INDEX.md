@@ -1,4 +1,4 @@
-# Wiki Index — 378 entries
+# Wiki Index — 380 entries
 
 ## Active Retrieval Gate
 
@@ -24,13 +24,17 @@ analysis, and PCG scaling are accelerated by exact finite-stratum fusion and
 operator-epoch reuse. For the concrete Chapter 14 AO-Fast capillary RCA ledger,
 use [WIKI-X-052](cross-domain/WIKI-X-052.md); for the moving-grid AO-Fast
 face-cochain and pressure-history contract, use
-[WIKI-T-172](theory/WIKI-T-172.md); for the remaining AO-Fast GPU efficiency
-bottleneck, use [WIKI-L-045](code/WIKI-L-045.md). Older cards remain listed for
+[WIKI-T-172](theory/WIKI-T-172.md); for the literature-survey-backed
+capillary-wave route, use [WIKI-T-173](theory/WIKI-T-173.md); for the latest
+zero-base capillary boundary-state RCA, use
+[WIKI-X-053](cross-domain/WIKI-X-053.md); for the remaining AO-Fast GPU
+efficiency bottleneck, use
+[WIKI-L-045](code/WIKI-L-045.md). Older cards remain listed for
 provenance, but cards marked
 SUPERSEDED or REFERENCE must not be used as current algorithm policy without
 their curation notes.
 
-## Theory (169)
+## Theory (170)
 
 | REF-ID | Title |
 |--------|-------|
@@ -206,8 +210,9 @@ their curation notes.
 | [WIKI-T-170](theory/WIKI-T-170.md) | Residual-Minimizing Defect Correction for PPE |
 | [WIKI-T-171](theory/WIKI-T-171.md) | GPU-Resident Interface-Fitted Grid Rebuild Theory |
 | [WIKI-T-172](theory/WIKI-T-172.md) | AO-Fast Moving-Grid Face-Cochain and Pressure-History Contract |
+| [WIKI-T-173](theory/WIKI-T-173.md) | Capillary-Wave Surface-Tension Literature Survey and AO-Fast Route |
 
-## Cross-Domain (51)
+## Cross-Domain (52)
 
 | REF-ID | Title |
 |--------|-------|
@@ -263,6 +268,7 @@ their curation notes.
 | [WIKI-X-050](cross-domain/WIKI-X-050.md) | Theory-First Debug Priority: Nonuniform Metrics and Interface-Tracking Rebuilds |
 | [WIKI-X-051](cross-domain/WIKI-X-051.md) | Theory-First Problem RCA and Countermeasure Protocol |
 | [WIKI-X-052](cross-domain/WIKI-X-052.md) | Ch14 AO-Fast Capillary RCA Trial Ledger |
+| [WIKI-X-053](cross-domain/WIKI-X-053.md) | Ch14 Capillary Zero-Base RCA: Boundary-Constrained Face State |
 
 ## Experiment (63)
 

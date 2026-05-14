@@ -45,6 +45,7 @@ class IVelocityReprojector(SchemeRegistryMixin, ABC):
         div_op=None,
         ppe_runtime=None,
         bc_type: str = "wall",
+        face_no_slip_boundary_state: bool = False,
     ) -> tuple[np.ndarray, np.ndarray]:
         """Reproject velocity to satisfy ∇·u = 0 on remapped grid.
 
@@ -59,6 +60,10 @@ class IVelocityReprojector(SchemeRegistryMixin, ABC):
         div_op : optional  active face divergence/pressure-reaction complex
         ppe_runtime : optional  projection settings paired with ``ppe_solver``
         bc_type : str  boundary convention for face-state wall treatment
+        face_no_slip_boundary_state : bool
+            If true, face-native reprojectors must keep their transported face
+            state in the no-slip constrained face space used by the main
+            predictor/corrector route.
 
         Returns
         -------

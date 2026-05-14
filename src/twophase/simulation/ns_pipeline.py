@@ -634,6 +634,7 @@ class TwoPhaseNSSolver:
             wall_contacts=self._wall_contacts,
             projected_face_components=self._projected_face_components,
             bc_type=self.bc_type,
+            face_no_slip_boundary_state=self._face_no_slip_boundary_state,
         )
         self._finalize_grid_rebuild(result)
         return result.psi, result.u, result.v
@@ -667,6 +668,7 @@ class TwoPhaseNSSolver:
             conservative_momentum_components=state.conservative_momentum_components,
             projected_face_components=state.projected_face_components,
             bc_type=self.bc_type,
+            face_no_slip_boundary_state=self._face_no_slip_boundary_state,
         )
         self._finalize_grid_rebuild(result)
         state.psi = result.psi

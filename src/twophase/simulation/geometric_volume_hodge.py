@@ -33,6 +33,9 @@ from typing import Any
 import numpy as np
 
 
+_GEOMETRIC_VOLUME_PCG_KERNELS = {}
+
+
 @dataclass(frozen=True)
 class GeometricVolumeHodgePolicy:
     """Numerical policy for the AO geometric volume-flux Hodge projection."""
@@ -375,6 +378,17 @@ def solve_geometric_volume_flux_projection_pcg(
     roundoff_floor: float | None,
 ):
     """Device-resident fixed-loop PCG for ``A=-B_g G_g``."""
+    raw_solution = _solve_geometric_volume_flux_projection_pcg_raw_if_available(
+        xp,
+        metrics,
+        rhs,
+        diag,
+        pcg_tolerance=pcg_tolerance,
+        max_iterations=max_iterations,
+        roundoff_floor=roundoff_floor,
+    )
+    if raw_solution is not None:
+        return raw_solution
 
     def apply_operator(value):
         grad_x, grad_y = geometric_volume_flux_gradient(
@@ -422,6 +436,230 @@ def solve_geometric_volume_flux_projection_pcg(
         rz = xp.where(active, rz_next, rz)
         active = active & (rz > tolerance * tolerance)
     return x
+
+
+def _solve_geometric_volume_flux_projection_pcg_raw_if_available(
+    xp,
+    metrics: GeometricVolumeMetrics2D,
+    rhs,
+    diag,
+    *,
+    pcg_tolerance: float,
+    max_iterations: int,
+    roundoff_floor: float | None,
+):
+    """Use a single-block CUDA PCG solve for the current small ch14 AO complex."""
+    raw_kernel_type = getattr(xp, "RawKernel", None)
+    if raw_kernel_type is None:
+        return None
+    nx, ny = int(metrics.nx), int(metrics.ny)
+    n_cells = nx * ny
+    if n_cells < 1 or n_cells > 1024:
+        return None
+    rhs_values = xp.asarray(rhs)
+    dtype = np.dtype(rhs_values.dtype)
+    if dtype not in (np.dtype("float32"), np.dtype("float64")):
+        return None
+    out = xp.empty((nx, ny), dtype=rhs_values.dtype)
+    threads = 1 << (n_cells - 1).bit_length()
+    algebra_floor = 1.0e-30 if roundoff_floor is None else max(
+        float(roundoff_floor) ** 2,
+        1.0e-30,
+    )
+    kernel = _geometric_volume_pcg_raw_kernel(xp, dtype)
+    kernel(
+        (1,),
+        (threads,),
+        (
+            xp.ascontiguousarray(metrics.dx),
+            xp.ascontiguousarray(metrics.dy),
+            xp.ascontiguousarray(rhs_values.reshape((nx, ny))),
+            xp.ascontiguousarray(xp.asarray(diag).reshape((nx, ny))),
+            out,
+            np.int32(nx),
+            np.int32(ny),
+            np.int32(n_cells),
+            np.int32(1 if metrics.boundary[0] == "periodic" else 0),
+            np.int32(1 if metrics.boundary[1] == "periodic" else 0),
+            np.int32(max_iterations),
+            np.asarray(float(pcg_tolerance), dtype=dtype),
+            np.asarray(algebra_floor, dtype=dtype),
+        ),
+        shared_mem=6 * threads * dtype.itemsize,
+    )
+    return out
+
+
+def _geometric_volume_pcg_raw_kernel(xp, dtype):
+    key = (id(xp), np.dtype(dtype).name, "geometric_volume_pcg")
+    cached = _GEOMETRIC_VOLUME_PCG_KERNELS.get(key)
+    if cached is not None:
+        return cached
+    scalar = "float" if np.dtype(dtype) == np.dtype("float32") else "double"
+    code = f"""
+__device__ __forceinline__ {scalar} gv_abs({scalar} value) {{
+    return value < ({scalar})0 ? -value : value;
+}}
+
+__device__ __forceinline__ {scalar} gv_value(
+    const {scalar}* __restrict__ values,
+    const int i,
+    const int j,
+    const int ny
+) {{
+    return values[i * ny + j];
+}}
+
+__device__ __forceinline__ {scalar} gv_apply_A_at(
+    const {scalar}* __restrict__ dx,
+    const {scalar}* __restrict__ dy,
+    const {scalar}* __restrict__ values,
+    const int idx,
+    const int nx,
+    const int ny,
+    const int periodic_x,
+    const int periodic_y
+) {{
+    int i = idx / ny;
+    int j = idx - i * ny;
+    {scalar} center = gv_value(values, i, j, ny);
+    {scalar} result = ({scalar})0;
+    if (i > 0) {{
+        {scalar} coeff = dy[j] / ((({scalar})0.5) * (dx[i - 1] + dx[i]));
+        result += coeff * (center - gv_value(values, i - 1, j, ny));
+    }} else if (periodic_x) {{
+        {scalar} coeff = dy[j] / ((({scalar})0.5) * (dx[nx - 1] + dx[0]));
+        result += coeff * (center - gv_value(values, nx - 1, j, ny));
+    }}
+    if (i + 1 < nx) {{
+        {scalar} coeff = dy[j] / ((({scalar})0.5) * (dx[i] + dx[i + 1]));
+        result += coeff * (center - gv_value(values, i + 1, j, ny));
+    }} else if (periodic_x) {{
+        {scalar} coeff = dy[j] / ((({scalar})0.5) * (dx[nx - 1] + dx[0]));
+        result += coeff * (center - gv_value(values, 0, j, ny));
+    }}
+    if (j > 0) {{
+        {scalar} coeff = dx[i] / ((({scalar})0.5) * (dy[j - 1] + dy[j]));
+        result += coeff * (center - gv_value(values, i, j - 1, ny));
+    }} else if (periodic_y) {{
+        {scalar} coeff = dx[i] / ((({scalar})0.5) * (dy[ny - 1] + dy[0]));
+        result += coeff * (center - gv_value(values, i, ny - 1, ny));
+    }}
+    if (j + 1 < ny) {{
+        {scalar} coeff = dx[i] / ((({scalar})0.5) * (dy[j] + dy[j + 1]));
+        result += coeff * (center - gv_value(values, i, j + 1, ny));
+    }} else if (periodic_y) {{
+        {scalar} coeff = dx[i] / ((({scalar})0.5) * (dy[ny - 1] + dy[0]));
+        result += coeff * (center - gv_value(values, i, 0, ny));
+    }}
+    return result;
+}}
+
+__device__ __forceinline__ void gv_reduce_sum({scalar}* values) {{
+    int tid = threadIdx.x;
+    __syncthreads();
+    for (int stride = blockDim.x >> 1; stride > 0; stride >>= 1) {{
+        if (tid < stride) {{
+            values[tid] += values[tid + stride];
+        }}
+        __syncthreads();
+    }}
+}}
+
+__device__ __forceinline__ void gv_reduce_max({scalar}* values) {{
+    int tid = threadIdx.x;
+    __syncthreads();
+    for (int stride = blockDim.x >> 1; stride > 0; stride >>= 1) {{
+        if (tid < stride && values[tid + stride] > values[tid]) {{
+            values[tid] = values[tid + stride];
+        }}
+        __syncthreads();
+    }}
+}}
+
+extern "C" __global__
+void solve_geometric_volume_pcg_2d(
+    const {scalar}* __restrict__ dx,
+    const {scalar}* __restrict__ dy,
+    const {scalar}* __restrict__ rhs,
+    const {scalar}* __restrict__ diag,
+    {scalar}* __restrict__ out,
+    const int nx,
+    const int ny,
+    const int n_cells,
+    const int periodic_x,
+    const int periodic_y,
+    const int iterations,
+    const {scalar} pcg_tolerance,
+    const {scalar} eps
+) {{
+    extern __shared__ unsigned char shared_raw[];
+    {scalar}* x = reinterpret_cast<{scalar}*>(shared_raw);
+    {scalar}* r = x + blockDim.x;
+    {scalar}* z = r + blockDim.x;
+    {scalar}* p = z + blockDim.x;
+    {scalar}* ap = p + blockDim.x;
+    {scalar}* reduction = ap + blockDim.x;
+
+    int tid = threadIdx.x;
+    bool inside = tid < n_cells;
+    x[tid] = ({scalar})0;
+    r[tid] = inside ? rhs[tid] : ({scalar})0;
+    z[tid] = inside ? r[tid] / diag[tid] : ({scalar})0;
+    p[tid] = z[tid];
+    ap[tid] = ({scalar})0;
+    reduction[tid] = inside ? gv_abs(rhs[tid]) : ({scalar})0;
+    gv_reduce_max(reduction);
+    {scalar} rhs_linf = reduction[0];
+    {scalar} scale = rhs_linf > ({scalar})1 ? rhs_linf : ({scalar})1;
+    {scalar} tolerance = pcg_tolerance * scale;
+    if (tolerance < ({scalar})1.0e-30) {{
+        tolerance = ({scalar})1.0e-30;
+    }}
+    reduction[tid] = inside ? r[tid] * z[tid] : ({scalar})0;
+    gv_reduce_sum(reduction);
+    {scalar} rz = reduction[0];
+
+    for (int iter = 0; iter < iterations; ++iter) {{
+        bool active_iteration = rz > tolerance * tolerance && gv_abs(rz) > eps;
+        if (!active_iteration) {{
+            break;
+        }}
+        ap[tid] = inside
+            ? gv_apply_A_at(dx, dy, p, tid, nx, ny, periodic_x, periodic_y)
+            : ({scalar})0;
+        __syncthreads();
+        reduction[tid] = inside ? p[tid] * ap[tid] : ({scalar})0;
+        gv_reduce_sum(reduction);
+        {scalar} denom = reduction[0];
+        if (gv_abs(denom) <= eps) {{
+            break;
+        }}
+        {scalar} alpha = rz / denom;
+        if (inside) {{
+            x[tid] += alpha * p[tid];
+            r[tid] -= alpha * ap[tid];
+            z[tid] = r[tid] / diag[tid];
+        }}
+        __syncthreads();
+        reduction[tid] = inside ? r[tid] * z[tid] : ({scalar})0;
+        gv_reduce_sum(reduction);
+        {scalar} rz_new = reduction[0];
+        {scalar} beta = rz_new / rz;
+        if (inside) {{
+            p[tid] = z[tid] + beta * p[tid];
+        }}
+        rz = rz_new;
+        __syncthreads();
+    }}
+    if (inside) {{
+        out[tid] = x[tid];
+    }}
+}}
+"""
+    kernel = xp.RawKernel(code, "solve_geometric_volume_pcg_2d")
+    _GEOMETRIC_VOLUME_PCG_KERNELS[key] = kernel
+    return kernel
 
 
 def _grid_shape_2d(grid_shape: tuple[int, int]) -> tuple[int, int]:

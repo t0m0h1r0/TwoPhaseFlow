@@ -44,7 +44,9 @@ class FaceNativePredictorAssembly:
                 delta_faces,
             )
         ]
-        if not is_all_periodic(self.bc_type, 2) and self.state.bc_hook is None:
+        if not is_all_periodic(self.bc_type, 2) and (
+            self.face_no_slip_boundary_state or self.state.bc_hook is None
+        ):
             if self.face_no_slip_boundary_state:
                 predictor_faces = zero_wall_velocity_face_components(
                     predictor_faces,

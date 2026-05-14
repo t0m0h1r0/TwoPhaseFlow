@@ -29,6 +29,7 @@ from twophase.simulation.ns_pipeline import (  # noqa: E402
     _apply_bc,
 )
 from twophase.simulation.ns_step_state import NSStepRequest  # noqa: E402
+from twophase.simulation import geometric_volume_hodge as volume_hodge  # noqa: E402
 
 
 class _GpuUtilSampler:
@@ -526,11 +527,20 @@ def main() -> None:
         action="store_true",
         help="Print only aggregate timing/GPU metrics for quick profiling.",
     )
+    parser.add_argument(
+        "--disable-geometric-volume-raw-pcg",
+        action="store_true",
+        help="Benchmark the old vectorised geometric-volume Hodge PCG route.",
+    )
     parser.add_argument("--backend", choices=("as_env", "cpu", "gpu"), default="as_env")
     args = parser.parse_args()
 
     if args.backend != "as_env":
         os.environ["TWOPHASE_USE_GPU"] = "1" if args.backend == "gpu" else "0"
+    if args.disable_geometric_volume_raw_pcg:
+        volume_hodge._solve_geometric_volume_flux_projection_pcg_raw_if_available = (
+            lambda *call_args, **call_kwargs: None
+        )
 
     cfg = load_experiment_config(args.config)
     overrides = {"run.debug_diagnostics": True}
@@ -916,6 +926,9 @@ def main() -> None:
             "total_step_wall",
             "mean_step_wall",
             "max_step_wall",
+            "mean_time_prepare_inputs",
+            "mean_time_interface",
+            "mean_time_materialise",
             "mean_time_surface",
             "mean_time_predictor",
             "mean_time_pressure",
@@ -944,6 +957,9 @@ def main() -> None:
             f"{sum(row['step_wall'] for row in profile_rows):.12e}",
             f"{mean('step_wall'):.12e}",
             f"{max_value('step_wall'):.12e}",
+            f"{mean('time_prepare_inputs'):.12e}",
+            f"{mean('time_interface'):.12e}",
+            f"{mean('time_materialise'):.12e}",
             f"{mean('time_surface'):.12e}",
             f"{mean('time_predictor'):.12e}",
             f"{mean('time_pressure'):.12e}",

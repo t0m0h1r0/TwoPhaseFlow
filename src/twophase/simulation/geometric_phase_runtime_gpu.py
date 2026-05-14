@@ -1981,7 +1981,6 @@ def _apply_schur_masked_2d_raw_if_available(
     values,
     cell_shape,
 ):
-    return None
     raw_kernel_type = getattr(xp, "RawKernel", None)
     if raw_kernel_type is None:
         return None

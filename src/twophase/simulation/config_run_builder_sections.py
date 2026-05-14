@@ -195,6 +195,19 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
         raise ValueError("run.time: 'cfl' and 'dt' are mutually exclusive.")
     cfl_number, cfl_policy, cfl_adv, cfl_cap, cfl_visc = resolve_cfl_policy(cfl_raw)
     boundary_hodge = _parse_boundary_hodge(options.projection)
+    face_no_slip_raw = options.projection.get("face_no_slip_boundary_state")
+    face_no_slip_boundary_state = (
+        boundary_hodge["state_space"] == "constrained_face"
+        if face_no_slip_raw is None
+        else bool(face_no_slip_raw)
+    )
+    if boundary_hodge["state_space"] == "constrained_face" and not face_no_slip_boundary_state:
+        raise ValueError(
+            "numerics.projection.boundary_hodge.state_space='constrained_face' "
+            "requires numerics.projection.face_no_slip_boundary_state=true so "
+            "the stored face cochain and the nodal no-slip state live in the same "
+            "boundary space."
+        )
 
     tracking_redist = tracking_redistance(options.tracking)
     reinit_schedule = options.reinit_schedule
@@ -346,9 +359,7 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
         face_native_predictor_state=bool(
             options.projection.get("face_native_predictor_state", False)
         ),
-        face_no_slip_boundary_state=bool(
-            options.projection.get("face_no_slip_boundary_state", False)
-        ),
+        face_no_slip_boundary_state=face_no_slip_boundary_state,
         preserve_projected_faces=bool(
             options.projection.get("preserve_projected_faces", False)
         ),
