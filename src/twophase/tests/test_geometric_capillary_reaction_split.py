@@ -94,23 +94,21 @@ def test_geometric_capillary_split_retains_nonpressure_hodge_drive():
     assert split.balanced_weighted_l2 == pytest.approx(np.sqrt(2.0))
 
 
-def test_ao_face_bridge_converts_volume_cochains_on_nonuniform_grid():
+def test_ao_face_bridge_preserves_hodge_divided_acceleration_on_nonuniform_grid():
     backend = Backend(use_gpu=False)
     grid = Grid(GridConfig(ndim=2, N=(2, 3), L=(3.0, 3.0)), backend)
     grid.coords[0] = np.asarray([0.0, 1.0, 3.0])
     grid.coords[1] = np.asarray([0.0, 0.5, 1.5, 3.0])
-    dx = np.diff(grid.coords[0])
-    dy = np.diff(grid.coords[1])
 
     x_velocity = 2.0
     y_velocity = -3.0
-    x_cochain = x_velocity * dy.reshape((1, 3)) * np.ones((3, 3))
-    y_cochain = y_velocity * dx.reshape((2, 1)) * np.ones((2, 4))
+    x_acceleration = x_velocity * np.ones((3, 3))
+    y_acceleration = y_velocity * np.ones((2, 4))
 
     projected = _geometric_to_projection_face_pair_2d(
         xp=np,
         grid=grid,
-        face_pair=[x_cochain, y_cochain],
+        face_pair=[x_acceleration, y_acceleration],
         boundary=("periodic", "wall"),
     )
 
@@ -126,13 +124,13 @@ def test_ao_face_bridge_uses_periodic_seam_metric_weights():
     dx = np.diff(grid.coords[0])
 
     y_velocity = np.asarray([[10.0, 10.0, 10.0], [20.0, 20.0, 20.0]])
-    y_cochain = y_velocity * dx.reshape((2, 1))
-    x_cochain = np.zeros((3, 2))
+    y_acceleration = y_velocity
+    x_acceleration = np.zeros((3, 2))
 
     projected = _geometric_to_projection_face_pair_2d(
         xp=np,
         grid=grid,
-        face_pair=[x_cochain, y_cochain],
+        face_pair=[x_acceleration, y_acceleration],
         boundary=("periodic", "wall"),
     )
 

@@ -11,6 +11,8 @@ sources:
     description: "D2H/H2D boundary elimination policy"
   - path: docs/wiki/code/WIKI-L-044.md
     description: "Finite-stratum fusion and explicit sparse solve-plan reuse"
+  - path: artifacts/A/ch14_capillary_face_bridge_unit_rca_CHK-RA-CH14-AO-FASTVOL-064.md
+    description: "RCA for capillary-wave visual breakage from AO face bridge unit mismatch"
   - path: src/twophase/geometry/active_kernels.py
     description: "Fused active-geometry evaluator"
   - path: src/twophase/geometry/swept_flux.py
@@ -83,6 +85,18 @@ The hot path is GPU algebra wrapped by too many small launches and a fixed
 compatibility loop.  D2H/H2D transfer cleanup was necessary, but it is not the
 dominant remaining issue.  The residual CPU time mostly represents Python
 control and launch orchestration around device work.
+
+Visual breakage after optimization is not automatically a stability or solver
+iteration problem.  First re-check the dimensional contract at every bridge
+between active geometry and the NS projection lattice.  In particular,
+`GeometricRuntimeCapillaryApplicationState.predictor_face_acceleration` and
+`predictor_face_increment` are already geometric-face-Hodge-divided samples
+`M_G^{-1} r_sigma` and `dt M_G^{-1} r_sigma`; they are not integrated
+face-volume cochains.  The projection bridge must interpolate them with
+nonuniform metric weights but must not divide by face length again.  A second
+division by `dx` or `dy` is an O(1/h) amplification and can look like a broken
+velocity direction, frozen interface, or exploding pressure plot on the fitted
+N32 capillary grid.
 
 Known remaining scalar synchronization points:
 

@@ -128,15 +128,16 @@ def _geometric_to_projection_face_pair_2d(
     """Map AO cell-face increments to the NS projection face lattice.
 
     A3 mapping:
-      Equation: ``u_f^* += Pi_CF(dt M_C^{-1} r_sigma)``.
-      Discretization: AO capillary increments live on cell faces
-      ``((Nx+1,Ny),(Nx,Ny+1))`` as integrated face-volume cochains, while the
-      nodal-control-volume projection uses point velocities on the dual face
-      lattice ``((Nx,Ny+1),(Nx+1,Ny))``.  ``Pi_CF`` first divides by the
-      physical face measure and then applies tensor P1 interpolation between
-      the two face lattices, using physical nonuniform distances at nodes.
-      Code: this backend-native slice kernel performs the cochain-to-velocity
-      conversion and interpolation before wall-face projection and PPE use.
+      Equation: ``u_f^* += Pi_AF(dt M_G^{-1} r_sigma)``.
+      Discretization: AO capillary application packets have already applied
+      the geometric face Hodge inverse, so inputs here are acceleration or
+      velocity-increment samples on geometric cell faces
+      ``((Nx+1,Ny),(Nx,Ny+1))``.  The NS projection uses the dual face lattice
+      ``((Nx,Ny+1),(Nx+1,Ny))``.  ``Pi_AF`` therefore only interpolates the
+      already-Hodge-divided face field with nonuniform metric weights; it must
+      not divide by physical face length a second time.
+      Code: this backend-native slice kernel performs tensor P1 interpolation
+      before wall-face projection and PPE use.
     """
     if grid is None or getattr(grid, "ndim", None) != 2:
         raise ValueError("AO capillary face bridge requires a 2D grid")
@@ -152,8 +153,8 @@ def _geometric_to_projection_face_pair_2d(
 
     dx = xp.asarray(grid.coords[0][1:] - grid.coords[0][:-1], dtype=x_face.dtype)
     dy = xp.asarray(grid.coords[1][1:] - grid.coords[1][:-1], dtype=x_face.dtype)
-    x_velocity = x_face / dy.reshape((1, ny))
-    y_velocity = y_face / dx.reshape((nx, 1))
+    x_velocity = x_face
+    y_velocity = y_face
 
     x_mid = 0.5 * (x_velocity[:-1, :] + x_velocity[1:, :])
     projected_x = xp.empty((nx, ny + 1), dtype=x_face.dtype)

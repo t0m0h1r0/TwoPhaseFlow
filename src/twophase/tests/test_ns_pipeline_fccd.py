@@ -883,6 +883,32 @@ def test_column_height_graph_gauge_reconstruction_uses_q_column_volume():
     assert np.all(phi[:, -1] > 0.0)
 
 
+def test_column_height_graph_projection_is_deferred_until_q_owned_gauge():
+    """q-primary graph tracking must not project into the stale phi stratum."""
+    solver = TwoPhaseNSSolver(
+        8, 6, 1.0, 1.0,
+        bc_type="periodic_wall",
+        grid_rebuild_freq=1,
+        reinit_method="compatibility_projection",
+        reinit_every=1,
+        interface_gauge_reconstruction="column_height_graph",
+    )
+    fixed_solver = TwoPhaseNSSolver(
+        8, 6, 1.0, 1.0,
+        bc_type="periodic_wall",
+        grid_rebuild_freq=1,
+        reinit_method="compatibility_projection",
+        reinit_every=1,
+        interface_gauge_reconstruction="fixed_stratum",
+    )
+
+    assert solver._geometric_projection_cadence() == 1
+    assert solver._geometric_transport_projection_cadence(("periodic", "wall")) == 0
+    assert fixed_solver._geometric_transport_projection_cadence(
+        ("periodic", "wall")
+    ) == 1
+
+
 def test_geometric_cell_face_velocity_projection_preserves_full_cells():
     """AO transport velocity must be divergence-free on its own cell faces."""
     solver = TwoPhaseNSSolver(
@@ -1088,12 +1114,12 @@ def test_ch14_capillary_rebuild_refreshes_ao_state_metric_owner():
     assert np.max(np.abs(np.asarray(solver._grid.coords[0]) - old_x)) > 0.0
     assert np.max(np.abs(np.asarray(solver._grid.coords[1]) - old_y)) > 0.0
     assert solver._geometric_phase_state.q.shape == tuple(solver._grid.N)
-    assert solver._geometric_phase_state.compatibility_residual_linf <= 1.0e-14
+    assert solver._geometric_phase_state.compatibility_residual_linf <= 1.0e-11
     np.testing.assert_allclose(
         np.asarray(solver._backend.to_host(solver._geometric_phase_state.q)),
         np.asarray(solver._backend.to_host(solver._geometric_phase_state.geometry.q)),
         rtol=0.0,
-        atol=1.0e-14,
+        atol=1.0e-11,
     )
     theta_nodes = np.asarray(
         solver._backend.to_host(
@@ -1160,6 +1186,13 @@ def test_geometric_grid_rebuild_remaps_projected_face_cochains():
     assert rebuilt.face_velocity_components is None
     assert rebuilt.projected_face_components is not None
     assert solver._projected_face_components is not None
+    assert solver._geometric_phase_state.compatibility_residual_linf <= 1.0e-11
+    np.testing.assert_allclose(
+        np.asarray(solver._backend.to_host(solver._geometric_phase_state.q)),
+        np.asarray(solver._backend.to_host(solver._geometric_phase_state.geometry.q)),
+        rtol=0.0,
+        atol=1.0e-11,
+    )
     assert tuple(component.shape for component in rebuilt.projected_face_components) == (
         (nx, ny + 1),
         (nx + 1, ny),

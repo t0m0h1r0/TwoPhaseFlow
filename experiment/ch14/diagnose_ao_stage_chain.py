@@ -418,6 +418,7 @@ def main() -> None:
     parser.add_argument("--drop-pressure-history", action="store_true")
     parser.add_argument("--uniform-grid", action="store_true")
     parser.add_argument("--runner-initial-grid-rebuild", action="store_true")
+    parser.add_argument("--prepare-grid-each-step", action="store_true")
     parser.add_argument("--backend", choices=("as_env", "cpu", "gpu"), default="as_env")
     args = parser.parse_args()
 
@@ -621,6 +622,25 @@ def main() -> None:
     ]
     print(",".join(columns))
     for step in range(args.steps):
+        if args.prepare_grid_each_step:
+            prepare_grid = getattr(solver, "prepare_geometric_grid_for_timestep", None)
+            if callable(prepare_grid):
+                psi, u, v, _ = prepare_grid(
+                    psi,
+                    u,
+                    v,
+                    dt=0.0,
+                    rho_l=ph.rho_l,
+                    rho_g=ph.rho_g,
+                    sigma=ph.sigma,
+                    mu=ph.mu,
+                    g_acc=ph.g_acc,
+                    rho_ref=ph.rho_ref,
+                    mu_l=ph.mu_l,
+                    mu_g=ph.mu_g,
+                    bc_hook=bc_hook,
+                    step_index=step,
+                )
         budget = solver.dt_budget(
             u,
             v,

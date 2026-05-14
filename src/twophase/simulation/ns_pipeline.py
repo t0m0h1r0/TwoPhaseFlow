@@ -691,6 +691,32 @@ class TwoPhaseNSSolver:
         reset_ns_runtime_contexts(self)
         self._refresh_geometric_phase_state_after_grid_rebuild(result.psi)
 
+    def _build_geometric_phase_state_for_current_grid(
+        self,
+        phi,
+        *,
+        boundary: tuple[str, str] | None = None,
+    ):
+        """Build AO state on the current grid and restore its configured gauge."""
+        base = (
+            build_geometric_phase_state_gpu(self._grid, phi)
+            if self._backend.is_gpu()
+            else GeometricPhaseState.from_phi(self._grid, phi)
+        )
+        active_boundary = (
+            boundary
+            if boundary is not None
+            else boundary_axes(self.bc_type, self._grid.ndim)
+        )
+        if not self._geometric_graph_gauge_reconstruction_enabled(active_boundary):
+            return base
+        graph_phi = self._graph_phi_from_column_volume(base.q)
+        return self._project_geometric_state_from_q_phi(
+            base.q,
+            graph_phi,
+            level=base.stratum.level,
+        )
+
     def _refresh_geometric_phase_state_after_grid_rebuild(self, psi) -> None:
         """Keep AO cell-volume geometry tied to the rebuilt grid metric."""
         if (
@@ -701,9 +727,7 @@ class TwoPhaseNSSolver:
         context = self._runtime_setup_context()
         phi = -context.reconstruct_base.phi_from_psi(psi)
         self._geometric_phase_state = (
-            build_geometric_phase_state_gpu(self._grid, phi)
-            if self._backend.is_gpu()
-            else GeometricPhaseState.from_phi(self._grid, phi)
+            self._build_geometric_phase_state_for_current_grid(phi)
         )
 
     # ── initial condition / velocity builders ─────────────────────────────
@@ -1117,9 +1141,10 @@ class TwoPhaseNSSolver:
             )
         phi = remapper.remap(old_phi)
         self._geometric_phase_state = (
-            build_geometric_phase_state_gpu(self._grid, phi)
-            if self._backend.is_gpu()
-            else GeometricPhaseState.from_phi(self._grid, phi)
+            self._build_geometric_phase_state_for_current_grid(
+                phi,
+                boundary=boundary_axes(self.bc_type, self._grid.ndim),
+            )
         )
         state.projected_face_components = self._projected_face_components
         state.psi = self._geometric_cell_to_node_view(
@@ -1441,6 +1466,26 @@ class TwoPhaseNSSolver:
             return 0
         return int(getattr(self, "_reinit_every", 0))
 
+    def _geometric_transport_projection_cadence(
+        self,
+        boundary: tuple[str, str],
+    ) -> int:
+        """Return the in-transport projection cadence for the current gauge.
+
+        With q-primary graph tracking the mathematical owner is the transported
+        cell volume.  The projection must therefore close the graph gauge
+        reconstructed from q, not first force q into the old phi stratum.
+        """
+        cadence = self._geometric_projection_cadence()
+        if self._geometric_graph_gauge_reconstruction_enabled(boundary):
+            if cadence <= 0:
+                raise ValueError(
+                    "column_height_graph gauge reconstruction requires "
+                    "compatibility_projection with a positive schedule"
+                )
+            return 0
+        return cadence
+
     def _geometric_graph_gauge_reconstruction_enabled(
         self,
         boundary: tuple[str, str],
@@ -1630,7 +1675,9 @@ class TwoPhaseNSSolver:
                 rho_g=state.rho_g,
                 boundary=boundary,
                 tolerance=self._active_projection_absolute_tolerance,
-                project_every_steps=self._geometric_projection_cadence(),
+                project_every_steps=(
+                    self._geometric_transport_projection_cadence(boundary)
+                ),
                 step_index=state.step_index,
                 max_newton_iterations=self._active_projection_max_iterations,
                 relative_tolerance=self._active_projection_relative_tolerance,
@@ -1652,7 +1699,9 @@ class TwoPhaseNSSolver:
                 rho_g=state.rho_g,
                 boundary=boundary,
                 tolerance=1.0e-11,
-                project_every_steps=self._geometric_projection_cadence(),
+                project_every_steps=(
+                    self._geometric_transport_projection_cadence(boundary)
+                ),
                 step_index=state.step_index,
             )
         result = self._reconstruct_geometric_graph_gauge(result, boundary=boundary)
