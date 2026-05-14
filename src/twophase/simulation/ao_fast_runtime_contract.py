@@ -136,8 +136,16 @@ def build_ao_fast_runtime_contract(cfg: Any) -> AOFastRuntimeContract:
              "advection_scheme")
     _require(getattr(run, "capillary_force_source", None), "bundle_virtual_work",
              "capillary_force_source")
-    _require(getattr(run, "capillary_closed_interface_endpoint", None),
-             "geometric_cell_fraction", "capillary_closed_interface_endpoint")
+    expected_endpoint = (
+        "column_height_graph"
+        if tracking_gauge == "column_height_graph"
+        else "geometric_cell_fraction"
+    )
+    _require(
+        getattr(run, "capillary_closed_interface_endpoint", None),
+        expected_endpoint,
+        "capillary_closed_interface_endpoint",
+    )
     constraints = tuple(getattr(run, "capillary_closed_interface_constraints", ()))
     if constraints != ("cell_volume",):
         raise ValueError(
@@ -170,7 +178,7 @@ def build_ao_fast_runtime_contract(cfg: Any) -> AOFastRuntimeContract:
         tracking_gauge_reconstruction=tracking_gauge,
         advection_scheme="geometric_swept_volume",
         capillary_force_source="bundle_virtual_work",
-        capillary_endpoint="geometric_cell_fraction",
+        capillary_endpoint=expected_endpoint,
         capillary_constraints=("cell_volume",),
         capillary_reaction_projection="pressure_component_hodge",
         projection_implementation="active_cached",

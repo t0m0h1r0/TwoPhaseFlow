@@ -112,6 +112,7 @@ class SolverSchemeOptions:
     Re: float = 1.0
     surface_tension_scheme: str = "pressure_jump"
     capillary_force_source: str = "curvature_jump"
+    capillary_closed_interface_endpoint: str = "conservative_psi"
     curvature_method: str = "psi_direct_filtered"
     momentum_form: str = "primitive_velocity"
     convection_time_scheme: str = "imex_bdf2"

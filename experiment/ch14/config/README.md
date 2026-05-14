@@ -393,11 +393,13 @@ user.
   `momentum.terms.surface_tension.formulation: pressure_jump` — surface tension
   enters the PPE as an interface stress condition rather than as a CSF body force.
 - `momentum.terms.surface_tension.source: bundle_virtual_work` exposes
-  `closed_interface.endpoint: geometric_cell_fraction` and
+  `closed_interface.endpoint`.  Use `column_height_graph` when
+  `tracking.gauge_reconstruction: column_height_graph`; use
+  `geometric_cell_fraction` for the fixed-stratum endpoint.  The matching
   `residual_contract: {metric: pressure_adjoint, constraints: [cell_volume],
   fail_close: true}`. These keys state the active-geometry theorem contract: the
   surface-energy covector, cell-volume reaction, PPE source, and face corrector
-  all use the geometric q endpoint and the same pressure-adjoint face metric.
+  all use the YAML-selected q endpoint and the same pressure-adjoint face metric.
 - `momentum.terms.viscosity.spatial: ccd` + `time_integrator: implicit_bdf2` —
   BDF2 Helmholtz path for stiffness-relevant viscous terms. The nested
   `solver.kind` selects `defect_correction` (default production path) or

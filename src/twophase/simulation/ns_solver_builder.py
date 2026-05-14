@@ -193,6 +193,9 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             capillary_force_source=str(
                 getattr(run, "capillary_force_source", "curvature_jump")
             ),
+            capillary_closed_interface_endpoint=str(
+                getattr(run, "capillary_closed_interface_endpoint", "conservative_psi")
+            ),
             curvature_method=str(getattr(run, "curvature_method", "psi_direct_filtered")),
             momentum_form=str(getattr(run, "momentum_form", "primitive_velocity")),
             convection_time_scheme=str(getattr(run, "convection_time_scheme", "imex_bdf2")),

@@ -11,9 +11,9 @@
 # - Active geometry: q is the transported physical cell volume, theta is its normalized
 #   view, and phi is the P1 gauge used only for geometric compatibility.
 # - FCCD: pressure gradient/PPE stay on the variational FCCD route.
-# - Surface tension: `pressure_jump` enters through active-geometry bundle
-#   virtual work and pressure-component Hodge reaction, not as CSF σκ∇ψ or a
-#   regular pressure field.
+# - Surface tension: `pressure_jump` enters through active-geometry graph
+#   endpoint virtual work and pressure-component Hodge reaction, not as CSF
+#   σκ∇ψ or a regular pressure field.
 # - UCCD6: momentum convection uses `uccd6` per WIKI-T-062 / WIKI-X-028.
 # - Grid fitting: both tensor-product axes carry the interface monitor; the
 #   y axis additionally carries wall refinement for the physical upper/lower
@@ -131,7 +131,7 @@ numerics:
         formulation: pressure_jump
         source: bundle_virtual_work
         closed_interface:
-          endpoint: geometric_cell_fraction
+          endpoint: column_height_graph
           residual_contract:
             metric: pressure_adjoint
             constraints: [cell_volume]

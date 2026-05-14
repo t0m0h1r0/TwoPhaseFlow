@@ -694,6 +694,7 @@ def _validate_geometric_numerics(numerics: dict[str, Any]) -> None:
         ("fixed_stratum", "column_height_graph"),
         "numerics.interface.tracking.gauge_reconstruction",
     )
+    gauge_reconstruction = str(gauge_reconstruction).strip().lower()
 
     momentum = _mapping(numerics["momentum"], "numerics.momentum")
     _require_value(momentum.get("form"), "conservative_common_flux", "numerics.momentum.form")
@@ -716,9 +717,14 @@ def _validate_geometric_numerics(numerics: dict[str, Any]) -> None:
         surface.get("closed_interface", {}),
         "numerics.momentum.terms.surface_tension.closed_interface",
     )
+    expected_endpoint = (
+        "column_height_graph"
+        if gauge_reconstruction == "column_height_graph"
+        else "geometric_cell_fraction"
+    )
     _require_value(
         closed_interface.get("endpoint"),
-        "geometric_cell_fraction",
+        expected_endpoint,
         "numerics.momentum.terms.surface_tension.closed_interface.endpoint",
     )
     residual_contract = _mapping(
@@ -787,10 +793,10 @@ def _validate_legacy_diffuse_stack(numerics: dict[str, Any]) -> None:
         closed_interface = surface.get("closed_interface", {})
         if isinstance(closed_interface, dict):
             endpoint = str(closed_interface.get("endpoint", "")).strip().lower()
-            if endpoint == "geometric_cell_fraction":
+            if endpoint in {"geometric_cell_fraction", "column_height_graph"}:
                 _require_geometric_state_space(
                     f"{surface_path}.closed_interface."
-                    "endpoint='geometric_cell_fraction'"
+                    f"endpoint='{endpoint}'"
                 )
             residual_contract = closed_interface.get("residual_contract", {})
             if isinstance(residual_contract, dict):

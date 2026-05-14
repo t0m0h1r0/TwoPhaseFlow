@@ -322,6 +322,58 @@ def test_valid_geometric_contract_builds_config_and_solver_runtime():
     assert options.schemes.advection_scheme == "geometric_swept_volume"
 
 
+def test_column_height_graph_endpoint_is_yaml_selected_contract():
+    raw = _geometric_raw(
+        {
+            "numerics": {
+                "interface": {
+                    "tracking": {
+                        "primary": "q",
+                        "gauge_reconstruction": "column_height_graph",
+                    }
+                },
+                "momentum": {
+                    "terms": {
+                        "surface_tension": {
+                            "closed_interface": {
+                                "endpoint": "column_height_graph",
+                            }
+                        }
+                    }
+                },
+            }
+        }
+    )
+
+    experiment_cfg = ExperimentConfig.from_dict(raw)
+    contract = build_ao_fast_runtime_contract(experiment_cfg)
+    options = build_solver_init_options(experiment_cfg)
+
+    assert experiment_cfg.run.interface_gauge_reconstruction == "column_height_graph"
+    assert experiment_cfg.run.capillary_closed_interface_endpoint == "column_height_graph"
+    assert contract.capillary_endpoint == "column_height_graph"
+    assert contract.capillary_constraints == ("cell_volume",)
+    assert options.schemes.capillary_closed_interface_endpoint == "column_height_graph"
+
+
+def test_column_height_graph_gauge_rejects_p1_endpoint():
+    raw = _geometric_raw(
+        {
+            "numerics": {
+                "interface": {
+                    "tracking": {
+                        "primary": "q",
+                        "gauge_reconstruction": "column_height_graph",
+                    }
+                }
+            }
+        }
+    )
+
+    with pytest.raises(ValueError, match="closed_interface.endpoint"):
+        ExperimentConfig.from_dict(raw)
+
+
 def test_active_geometry_capillary_scalar_preset_expands_defaults():
     raw = _geometric_raw()
     cfg = ExperimentConfig.from_dict(raw)

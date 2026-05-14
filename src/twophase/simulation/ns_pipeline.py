@@ -214,6 +214,7 @@ class TwoPhaseNSSolver:
         ppe_dc_fail_close: bool = False,
         surface_tension_scheme: str = "pressure_jump",
         capillary_force_source: str = "curvature_jump",
+        capillary_closed_interface_endpoint: str = "conservative_psi",
         curvature_method: str = "psi_direct_filtered",
         momentum_form: str = "primitive_velocity",
         convection_time_scheme: str = "imex_bdf2",
@@ -345,6 +346,7 @@ class TwoPhaseNSSolver:
                 Re=Re,
                 surface_tension_scheme=surface_tension_scheme,
                 capillary_force_source=capillary_force_source,
+                capillary_closed_interface_endpoint=capillary_closed_interface_endpoint,
                 curvature_method=curvature_method,
                 momentum_form=momentum_form,
                 convection_time_scheme=convection_time_scheme,
@@ -1742,8 +1744,24 @@ class TwoPhaseNSSolver:
         state.rho = self._geometric_cell_to_node_view(material.density)
         state.conservative_density = state.rho
         self._last_geometric_runtime_material = material
+        capillary_endpoint = getattr(
+            self,
+            "_capillary_closed_interface_endpoint",
+            "geometric_cell_fraction",
+        )
+        graph_gauge = self._geometric_graph_gauge_reconstruction_enabled(boundary)
+        if graph_gauge and capillary_endpoint != "column_height_graph":
+            raise ValueError(
+                "column_height_graph gauge reconstruction requires "
+                "closed_interface.endpoint='column_height_graph'"
+            )
+        if (not graph_gauge) and capillary_endpoint == "column_height_graph":
+            raise ValueError(
+                "closed_interface.endpoint='column_height_graph' requires "
+                "gauge_reconstruction='column_height_graph'"
+            )
         if self._backend.is_gpu():
-            if self._geometric_graph_gauge_reconstruction_enabled(boundary):
+            if graph_gauge:
                 capillary = materialise_geometric_graph_capillary_state_gpu(
                     self._grid,
                     material,
@@ -1825,10 +1843,7 @@ class TwoPhaseNSSolver:
             ),
             "capillary_source_discretization": (
                 "column_height_graph"
-                if (
-                    self._backend.is_gpu()
-                    and self._geometric_graph_gauge_reconstruction_enabled(boundary)
-                )
+                if self._backend.is_gpu() and graph_gauge
                 else "p1_cut_bundle"
             ),
             "capillary_force_weighted_acceleration_l2": (

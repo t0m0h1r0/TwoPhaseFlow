@@ -394,7 +394,7 @@ def test_ch14_capillary_yaml_loads_execution_stack():
     assert cfg.run.capillary_force_source == "bundle_virtual_work"
     assert cfg.run.capillary_range_projection == "none"
     assert cfg.run.capillary_reaction_projection == "pressure_component_hodge"
-    assert cfg.run.capillary_closed_interface_endpoint == "geometric_cell_fraction"
+    assert cfg.run.capillary_closed_interface_endpoint == "column_height_graph"
     assert cfg.run.capillary_closed_interface_metric == "pressure_adjoint"
     assert cfg.run.capillary_closed_interface_constraints == ("cell_volume",)
     assert cfg.run.capillary_closed_interface_fail_close is True
@@ -580,10 +580,12 @@ def test_ch14_canonical_yamls_share_base_numerical_stack():
             cfg.run.capillary_reaction_projection
             == "pressure_component_hodge"
         ), path.name
-        assert (
-            cfg.run.capillary_closed_interface_endpoint
-            == "geometric_cell_fraction"
-        ), path.name
+        expected_endpoint = (
+            "column_height_graph"
+            if cfg.run.interface_gauge_reconstruction == "column_height_graph"
+            else "geometric_cell_fraction"
+        )
+        assert cfg.run.capillary_closed_interface_endpoint == expected_endpoint, path.name
         assert (
             cfg.run.capillary_closed_interface_constraints
             == ("cell_volume",)

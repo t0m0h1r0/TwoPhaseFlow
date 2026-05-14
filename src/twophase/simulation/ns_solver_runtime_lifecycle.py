@@ -106,6 +106,13 @@ def initialise_ns_solver_from_options(solver, options) -> None:
     solver._interface_gauge_reconstruction = str(
         getattr(options.interface, "interface_gauge_reconstruction", "fixed_stratum")
     ).strip().lower()
+    solver._capillary_closed_interface_endpoint = str(
+        getattr(
+            options.schemes,
+            "capillary_closed_interface_endpoint",
+            "conservative_psi",
+        )
+    ).strip().lower()
     solver._record_interface_projection_fields = False
     solver._last_interface_projection_fields = None
     solver._initialise_geometry(options.grid)
