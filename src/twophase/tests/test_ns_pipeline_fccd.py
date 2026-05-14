@@ -887,6 +887,8 @@ def test_ch14_capillary_yaml_builds_solver():
     assert isinstance(solver._ppe_solver.operator, PPESolverFCCDMatrixFree)
     assert solver._ppe_solver.operator.boundary_face_space == "impermeable_face"
     assert isinstance(solver._ppe_solver.base_solver, PPESolverFDDirect)
+    assert solver._ppe_solver.base_solver.coefficient_scheme == "phase_separated"
+    assert solver._ppe_solver.base_solver.interface_coupling_scheme == "affine_jump"
     assert solver._div_op is solver._fccd_div_op
     assert solver._viscous_spatial_scheme == "ccd_bulk"
 
@@ -1732,6 +1734,8 @@ def test_ch14_capillary_yaml_uses_true_low_order_defect_base():
     assert isinstance(solver._ppe_solver.operator, PPESolverFCCDMatrixFree)
     assert solver._ppe_solver.operator.boundary_face_space == "impermeable_face"
     assert isinstance(solver._ppe_solver.base_solver, PPESolverFDDirect)
+    assert solver._ppe_solver.base_solver.coefficient_scheme == "phase_separated"
+    assert solver._ppe_solver.base_solver.interface_coupling_scheme == "affine_jump"
 
 
 def test_mixed_periodic_wall_velocity_hook_zeroes_wall_and_syncs_periodic_axis():

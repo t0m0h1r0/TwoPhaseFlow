@@ -18,6 +18,7 @@ from twophase.ccd.fccd import FCCDSolver
 from twophase.config import GridConfig, SimulationConfig
 from twophase.core.grid import Grid
 from twophase.ppe.fccd_matrixfree import PPESolverFCCDMatrixFree
+from twophase.ppe.fd_direct import PPESolverFDDirect
 from twophase.simulation.divergence_ops import FCCDDivergenceOperator
 from twophase.coupling.capillary_geometry import apply_wall_compatible_curvature
 from twophase.coupling.face_geometry_curvature import implicit_face_curvatures_2d
@@ -958,6 +959,52 @@ def test_affine_jump_cut_face_coefficient_uses_phase_resistance():
     ppe.set_interface_jump_context(psi=psi, kappa=kappa, sigma=3.0)
     ppe.prepare_operator(rho)
     np.testing.assert_allclose(ppe._coeff_face[0][0, :], expected_coeff)
+
+
+def test_fd_direct_dc_base_uses_affine_cut_face_resistance():
+    """The low-order DC matrix must approximate the same affine face law."""
+    grid, _div_op = _make_two_cell_operator()
+    psi = np.ones(grid.shape)
+    psi[0, :] = 0.25
+    kappa = np.full(grid.shape, 2.0)
+    rho = np.full(grid.shape, 1000.0)
+    rho[psi < 0.5] = 1.2
+    fd = PPESolverFDDirect(
+        grid.backend,
+        grid,
+        bc_type="wall",
+        coefficient_scheme="phase_separated",
+        interface_coupling_scheme="affine_jump",
+    )
+
+    fd.set_interface_jump_context(psi=psi, kappa=kappa, sigma=3.0)
+    (data, rows, cols), _shape = fd.ppb.build(rho)
+
+    row = np.ravel_multi_index((0, 0), grid.shape)
+    col = np.ravel_multi_index((1, 0), grid.shape)
+    actual = data[(rows == row) & (cols == col)]
+    theta = (0.5 - psi[0, 0]) / (psi[1, 0] - psi[0, 0])
+    expected_coeff = 1.0 / (theta * rho[0, 0] + (1.0 - theta) * rho[1, 0])
+    harmonic_coeff = 2.0 / (rho[0, 0] + rho[1, 0])
+
+    np.testing.assert_allclose(actual, [2.0 * expected_coeff])
+    assert not np.allclose(actual, [2.0 * harmonic_coeff])
+
+
+def test_fd_direct_affine_base_fails_closed_without_context():
+    """Affine low-order PPE must not silently revert to harmonic coefficients."""
+    grid, _div_op = _make_two_cell_operator()
+    rho = np.ones(grid.shape)
+    fd = PPESolverFDDirect(
+        grid.backend,
+        grid,
+        bc_type="wall",
+        coefficient_scheme="phase_separated",
+        interface_coupling_scheme="affine_jump",
+    )
+
+    with pytest.raises(RuntimeError, match="interface-stress context"):
+        fd.ppb.build(rho)
 
 
 def test_affine_jump_flux_vanishes_for_static_gas_bubble_sign():

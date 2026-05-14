@@ -69,6 +69,23 @@ leaving `A_f B_HFE(j)` in the full face space is a mixed-complex bug.  However,
 boundary-face zeroing is not a complete production pressure operator because it
 can change the pressure nullspace and RHS range.
 
+A second operator-consistency condition applies to defect correction itself.
+If the high-order FCCD operator uses the phase-separated affine cut-face
+resistance
+
+```text
+a_f^Gamma = 1 / (theta rho_L + (1 - theta) rho_H),
+```
+
+then the low-order DC correction operator must assemble the same physical face
+coefficient on interface-cut faces.  A low-order operator that silently falls
+back to the smooth harmonic coefficient `2/(rho_L + rho_H)` is not a
+low-order approximation of the same PPE; it is a different PDE.  The observed
+ch14 capillary DC stall near relative residual `4e-6` was this mismatch, not an
+iteration-count problem.  The valid remedy is to thread the HFE/interface-stress
+context into the FDDirect/PPEBuilder coefficient assembly, including nonuniform
+and periodic faces, while keeping the computation backend-resident.
+
 ## Hypothesis Matrix
 
 | Hypothesis | Theoretical test | Evidence / verdict |
@@ -77,6 +94,7 @@ can change the pressure nullspace and RHS range.
 | `q`/`phi` graph incompatibility | Check `compat_linf` and graph retraction. | Earlier fixed; current diagnostics keep `compat_linf=0`. |
 | DC iteration count too low | DC must be convergence-gated, not count-gated. | Rejected as root; fail-close convergence remains required. |
 | Replacing the route by GMRES, monolithic FD, or non-HFE pressure handling | The target paper route is phase-separated PPE + HFE + high-order DC; changing the solver family can hide the defect instead of explaining it. | Rejected as a shortcut. Use such runs only as diagnostics, never as the production fix. |
+| Low-order DC base uses harmonic smooth-density coefficients while high-order FCCD uses affine cut-face phase resistance | DC requires `L_L` to be a low-order approximation of the same operator `L_H`; compare the assembled cut-face coefficient against `1/(theta rho_L + (1-theta) rho_H)`. | Supported and fixed. The old one-step capillary solve stalled at `relative_l2=4.024e-06`; after sharing the affine context, the same route converges in 15 corrections to about `3.79e-07`. |
 | Pressure history stores wrong object | History must be smooth coordinate without AO reaction. | Important but already addressed; not the observed late face spike. |
 | Projected face cochain lost at rebuild | Face interpolation and Hodge projection do not commute. | Identified earlier and partially fixed by projected-face transport. |
 | Momentum remap correction uses wrong metric | Least-change momentum correction should be kinetic-metric, `delta m=rho lambda`. | Supported and fixed in grid rebuild. |
@@ -133,6 +151,8 @@ Do not fix this failure by:
 - changing capillary amplitude, CFL, damping, or smoothing;
 - replacing phase-separated PPE + HFE/DC by a different production route just
   to make the run advance;
+- increasing DC iteration caps or loosening tolerances when the high- and
+  low-order PPE operators are not the same physical equation;
 - using micro-offsets;
 - disabling nonuniform grids or grid rebuilds;
 - publishing no-slip nodal velocity while carrying a no-penetration-only face
