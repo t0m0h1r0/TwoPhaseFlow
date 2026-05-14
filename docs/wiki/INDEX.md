@@ -1,4 +1,4 @@
-# Wiki Index — 380 entries
+# Wiki Index — 384 entries
 
 ## Active Retrieval Gate
 
@@ -32,12 +32,14 @@ capillary fixes must preserve phase-separated PPE + HFE/DC rather than
 switching to GMRES, monolithic FD, or non-HFE pressure handling; for the
 remaining AO-Fast GPU
 efficiency bottleneck, use
-[WIKI-L-045](code/WIKI-L-045.md). Older cards remain listed for
+[WIKI-L-045](code/WIKI-L-045.md). Before implementing or reviewing an
+established-theory change, use [WIKI-L-046](code/WIKI-L-046.md) as the
+equation-to-code contract gate. Older cards remain listed for
 provenance, but cards marked
 SUPERSEDED or REFERENCE must not be used as current algorithm policy without
 their curation notes.
 
-## Theory (170)
+## Theory (173)
 
 | REF-ID | Title |
 |--------|-------|
@@ -215,7 +217,7 @@ their curation notes.
 | [WIKI-T-172](theory/WIKI-T-172.md) | AO-Fast Moving-Grid Face-Cochain and Pressure-History Contract |
 | [WIKI-T-173](theory/WIKI-T-173.md) | Capillary-Wave Surface-Tension Literature Survey and AO-Fast Route |
 
-## Cross-Domain (52)
+## Cross-Domain (53)
 
 | REF-ID | Title |
 |--------|-------|
@@ -400,7 +402,7 @@ their curation notes.
 | [WIKI-M-030](meta/WIKI-M-030.md) | Meta-Prompt Evolution Needs Telemetry, Skills, and Tool-Trust Gates |
 | [WIKI-M-031](meta/WIKI-M-031.md) | Review Artifacts Close the Loop with Finding, Fix, and Validation |
 
-## Code (45)
+## Code (46)
 
 | REF-ID | Title |
 |--------|-------|
@@ -449,3 +451,4 @@ their curation notes.
 | [WIKI-L-043](code/WIKI-L-043.md) | GPU Optimization Starts by Removing Hidden D2H/H2D Boundaries |
 | [WIKI-L-044](code/WIKI-L-044.md) | Post-Transfer GPU Acceleration Uses Finite-Stratum Fusion |
 | [WIKI-L-045](code/WIKI-L-045.md) | AO-Fast GPU Efficiency Bottleneck Is Fixed-Loop Geometry Compatibility |
+| [WIKI-L-046](code/WIKI-L-046.md) | Theory-Established Implementation Review Gate |
