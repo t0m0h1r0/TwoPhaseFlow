@@ -2,17 +2,19 @@
 %
 % V11: active-geometry capillary split integration gate
 % ═══════════════════════════════════════════════════════════════════════════════
-\subsection{V11：アクティブ幾何毛管分解の統合前ゲート}
+\subsection{V11：アクティブ幾何毛管分解の統合ゲート}
 \label{sec:ao_fast_capillary_gate}
 
 \paragraph{目的．}
 V11 は U12 の代数診断を，第~\ref{sec:verification}章の統合検証文脈へ接続するゲートである．
-標準の分相 PPE + HFE + pressure-jump + component-Hodge 経路は
-V6/V7/V9 と第~\ref{sec:benchmarks}章で物理応答を評価する．
-一方，アクティブ幾何毛管分解は，式~\eqref{eq:capillary_pressure_reaction_projection} の
-$R_p$ が未確定のままでは標準物理経路に入れない．
-V11 はこの境界を明示し，後続の毛管波結果を
-アクティブ幾何毛管分解の成功証明として誤読しないための統合前検査である．
+U12 が棄却したのは，全セル圧力像へ毛管仕事を過射影して
+非静的波の駆動まで消す古い分解である．
+V11 では，その反例を踏まえて，
+式~\eqref{eq:capillary_pressure_reaction_projection} の $R_p$，
+式~\eqref{eq:ao_face_cochain_regrid} の移動格子面共鎖移送，
+式~\eqref{eq:ao_pressure_coordinate_split} の滑らかな圧力履歴座標，
+および式~\eqref{eq:ao_dc_convergence_gate} の DC 収束判定を
+同時に満たすことを，アクティブ幾何毛管分解の統合条件として固定する．
 
 \paragraph{検査項目．}
 V11 は以下を同時に要求する．
@@ -24,11 +26,14 @@ V11 は以下を同時に要求する．
         $r_\sigma-\Pi^{M_f}_{R_p}r_\sigma$ が非零の復元向き仕事を持つ．
   \item 精度ゲート：近似分解を用いる場合は式~\eqref{eq:ao_fast_error_budget} の
         共変量誤差と射影誤差を満たす．
-  \item 採用ゲート：未受理の近似分解を標準物理経路へ入れない．
+  \item 移動格子ゲート：投影済み面共鎖を節点速度補間で作り直さず，
+        新格子の Hodge 計量へ移送する．
+  \item 履歴・収束ゲート：圧力履歴は滑らかな座標だけを保存し，
+        幾何毛管反力は現在段階の反力として扱い，DC は収束判定で受理する．
 \end{enumerate}
 
 \begin{table}[htbp]
-\caption{V11：アクティブ幾何毛管分解の統合前ゲート判定}
+\caption{V11：アクティブ幾何毛管分解の統合ゲート判定}
 \label{tab:V11_ao_gate}
 \centering
 \PaperTableDenseSetup
@@ -39,7 +44,7 @@ V11 は以下を同時に要求する．
 平坦・静的ゲート & 平坦界面はゼロ駆動．静的問題で非零駆動を作る経路は標準経路へ入れない． & \checkmark \\
 全圧力像の反例 & N32/N64 毛管波で厳密全圧力分解は釣合い駆動を $0$ にする．これは成功ではなく過射影の反例である． & \checkmark 診断 \\
 成分体積 Hodge 診断 & 同じ毛管波で成分体積 Hodge 診断は N32/N64 の釣合いノルム $2.1176/2.3055$ を検出する．ただしこれは最終 $R_p$ の代替証明ではなく非静的性の診断である． & \checkmark 診断 \\
-採用境界 & $R_p$ 未確定の近似分解は非静的波の毛管駆動を消すため，標準物理経路へ入れない．暗黙の代替経路は使わない． & \checkmark 境界 \\
+最終採用境界 & $R_p$，移動格子面共鎖，圧力履歴座標，DC 収束判定を同時に満たす経路だけをアクティブ幾何毛管分解として標準物理経路へ入れる． & \checkmark 契約 \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -47,17 +52,18 @@ V11 は以下を同時に要求する．
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.78\linewidth]{figures/ch13_v11_ao_capillary_split_gate.pdf}
-\caption{V11：アクティブ幾何毛管分解の統合前ゲート．
+\caption{V11：アクティブ幾何毛管分解の統合ゲート．
 圧力座標と面加速度の履歴表現を含め，
-非静的波では $R_p$ 未確定の分解を標準経路へ入れないことを確認する．}
+非静的波では全圧力像への過射影を棄却し，最終 $R_p$ 契約へ進めることを確認する．}
 \label{fig:V11_ao_gate}
 \end{figure}
 
 \paragraph{第14章への接続．}
-V11 はアクティブ幾何毛管分解の未受理判定をもって標準毛管波の失敗とは読まない．
-第~\ref{sec:val_capillary}節の毛管波は，検証済みの標準
-FCCD/UCCD6/pressure-jump/component-Hodge 経路で走らせる．
-逆に，その毛管波が完走しても，V11 未通過のアクティブ幾何毛管分解が
-物理的に受理されたことにはならない．
-この分離により，発展的な分解を保持しつつ，
-未証明の圧力反力分解を本番ベンチへ混入させない．
+V11 は，過射影で非静的駆動を消す古い分解を棄却し，
+第~\ref{sec:ao_fast_state_space}節の六条件を本番経路の採用境界として固定する．
+したがって第~\ref{sec:val_capillary}節の毛管波は，
+幾何セル分率，bundle Young--Laplace work，pressure-component Hodge reaction，
+投影済み面共鎖保存，および pressure-coordinate history を同時に使う
+アクティブ幾何毛管分解の物理ベンチマークとして読む．
+ただし，U12 が棄却した全圧力像への過射影や，
+面共鎖移送を欠く節点速度再構成経路は，本節の合格経路ではない．

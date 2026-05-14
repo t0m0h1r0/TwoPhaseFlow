@@ -9,7 +9,7 @@
 
 本節は，幾何セル分率を主状態とし，界面近傍のアクティブ集合だけを
 更新対象にする毛管閉包を，第2章の連続理論と第12--14章の検証の間に置く．
-以下ではこの発展的経路を\textbf{アクティブ幾何毛管分解}と呼ぶ．
+以下ではこの経路を\textbf{アクティブ幾何毛管分解}と呼ぶ．
 第~\ref{sec:capillary_pressure_reaction_subspace}節では，
 表面エネルギー仮想仕事と圧力反力部分空間 $R_p$ を理論境界として固定した．
 ここでは，その境界を満たすための状態所有者，互換射影，
@@ -188,11 +188,80 @@ $\widetilde\Pi_{R_p}^{M_f}$ が
 この境界は「近似を使ってよい」という許可ではなく，
 近似を受理するために事前宣言された精度契約である．
 
+\subsubsection{移動格子での面共鎖・圧力履歴契約}
+\label{sec:ao_moving_grid_contract}
+
+アクティブ幾何毛管分解を第~\ref{sec:benchmarks}章の移動界面計算へ入れるには，
+互換界面を得るだけでは足りない．
+非一様な界面追随格子では，投影済み速度は節点ベクトル場ではなく，
+発散作用素と Hodge 計量を伴う面共鎖として保存される．
+格子時刻 $n$ の面空間を $F_h^n$，発散を $D_f^n$，
+面計量を $M_f^n$ とし，投影後の正準面状態を
+$f_\Pi^n\in F_h^n$ と書く．
+このとき
+\begin{equation}
+  D_f^n f_\Pi^n = 0
+  \label{eq:ao_projected_face_state}
+\end{equation}
+である．格子を $\chi^n$ から $\chi^{n+1}$ へ再構築したとき，
+有効な移送は節点速度の補間ではなく，
+\begin{equation}
+  f_{\Pi}^{n+1,0}
+  =
+  P_{\ker D_f^{n+1}}^{M_f^{n+1}}\,
+  \mathcal{R}_{F}^{n\to n+1} f_\Pi^n
+  \label{eq:ao_face_cochain_regrid}
+\end{equation}
+である．ここで $\mathcal{R}_{F}^{n\to n+1}$ は面座標上の面共鎖移送，
+$P_{\ker D_f^{n+1}}^{M_f^{n+1}}$ は新しい格子計量での Hodge 射影である．
+一方，
+\[
+  u^n_{\mathrm{node}}
+  \longrightarrow
+  u^{n+1}_{\mathrm{node}}
+  \longrightarrow
+  \mathrm{face\_flux}(u^{n+1}_{\mathrm{node}})
+\]
+は式~\eqref{eq:ao_projected_face_state} と同値ではない．
+節点補間，面 Hodge，発散は移動非一様格子上で可換ではないからである．
+したがって再構築後に面フラックスを作り直す経路は，
+たとえ節点速度が滑らかに見えても，投影後の非圧縮状態を失う．
+
+圧力履歴についても同じ分離が必要である．
+履歴として外挿するのは，界面ジャンプや幾何反力を含む物理圧力そのものではなく，
+相内で滑らかな圧力座標 $\bar p^n$ である．
+作用中の面圧力共変量を
+\begin{equation}
+  h_p^n = G_A^n\bar p^n,\qquad
+  h_\sigma^n = \Pi_{R_p(q_T^n)}^{M_f^n} r_\sigma^n
+  \label{eq:ao_pressure_coordinate_split}
+\end{equation}
+と分けると，BDF2/EXT2 で履歴外挿してよいのは $G_A\bar p$ の滑らかな成分であり，
+$h_\sigma^n$ はその時刻の幾何と面計量でだけ定まる圧力反力である．
+すなわち $h_\sigma$ は現在段階の face law と Schur/Hodge 関係へ入るが，
+次時刻の滑らかな圧力履歴として保存しない．
+この分離により，HFE は不連続ジャンプを相内の滑らかな座標へ持ち込まず，
+現在の切断面でだけ物理圧力ジャンプを復元する役割に限定される．
+
+最後に，欠陥補正（DC）は固定回数の反復ではなく収束判定で受理する．
+作用中の高次残差を $\mathcal{R}_{\mathrm{DC}}^{(k)}$ とすると，
+\begin{equation}
+  \eta_{\mathrm{DC}}^{(k)}
+  =
+  \frac{\|\mathcal{R}_{\mathrm{DC}}^{(k)}\|}
+       {\|b_p\|+\epsilon_{\mathrm{scale}}}
+  \le \varepsilon_{\mathrm{PPE}}
+  \label{eq:ao_dc_convergence_gate}
+\end{equation}
+を満たした段階だけを受理し，$k_{\max}$ は計算を止める上限である．
+上限到達を成功と読む，または CPU/GPU/PCG/DC の隠れ fallback で通す経路は
+本節の状態空間契約に含めない．
+
 \subsubsection{標準経路へ入れるための採用条件}
 \label{sec:ao_fast_solver_yaml_contract}
 
 アクティブ幾何毛管分解を標準物理経路へ入れるには，
-少なくとも次の四条件を同時に満たす必要がある．
+少なくとも次の六条件を同時に満たす必要がある．
 第一に，式~\eqref{eq:ao_geometric_compatibility} のセル体積互換条件が，
 アクティブ集合上で物理体積単位の残差基準を満たすこと．
 第二に，射影仕事 $\Delta S_\Pi$ を表面張力散逸や安定化項として読み替えず，
@@ -202,6 +271,11 @@ $\widetilde\Pi_{R_p}^{M_f}$ が
 全圧力像への過射影で非静的毛管仕事を消していないこと．
 第四に，近似を用いるなら式~\eqref{eq:ao_fast_error_budget}--\eqref{eq:ao_fast_acceleration_error_bound}
 の仕事ノルム誤差を満たすこと．
+第五に，界面追随格子の再構築後も式~\eqref{eq:ao_face_cochain_regrid} により
+投影済み面共鎖を新しい Hodge 計量へ移送し，節点速度補間から面フラックスを再生成しないこと．
+第六に，式~\eqref{eq:ao_pressure_coordinate_split} の滑らかな圧力座標と
+現在時刻の圧力反力を分離し，式~\eqref{eq:ao_dc_convergence_gate} の
+収束判定を fail-close に満たすこと．
 
 これらのうち一つでも未達であれば，その候補は標準毛管閉包ではなく
 未受理の発展的分解である．
@@ -214,13 +288,17 @@ $\widetilde\Pi_{R_p}^{M_f}$ が
 アクティブ幾何毛管分解は，式~\eqref{eq:ao_geometric_compatibility} の硬いセル体積互換条件，
 式~\eqref{eq:capillary_pressure_reaction_projection} の $R_p$ 分解，
 式~\eqref{eq:ao_fast_error_budget}--\eqref{eq:ao_fast_acceleration_error_bound} の
-近似誤差，および本節の採用条件を同時に満たすまでは，
+近似誤差，式~\eqref{eq:ao_face_cochain_regrid} の移動格子面共鎖移送，
+式~\eqref{eq:ao_pressure_coordinate_split} の圧力履歴分離，
+および本節の採用条件を同時に満たすまでは，
 第~\ref{sec:benchmarks}章の標準物理経路へ入れない．
 第~\ref{sec:U12_ao_capillary_split_gate}節の U12 は全圧力像への過射影反例と
 非静的波の成分体積 Hodge 診断を単体ゲートとして確認し，
-第~\ref{sec:ao_fast_capillary_gate}節の V11 は統合前ゲートとして
-標準 FCCD/UCCD6/pressure-jump/component-Hodge 経路との境界を固定する．
-したがって，第~\ref{sec:val_capillary}節の毛管波が完走しても，
-それはアクティブ幾何毛管分解の標準物理経路への採用証明ではない．
-この経路の採用は，幾何互換，$R_p$ 分解，近似誤差境界，
-および標準経路からの分離がそろった後の別段階である．
+第~\ref{sec:ao_fast_capillary_gate}節の V11 は統合ゲートとして
+過射影を棄却し，移動格子面共鎖・圧力履歴・DC 収束判定を加えた
+最終契約を固定する．
+第~\ref{sec:val_capillary}節の毛管波は，この最終契約を満たす
+アクティブ幾何毛管分解の物理ベンチマークとして読む．
+一方で，U12 が棄却した全圧力像への過射影や，
+式~\eqref{eq:ao_face_cochain_regrid} を欠く節点速度再構成経路は，
+完走しても本節の経路とは別物である．

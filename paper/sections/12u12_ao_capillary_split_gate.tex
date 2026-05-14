@@ -61,10 +61,15 @@ $r_\sigma-\Pi^{M_f}_{R_p}r_\sigma$ を直接評価する必要がある．
 
 \paragraph{出口条件．}
 U12 から第~\ref{sec:verification}章へ渡す結論は次の 3 点である．
-第一に，標準圧力ジャンプ経路とアクティブ幾何毛管分解を同じ成功経路として扱わない．
+第一に，全圧力像へ射影する古い分解と，
+式~\eqref{eq:capillary_pressure_reaction_projection} で $R_p$ を定義する
+アクティブ幾何毛管分解を同じ経路として扱わない．
 第二に，アクティブ幾何毛管分解の精度は式~\eqref{eq:ao_fast_error_budget} の
 共変量誤差と射影誤差で明示されなければならない．
-第三に，$R_p$ 未確定の近似分解は標準経路へ入れない．
+第三に，$R_p$ 未確定の近似分解，圧力履歴座標を持たない分解，
+および式~\eqref{eq:ao_face_cochain_regrid} の移動格子面共鎖移送を欠く分解は
+標準経路へ入れない．
 このため，第~\ref{sec:benchmarks}章の毛管波結果は
-標準 FCCD/UCCD6/pressure-jump/component-Hodge 経路の結果であり，
-U12 未通過のアクティブ幾何毛管分解の成功証明としては読まない．
+U12 が棄却した全圧力像分解の成功証明ではない．
+第~\ref{sec:ao_fast_state_space}節の最終契約を満たす経路だけを
+アクティブ幾何毛管分解として読む．

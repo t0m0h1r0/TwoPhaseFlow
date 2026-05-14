@@ -18,7 +18,7 @@
 空間離散： & CCD（内点 $\Ord{h^6}$），FCCD（面演算子 $\Ord{h^4}$），UCCD6，DCCD（移流安定化；圧力適用は禁止），非一様格子\\
 格子構造： & コロケート格子 + Balanced-Force 七原則 + FCCD 面ジェット sub-system\\
 時間積分： & TVD-RK3（CLS），IMEX-BDF2/EXT2（NS 対流），implicit-BDF2 + DC（粘性），IPC 圧力増分\\
-圧力閉包： & 圧力ジャンプ型 分相 FCCD-PPE + HFE + DC $k=3$（§~\ref{sec:split_ppe_recovery}）\\
+圧力・毛管閉包： & 圧力ジャンプ型 分相 FCCD-PPE + HFE + DC 収束判定 + アクティブ幾何毛管分解（§~\ref{sec:split_ppe_recovery}, §~\ref{sec:ao_fast_state_space}）\\
               & smoothed Heaviside 一括 PPE は低密度比・縮約検証経路として扱い，標準経路は分相圧力ジャンプ経路\\[4pt]
 \hline\\[-6pt]
 \multicolumn{2}{@{}l}{\textbf{精度律速（設計上の注意）}}\\[2pt]
@@ -43,14 +43,18 @@
 結合コンパクト差分法（CCD，内点 $\Ord{h^6}$），FCCD 面ジェット，UCCD6，
 Conservative Level Set（CLS）法，Hermite 場延長法（HFE；\cite{Aslam2004} の Extension PDE に基づく），
 および Balanced-Force 七原則を一つの圧力ジャンプ型分相 PPE 構成へ統合する．
-標準経路では，界面を FCCD 保存形 CLS と Ridge--Eikonal 再初期化で更新し，
-表面張力は CSF 体積力ではなく $j_{gl}=p_g-p_l=-\sigma\kappa_{lg}$ の圧力ジャンプとして
-分相 FCCD-PPE + HFE + 欠陥補正（DC $k=3$）へ組み込む．
+標準経路では，界面を FCCD 保存形 CLS または幾何セル分率 $q_C$ の保存輸送で更新し，
+表面張力は CSF 体積力ではなく，bundle Young--Laplace work と
+$j_{gl}=p_g-p_l=-\sigma\kappa_{lg}$ の圧力ジャンプとして
+分相 FCCD-PPE + HFE + 欠陥補正（DC 収束判定）へ組み込む．
 この構成により，コロケート格子でも Rhie--Chow 補間に依存せず，
 圧力勾配・表面張力・HFE 上流点・GFM ジャンプが同じ面位置とステンシルを共有する
 Balanced-Force 部分系として閉じる．
 時間発展は TVD-RK3（CLS），IMEX-BDF2/EXT2（運動量対流），
 implicit-BDF2 + DC（粘性），IPC 圧力増分を組み合わせた 7 ステップ手順として整理する．
+移動格子のアクティブ幾何毛管分解では，投影済み面共鎖を格子再構築後の
+Hodge 計量へ移送し，圧力履歴は滑らかな座標だけを外挿し，
+現在の幾何毛管反力は履歴へ混入しない．
 
 検証は，単体検証 U1--U11，統合検証 V1--V10，物理ベンチマーク第~\ref{sec:validation}章の
 三層で構成した．単体検証では CCD $\Ord{h^{6.0}}$，FCCD $\Ord{h^{4.00}}$，
