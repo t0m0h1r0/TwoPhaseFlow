@@ -178,6 +178,7 @@ def test_defect_correction_line_search_keeps_gpu_transfers_scalar_sized():
     solver.solve(np.ones((4, 4)), np.ones((4, 4)), dt=1.0)
 
     assert backend.transfer_shapes
+    assert backend.transfer_shapes[0] == (2,)
     assert max(int(np.prod(shape or (1,))) for shape in backend.transfer_shapes) <= 2
 
 

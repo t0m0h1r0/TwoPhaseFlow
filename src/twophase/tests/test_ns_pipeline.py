@@ -1283,6 +1283,49 @@ def test_viscous_dc_uses_residual_minimising_step_length():
     assert solver.last_diagnostics["viscous_dc_converged"] == pytest.approx(1.0)
 
 
+@pytest.mark.gpu
+def test_viscous_dc_gpu_component_low_uses_prepared_spsm(gpu_backend):
+    """GPU component low-order Helmholtz solves must use explicit SpSM plans."""
+    del gpu_backend
+    from twophase.simulation.ns_pipeline import TwoPhaseNSSolver
+    from twophase.simulation.viscous_helmholtz_dc import ViscousHelmholtzDCSolver
+
+    class _ZeroHighViscous:
+        Re = 1.0
+
+        def _evaluate(self, velocity_components, mu, rho, ccd, psi=None):
+            del mu, rho, ccd, psi
+            return [0.0 * component for component in velocity_components]
+
+    solver_runtime = TwoPhaseNSSolver(4, 4, 1.0, 1.0, use_gpu=True)
+    backend = solver_runtime._backend
+    xp = backend.xp
+    shape = solver_runtime._grid.shape
+    zeros = xp.zeros(shape)
+    rho = xp.ones(shape)
+
+    solver = ViscousHelmholtzDCSolver(
+        backend,
+        _ZeroHighViscous(),
+        tolerance=1.0e-12,
+        max_corrections=1,
+        low_operator="component",
+    )
+    solver.solve(
+        base_velocity=[xp.ones(shape), 2.0 * xp.ones(shape)],
+        explicit_acceleration=[zeros, zeros],
+        mu=zeros,
+        rho=rho,
+        dt_effective=1.0,
+        ccd=solver_runtime._ccd,
+    )
+
+    assert solver.last_diagnostics["viscous_dc_low_prepared_spsm"] == pytest.approx(1.0)
+    assert solver.last_diagnostics[
+        "viscous_dc_low_prepared_spsm_analysis_count"
+    ] == pytest.approx(4.0)
+
+
 def test_pressure_projection_uses_projection_dt():
     """PPE RHS and fallback corrector must share γΔt, not the raw Δt."""
     from twophase.backend import Backend

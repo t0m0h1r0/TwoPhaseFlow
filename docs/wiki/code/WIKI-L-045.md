@@ -232,6 +232,28 @@ Forbidden:
 - managing operator reuse as a hidden cache instead of an explicit prepared
   flow.
 
+## Prepared Low-Order DC Solves
+
+For GPU defect correction, the low-order operator is mathematically fixed during
+one outer DC solve.  Once its sparse LU factorization is built, repeated
+correction solves should reuse an explicit triangular-solve flow instead of
+letting each vector RHS re-enter generic `SuperLU.solve` setup.  The approved
+pattern is:
+
+- factor the exact same sparse low-order matrix;
+- prepare cuSPARSE SpSM plans for the fixed vector RHS shape;
+- fail closed if the prepared GPU solve path is unavailable;
+- expose diagnostics proving the prepared path was active.
+
+This is not a change to the DC equation or to the low-order preconditioner.  It
+only removes repeated GPU analysis/setup around the same triangular factors.
+
+The first PPE DC residual check also has two scalar certificates available at
+the same logical barrier: `||rhs||_2` and `||rhs - L_H p_0||_2`.  Transfer them
+as one device packet.  Do not skip residual checks, do not replace convergence
+by fixed iteration counts, and do not begin a correction before the high-order
+residual gate has been evaluated.
+
 ## Acceptance Gates
 
 Before accepting further GPU changes on this route:

@@ -248,8 +248,9 @@ class PPESolverDefectCorrection(IPPESolver):
 
         self._pin_dofs = getattr(self.operator, "_pin_dofs", (self._pin_dof,))
         rhs_flat = rhs_dev.ravel()
-        rhs_norm = float(self.backend.asnumpy(xp.linalg.norm(rhs_flat)))
-        scale = max(rhs_norm, 1.0)
+        rhs_norm_dev = xp.linalg.norm(rhs_flat)
+        rhs_norm = None
+        scale = None
         history: list[float] = []
         broke = False
         corrections_applied = 0
@@ -258,8 +259,18 @@ class PPESolverDefectCorrection(IPPESolver):
         for _ in range(self.max_corrections):
             residual = rhs_dev - self.operator.apply(pressure)
             residual = self._enforce_rhs_compatibility(residual, record_stats=False)
-            residual_norm = float(self.backend.asnumpy(xp.linalg.norm(residual.ravel())))
+            residual_norm_dev = xp.linalg.norm(residual.ravel())
+            if scale is None:
+                first_norms = self.backend.asnumpy(
+                    xp.stack([rhs_norm_dev, residual_norm_dev])
+                )
+                rhs_norm = float(first_norms[0])
+                residual_norm = float(first_norms[1])
+                scale = max(rhs_norm, 1.0)
+            else:
+                residual_norm = float(self.backend.asnumpy(residual_norm_dev))
             history.append(residual_norm)
+            assert scale is not None
             if residual_norm <= self.tolerance * scale:
                 broke = True
                 final_residual = residual
@@ -324,6 +335,7 @@ class PPESolverDefectCorrection(IPPESolver):
             final_residual_norm = float(final_stats[0])
             final_residual_linf = float(final_stats[1])
             history.append(final_residual_norm)
+            assert scale is not None
             broke = final_residual_norm <= self.tolerance * scale
         else:
             final_residual_linf = float(
@@ -332,6 +344,7 @@ class PPESolverDefectCorrection(IPPESolver):
         self.last_residual_history = history
         self.last_stalled = not broke
         self.last_base_pressure = xp.copy(pressure)
+        assert rhs_norm is not None
         self._record_dc_diagnostics(
             initial_diagnostics,
             rhs_norm=rhs_norm,

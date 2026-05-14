@@ -24,6 +24,17 @@ if TYPE_CHECKING:
     from ..ns_terms.viscous import ViscousTerm
 
 
+def _prepare_gpu_vector_lu_solve(backend: "Backend", raw_factor, node_count: int):
+    if not backend.is_gpu():
+        return raw_factor
+    from ..gpu_sparse_solve import _PreparedCuPySuperLUSolve
+
+    return _PreparedCuPySuperLUSolve(
+        raw_factor,
+        rhs_shape=(int(node_count), 1),
+    )
+
+
 class ViscousHelmholtzDCSolver:
     """Solve Eq. ``eq:viscous_bdf2_dc`` by high-residual defect correction.
 
@@ -178,6 +189,12 @@ class ViscousHelmholtzDCSolver:
             "viscous_dc_stalled": float(stalled and not stopped_by_tolerance),
             "viscous_dc_line_search": 1.0,
             "viscous_dc_low_factor_reuse": 1.0,
+            "viscous_dc_low_prepared_spsm": (
+                1.0 if low_solver.prepared_spsm else 0.0
+            ),
+            "viscous_dc_low_prepared_spsm_analysis_count": (
+                low_solver.prepared_spsm_analysis_count
+            ),
             "viscous_dc_low_operator_scalar": (
                 1.0 if low_solver.low_operator == "scalar" else 0.0
             ),
@@ -537,6 +554,10 @@ class _LowOrderViscousHelmholtzSolver:
             self._factor_component(component_index)
             for component_index in range(self._factor_count)
         ]
+        self.prepared_spsm_analysis_count = float(
+            sum(getattr(factor, "analysis_count", 0) for factor in self._factors)
+        )
+        self.prepared_spsm = self.prepared_spsm_analysis_count > 0.0
 
     def _as_field(self, value, *, name: str):
         """Return scalar or field coefficient data on the full grid."""
@@ -582,7 +603,14 @@ class _LowOrderViscousHelmholtzSolver:
 
     def _factor_component(self, component_index: int):
         matrix = self._build_component_matrix(component_index)
-        return self.backend.sparse_linalg.splu(matrix)
+        factor = self.backend.sparse_linalg.splu(matrix)
+        if self.low_operator == "component":
+            return _prepare_gpu_vector_lu_solve(
+                self.backend,
+                factor,
+                self.node_count,
+            )
+        return factor
 
     def _build_component_matrix(self, component_index: int):
         value_array = self._build_component_values(component_index)
