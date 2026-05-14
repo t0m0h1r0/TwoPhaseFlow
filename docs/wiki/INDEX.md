@@ -1,4 +1,4 @@
-# Wiki Index — 375 entries
+# Wiki Index — 378 entries
 
 ## Active Retrieval Gate
 
@@ -21,11 +21,16 @@ contracts are ported to device rather than removed. For GPU optimization, use
 boundaries are eliminated or justified first; once transfers are not dominant,
 use [WIKI-L-044](code/WIKI-L-044.md) so active geometry, swept flux, sparse
 analysis, and PCG scaling are accelerated by exact finite-stratum fusion and
-operator-epoch reuse. Older cards remain listed for provenance, but cards marked
+operator-epoch reuse. For the concrete Chapter 14 AO-Fast capillary RCA ledger,
+use [WIKI-X-052](cross-domain/WIKI-X-052.md); for the moving-grid AO-Fast
+face-cochain and pressure-history contract, use
+[WIKI-T-172](theory/WIKI-T-172.md); for the remaining AO-Fast GPU efficiency
+bottleneck, use [WIKI-L-045](code/WIKI-L-045.md). Older cards remain listed for
+provenance, but cards marked
 SUPERSEDED or REFERENCE must not be used as current algorithm policy without
 their curation notes.
 
-## Theory (168)
+## Theory (169)
 
 | REF-ID | Title |
 |--------|-------|
@@ -200,8 +205,9 @@ their curation notes.
 | [WIKI-T-169](theory/WIKI-T-169.md) | Geometric Cell Fraction State-Space Reformulation |
 | [WIKI-T-170](theory/WIKI-T-170.md) | Residual-Minimizing Defect Correction for PPE |
 | [WIKI-T-171](theory/WIKI-T-171.md) | GPU-Resident Interface-Fitted Grid Rebuild Theory |
+| [WIKI-T-172](theory/WIKI-T-172.md) | AO-Fast Moving-Grid Face-Cochain and Pressure-History Contract |
 
-## Cross-Domain (50)
+## Cross-Domain (51)
 
 | REF-ID | Title |
 |--------|-------|
@@ -256,6 +262,7 @@ their curation notes.
 | [WIKI-X-049](cross-domain/WIKI-X-049.md) | AO-Fast Capillary Admission and Chapter 14 YAML Boundary |
 | [WIKI-X-050](cross-domain/WIKI-X-050.md) | Theory-First Debug Priority: Nonuniform Metrics and Interface-Tracking Rebuilds |
 | [WIKI-X-051](cross-domain/WIKI-X-051.md) | Theory-First Problem RCA and Countermeasure Protocol |
+| [WIKI-X-052](cross-domain/WIKI-X-052.md) | Ch14 AO-Fast Capillary RCA Trial Ledger |
 
 ## Experiment (63)
 
@@ -385,7 +392,7 @@ their curation notes.
 | [WIKI-M-030](meta/WIKI-M-030.md) | Meta-Prompt Evolution Needs Telemetry, Skills, and Tool-Trust Gates |
 | [WIKI-M-031](meta/WIKI-M-031.md) | Review Artifacts Close the Loop with Finding, Fix, and Validation |
 
-## Code (44)
+## Code (45)
 
 | REF-ID | Title |
 |--------|-------|
@@ -433,3 +440,4 @@ their curation notes.
 | [WIKI-L-042](code/WIKI-L-042.md) | Single-Core CPU Saturation Does Not Imply CPU-Parallel GPU Relief |
 | [WIKI-L-043](code/WIKI-L-043.md) | GPU Optimization Starts by Removing Hidden D2H/H2D Boundaries |
 | [WIKI-L-044](code/WIKI-L-044.md) | Post-Transfer GPU Acceleration Uses Finite-Stratum Fusion |
+| [WIKI-L-045](code/WIKI-L-045.md) | AO-Fast GPU Efficiency Bottleneck Is Fixed-Loop Geometry Compatibility |

@@ -48,6 +48,14 @@ sources:
     description: "AO-Fast capillary admission and Chapter 14 YAML boundary"
   - path: docs/wiki/cross-domain/WIKI-X-050.md
     description: "Theory-first implementation debug priority for nonuniform metrics and grid rebuilds"
+  - path: docs/wiki/cross-domain/WIKI-X-051.md
+    description: "Theory-first RCA and countermeasure protocol"
+  - path: docs/wiki/cross-domain/WIKI-X-052.md
+    description: "Ch14 AO-Fast capillary RCA trial ledger"
+  - path: docs/wiki/theory/WIKI-T-172.md
+    description: "AO-Fast moving-grid face-cochain and pressure-history contract"
+  - path: docs/wiki/code/WIKI-L-045.md
+    description: "AO-Fast GPU efficiency bottleneck after finite-stratum fusion"
 depends_on:
   - "[[WIKI-X-037]]"
   - "[[WIKI-X-040]]"
@@ -80,6 +88,11 @@ depends_on:
   - "[[WIKI-X-046]]"
   - "[[WIKI-X-049]]"
   - "[[WIKI-X-050]]"
+  - "[[WIKI-X-051]]"
+  - "[[WIKI-X-052]]"
+  - "[[WIKI-T-171]]"
+  - "[[WIKI-T-172]]"
+  - "[[WIKI-L-045]]"
 consumers:
   - domain: theory
     usage: "Start here before using older theory cards for derivations"
@@ -90,7 +103,7 @@ consumers:
   - domain: paper
     usage: "Keep wiki retrieval synchronized with current paper terminology"
 compiled_by: ResearchArchitect
-compiled_at: 2026-05-09
+compiled_at: 2026-05-14
 ---
 
 # Curated Wiki Retrieval Map
@@ -114,8 +127,9 @@ algorithm policy.
 | Reinit-aware capillary Hodge | [[WIKI-T-162]], [[WIKI-X-048]], [[WIKI-T-159]], [[WIKI-T-160]], [[WIKI-T-155]], [[WIKI-T-157]], [[WIKI-T-161]], [[WIKI-T-163]] | Build capillary work from the labelled physical transport endpoint; for the current solver use [[WIKI-T-162]] first because it fixes the risk-closed conservative theorem: endpoint-closed `q_c=q_T`, pressure-adjoint active `G_A=pressure_fluxes` range, component-constrained saddle projection `h=s-G_Ap-Bmu`, GPU-native P1 geometry, reinit endpoint ledger, CCD/FCCD/UCCD coupling contract, and fail-close gates.  Read [[WIKI-X-048]] before proposing a new fix because it records the zero-drive theorem, `none`/component-Hodge limits, reinit contamination, pressure-representative RCA, trace-Riesz endpoint mismatch, static-critical residual, and falsified shortcut routes.  Treat endpoint/material time-level mismatch, corrector cochain loss, host-loop geometry, and trace aliasing as implementation blockers.  Treat trace-vertex `C_K` as future trace-primary redesign work only; read [[WIKI-T-163]] for reinit-free/profile-control candidate routes and [[WIKI-T-161]] only as the retired fixed-stratum candidate, not as a current route. |
 | ALE/remap energy | [[WIKI-T-162]], [[WIKI-T-160]], [[WIKI-T-155]], [[WIKI-T-157]], [[WIKI-T-159]], [[WIKI-T-161]], [[WIKI-T-163]] | Variational curvature work needs shared pressure-work pairing, labelled transport/reinit endpoints, named reinit residuals/defects, and step-local energy accounting; [[WIKI-T-162]] is the current closed-interface discretization policy, [[WIKI-T-163]] is the current reinit-free survey, and [[WIKI-T-161]] is negative knowledge about an abandoned retraction surface. |
 | Chapters 1-13 paper contract | [[WIKI-P-018]], [[WIKI-P-015]], [[WIKI-P-014]] | Current paper edits should preserve the failure-mode to contract to discretization to algorithm to V-series trace.  The standard route is per-variable: FCCD face-flux CLS transport, UCCD6 interior momentum, pressure-jump PPE/HFE/DC, capillary virtual-work face cochain, pressure-adjoint representative, and integrated V6/V7/V9 evidence. |
-| AO-Fast capillary admission | [[WIKI-X-049]], [[WIKI-T-169]], [[WIKI-E-063]] | Treat AO-Fast `geometric_cell_fraction` as a separate state-space candidate, not as an implicit Chapter 14 fallback.  Full pressure-image splitting can cancel non-static capillary drive exactly; U12/V11 therefore require a pressure-reaction subspace `R_p(q_T)` and residual-certified `r_sigma-Pi^{M_f}_{R_p}r_sigma`.  Chapter 14 production YAMLs explicitly declare `diffuse_cls`; graph/open-interface cases use `curvature_jump`, closed-interface cases use `closed_interface_riesz` plus `pressure_component_hodge`. |
-| Theory-first implementation debug | [[WIKI-X-050]], [[WIKI-T-094]], [[WIKI-T-096]], [[WIKI-T-135]] | When an implementation test violates a proven theory, first suspect nonuniform metric contracts and interface-tracking grid rebuild contracts. Use uniform-grid, static-grid/no-rebuild, `L != 1` metric, pre/post-remap conservation, face-Hodge, and cache-invalidation controls before tuning CFL, damping, tolerances, or solver iterations. |
+| AO-Fast capillary admission | [[WIKI-X-052]], [[WIKI-T-172]], [[WIKI-X-049]], [[WIKI-T-169]], [[WIKI-E-063]] | Treat AO-Fast `geometric_cell_fraction` as a separate state-space candidate, not as an implicit Chapter 14 fallback.  Full pressure-image splitting can cancel non-static capillary drive exactly; U12/V11 therefore require a pressure-reaction subspace `R_p(q_T)` and residual-certified `r_sigma-Pi^{M_f}_{R_p}r_sigma`.  For moving-grid capillary runs, transport the projected face cochain across rebuild and keep pressure history in the smooth coordinate; do not infer correctness from static/no-rebuild survival. |
+| Theory-first implementation debug | [[WIKI-X-051]], [[WIKI-X-052]], [[WIKI-X-050]], [[WIKI-T-094]], [[WIKI-T-096]], [[WIKI-T-135]], [[WIKI-T-171]], [[WIKI-T-172]] | When an implementation test violates a proven theory, first suspect nonuniform metric contracts, interface-tracking grid rebuild contracts, pressure-history coordinates, and face-cochain transport. Use uniform-grid, static-grid/no-rebuild, first-rebuild, `L != 1` metric, pre/post-remap conservation, face-Hodge, and cache-invalidation controls before tuning CFL, damping, tolerances, or solver iterations. |
+| GPU optimization | [[WIKI-L-043]], [[WIKI-L-044]], [[WIKI-L-045]], [[WIKI-T-171]] | First eliminate hidden D2H/H2D transfer boundaries; after finite-stratum fusion and explicit sparse solve-plan reuse, remaining low utilization on the AO-Fast capillary route points to fixed-loop geometry compatibility and small-launch orchestration. Optimize by chunked fail-close convergence, exact fused finite-stratum kernels, explicit scratch/prepared flows, and batched scalar packets. Do not disable nonuniform grids, rebuilds, active geometry, or convergence gates to improve utilization. |
 | Paper/wiki split | [[WIKI-X-046]], [[WIKI-X-048]], [[WIKI-E-061]] | Put successful contracts in the paper; preserve failed controls, falsified hypotheses, and trial variants in the wiki. |
 | Negative shortcuts | [[WIKI-X-045]] | Damping/CFL/smoothing/caps/hyperviscosity are retained as rejected detours, not paper success claims. |
 | Verification reading | [[WIKI-E-040]], [[WIKI-X-040]] | V-series labels encode what was certified; stale FFT/CCD-LU/CN readings are historical only. |
