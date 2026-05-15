@@ -118,6 +118,18 @@ def wall_bc_hook(u: np.ndarray, v: np.ndarray, bc_type: str = "wall") -> None:
     sync_periodic_image_nodes_many((u, v), axes)
 
 
+def free_slip_bc_hook(u: np.ndarray, v: np.ndarray, bc_type: str = "wall") -> None:
+    """Apply impermeable wall-normal velocity with free tangential slip."""
+    axes = boundary_axes(bc_type, u.ndim)
+    if axes[0] == "wall":
+        u[0, :] = 0.0
+        u[-1, :] = 0.0
+    if axes[1] == "wall":
+        v[:, 0] = 0.0
+        v[:, -1] = 0.0
+    sync_periodic_image_nodes_many((u, v), axes)
+
+
 def apply_velocity_bc(u, v, bc_hook, bc_type: str) -> None:
     """Apply the configured velocity boundary condition in-place."""
     if bc_hook is not None:
@@ -152,5 +164,8 @@ def make_boundary_condition_hook(
             u[-1, :] = u[-2, :]
 
         return _couette
+
+    if hook_type in {"free_slip", "slip"}:
+        return lambda u, v: free_slip_bc_hook(u, v, bc_type=bc_type)
 
     return lambda u, v: wall_bc_hook(u, v, bc_type=bc_type)

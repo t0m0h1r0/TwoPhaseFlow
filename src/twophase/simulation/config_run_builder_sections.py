@@ -9,6 +9,7 @@ from .config_models import RunCfg
 from .config_sections import opt_float, validate_choice
 from .config_run_tracking_sections import (
     parse_tracking_enabled,
+    parse_tracking_gauge_reconstruction,
     parse_tracking_method,
     parse_tracking_primary,
     parse_tracking_redistance_every,
@@ -21,7 +22,7 @@ THEORY_CFL_ADVECTIVE = 0.10
 THEORY_CFL_CAPILLARY = 0.05
 THEORY_CFL_VISCOUS = 1.0
 _BOUNDARY_HODGE_MODES = ("off", "wall_trace_projection")
-_BOUNDARY_HODGE_STATE_SPACES = ("full_face", "constrained_face")
+_BOUNDARY_HODGE_STATE_SPACES = ("full_face", "impermeable_face", "constrained_face")
 _BOUNDARY_HODGE_WALL_TRACES = ("reconstruct_nodes",)
 _BOUNDARY_HODGE_WALL_RETRACTIONS = ("metric_projection",)
 _BOUNDARY_HODGE_METRICS = ("transported_face_mass",)
@@ -126,24 +127,25 @@ def _parse_boundary_hodge(projection: dict[str, Any]) -> dict[str, Any]:
         "numerics.projection.boundary_hodge.metric",
     )
     pressure_default = (
-        "restricted_variational_adjoint"
-        if state_space == "constrained_face"
-        else "active_variational_adjoint"
+        "active_variational_adjoint"
+        if state_space == "full_face"
+        else "restricted_variational_adjoint"
     )
     pressure_pairing = validate_choice(
         str(raw.get("pressure_pairing", pressure_default)).strip().lower(),
         _BOUNDARY_HODGE_PRESSURE_PAIRINGS,
         "numerics.projection.boundary_hodge.pressure_pairing",
     )
-    if state_space == "constrained_face" and pressure_pairing != "restricted_variational_adjoint":
+    if state_space != "full_face" and pressure_pairing != "restricted_variational_adjoint":
         raise ValueError(
-            "numerics.projection.boundary_hodge.state_space='constrained_face' "
+            "numerics.projection.boundary_hodge.state_space="
+            f"{state_space!r} "
             "requires pressure_pairing='restricted_variational_adjoint'."
         )
-    if mode == "wall_trace_projection" and state_space == "constrained_face":
+    if mode == "wall_trace_projection" and state_space != "full_face":
         raise ValueError(
             "boundary_hodge.mode='wall_trace_projection' is a post-pressure "
-            "diagnostic and must not be combined with state_space='constrained_face'."
+            "diagnostic and must not be combined with a restricted face state."
         )
     solver = validate_choice(
         str(raw.get("solver", "matrix_free_cg")).strip().lower(),
@@ -194,6 +196,25 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
         raise ValueError("run.time: 'cfl' and 'dt' are mutually exclusive.")
     cfl_number, cfl_policy, cfl_adv, cfl_cap, cfl_visc = resolve_cfl_policy(cfl_raw)
     boundary_hodge = _parse_boundary_hodge(options.projection)
+    face_no_slip_raw = options.projection.get("face_no_slip_boundary_state")
+    face_no_slip_boundary_state = (
+        boundary_hodge["state_space"] == "constrained_face"
+        if face_no_slip_raw is None
+        else bool(face_no_slip_raw)
+    )
+    if boundary_hodge["state_space"] == "constrained_face" and not face_no_slip_boundary_state:
+        raise ValueError(
+            "numerics.projection.boundary_hodge.state_space='constrained_face' "
+            "requires numerics.projection.face_no_slip_boundary_state=true so "
+            "the stored face cochain and the nodal no-slip state live in the same "
+            "boundary space."
+        )
+    if boundary_hodge["state_space"] == "impermeable_face" and face_no_slip_boundary_state:
+        raise ValueError(
+            "numerics.projection.boundary_hodge.state_space='impermeable_face' "
+            "is the free-slip/no-through face space and requires "
+            "numerics.projection.face_no_slip_boundary_state=false."
+        )
 
     tracking_redist = tracking_redistance(options.tracking)
     reinit_schedule = options.reinit_schedule
@@ -264,6 +285,9 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
             options.tracking,
             options.layout_paths["tracking_primary"],
         ),
+        interface_gauge_reconstruction=parse_tracking_gauge_reconstruction(
+            options.tracking,
+        ),
         phi_primary_redist_every=parse_tracking_redistance_every(
             options.tracking,
             options.layout_paths["tracking_redistance"],
@@ -291,6 +315,11 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
         capillary_reaction_projection=options.operator_settings["capillary_reaction_projection"],
         pressure_force_contract=options.operator_settings["pressure_force_contract"],
         scalar_operator_pairing=options.operator_settings["scalar_operator_pairing"],
+        boundary_face_space=(
+            "impermeable_face"
+            if boundary_hodge["state_space"] == "impermeable_face"
+            else "full_face"
+        ),
         pressure_history_mode=options.operator_settings["pressure_history_mode"],
         pressure_history_extrapolation=options.operator_settings[
             "pressure_history_extrapolation"
@@ -342,9 +371,7 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
         face_native_predictor_state=bool(
             options.projection.get("face_native_predictor_state", False)
         ),
-        face_no_slip_boundary_state=bool(
-            options.projection.get("face_no_slip_boundary_state", False)
-        ),
+        face_no_slip_boundary_state=face_no_slip_boundary_state,
         preserve_projected_faces=bool(
             options.projection.get("preserve_projected_faces", False)
         ),
@@ -372,6 +399,7 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
         ppe_dc_max_iterations=options.operator_settings["ppe_dc_max_iterations"],
         ppe_dc_tolerance=options.operator_settings["ppe_dc_tolerance"],
         ppe_dc_relaxation=options.operator_settings["ppe_dc_relaxation"],
+        ppe_dc_fail_close=options.operator_settings["ppe_dc_fail_close"],
         debug_diagnostics=bool(options.debug.get("step_diagnostics", False)),
     )
     if cfg.gravity_formulation == "variational_potential":

@@ -60,8 +60,14 @@ class ConsistentIIMReprojector(IVelocityReprojector):
         backend: "Backend",
         rho_l: float | None = None,
         rho_g: float | None = None,
+        *,
+        div_op=None,
+        ppe_runtime=None,
+        bc_type: str = "wall",
+        face_no_slip_boundary_state: bool = False,
     ) -> tuple[np.ndarray, np.ndarray]:
         self._stats["calls"] += 1
+        del div_op, ppe_runtime, bc_type, face_no_slip_boundary_state
 
         if getattr(backend, "is_gpu", lambda: False)():
             raise NotImplementedError(

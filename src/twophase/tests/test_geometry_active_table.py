@@ -9,7 +9,12 @@ from twophase.backend import Backend, is_device_array
 from twophase.config import GridConfig
 from twophase.core.grid import Grid
 from twophase.geometry import active_projection as active_projection_module
-from twophase.geometry.active_kernels import refresh_active_geometry_2d
+from twophase.geometry.active_kernels import (
+    _refresh_active_geometry_2d_unfused,
+    refresh_active_geometry_2d,
+    refresh_active_volume_geometry_candidates_2d,
+    refresh_active_volume_geometry_2d,
+)
 from twophase.geometry.active_projection import (
     ActiveSchurOperator,
     project_active_cell_volume_compatibility_2d,
@@ -257,6 +262,60 @@ def test_gpu_active_table_stays_device_and_pcg_host_control_fails_closed():
         )
 
 
+def test_gpu_fused_active_geometry_matches_unfused_nonuniform_rows():
+    cp = pytest.importorskip("cupy")
+    try:
+        grid = Grid(GridConfig(ndim=2, N=(8, 7), L=(1.0, 1.0)), Backend(use_gpu=True))
+    except RuntimeError as exc:
+        pytest.skip(str(exc))
+    grid.coords[0] = np.linspace(0.0, 1.0, grid.N[0] + 1) ** 1.35
+    grid.coords[1] = np.linspace(0.0, 1.0, grid.N[1] + 1) ** 1.15
+    grid._device_coord_cache.clear()
+    rng = np.random.default_rng(20260514)
+    phi_host = rng.normal(size=(grid.N[0] + 1, grid.N[1] + 1))
+    phi_host += 0.15 * np.linspace(-1.0, 1.0, grid.N[0] + 1)[:, None]
+    ids_host = np.asarray(
+        [(i, j) for i in range(grid.N[0]) for j in range(grid.N[1])],
+        dtype=np.int64,
+    )
+    phi = cp.asarray(phi_host, dtype=cp.float64)
+    ids = cp.asarray(ids_host, dtype=cp.int64)
+    level = 0.037
+
+    fused = refresh_active_geometry_2d(grid, phi, ids, level=level)
+    unfused = _refresh_active_geometry_2d_unfused(
+        grid,
+        grid.xp,
+        phi,
+        ids,
+        level=level,
+    )
+
+    for field in (
+        "q_A",
+        "s_A",
+        "lambda_edge_A",
+        "cell_measure_A",
+        "jq_local_A",
+        "ds_local_A",
+        "row_norm_A",
+        "sign_margin_A",
+    ):
+        np.testing.assert_allclose(
+            grid.backend.to_host(getattr(fused, field)),
+            grid.backend.to_host(getattr(unfused, field)),
+            rtol=1.0e-12,
+            atol=1.0e-13,
+            err_msg=field,
+        )
+    for field in ("case_code_A", "edge_mask_A", "finite_mask_A", "regular_mask_A"):
+        np.testing.assert_array_equal(
+            grid.backend.to_host(getattr(fused, field)),
+            grid.backend.to_host(getattr(unfused, field)),
+            err_msg=field,
+        )
+
+
 def test_active_jq_and_ds_match_finite_difference_on_active_rows():
     grid, _backend = _grid(10)
     x, y = _mesh(grid)
@@ -286,6 +345,52 @@ def test_active_jq_and_ds_match_finite_difference_on_active_rows():
 
     np.testing.assert_allclose(predicted_q[active], fd_q[active], rtol=1.0e-6, atol=1.0e-9)
     np.testing.assert_allclose(predicted_s[active], fd_s[active], rtol=1.0e-6, atol=1.0e-9)
+
+
+def test_active_volume_only_geometry_matches_full_q_rows():
+    grid, _backend = _grid(10)
+    x, y = _mesh(grid)
+    phi = x + 0.17 * y - 0.49
+    ids = np.asarray(
+        [[2, 1], [3, 3], [4, 5], [5, 6], [6, 7]],
+        dtype=np.int64,
+    )
+
+    full = refresh_active_geometry_2d(grid, phi, ids)
+    volume_only = refresh_active_volume_geometry_2d(grid, phi, ids)
+
+    np.testing.assert_allclose(volume_only.q_A, full.q_A, rtol=0.0, atol=0.0)
+    np.testing.assert_allclose(
+        volume_only.cell_measure_A,
+        full.cell_measure_A,
+        rtol=0.0,
+        atol=0.0,
+    )
+    np.testing.assert_array_equal(volume_only.case_code_A, full.case_code_A)
+
+
+def test_batched_active_volume_candidates_match_single_candidate_rows():
+    grid, _backend = _grid(10)
+    x, y = _mesh(grid)
+    phi = x + 0.17 * y - 0.49
+    direction = 0.001 * np.sin(2.0 * np.pi * x) + 0.0005 * np.cos(2.0 * np.pi * y)
+    steps = np.asarray([1.0, 0.5, 0.25], dtype=float)
+    ids = np.asarray(
+        [[2, 1], [3, 3], [4, 5], [5, 6], [6, 7]],
+        dtype=np.int64,
+    )
+    candidates = phi[None, ...] + steps[:, None, None] * direction[None, ...]
+
+    batched = refresh_active_volume_geometry_candidates_2d(grid, candidates, ids)
+    expected = np.stack(
+        [
+            refresh_active_volume_geometry_2d(grid, candidate, ids).q_A
+            for candidate in candidates
+        ],
+        axis=0,
+    )
+
+    np.testing.assert_allclose(batched.q_A, expected, rtol=0.0, atol=0.0)
 
 
 def test_active_schur_adjointness_and_pcg_floor_policy():

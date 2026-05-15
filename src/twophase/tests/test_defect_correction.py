@@ -70,6 +70,13 @@ class _OverScaledBaseStub(_SameOperatorStub):
         return 10.0 * np.asarray(rhs, dtype=float)
 
 
+class _ZeroBaseStub(_SameOperatorStub):
+    def solve(self, rhs, rho, dt, p_init=None):
+        self.solve_calls += 1
+        self.seen_tolerances.append(self.tol)
+        return np.zeros_like(np.asarray(rhs, dtype=float))
+
+
 def test_same_operator_defect_correction_is_rejected():
     grid = object()
     base = _SameOperatorStub(grid)
@@ -171,6 +178,7 @@ def test_defect_correction_line_search_keeps_gpu_transfers_scalar_sized():
     solver.solve(np.ones((4, 4)), np.ones((4, 4)), dt=1.0)
 
     assert backend.transfer_shapes
+    assert backend.transfer_shapes[0] == (2,)
     assert max(int(np.prod(shape or (1,))) for shape in backend.transfer_shapes) <= 2
 
 
@@ -190,6 +198,24 @@ def test_defect_correction_collapse_branch_fails_closed():
 
     with pytest.raises(RuntimeError, match="same-operator defect-correction collapse"):
         solver.solve(np.ones((2, 2)), np.ones((2, 2)), dt=1.0)
+
+
+def test_defect_correction_nonconvergence_fails_closed():
+    grid = object()
+    solver = PPESolverDefectCorrection(
+        _BackendStub(),
+        grid,
+        _ZeroBaseStub(grid),
+        _DifferentOperatorStub(grid),
+        max_corrections=1,
+        tolerance=1.0e-12,
+        fail_on_nonconvergence=True,
+    )
+
+    with pytest.raises(RuntimeError, match="did not converge"):
+        solver.solve(np.ones((2, 2)), np.ones((2, 2)), dt=1.0)
+
+    assert solver.last_diagnostics["ppe_dc_converged"] == 0.0
 
 
 def test_defect_correction_forwards_static_operator_cache():

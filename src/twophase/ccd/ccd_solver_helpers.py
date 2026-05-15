@@ -92,7 +92,8 @@ def differentiate_ccd_wall_first_only(solver, data, axis: int, bc_left, bc_right
         d1_axis0 = d1_flat.reshape(orig_shape)
         if not solver.grid.uniform and apply_metric:
             shape = [-1] + [1] * (len(orig_shape) - 1)
-            d1_axis0 = xp.asarray(solver.grid.J[axis]).reshape(shape) * d1_axis0
+            metric = _device_metric_1d(solver, axis, d1_axis0.dtype)
+            d1_axis0 = metric.reshape(shape) * d1_axis0
         return xp.moveaxis(d1_axis0, 0, axis)
 
     h = info['h']
@@ -135,7 +136,8 @@ def differentiate_ccd_wall_first_only(solver, data, axis: int, bc_left, bc_right
 
     if not solver.grid.uniform and apply_metric:
         shape = [-1] + [1] * (len(orig_shape) - 1)
-        d1_axis0 = xp.asarray(solver.grid.J[axis]).reshape(shape) * d1_axis0
+        metric = _device_metric_1d(solver, axis, d1_axis0.dtype)
+        d1_axis0 = metric.reshape(shape) * d1_axis0
 
     return xp.moveaxis(d1_axis0, 0, axis)
 
@@ -157,8 +159,12 @@ def differentiate_ccd_wall_second_only(solver, data, axis: int, bc_left, bc_righ
         if need_d1:
             d1_axis0 = d1_flat.reshape(orig_shape)
             shape = [-1] + [1] * (len(orig_shape) - 1)
-            J = xp.asarray(solver.grid.J[axis]).reshape(shape)
-            dJ = xp.asarray(solver.grid.dJ_dxi[axis]).reshape(shape)
+            J = _device_metric_1d(solver, axis, d2_axis0.dtype).reshape(shape)
+            dJ = _device_metric_gradient_1d(
+                solver,
+                axis,
+                d2_axis0.dtype,
+            ).reshape(shape)
             d2_axis0 = J * J * d2_axis0 + J * dJ * d1_axis0
         return xp.moveaxis(d2_axis0, 0, axis)
 
@@ -207,8 +213,12 @@ def differentiate_ccd_wall_second_only(solver, data, axis: int, bc_left, bc_righ
         d1_flat[N, :] = right_pair[0]
         d1_axis0 = d1_flat.reshape(orig_shape)
         shape = [-1] + [1] * (len(orig_shape) - 1)
-        J = xp.asarray(solver.grid.J[axis]).reshape(shape)
-        dJ = xp.asarray(solver.grid.dJ_dxi[axis]).reshape(shape)
+        J = _device_metric_1d(solver, axis, d2_axis0.dtype).reshape(shape)
+        dJ = _device_metric_gradient_1d(
+            solver,
+            axis,
+            d2_axis0.dtype,
+        ).reshape(shape)
         d2_axis0 = J * J * d2_axis0 + J * dJ * d1_axis0
 
     return xp.moveaxis(d2_axis0, 0, axis)
@@ -498,8 +508,8 @@ def differentiate_ccd_periodic_second_only(solver, data, axis: int, apply_metric
 
 def apply_ccd_metric(solver, d1_xi, d2_xi, axis: int):
     xp = solver.xp
-    J_1d = xp.asarray(solver.grid.J[axis])
-    dJ_1d = xp.asarray(solver.grid.dJ_dxi[axis])
+    J_1d = _device_metric_1d(solver, axis, xp.asarray(d1_xi).dtype)
+    dJ_1d = _device_metric_gradient_1d(solver, axis, xp.asarray(d1_xi).dtype)
     shape = [1] * solver.ndim
     shape[axis] = -1
     J = J_1d.reshape(shape)
@@ -507,6 +517,20 @@ def apply_ccd_metric(solver, d1_xi, d2_xi, axis: int):
     d1_x = J * d1_xi
     d2_x = J * J * d2_xi + J * dJ * d1_xi
     return d1_x, d2_x
+
+
+def _device_metric_1d(solver, axis: int, dtype):
+    getter = getattr(solver.grid, "device_metric", None)
+    if callable(getter):
+        return getter(axis, dtype=dtype)
+    return solver.xp.asarray(solver.grid.J[axis], dtype=dtype)
+
+
+def _device_metric_gradient_1d(solver, axis: int, dtype):
+    getter = getattr(solver.grid, "device_metric_gradient", None)
+    if callable(getter):
+        return getter(axis, dtype=dtype)
+    return solver.xp.asarray(solver.grid.dJ_dxi[axis], dtype=dtype)
 
 
 _ALPHA1 = 7.0 / 16.0

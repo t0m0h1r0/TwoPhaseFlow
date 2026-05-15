@@ -14,6 +14,11 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 
+from ..core.boundary import is_all_periodic
+from .face_boundary import (
+    zero_wall_normal_face_components,
+    zero_wall_velocity_face_components,
+)
 from .velocity_reprojector import IVelocityReprojector, _device_array
 
 if TYPE_CHECKING:
@@ -27,6 +32,107 @@ def _clear_interface_for_reprojection(ppe_solver: "IPPESolver") -> None:
     clearer = getattr(ppe_solver, "clear_interface_jump_context", None)
     if callable(clearer):
         clearer()
+
+
+def _set_neutral_affine_context_for_reprojection(ppe_solver: "IPPESolver", *, xp, psi):
+    """Install a zero-jump interface context for homogeneous face-Hodge projection."""
+    setter = getattr(ppe_solver, "set_interface_jump_context", None)
+    if not callable(setter):
+        _clear_interface_for_reprojection(ppe_solver)
+        return None
+    psi_dev = xp.asarray(psi)
+    setter(
+        psi=psi_dev,
+        kappa=xp.zeros_like(psi_dev),
+        sigma=0.0,
+        psi_previous=psi_dev,
+    )
+    operator = getattr(ppe_solver, "operator", ppe_solver)
+    return getattr(operator, "_interface_stress_context", None)
+
+
+def _uses_affine_jump_reprojection(ppe_solver: "IPPESolver", *, ppe_runtime) -> bool:
+    """Return whether homogeneous reprojection still needs affine geometry."""
+    coupling = getattr(ppe_runtime, "ppe_interface_coupling_scheme", None)
+    if coupling is not None:
+        return str(coupling).strip().lower() == "affine_jump"
+    candidates = (
+        ppe_solver,
+        getattr(ppe_solver, "operator", None),
+        getattr(ppe_solver, "base_solver", None),
+    )
+    for solver in candidates:
+        if solver is None:
+            continue
+        coupling = getattr(solver, "interface_coupling_scheme", None)
+        if coupling is not None:
+            return str(coupling).strip().lower() == "affine_jump"
+    return False
+
+
+def _prepare_interface_for_reprojection(
+    ppe_solver: "IPPESolver",
+    *,
+    ppe_runtime,
+    xp,
+    psi,
+):
+    """Prepare the PPE interface context for a homogeneous reprojection solve."""
+    if _uses_affine_jump_reprojection(ppe_solver, ppe_runtime=ppe_runtime):
+        return _set_neutral_affine_context_for_reprojection(
+            ppe_solver,
+            xp=xp,
+            psi=psi,
+        )
+    _clear_interface_for_reprojection(ppe_solver)
+    return None
+
+
+def _face_hodge_pressure_kwargs(*, ppe_runtime, interface_stress_context):
+    if ppe_runtime is None:
+        raise RuntimeError("face_hodge reprojection requires ppe_runtime")
+    solver_name = getattr(ppe_runtime, "ppe_solver_name", None)
+    kwargs = {
+        "pressure_gradient": "fccd" if solver_name == "fccd_iterative" else "fvm",
+    }
+    contract = getattr(
+        ppe_runtime,
+        "pressure_force_contract",
+        "raw_compact_gradient",
+    )
+    if contract != "raw_compact_gradient":
+        kwargs["pressure_force_contract"] = contract
+    boundary_face_space = getattr(ppe_runtime, "boundary_face_space", "full_face")
+    if boundary_face_space != "full_face":
+        kwargs["boundary_face_space"] = boundary_face_space
+    coefficient = getattr(ppe_runtime, "ppe_coefficient_scheme", "phase_density")
+    if coefficient == "phase_separated":
+        kwargs["coefficient_scheme"] = "phase_separated"
+    coupling = getattr(ppe_runtime, "ppe_interface_coupling_scheme", "none")
+    if coupling == "affine_jump":
+        if interface_stress_context is None:
+            raise RuntimeError(
+                "face_hodge affine-jump reprojection requires an interface "
+                "stress context, even for zero physical jump"
+            )
+        kwargs["interface_coupling_scheme"] = "affine_jump"
+        kwargs["interface_stress_context"] = interface_stress_context
+    elif coupling != "none":
+        raise RuntimeError(
+            "face_hodge reprojection supports none|affine_jump interface "
+            f"coupling, got {coupling!r}"
+        )
+    return kwargs
+
+
+def _face_hodge_projection_solver(ppe_solver: "IPPESolver", *, ppe_runtime):
+    """Return the operator whose face space matches the requested projection."""
+    boundary_face_space = getattr(ppe_runtime, "boundary_face_space", "full_face")
+    if boundary_face_space != "full_face":
+        operator = getattr(ppe_solver, "operator", None)
+        if operator is not None:
+            return operator
+    return ppe_solver
 
 
 class LegacyReprojector(IVelocityReprojector):
@@ -51,8 +157,14 @@ class LegacyReprojector(IVelocityReprojector):
         backend: "Backend",
         rho_l: float | None = None,
         rho_g: float | None = None,
+        *,
+        div_op=None,
+        ppe_runtime=None,
+        bc_type: str = "wall",
+        face_no_slip_boundary_state: bool = False,
     ) -> tuple[np.ndarray, np.ndarray]:
         self._stats["calls"] += 1
+        del div_op, bc_type, face_no_slip_boundary_state
 
         xp = backend.xp
         psi_d = _device_array(psi, backend)
@@ -64,8 +176,16 @@ class LegacyReprojector(IVelocityReprojector):
         div = (xp.asarray(du_dx) + xp.asarray(dv_dy)) / 1.0
 
         rho = xp.ones_like(psi_d)
-        _clear_interface_for_reprojection(ppe_solver)
-        phi = ppe_solver.solve(div, rho)
+        _prepare_interface_for_reprojection(
+            ppe_solver,
+            ppe_runtime=ppe_runtime,
+            xp=xp,
+            psi=psi_d,
+        )
+        try:
+            phi = ppe_solver.solve(div, rho)
+        finally:
+            _clear_interface_for_reprojection(ppe_solver)
 
         dp_dx = ccd.first_derivative(phi, 0)
         dp_dy = ccd.first_derivative(phi, 1)
@@ -100,8 +220,14 @@ class VariableDensityReprojector(IVelocityReprojector):
         backend: "Backend",
         rho_l: float | None = None,
         rho_g: float | None = None,
+        *,
+        div_op=None,
+        ppe_runtime=None,
+        bc_type: str = "wall",
+        face_no_slip_boundary_state: bool = False,
     ) -> tuple[np.ndarray, np.ndarray]:
         self._stats["calls"] += 1
+        del div_op, bc_type, face_no_slip_boundary_state
 
         xp = backend.xp
         psi_d = _device_array(psi, backend)
@@ -119,8 +245,16 @@ class VariableDensityReprojector(IVelocityReprojector):
         dv_dy = ccd.first_derivative(v_d, 1)
         div = (xp.asarray(du_dx) + xp.asarray(dv_dy)) / 1.0
 
-        _clear_interface_for_reprojection(ppe_solver)
-        phi = ppe_solver.solve(div, rho)
+        _prepare_interface_for_reprojection(
+            ppe_solver,
+            ppe_runtime=ppe_runtime,
+            xp=xp,
+            psi=psi_d,
+        )
+        try:
+            phi = ppe_solver.solve(div, rho)
+        finally:
+            _clear_interface_for_reprojection(ppe_solver)
 
         rho_inv = 1.0 / xp.where(xp.abs(rho) > 1e-30, rho, 1.0)
         dp_dx = ccd.first_derivative(phi, 0)
@@ -128,6 +262,168 @@ class VariableDensityReprojector(IVelocityReprojector):
         u_proj = u_d - rho_inv * xp.asarray(dp_dx)
         v_proj = v_d - rho_inv * xp.asarray(dp_dy)
         return u_proj, v_proj
+
+    @property
+    def stats(self) -> dict[str, float]:
+        return dict(self._stats)
+
+
+class FaceHodgeReprojector(IVelocityReprojector):
+    """Projection-native face Hodge reprojection after grid rebuild.
+
+    Symbol mapping
+    --------------
+    ``D_f`` -> ``div_op.divergence_from_faces``
+    ``G_f`` -> ``div_op.pressure_fluxes``
+    ``P_f`` -> ``u_f - G_f phi`` with ``D_f P_f = 0``
+
+    A3 chain:
+      Paper equation: variable-density Hodge projection
+      ``D_f(u_f - M_f^{-1}D_f^* phi)=0``.
+      Discretisation: use the active FCCD face complex and the configured PPE
+      operator with zero physical jump on the rebuilt grid.
+      Code: solve ``L phi = D_f u_f`` and reconstruct nodal velocity from the
+      corrected projection-native faces.
+    """
+
+    scheme_names = ("face_hodge", "projection_native_face_hodge")
+
+    @classmethod
+    def _build(cls, name: str, ctx: "ReprojectorBuildCtx") -> "FaceHodgeReprojector":
+        return cls()
+
+    def __init__(self) -> None:
+        self._stats = {
+            "calls": 0,
+            "pre_div_linf": 0.0,
+            "post_div_linf": 0.0,
+        }
+
+    def reproject(
+        self,
+        psi: np.ndarray,
+        u: np.ndarray,
+        v: np.ndarray,
+        ppe_solver: "IPPESolver",
+        ccd: "CCDSolver",
+        backend: "Backend",
+        rho_l: float | None = None,
+        rho_g: float | None = None,
+        *,
+        div_op=None,
+        ppe_runtime=None,
+        bc_type: str = "wall",
+        face_no_slip_boundary_state: bool = False,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        del ccd
+        if div_op is None or not hasattr(div_op, "face_fluxes"):
+            raise RuntimeError("face_hodge reprojection requires div_op.face_fluxes")
+        xp = backend.xp
+        u_d = _device_array(u, backend)
+        v_d = _device_array(v, backend)
+        faces = [xp.asarray(component) for component in div_op.face_fluxes([u_d, v_d])]
+        u_proj, v_proj, _ = self.reproject_faces(
+            psi,
+            faces,
+            ppe_solver,
+            backend,
+            rho_l=rho_l,
+            rho_g=rho_g,
+            div_op=div_op,
+            ppe_runtime=ppe_runtime,
+            bc_type=bc_type,
+            face_no_slip_boundary_state=face_no_slip_boundary_state,
+        )
+        return u_proj, v_proj
+
+    def reproject_faces(
+        self,
+        psi: np.ndarray,
+        face_components,
+        ppe_solver: "IPPESolver",
+        backend: "Backend",
+        rho_l: float | None = None,
+        rho_g: float | None = None,
+        *,
+        div_op=None,
+        ppe_runtime=None,
+        bc_type: str = "wall",
+        face_no_slip_boundary_state: bool = False,
+    ):
+        self._stats["calls"] += 1
+        if div_op is None:
+            raise RuntimeError("face_hodge reprojection requires div_op")
+        required = (
+            "divergence_from_faces",
+            "pressure_fluxes",
+            "reconstruct_nodes",
+        )
+        missing = [name for name in required if not hasattr(div_op, name)]
+        if missing:
+            raise RuntimeError(
+                "face_hodge reprojection requires projection-native operator "
+                f"methods {required!r}; missing {missing!r}"
+            )
+        if rho_l is None or rho_g is None:
+            raise ValueError("face_hodge reprojection requires explicit rho_l and rho_g")
+
+        xp = backend.xp
+        psi_d = _device_array(psi, backend)
+        rho = rho_g + (rho_l - rho_g) * psi_d
+
+        interface_context = _set_neutral_affine_context_for_reprojection(
+            ppe_solver,
+            xp=xp,
+            psi=psi_d,
+        )
+        pressure_kwargs = _face_hodge_pressure_kwargs(
+            ppe_runtime=ppe_runtime,
+            interface_stress_context=interface_context,
+        )
+
+        try:
+            faces = [xp.asarray(component) for component in face_components]
+            if not is_all_periodic(bc_type, 2):
+                boundary_projector = (
+                    zero_wall_velocity_face_components
+                    if face_no_slip_boundary_state
+                    else zero_wall_normal_face_components
+                )
+                faces = boundary_projector(faces, xp=xp, bc_type=bc_type)
+            rhs = div_op.divergence_from_faces(faces)
+            pre_linf = xp.max(xp.abs(rhs))
+            projection_solver = _face_hodge_projection_solver(
+                ppe_solver,
+                ppe_runtime=ppe_runtime,
+            )
+            phi = projection_solver.solve(rhs, rho, dt=1.0, p_init=None)
+            pressure_faces = div_op.pressure_fluxes(phi, rho, **pressure_kwargs)
+            projected_faces = [
+                face - xp.asarray(pressure_face)
+                for face, pressure_face in zip(faces, pressure_faces, strict=True)
+            ]
+            if not is_all_periodic(bc_type, 2):
+                boundary_projector = (
+                    zero_wall_velocity_face_components
+                    if face_no_slip_boundary_state
+                    else zero_wall_normal_face_components
+                )
+                projected_faces = boundary_projector(
+                    projected_faces,
+                    xp=xp,
+                    bc_type=bc_type,
+                )
+            post_div = div_op.divergence_from_faces(projected_faces)
+            post_linf = xp.max(xp.abs(post_div))
+            stats = backend.asnumpy(xp.stack([pre_linf, post_linf]))
+            self._stats["pre_div_linf"] = float(stats[0])
+            self._stats["post_div_linf"] = float(stats[1])
+            u_proj, v_proj = div_op.reconstruct_nodes(projected_faces)
+            return xp.asarray(u_proj), xp.asarray(v_proj), tuple(
+                xp.asarray(component) for component in projected_faces
+            )
+        finally:
+            _clear_interface_for_reprojection(ppe_solver)
 
     @property
     def stats(self) -> dict[str, float]:
@@ -161,8 +457,14 @@ class ConsistentGFMReprojectorLegacy(IVelocityReprojector):
         backend: "Backend",
         rho_l: float | None = None,
         rho_g: float | None = None,
+        *,
+        div_op=None,
+        ppe_runtime=None,
+        bc_type: str = "wall",
+        face_no_slip_boundary_state: bool = False,
     ) -> tuple[np.ndarray, np.ndarray]:
         self._stats["calls"] += 1
+        del div_op, ppe_runtime, bc_type, face_no_slip_boundary_state
         raise RuntimeError(
             "consistent_gfm velocity reprojection is not implemented; "
             "no alternate reprojection scheme was applied."

@@ -37,6 +37,7 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             LX=g.LX,
             LY=g.LY,
             bc_type=g.bc_type,
+            use_gpu=True if is_geometric else getattr(g, "use_gpu", None),
             alpha_grid=alpha_grid,
             fitting_axes=fitting_axes,
             fitting_alpha_grid=(
@@ -92,6 +93,9 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             interface_tracking_method=str(
                 getattr(run, "interface_tracking_method", "phi_primary")
             ),
+            interface_gauge_reconstruction=str(
+                getattr(run, "interface_gauge_reconstruction", "fixed_stratum")
+            ),
             phi_primary_redist_every=int(getattr(run, "phi_primary_redist_every", 4)),
             phi_primary_clip_factor=float(getattr(run, "phi_primary_clip_factor", 12.0)),
             phi_primary_heaviside_eps_scale=float(
@@ -103,6 +107,38 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             ridge_sigma_0=float(getattr(run, "ridge_sigma_0", 3.0)),
             reinit_volume_constraint=str(
                 getattr(run, "reinit_volume_constraint", "diffuse_mass")
+            ),
+            active_projection_solver_scheme=str(
+                getattr(state_space, "active_projection_solver_scheme", "pcg")
+            ),
+            active_projection_absolute_tolerance=float(
+                getattr(state_space, "active_projection_absolute_tolerance", 1.0e-11)
+            ),
+            active_projection_relative_tolerance=float(
+                getattr(state_space, "active_projection_relative_tolerance", 0.0)
+            ),
+            active_projection_max_iterations=int(
+                getattr(state_space, "active_projection_max_iterations", 8)
+            ),
+            active_projection_pcg_tolerance=float(
+                getattr(state_space, "active_projection_pcg_tolerance", 1.0e-12)
+            ),
+            active_projection_pcg_max_iterations=int(
+                getattr(state_space, "active_projection_pcg_max_iterations", 256)
+            ),
+            active_projection_pcg_roundoff_floor=getattr(
+                state_space,
+                "active_projection_pcg_roundoff_floor",
+                1.0e-14,
+            ),
+            active_projection_dc_tolerance=float(
+                getattr(state_space, "active_projection_dc_tolerance", 1.0e-11)
+            ),
+            active_projection_dc_max_iterations=int(
+                getattr(state_space, "active_projection_dc_max_iterations", 8)
+            ),
+            active_projection_dc_relaxation=float(
+                getattr(state_space, "active_projection_dc_relaxation", 1.0)
             ),
         ),
         ppe=SolverPPEOptions(
@@ -127,6 +163,7 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             scalar_operator_pairing=str(
                 getattr(run, "scalar_operator_pairing", "legacy")
             ),
+            boundary_face_space=str(getattr(run, "boundary_face_space", "full_face")),
             pressure_history_mode=str(
                 getattr(run, "pressure_history_mode", "face_acceleration")
             ),
@@ -144,6 +181,7 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             ppe_dc_max_iterations=int(getattr(run, "ppe_dc_max_iterations", 3)),
             ppe_dc_tolerance=float(getattr(run, "ppe_dc_tolerance", 1.0e-8)),
             ppe_dc_relaxation=float(getattr(run, "ppe_dc_relaxation", 0.8)),
+            ppe_dc_fail_close=bool(getattr(run, "ppe_dc_fail_close", False)),
         ),
         schemes=SolverSchemeOptions(
             cn_viscous=getattr(run, "cn_viscous", False),
@@ -155,6 +193,9 @@ def build_solver_init_options(cfg: "ExperimentConfig") -> NSSolverInitOptions:
             surface_tension_scheme=str(getattr(run, "surface_tension_scheme", "pressure_jump")),
             capillary_force_source=str(
                 getattr(run, "capillary_force_source", "curvature_jump")
+            ),
+            capillary_closed_interface_endpoint=str(
+                getattr(run, "capillary_closed_interface_endpoint", "conservative_psi")
             ),
             curvature_method=str(getattr(run, "curvature_method", "psi_direct_filtered")),
             momentum_form=str(getattr(run, "momentum_form", "primitive_velocity")),

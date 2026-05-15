@@ -954,6 +954,22 @@ conservative surface cochain in the same sign convention as
 `Pi_X^M s`, but `s -> Pi_R s` is again the zero-drive theorem because it sets
 the physical Hodge part to zero.
 
+For a q-owned column-height graph gauge the surface functional in this theorem
+is the graph endpoint functional, not the generic P1 cut-cell length.  With
+`H_i(q)=y_min+sum_j q_ij/dx_i`,
+
+```text
+S_G(q)=sum_i sqrt(ds_i^2 + (H_{i+1}-H_i)^2),
+d_q S_G = (d_H S_G)_i / dx_i on the single cut cell of column i,
+s = -M_f^{-1} D_f^T d_q(sigma S_G).
+```
+
+This is the same virtual-work law as above with the endpoint map specialized
+to the graph coordinate.  Applying the generic P1 cut-cell derivative after the
+YAML has selected `column_height_graph` mixes endpoints; it is not a harmless
+curvature approximation and can create source spikes at graph cell-stratum
+crossings.
+
 The static criterion is finite-dimensional criticality:
 
 ```text

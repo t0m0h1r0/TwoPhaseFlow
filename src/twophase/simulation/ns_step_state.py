@@ -60,6 +60,7 @@ class NSStepState:
     previous_previous_base_pressure: Any = None
     pressure_extrapolated_base: Any = None
     pressure_history_face_components: list[Any] | None = None
+    pressure_history_storage_base: Any = None
     previous_pressure_accel_face_components: list[Any] | None = None
     pressure: Any = None
     pressure_base: Any = None
@@ -95,9 +96,13 @@ class NSStepState:
     geometric_capillary_pressure_reaction_prepared: bool = False
     geometric_capillary_pressure_reaction_face_increment: list[Any] | None = None
     geometric_capillary_pressure_reaction_face_acceleration: list[Any] | None = None
+    geometric_capillary_pressure_reaction_coordinate: Any = None
     geometric_capillary_pressure_reaction_rhs: Any = None
     geometric_capillary_pressure_residual_rhs: Any = None
     geometric_capillary_scalar_pressure_face_components: list[Any] | None = None
+    geometric_capillary_jump_prepared: bool = False
+    geometric_capillary_jump_face_acceleration: list[Any] | None = None
+    geometric_capillary_jump_rhs: Any = None
 
     @classmethod
     def from_inputs(cls, inputs: NSStepInputs | NSStepRequest, *, backend) -> "NSStepState":

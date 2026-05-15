@@ -4,6 +4,9 @@ Symbol mapping
 --------------
 ``q^n``:
     ``psi``, ``u``, ``v``, and pressure history arrays at the saved step.
+``q_C^n, phi^n``:
+    AO-Fast geometric cell-volume state and compatible gauge stored through
+    ``solver/geometric_phase/*``.
 ``G^n``:
     ``grid.coords`` and ``grid.h`` retained with the state so a non-uniform
     interface-fitted run resumes on the same mesh.
@@ -22,6 +25,13 @@ from typing import Any
 
 import numpy as np
 
+from ..geometry.checkpoint import (
+    GEOMETRIC_PHASE_CHECKPOINT_PREFIX,
+    capture_geometric_phase_checkpoint,
+    has_geometric_phase_checkpoint,
+    restore_geometric_phase_checkpoint_2d,
+)
+from .geometric_phase_runtime_gpu import project_geometric_phase_state_gpu
 from .snapshot_payload import (
     SNAPSHOT_FIELDS,
     numbered_component_series,
@@ -401,6 +411,19 @@ def _capture_solver_state(arrays: dict[str, np.ndarray], solver) -> None:
         dtype=bool,
     )
     _capture_wall_contacts(arrays, solver)
+    phase_state = getattr(solver, "_geometric_phase_state", None)
+    if phase_state is not None:
+        backend_is_gpu = _backend_is_gpu(solver._backend)
+        capture_geometric_phase_checkpoint(
+            arrays,
+            phase_state,
+            solver._backend,
+            grid=solver._grid,
+            tolerance=float(
+                getattr(solver, "_active_projection_absolute_tolerance", 1.0e-11)
+            ),
+            require_compatible=not backend_is_gpu,
+        )
     _capture_transport_state(arrays, solver)
 
 
@@ -448,7 +471,105 @@ def _restore_solver_state(solver, arrays: dict[str, np.ndarray]) -> None:
     solver._velocity_bdf2_ready = bool(flags[1])
     contacts = _restore_wall_contacts(arrays)
     solver.set_wall_contacts(contacts)
+    geometric_runtime_enabled = getattr(
+        solver,
+        "_geometric_phase_runtime_enabled",
+        None,
+    )
+    if has_geometric_phase_checkpoint(arrays):
+        solver._geometric_phase_state = _restore_geometric_phase_for_solver(
+            solver,
+            arrays,
+            xp,
+        )
+    elif callable(geometric_runtime_enabled) and geometric_runtime_enabled():
+        raise CheckpointError(
+            "checkpoint is missing AO-Fast geometric phase q/phi state; "
+            "refusing to resume interface-tracking geometry from diffuse psi"
+        )
     _restore_transport_state(solver, arrays)
+
+
+def _restore_geometric_phase_for_solver(solver, arrays, xp):
+    tolerance = float(
+        getattr(solver, "_active_projection_absolute_tolerance", 1.0e-11)
+    )
+    if not _backend_is_gpu(solver._backend):
+        return restore_geometric_phase_checkpoint_2d(
+            solver._grid,
+            arrays,
+            xp,
+            tolerance=tolerance,
+            require_compatible=True,
+        )
+    prefix = GEOMETRIC_PHASE_CHECKPOINT_PREFIX
+    metadata = arrays[f"{prefix}/metadata"]
+    level = float(metadata[0])
+    state = project_geometric_phase_state_gpu(
+        solver._grid,
+        xp.asarray(arrays[f"{prefix}/q"]),
+        xp.asarray(arrays[f"{prefix}/phi"]),
+        level=level,
+        tolerance=tolerance,
+        relative_tolerance=float(
+            getattr(solver, "_active_projection_relative_tolerance", 0.0)
+        ),
+        max_newton_iterations=int(
+            getattr(solver, "_active_projection_max_iterations", 8)
+        ),
+        solver_scheme=str(
+            getattr(solver, "_active_projection_solver_scheme", "pcg")
+        ),
+        pcg_tolerance=float(
+            getattr(solver, "_active_projection_pcg_tolerance", 1.0e-12)
+        ),
+        pcg_max_iterations=int(
+            getattr(solver, "_active_projection_pcg_max_iterations", 256)
+        ),
+        pcg_roundoff_floor=getattr(
+            solver,
+            "_active_projection_pcg_roundoff_floor",
+            1.0e-14,
+        ),
+        dc_tolerance=float(
+            getattr(solver, "_active_projection_dc_tolerance", tolerance)
+        ),
+        dc_max_iterations=int(
+            getattr(solver, "_active_projection_dc_max_iterations", 8)
+        ),
+        dc_relaxation=float(
+            getattr(solver, "_active_projection_dc_relaxation", 1.0)
+        ),
+    )
+    _validate_restored_geometric_stratum(solver, arrays, state, xp, prefix=prefix)
+    return state
+
+
+def _validate_restored_geometric_stratum(
+    solver,
+    arrays,
+    state,
+    xp,
+    *,
+    prefix: str,
+) -> None:
+    stored_node_signs = xp.asarray(arrays[f"{prefix}/node_signs"])
+    stored_cell_cases = xp.asarray(arrays[f"{prefix}/cell_cases"])
+    node_changed = xp.any(stored_node_signs != state.stratum.node_signs)
+    cell_changed = xp.any(stored_cell_cases != state.stratum.cell_cases)
+    if bool(np.asarray(solver._backend.to_host(node_changed))):
+        raise CheckpointError("geometric phase checkpoint node-sign stratum is stale")
+    if bool(np.asarray(solver._backend.to_host(cell_changed))):
+        raise CheckpointError("geometric phase checkpoint cell-case stratum is stale")
+
+
+def _backend_is_gpu(backend) -> bool:
+    is_gpu = getattr(backend, "is_gpu", None)
+    return (
+        bool(is_gpu())
+        if callable(is_gpu)
+        else getattr(backend, "device", "") == "gpu"
+    )
 
 
 def _capture_results(

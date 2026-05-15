@@ -179,6 +179,83 @@ def test_corrector_reconstructed_face_state_satisfies_wall_trace():
     np.testing.assert_allclose(state.v[1:-1, 1:-1], -2.0)
 
 
+def test_corrector_no_slip_face_state_stores_wall_constrained_faces():
+    from twophase.backend import Backend
+    from twophase.simulation.ns_step_services import correct_ns_velocity_stage
+    from twophase.simulation.ns_step_state import NSStepInputs, NSStepState
+    from twophase.simulation.runtime_setup import apply_velocity_bc
+
+    backend = Backend(use_gpu=False)
+    xp = backend.xp
+    shape = (N + 1, N + 1)
+    predictor_x = xp.ones((N, N + 1))
+    predictor_y = -2.0 * xp.ones((N + 1, N))
+    zero_x = xp.zeros_like(predictor_x)
+    zero_y = xp.zeros_like(predictor_y)
+
+    class ZeroGradient:
+        def gradient(self, pressure, axis):
+            del axis
+            return xp.zeros_like(pressure)
+
+    class FaceProjection:
+        def pressure_fluxes(self, pressure, rho, **kwargs):
+            del pressure, rho, kwargs
+            return [zero_x, zero_y]
+
+        def face_fluxes(self, components):
+            del components
+            return [zero_x, zero_y]
+
+        def reconstruct_nodes(self, face_components):
+            return xp.zeros(shape), xp.zeros(shape)
+
+    state = NSStepState.from_inputs(
+        NSStepInputs(
+            psi=xp.ones(shape),
+            u=xp.zeros(shape),
+            v=xp.zeros(shape),
+            dt=0.1,
+            rho_l=1.0,
+            rho_g=1.0,
+            sigma=0.0,
+            mu=1.0,
+            bc_hook=lambda _u, _v: None,
+        ),
+        backend=backend,
+    )
+    state.rho = xp.ones(shape)
+    state.u_star = xp.zeros(shape)
+    state.v_star = xp.zeros(shape)
+    state.p_corrector = xp.zeros(shape)
+    state.f_x = xp.zeros(shape)
+    state.f_y = xp.zeros(shape)
+    state.predictor_face_components = [predictor_x, predictor_y]
+    state.pressure_correction_face_components = [zero_x, zero_y]
+
+    state = correct_ns_velocity_stage(
+        state,
+        backend=backend,
+        pressure_grad_op=ZeroGradient(),
+        face_flux_projection=True,
+        canonical_face_state=True,
+        face_native_predictor_state=True,
+        face_no_slip_boundary_state=True,
+        preserve_projected_faces=False,
+        fccd_div_op=None,
+        div_op=FaceProjection(),
+        ppe_runtime=None,
+        bc_type="wall",
+        apply_velocity_bc=apply_velocity_bc,
+    )
+
+    face_x, face_y = state.projected_face_components
+    assert np.max(np.abs(face_x[:, 0])) == pytest.approx(0.0)
+    assert np.max(np.abs(face_x[:, -1])) == pytest.approx(0.0)
+    assert np.max(np.abs(face_y[0, :])) == pytest.approx(0.0)
+    assert np.max(np.abs(face_y[-1, :])) == pytest.approx(0.0)
+
+
 def test_construction_nonuniform():
     s = _make_solver(alpha_grid=2.0)
     assert s._alpha_grid == 2.0
@@ -838,6 +915,94 @@ def test_face_native_predictor_rebuilds_pressure_coordinate_history_faces():
     np.testing.assert_allclose(state.predictor_face_components[1], xp.full(shape, 16.2))
 
 
+def test_ao_pressure_coordinate_history_suppresses_legacy_jump_sigma():
+    """AO-owned surface tension must not re-enter scalar pressure history."""
+    from twophase.backend import Backend
+    from twophase.simulation.ns_step_services import compute_ns_predictor_stage
+    from twophase.simulation.ns_step_state import NSStepInputs, NSStepState
+
+    backend = Backend(use_gpu=False)
+    xp = backend.xp
+    shape = (2, 2)
+
+    class ZeroConvection:
+        def compute(self, ctx):
+            return xp.zeros_like(ctx.velocity[0]), xp.zeros_like(ctx.velocity[1])
+
+    class RecordingPredictor:
+        def predict(self, u, v, conv_u, conv_v, mu, rho, dt, ccd, **kwargs):
+            return u + dt * conv_u, v + dt * conv_v
+
+    class FaceContract:
+        def __init__(self):
+            self.history_sigmas = []
+
+        def reconstruct_nodes(self, face_components):
+            return face_components
+
+        def face_fluxes(self, components):
+            return components
+
+        def pressure_fluxes(self, pressure, rho, **kwargs):
+            del rho
+            self.history_sigmas.append(kwargs["interface_stress_context"].sigma)
+            return [pressure, pressure]
+
+    inputs = NSStepInputs(
+        psi=xp.ones(shape),
+        u=xp.zeros(shape),
+        v=xp.zeros(shape),
+        dt=0.1,
+        rho_l=1.0,
+        rho_g=1.0,
+        sigma=7.0,
+        mu=1.0,
+    )
+    state = NSStepState.from_inputs(inputs, backend=backend)
+    state.rho = xp.ones(shape)
+    state.mu_field = xp.ones(shape)
+    state.kappa = xp.ones(shape)
+    state.previous_base_pressure = xp.full(shape, 3.0)
+    state.face_velocity_components = [xp.zeros(shape), xp.zeros(shape)]
+    state.geometric_runtime_capillary_application = SimpleNamespace(
+        pressure_exact_static=False,
+        capillary_drive_present=True,
+        pressure_reaction_projection_status="pressure_component_hodge_split",
+        predictor_face_increment=[xp.zeros(shape), xp.zeros(shape)],
+        pressure_reaction_increment_weighted_l2=0.0,
+        predictor_increment_weighted_l2=0.0,
+    )
+    state.conservative_transport_certificate = {
+        "ao_nonstatic_surface_tension_slot_bypassed": True,
+    }
+    div_op = FaceContract()
+    ppe_runtime = SimpleNamespace(
+        ppe_solver_name="fccd_iterative",
+        ppe_coefficient_scheme="phase_separated",
+        ppe_interface_coupling_scheme="affine_jump",
+        pressure_history_mode="pressure_coordinate",
+        pressure_history_extrapolation="constant",
+    )
+
+    compute_ns_predictor_stage(
+        state,
+        backend=backend,
+        ccd=None,
+        conv_term=ZeroConvection(),
+        viscous_predictor=RecordingPredictor(),
+        scheme_runtime=SimpleNamespace(convection_time_scheme="euler"),
+        conv_ab2_ready=False,
+        conv_prev=None,
+        projection_consistent_buoyancy=True,
+        face_native_predictor_state=True,
+        div_op=div_op,
+        bc_type="periodic",
+        ppe_runtime=ppe_runtime,
+    )
+
+    assert div_op.history_sigmas == [0.0]
+
+
 def test_implicit_bdf2_viscous_predictor_zero_operator_matches_formula():
     """With V=0, the matrix-free solve reduces exactly to the BDF2 affine RHS."""
     from twophase.backend import Backend
@@ -1007,7 +1172,7 @@ def test_implicit_bdf2_viscous_dc_reduces_high_residual():
     )
 
     history = predictor.last_residual_history
-    assert len(history) == 4
+    assert len(history) >= 4
     assert all(after < before for before, after in zip(history, history[1:]))
     assert history[-1] < 0.05 * history[0]
 
@@ -1063,9 +1228,102 @@ def test_implicit_bdf2_viscous_dc_scalar_low_reduces_high_residual():
 
     history = predictor.last_residual_history
     assert predictor.last_diagnostics["viscous_dc_low_operator_scalar"] == pytest.approx(1.0)
-    assert len(history) == 4
+    assert len(history) >= 4
     assert all(after < before for before, after in zip(history, history[1:]))
     assert history[-1] < 0.25 * history[0]
+
+
+def test_viscous_dc_uses_residual_minimising_step_length():
+    """An oversized high/low mismatch must be corrected by alpha_opt, not fixed omega."""
+    from twophase.simulation.ns_pipeline import TwoPhaseNSSolver
+    from twophase.simulation.viscous_helmholtz_dc import ViscousHelmholtzDCSolver
+
+    class _ScaledHighViscous:
+        Re = 1.0
+
+        def __init__(self, operator_scale: float) -> None:
+            self.operator_scale = float(operator_scale)
+
+        def _evaluate(self, velocity_components, mu, rho, ccd, psi=None):
+            del mu, rho, ccd, psi
+            return [
+                (1.0 - self.operator_scale) * component
+                for component in velocity_components
+            ]
+
+    solver_runtime = TwoPhaseNSSolver(4, 4, 1.0, 1.0, use_gpu=False)
+    backend = solver_runtime._backend
+    xp = backend.xp
+    shape = solver_runtime._grid.shape
+    base_u = xp.ones(shape)
+    base_v = 2.0 * xp.ones(shape)
+    zeros = xp.zeros(shape)
+    rho = xp.ones(shape)
+
+    solver = ViscousHelmholtzDCSolver(
+        backend,
+        _ScaledHighViscous(operator_scale=10.0),
+        tolerance=1.0e-12,
+        max_corrections=2,
+        relaxation=1.0,
+    )
+    u_star, v_star = solver.solve(
+        base_velocity=[base_u, base_v],
+        explicit_acceleration=[zeros, zeros],
+        mu=zeros,
+        rho=rho,
+        dt_effective=1.0,
+        ccd=solver_runtime._ccd,
+    )
+
+    np.testing.assert_allclose(backend.asnumpy(u_star), 0.1, atol=1.0e-12)
+    np.testing.assert_allclose(backend.asnumpy(v_star), 0.2, atol=1.0e-12)
+    assert solver.last_diagnostics["viscous_dc_line_search"] == pytest.approx(1.0)
+    assert solver.last_diagnostics["viscous_dc_corrections"] == pytest.approx(1.0)
+    assert solver.last_diagnostics["viscous_dc_converged"] == pytest.approx(1.0)
+
+
+@pytest.mark.gpu
+def test_viscous_dc_gpu_component_low_uses_prepared_spsm(gpu_backend):
+    """GPU component low-order Helmholtz solves must use explicit SpSM plans."""
+    del gpu_backend
+    from twophase.simulation.ns_pipeline import TwoPhaseNSSolver
+    from twophase.simulation.viscous_helmholtz_dc import ViscousHelmholtzDCSolver
+
+    class _ZeroHighViscous:
+        Re = 1.0
+
+        def _evaluate(self, velocity_components, mu, rho, ccd, psi=None):
+            del mu, rho, ccd, psi
+            return [0.0 * component for component in velocity_components]
+
+    solver_runtime = TwoPhaseNSSolver(4, 4, 1.0, 1.0, use_gpu=True)
+    backend = solver_runtime._backend
+    xp = backend.xp
+    shape = solver_runtime._grid.shape
+    zeros = xp.zeros(shape)
+    rho = xp.ones(shape)
+
+    solver = ViscousHelmholtzDCSolver(
+        backend,
+        _ZeroHighViscous(),
+        tolerance=1.0e-12,
+        max_corrections=1,
+        low_operator="component",
+    )
+    solver.solve(
+        base_velocity=[xp.ones(shape), 2.0 * xp.ones(shape)],
+        explicit_acceleration=[zeros, zeros],
+        mu=zeros,
+        rho=rho,
+        dt_effective=1.0,
+        ccd=solver_runtime._ccd,
+    )
+
+    assert solver.last_diagnostics["viscous_dc_low_prepared_spsm"] == pytest.approx(1.0)
+    assert solver.last_diagnostics[
+        "viscous_dc_low_prepared_spsm_analysis_count"
+    ] == pytest.approx(4.0)
 
 
 def test_pressure_projection_uses_projection_dt():

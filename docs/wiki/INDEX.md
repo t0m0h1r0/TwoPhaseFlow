@@ -1,4 +1,4 @@
-# Wiki Index — 373 entries
+# Wiki Index — 384 entries
 
 ## Active Retrieval Gate
 
@@ -8,11 +8,39 @@ paper-theory contract digest, then [WIKI-X-040](cross-domain/WIKI-X-040.md) for
 recent research findings.  For AO-Fast capillary admission and Chapter 14 YAML
 state-space boundaries, use [WIKI-X-049](cross-domain/WIKI-X-049.md),
 [WIKI-T-169](theory/WIKI-T-169.md), and
-[WIKI-E-063](experiment/WIKI-E-063.md).  Older cards remain listed for
-provenance, but cards marked SUPERSEDED or REFERENCE must not be used as current
-algorithm policy without their curation notes.
+[WIKI-E-063](experiment/WIKI-E-063.md).  When a problem occurs, first use
+[WIKI-X-051](cross-domain/WIKI-X-051.md) as the mandatory incident-recall
+protocol for zero-base, theory-first RCA and countermeasure design.  When
+implementation tests violate theory, then use
+[WIKI-X-050](cross-domain/WIKI-X-050.md) to check nonuniform
+metrics and interface-tracking grid rebuild contracts before tuning.  Use the
+same card as an implementation-review gate before accepting solver, GPU, YAML,
+or cache changes. For GPU implementation of fitted-grid updates, use
+[WIKI-T-171](theory/WIKI-T-171.md) so the nonuniform/interface-tracking
+contracts are ported to device rather than removed. For GPU optimization, use
+[WIKI-L-043](code/WIKI-L-043.md) before route-level retuning so hidden D2H/H2D
+boundaries are eliminated or justified first; once transfers are not dominant,
+use [WIKI-L-044](code/WIKI-L-044.md) so active geometry, swept flux, sparse
+analysis, and PCG scaling are accelerated by exact finite-stratum fusion and
+operator-epoch reuse. For the concrete Chapter 14 AO-Fast capillary RCA ledger,
+use [WIKI-X-052](cross-domain/WIKI-X-052.md); for the moving-grid AO-Fast
+face-cochain and pressure-history contract, use
+[WIKI-T-172](theory/WIKI-T-172.md); for the literature-survey-backed
+capillary-wave route, use [WIKI-T-173](theory/WIKI-T-173.md); for the latest
+zero-base capillary boundary-state RCA, use
+[WIKI-X-053](cross-domain/WIKI-X-053.md), which records that Chapter 14
+capillary fixes must preserve phase-separated PPE + HFE/DC rather than
+switching to GMRES, monolithic FD, or non-HFE pressure handling; for the
+remaining AO-Fast GPU
+efficiency bottleneck, use
+[WIKI-L-045](code/WIKI-L-045.md). Before implementing or reviewing an
+established-theory change, use [WIKI-L-046](code/WIKI-L-046.md) as the
+equation-to-code contract gate. Older cards remain listed for
+provenance, but cards marked
+SUPERSEDED or REFERENCE must not be used as current algorithm policy without
+their curation notes.
 
-## Theory (170)
+## Theory (173)
 
 | REF-ID | Title |
 |--------|-------|
@@ -186,8 +214,11 @@ algorithm policy without their curation notes.
 | [WIKI-T-168](theory/WIKI-T-168.md) | Constrained Face-State Space Reformulation |
 | [WIKI-T-169](theory/WIKI-T-169.md) | Geometric Cell Fraction State-Space Reformulation |
 | [WIKI-T-170](theory/WIKI-T-170.md) | Residual-Minimizing Defect Correction for PPE |
+| [WIKI-T-171](theory/WIKI-T-171.md) | GPU-Resident Interface-Fitted Grid Rebuild Theory |
+| [WIKI-T-172](theory/WIKI-T-172.md) | AO-Fast Moving-Grid Face-Cochain and Pressure-History Contract |
+| [WIKI-T-173](theory/WIKI-T-173.md) | Capillary-Wave Surface-Tension Literature Survey and AO-Fast Route |
 
-## Cross-Domain (49)
+## Cross-Domain (53)
 
 | REF-ID | Title |
 |--------|-------|
@@ -240,6 +271,10 @@ algorithm policy without their curation notes.
 | [WIKI-X-047](cross-domain/WIKI-X-047.md) | Static-Droplet RCA Consolidates Projection, Geometry, and Output Contracts |
 | [WIKI-X-048](cross-domain/WIKI-X-048.md) | Ch14 Capillary Hodge Trial Ledger: Knowledge, Failures, and Falsified Routes |
 | [WIKI-X-049](cross-domain/WIKI-X-049.md) | AO-Fast Capillary Admission and Chapter 14 YAML Boundary |
+| [WIKI-X-050](cross-domain/WIKI-X-050.md) | Theory-First Debug Priority: Nonuniform Metrics and Interface-Tracking Rebuilds |
+| [WIKI-X-051](cross-domain/WIKI-X-051.md) | Theory-First Problem RCA and Countermeasure Protocol |
+| [WIKI-X-052](cross-domain/WIKI-X-052.md) | Ch14 AO-Fast Capillary RCA Trial Ledger |
+| [WIKI-X-053](cross-domain/WIKI-X-053.md) | Ch14 Capillary Zero-Base RCA: Boundary-Constrained Face State |
 
 ## Experiment (63)
 
@@ -368,7 +403,7 @@ algorithm policy without their curation notes.
 | [WIKI-M-030](meta/WIKI-M-030.md) | Meta-Prompt Evolution Needs Telemetry, Skills, and Tool-Trust Gates |
 | [WIKI-M-031](meta/WIKI-M-031.md) | Review Artifacts Close the Loop with Finding, Fix, and Validation |
 
-## Code (42)
+## Code (46)
 
 | REF-ID | Title |
 |--------|-------|
@@ -414,3 +449,7 @@ algorithm policy without their curation notes.
 | [WIKI-L-040](code/WIKI-L-040.md) | Remote GPU Runs Must Prove the GPU Route Is Active |
 | [WIKI-L-041](code/WIKI-L-041.md) | YAML Route Flags Make Numerical Contracts Auditable |
 | [WIKI-L-042](code/WIKI-L-042.md) | Single-Core CPU Saturation Does Not Imply CPU-Parallel GPU Relief |
+| [WIKI-L-043](code/WIKI-L-043.md) | GPU Optimization Starts by Removing Hidden D2H/H2D Boundaries |
+| [WIKI-L-044](code/WIKI-L-044.md) | Post-Transfer GPU Acceleration Uses Finite-Stratum Fusion |
+| [WIKI-L-045](code/WIKI-L-045.md) | AO-Fast GPU Efficiency Bottleneck Is Fixed-Loop Geometry Compatibility |
+| [WIKI-L-046](code/WIKI-L-046.md) | Theory-Established Implementation Review Gate |

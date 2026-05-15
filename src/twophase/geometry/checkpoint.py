@@ -96,9 +96,9 @@ def capture_geometric_phase_checkpoint(
     arrays[f"{prefix}/metadata"] = _np(backend).asarray(
         [
             float(state.stratum.level),
-            float(state.stratum.sign_margin),
-            float(state.compatibility_residual_linf),
-            float(state.compatibility_residual_l2),
+            _host_scalar_float(backend, state.stratum.sign_margin),
+            _host_scalar_float(backend, state.compatibility_residual_linf),
+            _host_scalar_float(backend, state.compatibility_residual_l2),
         ],
         dtype=float,
     )
@@ -106,7 +106,10 @@ def capture_geometric_phase_checkpoint(
     arrays[f"{prefix}/has_ledger"] = _np(backend).asarray(has_ledger, dtype=bool)
     if has_ledger:
         arrays[f"{prefix}/ledger"] = _np(backend).asarray(
-            [getattr(state.ledger, field) for field in _LEDGER_FIELDS],
+            [
+                _host_scalar_float(backend, getattr(state.ledger, field))
+                for field in _LEDGER_FIELDS
+            ],
             dtype=float,
         )
 
@@ -215,6 +218,10 @@ def _validate_stratum(
 
 def _put(arrays: dict[str, object], key: str, value, backend) -> None:
     arrays[key] = _np(backend).array(backend.to_host(value), copy=True)
+
+
+def _host_scalar_float(backend, value) -> float:
+    return float(_np(backend).asarray(backend.to_host(value)))
 
 
 def _np(backend):

@@ -26,10 +26,12 @@ class NSPPEFactoryOptions:
     interface_coupling_scheme: str
     pressure_force_contract: str
     scalar_operator_pairing: str
+    boundary_face_space: str
     defect_correction: bool
     dc_max_iterations: int
     dc_tolerance: float
     dc_relaxation: float
+    dc_fail_close: bool
 
 
 @dataclass(frozen=True)
@@ -83,6 +85,7 @@ def build_ns_ppe_cfg_shim(
             ppe_interface_coupling_scheme=options.interface_coupling_scheme,
             pressure_force_contract=options.pressure_force_contract,
             scalar_operator_pairing=options.scalar_operator_pairing,
+            boundary_face_space=options.boundary_face_space,
         )
     )
 
@@ -109,6 +112,7 @@ def build_ns_plain_ppe_solver(
             pcr_stages=options.pcr_stages,
         )
         if options.solver_name in {
+            "fd_direct",
             "fd_iterative", "fd_matrixfree",
             "fvm_iterative", "fvm_matrixfree",
             "fccd_iterative", "fccd_matrixfree",
@@ -169,6 +173,7 @@ def build_ns_ppe_solver(
             max_corrections=options.dc_max_iterations,
             tolerance=options.dc_tolerance,
             relaxation=options.dc_relaxation,
+            fail_on_nonconvergence=options.dc_fail_close,
         )
     return build_ns_plain_ppe_solver(
         backend=backend,

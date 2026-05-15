@@ -40,11 +40,14 @@ The five production configs share the chapter-14 execution contract introduced
 for the rising-bubble route: conservative common-flux momentum transport,
 `predictor.assembly: none`, projected-face preservation, pressure-coordinate
 BDF2 history, and an explicit fail-closed boundary-Hodge state-space contract.
-All five YAMLs declare the full AO-Fast `geometric_cell_fraction` contract:
+All five YAMLs select the active-geometry capillary decomposition scheme with
+`interface.state_space: active_geometry_capillary`.  The parser validates that
+scheme against the fixed short-paper active-geometry contract internally:
 transported `q`, normalized `theta`, P1 gauge `phi`, active-cached
 compatibility, required GPU storage, no implicit dense runtime fallback,
-`geometric_swept_volume` transport, and `bundle_virtual_work` pressure-jump
-coupling with `pressure_component_hodge` reaction.
+`geometric_swept_volume` transport, and
+`bundle_virtual_work` pressure-jump coupling with
+`pressure_component_hodge` reaction.
 
 `ch14_capillary.yaml` and `ch14_oscillating_droplet.yaml` are SI water-air
 cases at about 20 C.  The capillary wave uses a 20 mm x 20 mm tank with
@@ -56,9 +59,12 @@ two-layer finite-depth dispersion relation because the 10 mm interface sits
 midway between the upper and lower walls of the 20 mm tank; the paper-facing
 snapshot window then follows the signed mode-2 production response over one
 observed cycle.  The oscillating-droplet window follows the Rayleigh-Lamb
-water-air period.  All five Chapter 14 YAMLs use AO-Fast `q` as the interface
-carrier; Ridge--Eikonal reinitialization is disabled because compatibility
-projection is a separate AO contract, not a diffuse-CLS redistance step.
+water-air period.  All five Chapter 14 YAMLs use active-geometry `q` as the
+interface carrier; the `interface.reinitialization` block therefore selects
+`compatibility_projection` every step.  This is not diffuse-CLS redistance:
+it is the hard active-geometry constraint solve that restores `Q_h(phi)=q`
+after swept-volume `q` transport and before bundle capillarity evaluates
+surface-energy work.
 
 The five production configs emit periodic snapshots with `psi`, `velocity`,
 and pressure-family figures. The runner stores raw fields in `data.npz` under
@@ -87,6 +93,33 @@ representative instead of testing the discrete pressure-work contract.
 
 The schema is organized by *what the setting means*, not by where the current
 Python implementation stores it.
+
+## YAML Ownership Philosophy
+
+The YAML is the experiment contract.  The user should explicitly choose the
+scientific and numerical degrees of freedom:
+
+- Scheme selection: `interface.state_space`, interface transport, momentum
+  term discretizations, gravity formulation, PPE operator/solver, and
+  `projection.active_geometry.solver.scheme`.
+- Parameter selection: grid resolution/distribution, material constants, CFL
+  multiplier, final time, tolerances, iteration limits, relaxation factors, and
+  fallback triggers.
+- Initial and boundary state: `initial_condition`, `initial_velocity`, and
+  `boundary_condition`.
+- Output and diagnostics: result directory, snapshots, figures, checkpoints,
+  and diagnostic names.
+
+Code should not hide those choices behind a broad preset.  The parser may only
+validate combinations, normalize local aliases, and derive internal runtime
+contracts that are not meaningful experiment knobs: for example the
+q/theta/phi handoff fields, active-cache implementation markers, GPU-required
+runtime guard, dense-reference test boundary, and derived geometry ledgers.
+
+When a block affects the mathematical scheme or a convergence parameter, keep
+it visible in YAML.  When a value is merely a consequence of an explicit scheme
+choice, let the parser derive it and fail closed if the surrounding YAML
+contradicts the paper contract.
 
 ## Top-Level Sections
 
@@ -211,8 +244,8 @@ numerics:
       primary: q
 ```
 
-For AO-Fast Chapter 14 YAMLs, `tracking.primary: q` is part of the explicit
-state-space contract.
+For active-geometry Chapter 14 YAMLs, `tracking.primary: q` follows from the selected
+scheme contract.
 
 Tracking redistance frequency is intentionally separate from reinitialization
 frequency:
@@ -297,8 +330,9 @@ interface transport, momentum terms, and projection/PPE.
   entry in `numerics.time`; all per-equation choices live in their own blocks.
 - `interface.transport`: transported variable, spatial scheme, and physical-time
   integrator co-located in one block.
-- `interface.tracking`: tracking/redistance policy.  Chapter 14 AO-Fast YAMLs
-  declare `primary: q` so the q/theta/phi state-space contract is visible.
+- `interface.tracking`: tracking/redistance policy.  Chapter 14
+  active-geometry capillary YAMLs declare `primary: q` so the q/theta/phi
+  state-space contract is visible.
 - `momentum.terms`: spatial/time choices for physical momentum terms. Pressure
   and surface tension are written as `pressure` and `surface_tension`, not as
   hidden derivative knobs. `pressure.gradient` and `surface_tension.gradient`
@@ -329,17 +363,29 @@ must be independently visible.
 
 The dynamic ch14 YAMLs share the production stack:
 
+The stack is intentionally written out in YAML.  Do not replace it with a
+single broad `numerical_stack` key: that would remove the user's responsibility
+for scheme selection and convergence parameter selection.  The code-side role
+is to reject contradictory combinations, not to choose the experiment for the
+user.
+
+- `interface.state_space: active_geometry_capillary` — the user-facing
+  active-geometry capillary decomposition selection.
+  Internal projection details such as `active_cached`, GPU storage, dense
+  reference policy, and support budgets are derived and validated by the parser
+  rather than exposed as experiment knobs.
 - `interface.transport.variable: q` and
-  `interface.transport.spatial: geometric_swept_volume` — AO-Fast owns the
+  `interface.transport.spatial: geometric_swept_volume` — active geometry owns the
   material phase as physical cell volume, while `theta` and `phi` are derived
   views constrained by the explicit state-space contract.
 - `interface.transport.time_integrator: tvd_rk3` — co-located with the spatial
   scheme in the same `transport:` block.
 - `interface.geometry.curvature.method: face_implicit` — scalar face-native
   Young-Laplace diagnostic geometry on fitted grids.
-- `interface.reinitialization.schedule.every_steps` — Ridge--Eikonal profile
-  restoration is disabled (`0`) for AO-Fast Chapter 14 YAMLs; AO compatibility
-  projection is not a diffuse redistance fallback.
+- `interface.reinitialization.algorithm: compatibility_projection` with
+  `schedule.every_steps: 1` — the active-geometry q/theta/phi compatibility
+  projection is applied every step.  This is not Ridge--Eikonal diffuse
+  redistance and must not be replaced by a hidden profile-restoration fallback.
 - `momentum.terms.convection.spatial: uccd6` + `time_integrator: imex_bdf2` —
   WIKI-T-062 positions UCCD6 as the order-preserving upwind CCD remedy for
   transport/Gibbs control.
@@ -347,11 +393,13 @@ The dynamic ch14 YAMLs share the production stack:
   `momentum.terms.surface_tension.formulation: pressure_jump` — surface tension
   enters the PPE as an interface stress condition rather than as a CSF body force.
 - `momentum.terms.surface_tension.source: bundle_virtual_work` exposes
-  `closed_interface.endpoint: geometric_cell_fraction` and
+  `closed_interface.endpoint`.  Use `column_height_graph` when
+  `tracking.gauge_reconstruction: column_height_graph`; use
+  `geometric_cell_fraction` for the fixed-stratum endpoint.  The matching
   `residual_contract: {metric: pressure_adjoint, constraints: [cell_volume],
-  fail_close: true}`. These keys state the AO-Fast theorem contract: the
+  fail_close: true}`. These keys state the active-geometry theorem contract: the
   surface-energy covector, cell-volume reaction, PPE source, and face corrector
-  all use the geometric q endpoint and the same pressure-adjoint face metric.
+  all use the YAML-selected q endpoint and the same pressure-adjoint face metric.
 - `momentum.terms.viscosity.spatial: ccd` + `time_integrator: implicit_bdf2` —
   BDF2 Helmholtz path for stiffness-relevant viscous terms. The nested
   `solver.kind` selects `defect_correction` (default production path) or
@@ -389,11 +437,93 @@ viscosity:
   with the low-order FD `L_L` operator. The FD matrix factor is reused within
   one outer DC solve, matching the paper's grid-defect method without
   re-entering the legacy FVM direct sparse solve for every correction RHS.
+  `corrections.max_iterations` is a user-owned cap, not a success criterion;
+  convergence is accepted only through the residual tolerance, and
+  `corrections.fail_close: true` keeps non-convergence visible.
+- `projection.active_geometry.solver` selects the active q/phi compatibility
+  projection solver policy.  This is separate from `interface.state_space`:
+  the state-space key selects active geometry, while this block selects how the
+  active projection is solved and stopped.  Production YAMLs currently use
+  `scheme: pcg`; `dc` and `dc_then_pcg` are explicit research settings.
 
 Experiment-specific YAMLs may change geometry, boundary conditions, initial
 fields, gravity, output cadence, and final time. They should not change the
 canonical ch14 numerical stack above without recording a new paper-backed
 experiment type.
+
+## Active Geometry Solver Semantics
+
+`projection.active_geometry.solver.scheme` selects one of three explicit
+policies:
+
+- `pcg`: PCG/Newton only; no DC fallback.
+- `dc`: residual-monotone defect correction only; no PCG fallback.
+- `dc_then_pcg`: start with residual-monotone DC and fall back to PCG only on
+  listed triggers.
+
+PCG-only example:
+
+```yaml
+projection:
+  active_geometry:
+    solver:
+      scheme: pcg
+      convergence:
+        norm: linf
+        absolute_tolerance: 1.0e-11
+        relative_tolerance: 0.0
+        max_iterations: 8
+      pcg:
+        tolerance: 1.0e-12
+        max_iterations: 256
+        roundoff_floor: 1.0e-14
+```
+
+DC-only example:
+
+```yaml
+projection:
+  active_geometry:
+    solver:
+      scheme: dc
+      convergence:
+        norm: linf
+        absolute_tolerance: 1.0e-11
+        relative_tolerance: 0.0
+        max_iterations: 8
+      dc:
+        tolerance: 1.0e-11
+        max_iterations: 8
+        relaxation: 1.0
+```
+
+DC with explicit PCG fallback:
+
+```yaml
+projection:
+  active_geometry:
+    solver:
+      scheme: dc_then_pcg
+      convergence:
+        norm: linf
+        absolute_tolerance: 1.0e-11
+        relative_tolerance: 0.0
+        max_iterations: 8
+      dc:
+        tolerance: 1.0e-11
+        max_iterations: 4
+        relaxation: 0.75
+      pcg:
+        tolerance: 1.0e-12
+        max_iterations: 256
+        roundoff_floor: 1.0e-14
+      fallback:
+        triggers: [not_converged, residual_floor_exceeded]
+```
+
+Fallback is never implicit: declaring `scheme: dc` with a `fallback:` block is
+rejected; declaring `scheme: pcg` with DC settings is rejected.  `roundoff_floor`
+must be no larger than the PCG tolerance.
 
 ## PPE Solver Semantics
 

@@ -21,7 +21,22 @@ def parse_ppe_solver_config(
     path: str,
     discretization: str = "fvm",
     discretization_path: str = "projection.poisson.operator.discretization",
-) -> tuple[str, str | None, str, float, int, int | None, str, int | None, float, bool, int, float, float]:
+) -> tuple[
+    str,
+    str | None,
+    str,
+    float,
+    int,
+    int | None,
+    str,
+    int | None,
+    float,
+    bool,
+    int,
+    float,
+    float,
+    bool,
+]:
     kind = validate_choice(solver_cfg["kind"], _PPE_SOLVER_KINDS, f"{path}.kind")
     if kind != "defect_correction" and "base_solver" in solver_cfg:
         raise ValueError(
@@ -31,6 +46,7 @@ def parse_ppe_solver_config(
     dc_max_iterations = 0
     dc_tolerance = 0.0
     dc_relaxation = 0.8
+    dc_fail_close = False
     effective_solver_cfg = solver_cfg
     effective_kind = kind
     effective_path = path
@@ -78,6 +94,7 @@ def parse_ppe_solver_config(
         dc_max_iterations = int(corrections.get("max_iterations", 3))
         dc_tolerance = float(corrections.get("tolerance", 1.0e-8))
         dc_relaxation = float(corrections.get("relaxation", 0.8))
+        dc_fail_close = bool(corrections.get("fail_close", False))
         if dc_max_iterations <= 0:
             raise ValueError(f"{path}.corrections.max_iterations must be > 0")
         if dc_tolerance <= 0.0:
@@ -132,6 +149,7 @@ def parse_ppe_solver_config(
         dc_max_iterations,
         dc_tolerance,
         dc_relaxation,
+        dc_fail_close,
     )
 
 

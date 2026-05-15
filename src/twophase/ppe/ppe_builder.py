@@ -70,6 +70,10 @@ class PPEBuilder:
         grid: "Grid",
         bc_type: str = "wall",
         bc_spec: "BoundarySpec | None" = None,
+        *,
+        coefficient_scheme: str = "phase_density",
+        interface_coupling_scheme: str = "none",
+        interface_stress_context=None,
     ):
         self.backend = backend
         self.xp = backend.xp
@@ -78,6 +82,9 @@ class PPEBuilder:
         self.N = grid.N
         self.shape_field = grid.shape   # (Nx+1, Ny+1[, Nz+1])
         self.bc_type = bc_type
+        self.coefficient_scheme = str(coefficient_scheme).strip().lower()
+        self.interface_coupling_scheme = str(interface_coupling_scheme).strip().lower()
+        self.interface_stress_context = interface_stress_context
 
         # Total degrees of freedom = number of grid nodes
         self.n_dof = int(np.prod(self.shape_field))
@@ -97,6 +104,11 @@ class PPEBuilder:
         # GPU acceleration (build_values_xp): lazily populated on first call.
         self._face_indices_dev: dict = {}   # {ax: (idx_L_dev, idx_R_dev)}
         self._gpu_coeff_cache: dict = {}    # static device arrays (BC masks, non-uniform coeff)
+
+    def set_interface_stress_context(self, context) -> None:
+        """Bind affine jump geometry used by the low-order PPE coefficients."""
+        self.interface_stress_context = context
+        self.invalidate_gpu_cache()
 
     # ── Public API ────────────────────────────────────────────────────────
 

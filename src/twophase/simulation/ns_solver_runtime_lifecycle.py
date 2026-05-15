@@ -70,9 +70,53 @@ def initialise_ns_solver_from_options(solver, options) -> None:
     solver._conservative_momentum_components = None
     solver._p_prev_accel_face_components = None
     solver._p_base_prev2_dev = None
+    solver._prepared_geometric_grid_rebuild_step = None
+    solver._active_projection_solver_scheme = str(
+        getattr(options.interface, "active_projection_solver_scheme", "pcg")
+    ).strip().lower()
+    solver._active_projection_absolute_tolerance = float(
+        getattr(options.interface, "active_projection_absolute_tolerance", 1.0e-11)
+    )
+    solver._active_projection_relative_tolerance = float(
+        getattr(options.interface, "active_projection_relative_tolerance", 0.0)
+    )
+    solver._active_projection_max_iterations = int(
+        getattr(options.interface, "active_projection_max_iterations", 8)
+    )
+    solver._active_projection_pcg_tolerance = float(
+        getattr(options.interface, "active_projection_pcg_tolerance", 1.0e-12)
+    )
+    solver._active_projection_pcg_max_iterations = int(
+        getattr(options.interface, "active_projection_pcg_max_iterations", 256)
+    )
+    solver._active_projection_pcg_roundoff_floor = getattr(
+        options.interface,
+        "active_projection_pcg_roundoff_floor",
+        1.0e-14,
+    )
+    solver._active_projection_dc_tolerance = float(
+        getattr(options.interface, "active_projection_dc_tolerance", 1.0e-11)
+    )
+    solver._active_projection_dc_max_iterations = int(
+        getattr(options.interface, "active_projection_dc_max_iterations", 8)
+    )
+    solver._active_projection_dc_relaxation = float(
+        getattr(options.interface, "active_projection_dc_relaxation", 1.0)
+    )
+    solver._interface_gauge_reconstruction = str(
+        getattr(options.interface, "interface_gauge_reconstruction", "fixed_stratum")
+    ).strip().lower()
+    solver._capillary_closed_interface_endpoint = str(
+        getattr(
+            options.schemes,
+            "capillary_closed_interface_endpoint",
+            "conservative_psi",
+        )
+    ).strip().lower()
     solver._record_interface_projection_fields = False
     solver._last_interface_projection_fields = None
     solver._initialise_geometry(options.grid)
+    _validate_geometric_backend(solver, options)
     solver._initialise_interface_runtime(options.interface)
     solver._initialise_ppe_runtime(
         options.ppe,
@@ -93,3 +137,15 @@ def initialise_ns_solver_from_options(solver, options) -> None:
         ),
     )
     bind_ns_runtime_bootstrap(solver, bootstrap)
+
+
+def _validate_geometric_backend(solver, options) -> None:
+    """Reject active-geometry execution on the dense CPU runtime."""
+    if (
+        getattr(options.schemes, "advection_scheme", "") == "geometric_swept_volume"
+        and not solver._backend.is_gpu()
+    ):
+        raise RuntimeError(
+            "active_geometry_capillary requires a GPU backend; CPU dense "
+            "runtime fallback is not permitted for AO-Fast"
+        )

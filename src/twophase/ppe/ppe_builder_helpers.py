@@ -7,6 +7,46 @@ import numpy as np
 from ..core.boundary import is_periodic_axis
 
 
+def _face_inverse_density_for_indices(builder, *, rho_flat, idx_L_xp, idx_R_xp):
+    """Return low-order face coefficients for the configured PPE law.
+
+    The FD direct matrix is the defect-correction low-order operator.  It must
+    approximate the same physical face law as the target high-order PPE; for
+    affine jumps that means the cut-face phase-resistance coefficient, not the
+    smooth nodal harmonic mean.
+    """
+    xp = builder.xp
+    rho_L = rho_flat[idx_L_xp]
+    rho_R = rho_flat[idx_R_xp]
+    base_coeff = 2.0 / (rho_L + rho_R)
+    if (
+        getattr(builder, "coefficient_scheme", "phase_density") != "phase_separated"
+        or getattr(builder, "interface_coupling_scheme", "none") != "affine_jump"
+    ):
+        return base_coeff
+    context = getattr(builder, "interface_stress_context", None)
+    if context is None or getattr(context, "psi", None) is None:
+        raise RuntimeError(
+            "phase_separated affine-jump PPEBuilder requires an "
+            "interface-stress context before assembling the low-order matrix"
+        )
+
+    psi_flat = xp.asarray(context.psi).ravel()
+    psi_L = psi_flat[idx_L_xp]
+    psi_R = psi_flat[idx_R_xp]
+    threshold = xp.asarray(float(context.phase_threshold), dtype=base_coeff.dtype)
+    cut_face = (psi_L < threshold) != (psi_R < threshold)
+    dpsi = psi_R - psi_L
+    denominator = xp.where(cut_face, dpsi, xp.ones_like(dpsi))
+    theta = xp.where(
+        cut_face,
+        (threshold - psi_L) / denominator,
+        xp.zeros_like(dpsi),
+    )
+    cut_coeff = 1.0 / (theta * rho_L + (1.0 - theta) * rho_R)
+    return xp.where(cut_face, cut_coeff, base_coeff)
+
+
 def build_ppe_matrix_triplets(builder, rho) -> tuple:
     """Build the sparse PPE matrix COO triplets for the given density field."""
     xp = builder.xp
@@ -29,9 +69,12 @@ def build_ppe_matrix_triplets(builder, rho) -> tuple:
         N_ax = builder.N[ax]
         idx_L_xp, idx_R_xp = builder._face_indices_dev[ax]
 
-        rho_L = rho_flat[idx_L_xp]
-        rho_R = rho_flat[idx_R_xp]
-        a_f = 2.0 / (rho_L + rho_R)
+        a_f = _face_inverse_density_for_indices(
+            builder,
+            rho_flat=rho_flat,
+            idx_L_xp=idx_L_xp,
+            idx_R_xp=idx_R_xp,
+        )
 
         if not builder.grid.uniform:
             d_f_xp, dv_L_xp, dv_R_xp = _get_nonuniform_face_cache(
@@ -55,9 +98,12 @@ def build_ppe_matrix_triplets(builder, rho) -> tuple:
 
         if is_periodic_axis(builder.bc_type, ax, builder.ndim):
             idx_wL_xp, idx_wR_xp = _get_wrap_face_index_cache(builder, ax=ax)
-            rho_wL = rho_flat[idx_wL_xp]
-            rho_wR = rho_flat[idx_wR_xp]
-            a_w = 2.0 / (rho_wL + rho_wR)
+            a_w = _face_inverse_density_for_indices(
+                builder,
+                rho_flat=rho_flat,
+                idx_L_xp=idx_wL_xp,
+                idx_R_xp=idx_wR_xp,
+            )
             if not builder.grid.uniform:
                 d_wrap, dv_wL, dv_wR = _get_nonuniform_wrap_cache(builder, ax=ax)
                 coeff_wL = a_w / d_wrap / dv_wL

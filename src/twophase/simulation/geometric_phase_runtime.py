@@ -70,6 +70,12 @@ class GeometricRuntimeCapillaryState:
     young_laplace_normal_residual_linf: float
     weighted_residual_acceleration_l2: float
     max_abs_residual_face_covector: float
+    component_reaction_accelerations: tuple[tuple[Any, Any], ...] = ()
+    pressure_reaction_projection_status: str = "pressure_hodge_diagnostic"
+    pressure_jump_gas_minus_liquid: Any = None
+    pressure_jump_psi: Any = None
+    pressure_jump_phase_threshold: float = 0.5
+    pressure_jump_status: str = "none"
 
 
 @dataclass(frozen=True)
@@ -89,6 +95,87 @@ class GeometricRuntimeCapillaryApplicationState:
     max_abs_pressure_balanced_face_increment: float
     pressure_exact_static: bool
     capillary_drive_present: bool
+    pressure_reaction_coordinate: Any = None
+    face_hodge_weights: tuple[Any, Any] | None = None
+    pressure_reaction_projection_status: str = "pressure_hodge_diagnostic"
+
+
+def validate_geometric_runtime_capillary_application_admitted(
+    application: GeometricRuntimeCapillaryApplicationState,
+    *,
+    allow_pending_reaction_projection: bool = False,
+) -> None:
+    """Fail-close AO capillarity unless the pressure reaction is admitted.
+
+    A3 mapping:
+      Equation: SP-AO runtime drive is
+      ``r_sigma - Pi^{M_f}_{R_p(q_T)} r_sigma``.
+      Discretization: non-static packets must either be explicitly marked as
+      awaiting the downstream pressure-adjoint split, or carry the completed
+      split output ``R_p(q_T)``.  Dense Young-Laplace pressure-Hodge
+      diagnostics alone are not a runtime pressure reaction.
+      Code: the interface stage may pass a pending packet only to the
+      face-native split builder; predictor/PPE/corrector stages require the
+      completed split status.
+    """
+    if not isinstance(application, GeometricRuntimeCapillaryApplicationState):
+        raise TypeError("application must be a GeometricRuntimeCapillaryApplicationState")
+    tolerance = _validate_tolerance(application.capillary.pressure_range_tolerance)
+    if application.pressure_exact_static:
+        if (
+            application.pressure_balanced_increment_weighted_l2 > tolerance
+            or application.max_abs_pressure_balanced_face_increment > tolerance
+        ):
+            raise ValueError(
+                "pressure-exact AO capillary packet has nonzero "
+                "pressure-balanced drive"
+            )
+        return
+    status = str(
+        getattr(
+            application,
+            "pressure_reaction_projection_status",
+            getattr(application.capillary, "pressure_reaction_projection_status", ""),
+        )
+    ).strip().lower()
+    if (
+        allow_pending_reaction_projection
+        and application.capillary_drive_present
+        and status == "pressure_reaction_projection_pending"
+    ):
+        return
+    if status == "pressure_component_hodge_split":
+        if (
+            application.pressure_balanced_increment_weighted_l2 <= tolerance
+            and application.max_abs_pressure_balanced_face_increment <= tolerance
+        ):
+            raise ValueError(
+                "non-static AO capillary packet has zero pressure-balanced "
+                "drive; classify it as pressure-exact static before the "
+                "predictor stage"
+            )
+        return
+    if status == "hfe_pressure_jump":
+        capillary = application.capillary
+        if (
+            capillary.capillary_force_weighted_acceleration_l2 <= tolerance
+            and capillary.max_abs_capillary_force_face_covector <= tolerance
+        ):
+            raise ValueError(
+                "non-static AO HFE pressure-jump packet has zero drive; "
+                "classify it as pressure-exact static before the predictor stage"
+            )
+        return
+    if application.capillary_drive_present:
+        raise ValueError(
+            "non-static AO capillary runtime requires an admitted "
+            "pressure-reaction projection R_p(q_T); Young-Laplace "
+            "pressure-Hodge diagnostics are not a runtime pressure reaction"
+        )
+    raise ValueError(
+        "AO capillary application is neither pressure-exact static nor an "
+        "admitted non-static pressure reaction"
+    )
 
 
 def materialise_geometric_common_flux_state(
@@ -277,6 +364,7 @@ def materialise_geometric_runtime_capillary_state(
         ),
         weighted_residual_acceleration_l2=hodge.weighted_residual_acceleration_l2,
         max_abs_residual_face_covector=hodge.max_abs_residual_face_covector,
+        pressure_reaction_projection_status="pressure_hodge_diagnostic",
     )
 
 
@@ -293,12 +381,12 @@ def materialise_geometric_runtime_capillary_application_state(
     xp = grid.xp
     predictor_face_acceleration = _validate_face_pair(
         grid,
-        capillary.capillary_force_acceleration,
+        _scale_face_pair(capillary.capillary_force_acceleration, dt=-1.0),
         name="runtime AO capillary predictor acceleration",
     )
     pressure_reaction_face_acceleration = _validate_face_pair(
         grid,
-        capillary.pressure_reaction_acceleration,
+        _scale_face_pair(capillary.pressure_reaction_acceleration, dt=-1.0),
         name="runtime AO pressure reaction acceleration",
     )
     predictor_face_increment = _validate_face_pair(
@@ -358,6 +446,10 @@ def materialise_geometric_runtime_capillary_application_state(
         ),
         pressure_exact_static=capillary.pressure_exact_static,
         capillary_drive_present=capillary.capillary_drive_present,
+        face_hodge_weights=weights,
+        pressure_reaction_projection_status=(
+            capillary.pressure_reaction_projection_status
+        ),
     )
 
 

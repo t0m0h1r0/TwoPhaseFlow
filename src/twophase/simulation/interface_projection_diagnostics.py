@@ -62,6 +62,15 @@ _FACE_ZERO_DIAGNOSTICS = {
 }
 
 
+def _pressure_projection_solver(ppe_solver, pressure_flux_kwargs: dict[str, Any]):
+    """Return the solver whose operator matches the requested face space."""
+    if pressure_flux_kwargs.get("boundary_face_space", "full_face") != "full_face":
+        operator = getattr(ppe_solver, "operator", None)
+        if operator is not None:
+            return operator
+    return ppe_solver
+
+
 def zero_reinit_projection_diagnostics() -> dict[str, float]:
     """Return the default no-projection diagnostic row."""
     return dict(_REINIT_ZERO_DIAGNOSTICS)
@@ -379,7 +388,13 @@ def capillary_jump_range_projection(
     try:
         _invalidate_solver_graph_cache(ppe_solver)
         _set_zero_jump_solver_context(ppe_solver, zero_jump_kwargs)
-        projected_pressure = xp.asarray(ppe_solver.solve(source, rho, dt=0.0, p_init=None))
+        projection_solver = _pressure_projection_solver(
+            ppe_solver,
+            zero_jump_kwargs,
+        )
+        projected_pressure = xp.asarray(
+            projection_solver.solve(source, rho, dt=0.0, p_init=None)
+        )
         range_projection_faces = div_op.pressure_fluxes(
             projected_pressure,
             rho,
@@ -461,7 +476,7 @@ def capillary_external_component_saddle_projection(
         _set_solver_graph_static_operator_cache(ppe_solver, True)
         _invalidate_solver_graph_cache(ppe_solver)
         _set_zero_jump_solver_context(ppe_solver, zero_jump_kwargs)
-        raw_range, raw_hodge = _external_hodge_split(
+        raw_range, raw_hodge, raw_pressure = _external_hodge_split(
             xp=xp,
             div_op=div_op,
             ppe_solver=ppe_solver,
@@ -484,12 +499,14 @@ def capillary_external_component_saddle_projection(
         _restore_solver_graph(snapshots)
 
     component_hodge_faces = [split[1] for split in component_splits]
+    component_pressures = [split[2] for split in component_splits]
     component_count = len(component_faces)
     if component_count == 0:
         coefficients = xp.zeros((0,), dtype=xp.asarray(rho).dtype)
         corrected_faces = raw_faces
         augmented_hodge_faces = raw_hodge
         range_faces = raw_range
+        pressure_coordinate = raw_pressure
         denominator = xp.asarray(0.0, dtype=xp.asarray(rho).dtype)
     else:
         matrix = xp.zeros((component_count, component_count), dtype=xp.asarray(rho).dtype)
@@ -538,6 +555,10 @@ def capillary_external_component_saddle_projection(
                 strict=True,
             )
         ]
+        pressure_coordinate = raw_pressure - sum(
+            coefficients[index] * component_pressure
+            for index, component_pressure in enumerate(component_pressures)
+        )
         denominator = (
             matrix[0, 0]
             if component_count == 1
@@ -557,6 +578,7 @@ def capillary_external_component_saddle_projection(
     return {
         "capillary_jump_components": raw_faces,
         "range_projection_components": range_faces,
+        "pressure_coordinate": pressure_coordinate,
         "hodge_residual_components": augmented_hodge_faces,
         "face_weight_components": face_weights,
         "corrected_jump_components": corrected_faces,
@@ -583,7 +605,13 @@ def _external_hodge_split(
     pressure_flux_kwargs: dict[str, Any],
 ):
     source = div_op.divergence_from_faces(face_components)
-    projected_pressure = xp.asarray(ppe_solver.solve(source, rho, dt=0.0, p_init=None))
+    projection_solver = _pressure_projection_solver(
+        ppe_solver,
+        pressure_flux_kwargs,
+    )
+    projected_pressure = xp.asarray(
+        projection_solver.solve(source, rho, dt=0.0, p_init=None)
+    )
     range_projection_faces = div_op.pressure_fluxes(
         projected_pressure,
         rho,
@@ -597,7 +625,7 @@ def _external_hodge_split(
             strict=True,
         )
     ]
-    return range_projection_faces, hodge_residual_faces
+    return range_projection_faces, hodge_residual_faces, projected_pressure
 
 
 def _solve_small_component_system(xp, matrix, rhs, *, rcond: float):

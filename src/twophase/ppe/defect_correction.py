@@ -38,6 +38,7 @@ class PPESolverDefectCorrection(IPPESolver):
         max_corrections: int = 3,
         tolerance: float = 1.0e-8,
         relaxation: float = 1.0,
+        fail_on_nonconvergence: bool = False,
     ) -> None:
         if max_corrections <= 0:
             raise ValueError("max_corrections must be > 0")
@@ -55,6 +56,7 @@ class PPESolverDefectCorrection(IPPESolver):
         self.max_corrections = int(max_corrections)
         self.tolerance = float(tolerance)
         self.relaxation = float(relaxation)
+        self.fail_on_nonconvergence = bool(fail_on_nonconvergence)
         self._pin_dof = operator._pin_dof
         self._pin_dofs = getattr(operator, "_pin_dofs", (self._pin_dof,))
         if hasattr(self.base_solver, "_defer_interface_jump"):
@@ -102,6 +104,8 @@ class PPESolverDefectCorrection(IPPESolver):
         kappa,
         sigma: float,
         psi_previous=None,
+        pressure_jump_gas_minus_liquid=None,
+        phase_threshold: float = 0.5,
         face_curvature_method: str = "nodal_cut_face",
         transport_variational_nodal_covector=None,
         transport_variational_psi=None,
@@ -115,6 +119,10 @@ class PPESolverDefectCorrection(IPPESolver):
                     kappa=kappa,
                     sigma=sigma,
                     psi_previous=psi_previous,
+                    pressure_jump_gas_minus_liquid=(
+                        pressure_jump_gas_minus_liquid
+                    ),
+                    phase_threshold=phase_threshold,
                     face_curvature_method=face_curvature_method,
                     transport_variational_nodal_covector=(
                         transport_variational_nodal_covector
@@ -246,8 +254,9 @@ class PPESolverDefectCorrection(IPPESolver):
 
         self._pin_dofs = getattr(self.operator, "_pin_dofs", (self._pin_dof,))
         rhs_flat = rhs_dev.ravel()
-        rhs_norm = float(self.backend.asnumpy(xp.linalg.norm(rhs_flat)))
-        scale = max(rhs_norm, 1.0)
+        rhs_norm_dev = xp.linalg.norm(rhs_flat)
+        rhs_norm = None
+        scale = None
         history: list[float] = []
         broke = False
         corrections_applied = 0
@@ -256,8 +265,18 @@ class PPESolverDefectCorrection(IPPESolver):
         for _ in range(self.max_corrections):
             residual = rhs_dev - self.operator.apply(pressure)
             residual = self._enforce_rhs_compatibility(residual, record_stats=False)
-            residual_norm = float(self.backend.asnumpy(xp.linalg.norm(residual.ravel())))
+            residual_norm_dev = xp.linalg.norm(residual.ravel())
+            if scale is None:
+                first_norms = self.backend.asnumpy(
+                    xp.stack([rhs_norm_dev, residual_norm_dev])
+                )
+                rhs_norm = float(first_norms[0])
+                residual_norm = float(first_norms[1])
+                scale = max(rhs_norm, 1.0)
+            else:
+                residual_norm = float(self.backend.asnumpy(residual_norm_dev))
             history.append(residual_norm)
+            assert scale is not None
             if residual_norm <= self.tolerance * scale:
                 broke = True
                 final_residual = residual
@@ -322,6 +341,7 @@ class PPESolverDefectCorrection(IPPESolver):
             final_residual_norm = float(final_stats[0])
             final_residual_linf = float(final_stats[1])
             history.append(final_residual_norm)
+            assert scale is not None
             broke = final_residual_norm <= self.tolerance * scale
         else:
             final_residual_linf = float(
@@ -330,6 +350,7 @@ class PPESolverDefectCorrection(IPPESolver):
         self.last_residual_history = history
         self.last_stalled = not broke
         self.last_base_pressure = xp.copy(pressure)
+        assert rhs_norm is not None
         self._record_dc_diagnostics(
             initial_diagnostics,
             rhs_norm=rhs_norm,
@@ -338,6 +359,13 @@ class PPESolverDefectCorrection(IPPESolver):
             final_residual_linf=final_residual_linf,
             corrections_applied=corrections_applied,
         )
+        if self.last_stalled and self.fail_on_nonconvergence:
+            raise RuntimeError(
+                "PPESolverDefectCorrection did not converge: "
+                f"relative_l2={final_residual_norm / scale:.3e}, "
+                f"linf={final_residual_linf:.3e}, "
+                f"max_corrections={self.max_corrections}"
+            )
         if hasattr(self.operator, "apply_interface_jump"):
             pressure = self.operator.apply_interface_jump(pressure)
         return self._enforce_periodic_pressure(pressure)

@@ -19,6 +19,7 @@ class NSGridRebuildResult:
     Y: object
     density: object | None = None
     momentum_components: tuple[object, ...] | None = None
+    projected_face_components: tuple[object, ...] | None = None
 
 
 def _sharp_volume_target(reinitializer, psi) -> float | None:
@@ -56,10 +57,14 @@ def rebuild_ns_grid(
     reinitializer,
     ppe_solver,
     fccd_div_op,
+    div_op,
+    ppe_runtime,
     reprojector,
     wall_contacts=None,
     conservative_momentum_components=None,
+    projected_face_components=None,
     bc_type=None,
+    face_no_slip_boundary_state: bool = False,
 ) -> NSGridRebuildResult:
     """Fit the grid to the supplied interface and remap primary fields.
 
@@ -86,6 +91,11 @@ def rebuild_ns_grid(
                 None
                 if conservative_momentum_components is None
                 else tuple(backend.xp.asarray(c) for c in conservative_momentum_components)
+            ),
+            projected_face_components=(
+                None
+                if projected_face_components is None
+                else tuple(backend.xp.asarray(c) for c in projected_face_components)
             ),
         )
 
@@ -147,6 +157,7 @@ def rebuild_ns_grid(
                 xp.asarray(remapper.remap(component)),
                 dV_new,
                 target,
+                correction_weight=density_remapped,
             )
             for component, target in zip(
                 conservative_momentum, momentum_targets, strict=True
@@ -162,6 +173,16 @@ def rebuild_ns_grid(
     else:
         u_remapped = xp.asarray(remapper.remap(u))
         v_remapped = xp.asarray(remapper.remap(v))
+    projected_faces_remapped = (
+        None
+        if projected_face_components is None
+        else _remap_projection_face_components(
+            backend,
+            old_coords,
+            grid.coords,
+            projected_face_components,
+        )
+    )
     X, Y = grid.meshgrid()
 
     if use_local_eps:
@@ -172,16 +193,61 @@ def rebuild_ns_grid(
     if fccd_div_op is not None:
         fccd_div_op.update_weights()
 
-    u_reprojected, v_reprojected = reprojector.reproject(
-        psi_remapped,
-        u_remapped,
-        v_remapped,
-        ppe_solver,
-        ccd,
-        backend,
-        rho_l=rho_l,
-        rho_g=rho_g,
-    )
+    projected_faces_new = None
+    if projected_faces_remapped is not None:
+        reproject_faces = getattr(reprojector, "reproject_faces", None)
+        if not callable(reproject_faces):
+            raise RuntimeError(
+                "grid rebuild received projection-native face history but the "
+                "active reprojector cannot reproject face cochains"
+            )
+        u_reprojected, v_reprojected, projected_faces_new = reproject_faces(
+            psi_remapped,
+            projected_faces_remapped,
+            ppe_solver,
+            backend,
+            rho_l=rho_l,
+            rho_g=rho_g,
+            div_op=div_op,
+            ppe_runtime=ppe_runtime,
+            bc_type=bc_type or "wall",
+            face_no_slip_boundary_state=face_no_slip_boundary_state,
+        )
+    else:
+        reproject_faces = getattr(reprojector, "reproject_faces", None)
+        if (
+            callable(reproject_faces)
+            and div_op is not None
+            and hasattr(div_op, "face_fluxes")
+        ):
+            seed_faces = div_op.face_fluxes([u_remapped, v_remapped])
+            u_reprojected, v_reprojected, projected_faces_new = reproject_faces(
+                psi_remapped,
+                seed_faces,
+                ppe_solver,
+                backend,
+                rho_l=rho_l,
+                rho_g=rho_g,
+                div_op=div_op,
+                ppe_runtime=ppe_runtime,
+                bc_type=bc_type or "wall",
+                face_no_slip_boundary_state=face_no_slip_boundary_state,
+            )
+        else:
+            u_reprojected, v_reprojected = reprojector.reproject(
+                psi_remapped,
+                u_remapped,
+                v_remapped,
+                ppe_solver,
+                ccd,
+                backend,
+                rho_l=rho_l,
+                rho_g=rho_g,
+                div_op=div_op,
+                ppe_runtime=ppe_runtime,
+                bc_type=bc_type or "wall",
+                face_no_slip_boundary_state=face_no_slip_boundary_state,
+            )
     if conservative_momentum is not None:
         density_remapped = xp.asarray(rho_g + (rho_l - rho_g) * psi_remapped)
         momentum_remapped = (
@@ -196,18 +262,50 @@ def rebuild_ns_grid(
         Y=Y,
         density=density_remapped,
         momentum_components=momentum_remapped,
+        projected_face_components=projected_faces_new,
     )
 
 
-def _apply_integral_correction(xp, field, dV, target):
+def _projection_face_coords(coords, axis: int):
+    return [
+        0.5 * (coord[:-1] + coord[1:]) if idx == axis else coord
+        for idx, coord in enumerate(coords)
+    ]
+
+
+def _remap_projection_face_components(
+    backend,
+    old_coords,
+    new_coords,
+    face_components,
+):
+    """Move projection-native normal face cochains to the rebuilt face lattice."""
+    remapped = []
+    for axis, component in enumerate(face_components):
+        mapper = build_grid_remapper(
+            backend,
+            _projection_face_coords(old_coords, axis),
+            _projection_face_coords(new_coords, axis),
+        )
+        remapped.append(backend.xp.asarray(mapper.remap(component)))
+    return tuple(remapped)
+
+
+def _apply_integral_correction(xp, field, dV, target, *, correction_weight=None):
     """Least-change correction preserving one transported integral.
 
     The conservative common-flux state treats momentum density as the primary
-    unknown.  After coordinate interpolation to the rebuilt tensor grid, the
-    metric integral is restored by the constant L2(dV)-minimal correction,
-    i.e. the solution of ``min ||delta||_M`` subject to
-    ``sum((field + delta) dV) = target``.
+    unknown.  For phase volume, the constant L2(dV)-minimal correction is
+    used.  For momentum density, the kinetic-energy metric is
+    ``||delta m||^2_{dV/rho}``, so the least-change integral correction is
+    ``delta m = rho * lambda``: a uniform velocity shift rather than a uniform
+    momentum-density shift.
     """
-    total_volume = xp.sum(dV)
-    correction = (xp.asarray(target) - xp.sum(field * dV)) / total_volume
-    return field + correction
+    if correction_weight is None:
+        correction_basis = xp.asarray(1.0, dtype=field.dtype)
+        denominator = xp.sum(dV)
+    else:
+        correction_basis = xp.asarray(correction_weight)
+        denominator = xp.sum(correction_basis * dV)
+    correction = (xp.asarray(target) - xp.sum(field * dV)) / denominator
+    return field + correction * correction_basis

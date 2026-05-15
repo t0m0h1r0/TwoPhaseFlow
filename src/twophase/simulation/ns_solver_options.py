@@ -52,6 +52,7 @@ class SolverInterfaceOptions:
     phi_primary_transport: bool = True
     interface_tracking_enabled: bool = True
     interface_tracking_method: str | None = None
+    interface_gauge_reconstruction: str = "fixed_stratum"
     phi_primary_redist_every: int = 4
     phi_primary_clip_factor: float = 12.0
     phi_primary_heaviside_eps_scale: float = 1.0
@@ -60,6 +61,16 @@ class SolverInterfaceOptions:
     reinit_eps_scale: float = 1.0
     ridge_sigma_0: float = 3.0
     reinit_volume_constraint: str = "diffuse_mass"
+    active_projection_solver_scheme: str = "pcg"
+    active_projection_absolute_tolerance: float = 1.0e-11
+    active_projection_relative_tolerance: float = 0.0
+    active_projection_max_iterations: int = 8
+    active_projection_pcg_tolerance: float = 1.0e-12
+    active_projection_pcg_max_iterations: int = 256
+    active_projection_pcg_roundoff_floor: float | None = 1.0e-14
+    active_projection_dc_tolerance: float = 1.0e-11
+    active_projection_dc_max_iterations: int = 8
+    active_projection_dc_relaxation: float = 1.0
 
 
 @dataclass(frozen=True)
@@ -75,6 +86,7 @@ class SolverPPEOptions:
     capillary_reaction_projection: str = "none"
     pressure_force_contract: str = "raw_compact_gradient"
     scalar_operator_pairing: str = "legacy"
+    boundary_face_space: str = "full_face"
     pressure_history_mode: str = "face_acceleration"
     pressure_history_extrapolation: str = "constant"
     ppe_iteration_method: str = "gmres"
@@ -88,6 +100,7 @@ class SolverPPEOptions:
     ppe_dc_max_iterations: int = 3
     ppe_dc_tolerance: float = 1.0e-8
     ppe_dc_relaxation: float = 0.8
+    ppe_dc_fail_close: bool = False
 
 
 @dataclass(frozen=True)
@@ -100,6 +113,7 @@ class SolverSchemeOptions:
     Re: float = 1.0
     surface_tension_scheme: str = "pressure_jump"
     capillary_force_source: str = "curvature_jump"
+    capillary_closed_interface_endpoint: str = "conservative_psi"
     curvature_method: str = "psi_direct_filtered"
     momentum_form: str = "primitive_velocity"
     convection_time_scheme: str = "imex_bdf2"

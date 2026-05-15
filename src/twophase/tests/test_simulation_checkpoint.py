@@ -3,6 +3,10 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
+from twophase.backend import Backend
+from twophase.config import GridConfig
+from twophase.core.grid import Grid
+from twophase.geometry.phase_state import GeometricPhaseState
 from twophase.levelset.wall_contact import WallContact, WallContactSet, WallTrace
 from twophase.simulation.checkpoint import (
     CheckpointError,
@@ -78,6 +82,32 @@ def _solver():
         _wall_contacts=WallContactSet.empty(),
     )
     solver.set_wall_contacts = lambda contacts: setattr(solver, "_wall_contacts", contacts)
+    return solver
+
+
+def _ao_solver():
+    backend = Backend(use_gpu=False)
+    grid = Grid(GridConfig(ndim=2, N=(4, 4), L=(1.0, 1.0)), backend)
+    solver = _solver()
+    solver._backend = backend
+    solver._grid = grid
+    solver._p_prev_dev = np.full((5, 5), 7.0)
+    solver._p_base_prev_dev = np.full((5, 5), 8.0)
+    solver._p_base_prev2_dev = np.full((5, 5), 6.0)
+    solver._p_prev_accel_face_components = None
+    solver._conv_prev = None
+    solver._velocity_prev = None
+    solver._projected_face_components = None
+    solver._conservative_density = np.full((5, 5), 11.0)
+    solver._conservative_momentum_components = [
+        np.full((5, 5), 12.0),
+        np.full((5, 5), 13.0),
+    ]
+    solver._active_projection_absolute_tolerance = 1.0e-11
+    solver._geometric_phase_runtime_enabled = lambda: True
+    x, y = grid.meshgrid()
+    phi = y - (0.43 + 0.02 * np.cos(2.0 * np.pi * x))
+    solver._geometric_phase_state = GeometricPhaseState.from_phi(grid, phi)
     return solver
 
 
@@ -232,6 +262,72 @@ def test_checkpoint_roundtrip_restores_solver_runtime_state(tmp_path):
     assert np.all(state["snapshots"][0]["pressure_accel_faces"][0] == 9.0)
     assert np.all(state["snapshots"][0]["pressure_accel_faces"][1] == 10.0)
     assert state["debug_history"] == [{"kappa_max": 1.0}]
+
+
+def test_checkpoint_roundtrip_restores_ao_fast_geometric_phase(tmp_path):
+    config = tmp_path / "cfg.yaml"
+    _write_config(config)
+    path = tmp_path / "checkpoint_final.npz"
+    solver = _ao_solver()
+    original = solver._geometric_phase_state
+
+    save_checkpoint(
+        path,
+        solver=solver,
+        psi=np.ones((5, 5)),
+        u=np.full((5, 5), 2.0),
+        v=np.full((5, 5), 3.0),
+        p=np.full((5, 5), 4.0),
+        t=0.125,
+        step=5,
+        config_path=config,
+        results={},
+        snapshots=[],
+        debug_history=[],
+        state_phase="pre_step",
+    )
+
+    with np.load(path, allow_pickle=False) as data:
+        assert "solver/geometric_phase/q" in data.files
+        assert "solver/geometric_phase/phi" in data.files
+
+    restored_solver = _ao_solver()
+    restored_solver._geometric_phase_state = None
+    load_checkpoint(path, solver=restored_solver, config_path=config)
+
+    restored = restored_solver._geometric_phase_state
+    assert restored is not None
+    np.testing.assert_allclose(restored.q, original.q)
+    np.testing.assert_allclose(restored.phi, original.phi)
+    assert restored.compatibility_residual_linf <= 1.0e-11
+
+
+def test_ao_fast_resume_rejects_checkpoint_without_geometric_phase(tmp_path):
+    config = tmp_path / "cfg.yaml"
+    _write_config(config)
+    path = tmp_path / "checkpoint_final.npz"
+    old_solver = _ao_solver()
+    old_solver._geometric_phase_state = None
+
+    save_checkpoint(
+        path,
+        solver=old_solver,
+        psi=np.ones((5, 5)),
+        u=np.full((5, 5), 2.0),
+        v=np.full((5, 5), 3.0),
+        p=np.full((5, 5), 4.0),
+        t=0.125,
+        step=5,
+        config_path=config,
+        results={},
+        snapshots=[],
+        debug_history=[],
+        state_phase="pre_step",
+    )
+
+    restored_solver = _ao_solver()
+    with pytest.raises(CheckpointError, match="missing AO-Fast geometric phase"):
+        load_checkpoint(path, solver=restored_solver, config_path=config)
 
 
 def test_checkpoint_preserves_per_snapshot_nonuniform_grid_coords(tmp_path):

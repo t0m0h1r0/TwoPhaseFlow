@@ -83,6 +83,7 @@ class RunCfg:
     phi_primary_transport: bool = False
     interface_tracking_enabled: bool = True
     interface_tracking_method: str = "psi_direct"
+    interface_gauge_reconstruction: str = "fixed_stratum"
     phi_primary_redist_every: int = 4
     phi_primary_clip_factor: float = 12.0
     phi_primary_heaviside_eps_scale: float = 1.0
@@ -103,6 +104,7 @@ class RunCfg:
     capillary_reaction_projection: str = "none"
     pressure_force_contract: str = "raw_compact_gradient"
     scalar_operator_pairing: str = "legacy"
+    boundary_face_space: str = "full_face"
     pressure_history_mode: str = "face_acceleration"
     pressure_history_extrapolation: str = "constant"
     capillary_force_source: str = "curvature_jump"
@@ -160,6 +162,7 @@ class RunCfg:
     ppe_dc_max_iterations: int = 3
     ppe_dc_tolerance: float = 1.0e-8
     ppe_dc_relaxation: float = 0.8
+    ppe_dc_fail_close: bool = False
     debug_diagnostics: bool = False
 
 
@@ -175,11 +178,13 @@ class OutputCfg:
 class InterfaceStateSpaceCfg:
     """Parsed front-door state-space contract.
 
-    Geometric cell-fraction config construction is allowed after AO-Fast C8.
+    Geometric cell-fraction config construction is allowed after the active
+    geometry capillary decomposition front-door gate.
     The dense exact runtime is CPU-only; GPU execution remains fail-closed
-    until active fused AO-Fast kernels satisfy this front-door contract.
+    until active fused geometry kernels satisfy this front-door contract.
     """
 
+    scheme: str = "diffuse_cls"
     kind: str = "diffuse_cls"
     conserved_variable: str = "psi"
     normalized_view: str = "psi"
@@ -191,6 +196,21 @@ class InterfaceStateSpaceCfg:
     dense_reference: str = "none"
     gpu_required: bool = False
     fallback_policy: str = "none"
+    active_projection_solver_scheme: str = "pcg"
+    active_projection_primary: str = "active_pcg_newton"
+    active_projection_fallback_policy: str = "none"
+    active_projection_fallback_target: str | None = None
+    active_projection_fallback_triggers: tuple[str, ...] = ()
+    active_projection_convergence_norm: str = "linf"
+    active_projection_absolute_tolerance: float = 1.0e-11
+    active_projection_relative_tolerance: float = 0.0
+    active_projection_max_iterations: int = 8
+    active_projection_pcg_tolerance: float = 1.0e-12
+    active_projection_pcg_max_iterations: int = 256
+    active_projection_pcg_roundoff_floor: float | None = 1.0e-14
+    active_projection_dc_tolerance: float = 1.0e-11
+    active_projection_dc_max_iterations: int = 8
+    active_projection_dc_relaxation: float = 1.0
 
 
 @dataclass

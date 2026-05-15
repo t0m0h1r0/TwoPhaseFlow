@@ -8,6 +8,7 @@ from twophase.tools.plot_snapshot_figures import (
     build_snapshot_series_renderers,
     masked_bulk_pressure,
     pressure_bulk_snapshot,
+    pressure_difference_field,
     pressure_hodge_snapshot,
     velocity_snapshot,
 )
@@ -438,6 +439,35 @@ def test_snapshot_series_pressure_uses_shared_symmetric_color_axis():
 
     assert shared["vmin"] == pytest.approx(-3.0)
     assert shared["vmax"] == pytest.approx(3.0)
+
+
+def test_pressure_difference_field_removes_snapshot_gauge():
+    pressure = np.array([[100.0, 102.0], [101.0, 101.0]])
+
+    anomaly = pressure_difference_field(pressure, {"pressure_reference": "mean"})
+
+    np.testing.assert_allclose(anomaly, np.array([[-1.0, 1.0], [0.0, 0.0]]))
+
+
+def test_snapshot_series_pressure_shared_axis_uses_pressure_reference():
+    cfg = SimpleNamespace(
+        grid=SimpleNamespace(LX=1.0, LY=1.0, NX=1, NY=1),
+    )
+    psi = np.ones((2, 2))
+    snaps = [
+        {"t": 0.0, "psi": psi, "p": np.array([[100.0, 102.0], [101.0, 101.0]])},
+        {"t": 1.0, "psi": psi, "p": np.array([[200.0, 199.0], [201.0, 200.0]])},
+    ]
+
+    shared = build_snapshot_series_shared_spec(
+        "pressure",
+        {"pressure_reference": "mean"},
+        snaps,
+        cfg,
+    )
+
+    assert shared["vmin"] == pytest.approx(-1.0)
+    assert shared["vmax"] == pytest.approx(1.0)
 
 
 def test_plot_velocity_uses_clean_default_quiver_style():

@@ -5,6 +5,29 @@ from __future__ import annotations
 from ..core.boundary import boundary_axes
 
 
+def normalise_boundary_face_space(value: str | None) -> str:
+    """Return the canonical direct face-space boundary convention."""
+    key = str(value or "full_face").strip().lower().replace("-", "_")
+    aliases = {
+        "full": "full_face",
+        "unconstrained": "full_face",
+        "impermeable": "impermeable_face",
+        "no_through": "impermeable_face",
+        "normal_wall": "impermeable_face",
+        "normal_wall_face": "impermeable_face",
+        "free_slip": "impermeable_face",
+        "slip": "impermeable_face",
+        "no_slip": "constrained_face",
+    }
+    key = aliases.get(key, key)
+    if key not in {"full_face", "impermeable_face", "constrained_face"}:
+        raise ValueError(
+            f"unsupported boundary_face_space={value!r}; "
+            "use full_face|impermeable_face|constrained_face."
+        )
+    return key
+
+
 def zero_wall_normal_face_components(
     face_components: list,
     *,
@@ -52,3 +75,27 @@ def zero_wall_velocity_face_components(
             bounded_face[tuple(upper)] = 0.0
         bounded.append(bounded_face)
     return bounded
+
+
+def apply_direct_face_boundary_space(
+    face_components: list,
+    *,
+    xp,
+    bc_type: str = "wall",
+    boundary_face_space: str | None = "full_face",
+) -> list:
+    """Project direct face components into the requested boundary face space."""
+    space = normalise_boundary_face_space(boundary_face_space)
+    if space == "full_face":
+        return face_components
+    if space == "impermeable_face":
+        return zero_wall_normal_face_components(
+            face_components,
+            xp=xp,
+            bc_type=bc_type,
+        )
+    return zero_wall_velocity_face_components(
+        face_components,
+        xp=xp,
+        bc_type=bc_type,
+    )

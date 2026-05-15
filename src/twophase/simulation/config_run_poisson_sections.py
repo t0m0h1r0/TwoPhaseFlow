@@ -177,6 +177,7 @@ def parse_run_poisson_settings(*, layout: dict, projection: dict) -> dict:
         ppe_dc_max_iterations,
         ppe_dc_tolerance,
         ppe_dc_relaxation,
+        ppe_dc_fail_close,
     ) = parse_ppe_solver_config(
         poisson["solver"],
         layout["paths"]["poisson_solver"],
@@ -207,4 +208,5 @@ def parse_run_poisson_settings(*, layout: dict, projection: dict) -> dict:
         "ppe_dc_max_iterations": ppe_dc_max_iterations,
         "ppe_dc_tolerance": ppe_dc_tolerance,
         "ppe_dc_relaxation": ppe_dc_relaxation,
+        "ppe_dc_fail_close": ppe_dc_fail_close,
     }

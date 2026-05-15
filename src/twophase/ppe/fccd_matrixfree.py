@@ -24,7 +24,6 @@ A3 chain:
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
-import warnings
 
 import numpy as np
 
@@ -32,6 +31,7 @@ from ..backend import is_device_array
 from ..core.array_checks import all_arrays_exact_zero
 from ..core.boundary import is_periodic_axis
 from ..coupling.interface_stress_closure import (
+    build_interface_stress_context,
     build_young_laplace_interface_stress_context,
     evaluate_interface_face_curvature_lg,
     interface_stress_context_is_active,
@@ -44,6 +44,10 @@ from ..simulation.pressure_complex import (
     normalise_pressure_force_contract,
     normalise_scalar_operator_pairing,
     variational_pressure_reaction_faces,
+)
+from ..simulation.face_boundary import (
+    apply_direct_face_boundary_space,
+    normalise_boundary_face_space,
 )
 from .interfaces import IPPESolver
 from .fccd_matrixfree_helpers import (
@@ -145,6 +149,9 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         self.scalar_operator_pairing = normalise_scalar_operator_pairing(
             getattr(solver_cfg, "scalar_operator_pairing", None)
         )
+        self.boundary_face_space = normalise_boundary_face_space(
+            getattr(solver_cfg, "boundary_face_space", "full_face")
+        )
         if (
             self.scalar_operator_pairing == SCALAR_OPERATOR_PAIRING_REQUIRE_CERTIFIED
             and self.pressure_force_contract == PRESSURE_FORCE_CONTRACT_VARIATIONAL
@@ -227,6 +234,8 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         kappa,
         sigma: float,
         psi_previous=None,
+        pressure_jump_gas_minus_liquid=None,
+        phase_threshold: float = 0.5,
         face_curvature_method: str = "nodal_cut_face",
         transport_variational_nodal_covector=None,
         transport_variational_psi=None,
@@ -237,28 +246,56 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         Both legacy ``jump_decomposition`` and affine paths consume the
         oriented Young--Laplace jump ``j_gl=p_gas-p_liquid=-σ κ_lg``.
         """
-        self._interface_jump_context = build_fccd_interface_jump_context(
-            xp=self.xp,
-            backend=self.backend,
-            psi=psi,
-            kappa=kappa,
-            sigma=sigma,
-        )
-        context = build_young_laplace_interface_stress_context(
-            xp=self.xp,
-            psi=psi,
-            kappa_lg=kappa,
-            sigma=sigma,
-            psi_previous=psi_previous,
-            face_curvature_method=face_curvature_method,
-            transport_variational_nodal_covector=(
-                transport_variational_nodal_covector
-            ),
-            transport_variational_psi=transport_variational_psi,
-            transport_variational_previous_surface_energy=(
-                transport_variational_previous_surface_energy
-            ),
-        )
+        if pressure_jump_gas_minus_liquid is None:
+            self._interface_jump_context = build_fccd_interface_jump_context(
+                xp=self.xp,
+                backend=self.backend,
+                psi=psi,
+                kappa=kappa,
+                sigma=sigma,
+            )
+            context = build_young_laplace_interface_stress_context(
+                xp=self.xp,
+                psi=psi,
+                kappa_lg=kappa,
+                sigma=sigma,
+                psi_previous=psi_previous,
+                face_curvature_method=face_curvature_method,
+                transport_variational_nodal_covector=(
+                    transport_variational_nodal_covector
+                ),
+                transport_variational_psi=transport_variational_psi,
+                transport_variational_previous_surface_energy=(
+                    transport_variational_previous_surface_energy
+                ),
+            )
+        else:
+            jump = self.xp.asarray(pressure_jump_gas_minus_liquid)
+            kappa_dev = self.xp.zeros_like(jump)
+            self._interface_jump_context = {
+                "psi": self.xp.asarray(psi),
+                "kappa": kappa_dev,
+                "pressure_jump_gas_minus_liquid": jump,
+                "psi_host": None,
+                "kappa_host": None,
+                "pressure_jump_gas_minus_liquid_host": None,
+                "sigma": 0.0,
+            }
+            context = build_interface_stress_context(
+                xp=self.xp,
+                psi=psi,
+                pressure_jump_gas_minus_liquid=jump,
+                psi_previous=psi_previous,
+                phase_threshold=phase_threshold,
+                face_curvature_method=face_curvature_method,
+                transport_variational_nodal_covector=(
+                    transport_variational_nodal_covector
+                ),
+                transport_variational_psi=transport_variational_psi,
+                transport_variational_previous_surface_energy=(
+                    transport_variational_previous_surface_energy
+                ),
+            )
         self._interface_stress_context = context
 
     def clear_interface_jump_context(self) -> None:
@@ -366,14 +403,28 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             return self._apply_variational_operator_core(p_dev)
         xp = self.xp
         out = xp.zeros_like(p_dev)
+        if self.boundary_face_space == "full_face":
+            for axis in range(self.ndim):
+                grad_face = self.fccd.face_gradient(p_dev, axis)
+                self._accumulate_weighted_face_gradient_divergence(
+                    out,
+                    grad_face,
+                    self._coeff_face[axis],
+                    axis,
+                )
+            return out
+        faces = []
         for axis in range(self.ndim):
             grad_face = self.fccd.face_gradient(p_dev, axis)
-            self._accumulate_weighted_face_gradient_divergence(
-                out,
-                grad_face,
-                self._coeff_face[axis],
-                axis,
-            )
+            faces.append(self._coeff_face[axis] * grad_face)
+        faces = apply_direct_face_boundary_space(
+            faces,
+            xp=xp,
+            bc_type=self.fccd.bc_type,
+            boundary_face_space=self.boundary_face_space,
+        )
+        for axis, face in enumerate(faces):
+            self._accumulate_face_flux_divergence(out, face, axis)
         return out
 
     def _apply_variational_operator_core(self, p_dev):
@@ -386,6 +437,12 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             bc_type=self.fccd.bc_type,
             pressure=p_dev,
             coeff_faces=self._coeff_face,
+        )
+        pressure_faces = apply_direct_face_boundary_space(
+            pressure_faces,
+            xp=xp,
+            bc_type=self.fccd.bc_type,
+            boundary_face_space=self.boundary_face_space,
         )
         for axis, face in enumerate(pressure_faces):
             self._accumulate_face_flux_divergence(out, face, axis)
@@ -403,11 +460,20 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         return rhs_dev - self._apply_operator_core(jump_pressure)
 
     def _add_affine_interface_jump_rhs(self, rhs_dev, *, force: bool = False):
-        """Apply affine jump closure: solve ``L(p)=rhs+D_f α_f B_Γ(j)``."""
-        if (self._defer_interface_jump and not force) or not (
-            self.interface_coupling_scheme == "affine_jump"
-            and interface_stress_context_is_active(self._interface_stress_context)
+        """Apply affine jump closure in the same direct face space as ``L``."""
+        if self.interface_coupling_scheme != "affine_jump":
+            return rhs_dev
+        if self._defer_interface_jump and not force:
+            return rhs_dev
+        if (
+            self._interface_stress_context is None
+            or getattr(self._interface_stress_context, "psi", None) is None
         ):
+            raise RuntimeError(
+                "phase_separated affine-jump FCCD PPE requires an "
+                "interface-stress context before applying affine RHS"
+            )
+        if not interface_stress_context_is_active(self._interface_stress_context):
             return rhs_dev
         face_curvature_lg = evaluate_interface_face_curvature_lg(
             xp=self.xp,
@@ -416,6 +482,7 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             fccd=self.fccd,
         )
         affine_rhs = self.xp.zeros_like(rhs_dev)
+        affine_faces = []
         for axis in range(self.ndim):
             jump_gradient = signed_pressure_jump_gradient(
                 xp=self.xp,
@@ -425,12 +492,15 @@ class PPESolverFCCDMatrixFree(IPPESolver):
                 face_curvature_lg=face_curvature_lg,
                 fccd=self.fccd,
             )
-            self._accumulate_weighted_face_gradient_divergence(
-                affine_rhs,
-                jump_gradient,
-                self._coeff_face[axis],
-                axis,
-            )
+            affine_faces.append(self._coeff_face[axis] * jump_gradient)
+        affine_faces = apply_direct_face_boundary_space(
+            affine_faces,
+            xp=self.xp,
+            bc_type=self.fccd.bc_type,
+            boundary_face_space=self.boundary_face_space,
+        )
+        for axis, face in enumerate(affine_faces):
+            self._accumulate_face_flux_divergence(affine_rhs, face, axis)
         return rhs_dev + affine_rhs
 
     def solve(self, rhs, rho, dt: float = 0.0, p_init=None):
@@ -510,12 +580,6 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             tolerance=self.tol,
         )
 
-        if info != 0:
-            warnings.warn(
-                f"PPESolverFCCDMatrixFree did not converge cleanly (info={info}).",
-                RuntimeWarning,
-                stacklevel=2,
-            )
         sol = xp.asarray(sol_flat).reshape(self.grid.shape)
         if self._uses_phase_mean_gauge():
             sol = self._project_phase_means(sol)
@@ -529,6 +593,15 @@ class PPESolverFCCDMatrixFree(IPPESolver):
             residual=linear_residual,
             rhs=rhs_dev,
         )
+        if info != 0:
+            diag = self.last_diagnostics
+            raise RuntimeError(
+                "PPESolverFCCDMatrixFree did not converge: "
+                f"info={info}, "
+                f"relative_l2={diag.get('ppe_linear_relative_l2', float('nan')):.3e}, "
+                f"linf={diag.get('ppe_linear_residual_linf', float('nan')):.3e}, "
+                f"maxiter={self.maxiter}"
+            )
         self.last_base_pressure = xp.copy(sol)
         if not self._defer_interface_jump:
             sol = self.apply_interface_jump(sol)

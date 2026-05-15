@@ -18,6 +18,7 @@ active-projection/GPU cases fail closed here or at the runtime boundary.
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import Any, Mapping
 
@@ -49,11 +50,31 @@ class AOFastRuntimeContract:
     normalized_view: str
     gauge_variable: str
     tracking_method: str
+    tracking_gauge_reconstruction: str
     advection_scheme: str
     capillary_force_source: str
     capillary_endpoint: str
     capillary_constraints: tuple[str, ...]
     capillary_reaction_projection: str
+    projection_implementation: str
+    dense_reference: str
+    gpu_required: bool
+    fallback_policy: str
+    active_projection_solver_scheme: str
+    active_projection_primary: str
+    active_projection_fallback_policy: str
+    active_projection_fallback_target: str | None
+    active_projection_fallback_triggers: tuple[str, ...]
+    active_projection_convergence_norm: str
+    active_projection_absolute_tolerance: float
+    active_projection_relative_tolerance: float
+    active_projection_max_iterations: int
+    active_projection_pcg_tolerance: float
+    active_projection_pcg_max_iterations: int
+    active_projection_pcg_roundoff_floor: float | None
+    active_projection_dc_tolerance: float
+    active_projection_dc_max_iterations: int
+    active_projection_dc_relaxation: float
     checkpoint_state_phase: str = "pre_step"
     checkpoint_required_arrays: tuple[str, ...] = GEOMETRIC_CHECKPOINT_REQUIRED_ARRAYS
     face_history_prefixes: tuple[str, ...] = GEOMETRIC_FACE_HISTORY_PREFIXES
@@ -86,14 +107,45 @@ def build_ao_fast_runtime_contract(cfg: Any) -> AOFastRuntimeContract:
     _require(getattr(state, "conserved_variable", None), "q", "conserved_variable")
     _require(getattr(state, "normalized_view", None), "theta", "normalized_view")
     _require(getattr(state, "gauge_variable", None), "phi", "gauge_variable")
+    _require(
+        getattr(state, "projection_implementation", None),
+        "active_cached",
+        "projection_implementation",
+    )
+    _require(getattr(state, "dense_reference", None), "test_only", "dense_reference")
+    if getattr(state, "gpu_required", False) is not True:
+        raise ValueError("AO-Fast runtime contract requires gpu_required=True")
+    fallback_policy = str(getattr(state, "fallback_policy", "none")).strip().lower()
+    if fallback_policy not in {"none", "explicit_chain"}:
+        raise ValueError(
+            "AO-Fast runtime contract requires fallback_policy to be 'none' "
+            "or 'explicit_chain'"
+        )
+    _validate_active_projection_solver_contract(state)
     _require(getattr(run, "interface_tracking_method", None), "q_cell_fraction",
              "interface_tracking_method")
+    tracking_gauge = str(
+        getattr(run, "interface_gauge_reconstruction", "fixed_stratum")
+    ).strip().lower()
+    if tracking_gauge not in {"fixed_stratum", "column_height_graph"}:
+        raise ValueError(
+            "AO-Fast runtime contract requires interface_gauge_reconstruction "
+            "to be 'fixed_stratum' or 'column_height_graph'"
+        )
     _require(getattr(run, "advection_scheme", None), "geometric_swept_volume",
              "advection_scheme")
     _require(getattr(run, "capillary_force_source", None), "bundle_virtual_work",
              "capillary_force_source")
-    _require(getattr(run, "capillary_closed_interface_endpoint", None),
-             "geometric_cell_fraction", "capillary_closed_interface_endpoint")
+    expected_endpoint = (
+        "column_height_graph"
+        if tracking_gauge == "column_height_graph"
+        else "geometric_cell_fraction"
+    )
+    _require(
+        getattr(run, "capillary_closed_interface_endpoint", None),
+        expected_endpoint,
+        "capillary_closed_interface_endpoint",
+    )
     constraints = tuple(getattr(run, "capillary_closed_interface_constraints", ()))
     if constraints != ("cell_volume",):
         raise ValueError(
@@ -112,11 +164,10 @@ def build_ao_fast_runtime_contract(cfg: Any) -> AOFastRuntimeContract:
     if reinit_method is None and reinit_every != 0:
         raise ValueError("AO-Fast runtime contract requires reinit_every=0")
     if reinit_method == "compatibility_projection":
-        raise ValueError(
-            "AO-Fast active compatibility_projection runtime is not wired; "
-            "use algorithm='none' with schedule.every_steps=0 until the fused "
-            "active projection path is connected"
-        )
+        if reinit_every <= 0:
+            raise ValueError(
+                "AO-Fast compatibility_projection requires reinit_every > 0"
+            )
 
     return AOFastRuntimeContract(
         state_kind="geometric_cell_fraction",
@@ -124,11 +175,47 @@ def build_ao_fast_runtime_contract(cfg: Any) -> AOFastRuntimeContract:
         normalized_view="theta",
         gauge_variable="phi",
         tracking_method="q_cell_fraction",
+        tracking_gauge_reconstruction=tracking_gauge,
         advection_scheme="geometric_swept_volume",
         capillary_force_source="bundle_virtual_work",
-        capillary_endpoint="geometric_cell_fraction",
+        capillary_endpoint=expected_endpoint,
         capillary_constraints=("cell_volume",),
         capillary_reaction_projection="pressure_component_hodge",
+        projection_implementation="active_cached",
+        dense_reference="test_only",
+        gpu_required=True,
+        fallback_policy=fallback_policy,
+        active_projection_solver_scheme=state.active_projection_solver_scheme,
+        active_projection_primary=state.active_projection_primary,
+        active_projection_fallback_policy=(
+            state.active_projection_fallback_policy
+        ),
+        active_projection_fallback_target=state.active_projection_fallback_target,
+        active_projection_fallback_triggers=(
+            state.active_projection_fallback_triggers
+        ),
+        active_projection_convergence_norm=(
+            state.active_projection_convergence_norm
+        ),
+        active_projection_absolute_tolerance=(
+            state.active_projection_absolute_tolerance
+        ),
+        active_projection_relative_tolerance=(
+            state.active_projection_relative_tolerance
+        ),
+        active_projection_max_iterations=state.active_projection_max_iterations,
+        active_projection_pcg_tolerance=state.active_projection_pcg_tolerance,
+        active_projection_pcg_max_iterations=(
+            state.active_projection_pcg_max_iterations
+        ),
+        active_projection_pcg_roundoff_floor=(
+            state.active_projection_pcg_roundoff_floor
+        ),
+        active_projection_dc_tolerance=state.active_projection_dc_tolerance,
+        active_projection_dc_max_iterations=(
+            state.active_projection_dc_max_iterations
+        ),
+        active_projection_dc_relaxation=state.active_projection_dc_relaxation,
     )
 
 
@@ -221,6 +308,112 @@ def _validate_face_history(
             )
 
 
+def _validate_active_projection_solver_contract(state: Any) -> None:
+    scheme = str(getattr(state, "active_projection_solver_scheme", "")).strip().lower()
+    primary = str(getattr(state, "active_projection_primary", "")).strip().lower()
+    fallback_policy = str(
+        getattr(state, "active_projection_fallback_policy", "none")
+    ).strip().lower()
+    if str(getattr(state, "fallback_policy", "none")).strip().lower() != fallback_policy:
+        raise ValueError(
+            "AO-Fast runtime contract requires fallback_policy to match "
+            "active_projection_fallback_policy"
+        )
+    if scheme == "pcg":
+        _require(primary, "active_pcg_newton", "active_projection_primary")
+        _require(fallback_policy, "none", "active_projection_fallback_policy")
+        _require_empty_fallback(state)
+    elif scheme == "dc":
+        _require(primary, "residual_monotone_dc", "active_projection_primary")
+        _require(fallback_policy, "none", "active_projection_fallback_policy")
+        _require_empty_fallback(state)
+    elif scheme == "dc_then_pcg":
+        _require(primary, "residual_monotone_dc", "active_projection_primary")
+        _require(
+            fallback_policy,
+            "explicit_chain",
+            "active_projection_fallback_policy",
+        )
+        _require(
+            getattr(state, "active_projection_fallback_target", None),
+            "active_pcg_newton",
+            "active_projection_fallback_target",
+        )
+        triggers = tuple(getattr(state, "active_projection_fallback_triggers", ()))
+        if not triggers:
+            raise ValueError(
+                "AO-Fast runtime contract requires fallback triggers for "
+                "dc_then_pcg"
+            )
+        _validate_fallback_triggers(triggers)
+    else:
+        raise ValueError(
+            "AO-Fast runtime contract requires active_projection_solver_scheme "
+            "to be 'pcg', 'dc', or 'dc_then_pcg'"
+        )
+
+    norm = str(getattr(state, "active_projection_convergence_norm", "")).strip().lower()
+    _require(norm, "linf", "active_projection_convergence_norm")
+    for name in (
+        "active_projection_absolute_tolerance",
+        "active_projection_pcg_tolerance",
+        "active_projection_dc_tolerance",
+        "active_projection_dc_relaxation",
+    ):
+        _require_positive_finite(getattr(state, name, None), name)
+    _require_nonnegative_finite(
+        getattr(state, "active_projection_relative_tolerance", None),
+        "active_projection_relative_tolerance",
+    )
+    for name in (
+        "active_projection_max_iterations",
+        "active_projection_pcg_max_iterations",
+        "active_projection_dc_max_iterations",
+    ):
+        _require_positive_int(getattr(state, name, None), name)
+    floor = getattr(state, "active_projection_pcg_roundoff_floor", None)
+    if floor is not None:
+        _require_positive_finite(floor, "active_projection_pcg_roundoff_floor")
+        if float(floor) > float(state.active_projection_pcg_tolerance):
+            raise ValueError(
+                "AO-Fast runtime contract requires "
+                "active_projection_pcg_roundoff_floor <= "
+                "active_projection_pcg_tolerance"
+            )
+    if float(state.active_projection_dc_relaxation) > 1.0:
+        raise ValueError(
+            "AO-Fast runtime contract requires "
+            "active_projection_dc_relaxation <= 1.0"
+        )
+
+
+def _require_empty_fallback(state: Any) -> None:
+    if getattr(state, "active_projection_fallback_target", None) is not None:
+        raise ValueError(
+            "AO-Fast runtime contract requires no fallback target for "
+            "non-fallback active projection schemes"
+        )
+    if tuple(getattr(state, "active_projection_fallback_triggers", ())):
+        raise ValueError(
+            "AO-Fast runtime contract requires no fallback triggers for "
+            "non-fallback active projection schemes"
+        )
+
+
+def _validate_fallback_triggers(triggers: tuple[Any, ...]) -> None:
+    allowed = {
+        "not_converged",
+        "residual_floor_exceeded",
+        "stagnation",
+        "condition_gate_failed",
+    }
+    for trigger in triggers:
+        if str(trigger).strip().lower() not in allowed:
+            raise ValueError(
+                "AO-Fast runtime contract requires admitted fallback triggers"
+            )
+
+
 def _validate_cell_shape(cell_shape: tuple[int, int]) -> tuple[int, int]:
     if len(cell_shape) != 2:
         raise ValueError("AO-Fast checkpoint validation currently supports 2D only")
@@ -251,3 +444,44 @@ def _validate_node_shape(
 def _require(value: Any, expected: str, name: str) -> None:
     if str(value).strip().lower() != expected:
         raise ValueError(f"AO-Fast runtime contract requires {name}={expected!r}")
+
+
+def _require_positive_finite(value: Any, name: str) -> None:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            f"AO-Fast runtime contract requires {name} to be positive"
+        ) from exc
+    if not math.isfinite(parsed) or parsed <= 0.0:
+        raise ValueError(f"AO-Fast runtime contract requires {name} to be positive")
+
+
+def _require_nonnegative_finite(value: Any, name: str) -> None:
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            f"AO-Fast runtime contract requires {name} to be non-negative"
+        ) from exc
+    if not math.isfinite(parsed) or parsed < 0.0:
+        raise ValueError(
+            f"AO-Fast runtime contract requires {name} to be non-negative"
+        )
+
+
+def _require_positive_int(value: Any, name: str) -> None:
+    if isinstance(value, bool):
+        raise ValueError(
+            f"AO-Fast runtime contract requires {name} to be a positive integer"
+        )
+    try:
+        parsed = int(value)
+    except (TypeError, ValueError) as exc:
+        raise ValueError(
+            f"AO-Fast runtime contract requires {name} to be a positive integer"
+        ) from exc
+    if parsed <= 0:
+        raise ValueError(
+            f"AO-Fast runtime contract requires {name} to be a positive integer"
+        )

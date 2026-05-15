@@ -43,7 +43,13 @@ from .compatibility_projection import (
     CompatibilityProjectionResult,
     project_cell_volume_compatibility_2d,
 )
-from .active_kernels import P1ActiveGeometry, refresh_active_geometry_2d
+from .active_kernels import (
+    P1ActiveGeometry,
+    P1ActiveVolumeGeometry,
+    refresh_active_geometry_2d,
+    refresh_active_volume_geometry_candidates_2d,
+    refresh_active_volume_geometry_2d,
+)
 from .active_projection import (
     ActiveProjectionLedger,
     ActiveProjectionResult,
@@ -117,6 +123,7 @@ __all__ = [
     "GeometricYoungLaplaceResidual",
     "MetricCellComplex",
     "P1ActiveGeometry",
+    "P1ActiveVolumeGeometry",
     "P1CutDerivatives",
     "P1CutGeometry",
     "P1SweptFluxCertificate",
@@ -150,6 +157,8 @@ __all__ = [
     "project_cell_volume_compatibility_2d",
     "project_active_cell_volume_compatibility_2d",
     "refresh_active_geometry_2d",
+    "refresh_active_volume_geometry_candidates_2d",
+    "refresh_active_volume_geometry_2d",
     "restore_geometric_phase_checkpoint_2d",
     "scatter_local_to_nodes",
     "solve_active_pcg",

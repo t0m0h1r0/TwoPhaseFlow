@@ -14,7 +14,10 @@ from .ns_predictor_assembly import (
     select_gravity_aligned_axis,
     select_transverse_axis,
 )
-from ..coupling.interface_stress_closure import build_young_laplace_interface_stress_context
+from ..coupling.interface_stress_closure import (
+    build_interface_stress_context,
+    build_young_laplace_interface_stress_context,
+)
 from ..coupling.capillary_geometry import apply_wall_compatible_curvature
 from ..coupling.closed_interface_riesz import closed_interface_riesz_cochain
 from ..coupling.transport_variational_capillary import (
@@ -29,6 +32,13 @@ from .interface_projection_diagnostics import (
     capillary_face_cochain_diagnostics,
     capillary_pressure_adjoint_face_weights,
     zero_capillary_face_diagnostics,
+)
+from .geometric_capillary_reaction_split import (
+    build_geometric_capillary_reaction_split,
+)
+from .geometric_phase_runtime import (
+    GeometricRuntimeCapillaryApplicationState,
+    validate_geometric_runtime_capillary_application_admitted,
 )
 from .gravity_covector import build_variational_gravity_faces
 from .face_boundary import (
@@ -61,6 +71,29 @@ class PressureJumpStageContext:
 
 def _backend_is_gpu(backend) -> bool:
     return bool(getattr(backend, "is_gpu", lambda: False)())
+
+
+def _apply_wall_face_state(
+    face_components,
+    *,
+    xp,
+    bc_type: str,
+    face_no_slip_boundary_state: bool,
+):
+    """Project wall faces into the boundary space used by the pressure solve."""
+    if is_all_periodic(bc_type, 2):
+        return face_components
+    if face_no_slip_boundary_state:
+        return zero_wall_velocity_face_components(
+            face_components,
+            xp=xp,
+            bc_type=bc_type,
+        )
+    return zero_wall_normal_face_components(
+        face_components,
+        xp=xp,
+        bc_type=bc_type,
+    )
 
 
 def _apply_solver_interface_jump(ppe_solver, base_pressure):
@@ -111,17 +144,27 @@ def _projection_base_face_components(*, xp, state: NSStepState, div_op) -> tuple
     return base_faces, False
 
 
-def _geometric_to_projection_face_pair_2d(*, xp, grid, face_pair: list) -> list:
+def _geometric_to_projection_face_pair_2d(
+    *,
+    xp,
+    grid,
+    face_pair: list,
+    boundary: tuple[str, str] = ("wall", "wall"),
+) -> list:
     """Map AO cell-face increments to the NS projection face lattice.
 
     A3 mapping:
-      Equation: ``u_f^* += Pi_CF(dt M_C^{-1} r_sigma)``.
-      Discretization: AO capillary increments live on cell faces
-      ``((Nx+1,Ny),(Nx,Ny+1))`` while the nodal-control-volume projection
-      uses the dual face lattice ``((Nx,Ny+1),(Nx+1,Ny))``. ``Pi_CF`` is the
-      tensor P1 midpoint interpolation between these two face lattices.
-      Code: this backend-native slice kernel performs the interpolation
-      before wall-face projection and PPE use.
+      Equation: ``u_f^* += Pi_AF(dt M_G^{-1} r_sigma)``.
+      Discretization: the AO geometry layer uses integrated cell-face volume
+      cochains.  After the geometric Hodge inverse, the input still carries
+      the normal face measure: ``x_face = a_x |f_x|`` and
+      ``y_face = a_y |f_y|``.  The NS projection face lattice consumes point
+      normal acceleration/velocity samples, so ``Pi_AF`` divides by the
+      physical face length exactly once and then interpolates between
+      ``((Nx+1,Ny),(Nx,Ny+1))`` and ``((Nx,Ny+1),(Nx+1,Ny))`` with nonuniform
+      metric weights.
+      Code: this backend-native slice kernel performs the cochain-to-point
+      conversion and tensor P1 interpolation before PPE use.
     """
     if grid is None or getattr(grid, "ndim", None) != 2:
         raise ValueError("AO capillary face bridge requires a 2D grid")
@@ -135,20 +178,74 @@ def _geometric_to_projection_face_pair_2d(*, xp, grid, face_pair: list) -> list:
             f"{(tuple(x_face.shape), tuple(y_face.shape))}"
         )
 
-    x_mid = 0.5 * (x_face[:-1, :] + x_face[1:, :])
-    projected_x = xp.empty((nx, ny + 1), dtype=x_face.dtype)
-    projected_x[:, 0] = x_mid[:, 0]
-    projected_x[:, ny] = x_mid[:, ny - 1]
-    if ny > 1:
-        projected_x[:, 1:ny] = 0.5 * (x_mid[:, :-1] + x_mid[:, 1:])
+    dx = xp.asarray(grid.coords[0][1:] - grid.coords[0][:-1], dtype=x_face.dtype)
+    dy = xp.asarray(grid.coords[1][1:] - grid.coords[1][:-1], dtype=x_face.dtype)
+    x_velocity = x_face / dy.reshape((1, ny))
+    y_velocity = y_face / dx.reshape((nx, 1))
 
-    y_mid = 0.5 * (y_face[:, :-1] + y_face[:, 1:])
+    x_mid = 0.5 * (x_velocity[:-1, :] + x_velocity[1:, :])
+    projected_x = xp.empty((nx, ny + 1), dtype=x_face.dtype)
+    _cell_center_to_nodes_axis1(
+        xp=xp,
+        values=x_mid,
+        widths=dy,
+        out=projected_x,
+        periodic=boundary[1] == "periodic",
+    )
+
+    y_mid = 0.5 * (y_velocity[:, :-1] + y_velocity[:, 1:])
     projected_y = xp.empty((nx + 1, ny), dtype=y_face.dtype)
-    projected_y[0, :] = y_mid[0, :]
-    projected_y[nx, :] = y_mid[nx - 1, :]
-    if nx > 1:
-        projected_y[1:nx, :] = 0.5 * (y_mid[:-1, :] + y_mid[1:, :])
+    _cell_center_to_nodes_axis0(
+        xp=xp,
+        values=y_mid,
+        widths=dx,
+        out=projected_y,
+        periodic=boundary[0] == "periodic",
+    )
     return [projected_x, projected_y]
+
+
+def _cell_center_to_nodes_axis0(*, xp, values, widths, out, periodic: bool) -> None:
+    n = int(values.shape[0])
+    if periodic:
+        seam = (
+            widths[0] * values[-1, :] + widths[-1] * values[0, :]
+        ) / (widths[-1] + widths[0])
+        out[0, :] = seam
+        out[n, :] = seam
+    else:
+        out[0, :] = values[0, :]
+        out[n, :] = values[-1, :]
+    if n > 1:
+        denom = (widths[:-1] + widths[1:]).reshape((-1, 1))
+        left_weight = widths[1:].reshape((-1, 1)) / denom
+        right_weight = widths[:-1].reshape((-1, 1)) / denom
+        out[1:n, :] = left_weight * values[:-1, :] + right_weight * values[1:, :]
+
+
+def _cell_center_to_nodes_axis1(*, xp, values, widths, out, periodic: bool) -> None:
+    n = int(values.shape[1])
+    if periodic:
+        seam = (
+            widths[0] * values[:, -1] + widths[-1] * values[:, 0]
+        ) / (widths[-1] + widths[0])
+        out[:, 0] = seam
+        out[:, n] = seam
+    else:
+        out[:, 0] = values[:, 0]
+        out[:, n] = values[:, -1]
+    if n > 1:
+        denom = (widths[:-1] + widths[1:]).reshape((1, -1))
+        lower_weight = widths[1:].reshape((1, -1)) / denom
+        upper_weight = widths[:-1].reshape((1, -1)) / denom
+        out[:, 1:n] = lower_weight * values[:, :-1] + upper_weight * values[:, 1:]
+
+
+def _ao_application_boundary(application) -> tuple[str, str]:
+    capillary = getattr(application, "capillary", None)
+    material = getattr(capillary, "material", None)
+    face_hodge = getattr(material, "face_hodge", None)
+    return tuple(getattr(face_hodge, "boundary", ("wall", "wall")))
 
 
 def _ao_predictor_increment_for_projection_faces(
@@ -163,6 +260,7 @@ def _ao_predictor_increment_for_projection_faces(
         grid=grid,
         face_pair=application.predictor_face_increment,
         reference_faces=reference_faces,
+        boundary=_ao_application_boundary(application),
         label="predictor",
     )
 
@@ -179,7 +277,213 @@ def _ao_pressure_reaction_increment_for_projection_faces(
         grid=grid,
         face_pair=application.pressure_reaction_face_increment,
         reference_faces=reference_faces,
+        boundary=_ao_application_boundary(application),
         label="pressure reaction",
+    )
+
+
+def _ao_capillary_acceleration_for_projection_faces(
+    *,
+    xp,
+    grid,
+    face_pair,
+    reference_faces: list,
+    boundary: tuple[str, str],
+    label: str,
+) -> tuple[list, str]:
+    return _ao_face_pair_for_projection_faces(
+        xp=xp,
+        grid=grid,
+        face_pair=face_pair,
+        reference_faces=reference_faces,
+        boundary=boundary,
+        label=label,
+    )
+
+
+def _needs_geometric_pressure_reaction_split(application) -> bool:
+    capillary = getattr(application, "capillary", None)
+    return (
+        str(
+            getattr(
+                application,
+                "pressure_reaction_projection_status",
+                getattr(capillary, "pressure_reaction_projection_status", ""),
+            )
+        ).strip().lower()
+        == "pressure_reaction_projection_pending"
+    )
+
+
+def _split_pending_geometric_capillary_application(
+    state: NSStepState,
+    *,
+    backend,
+    xp,
+    div_op,
+    ppe_solver,
+    ppe_runtime,
+    grid,
+    reference_faces: list,
+    curvature_method: str,
+) -> tuple[GeometricRuntimeCapillaryApplicationState, str]:
+    """Build the pressure-adjoint split before AO predictor application."""
+    application = state.geometric_runtime_capillary_application
+    if application is None:
+        raise ValueError("AO capillary split requires an application packet")
+    if not _needs_geometric_pressure_reaction_split(application):
+        return application, "already_split"
+    if ppe_solver is None:
+        raise RuntimeError("AO pressure-reaction split requires the active PPE solver")
+    pressure_flux_kwargs = _pressure_face_flux_kwargs(
+        xp=xp,
+        state=state,
+        ppe_runtime=ppe_runtime,
+        interface_sigma=0.0,
+        curvature_method=curvature_method,
+    )
+    face_weights = capillary_pressure_adjoint_face_weights(
+        xp=xp,
+        div_op=div_op,
+        rho=state.rho,
+        pressure_flux_kwargs=pressure_flux_kwargs,
+    )
+    if face_weights is None:
+        raise RuntimeError(
+            "AO pressure-reaction split requires pressure-adjoint face weights"
+        )
+    raw_acceleration, raw_face_space = _ao_capillary_acceleration_for_projection_faces(
+        xp=xp,
+        grid=grid,
+        face_pair=application.predictor_face_acceleration,
+        reference_faces=reference_faces,
+        boundary=_ao_application_boundary(application),
+        label="raw source acceleration",
+    )
+    component_accelerations = tuple(
+        getattr(application.capillary, "component_reaction_accelerations", ())
+    )
+    if not component_accelerations:
+        raise ValueError(
+            "AO pressure_component_hodge split requires at least one "
+            "cell-volume reaction direction"
+        )
+    component_faces = []
+    for index, component in enumerate(component_accelerations):
+        faces, _ = _ao_capillary_acceleration_for_projection_faces(
+            xp=xp,
+            grid=grid,
+            face_pair=component,
+            reference_faces=reference_faces,
+            boundary=_ao_application_boundary(application),
+            label=f"component-{index} reaction acceleration",
+        )
+        component_faces.append(faces)
+    split = build_geometric_capillary_reaction_split(
+        xp=xp,
+        div_op=div_op,
+        ppe_solver=ppe_solver,
+        rho=state.rho,
+        pressure_flux_kwargs=pressure_flux_kwargs,
+        raw_source_face_acceleration=raw_acceleration,
+        component_reaction_face_accelerations=tuple(component_faces),
+        face_weight_components=face_weights,
+    )
+    split_application = _application_from_geometric_capillary_split(
+        application,
+        split,
+        backend=backend,
+        xp=xp,
+    )
+    validate_geometric_runtime_capillary_application_admitted(split_application)
+    state.geometric_runtime_capillary_application = split_application
+    certificate = dict(state.conservative_transport_certificate or {})
+    certificate.update(
+        {
+            "ao_pressure_reaction_projection_status": split.status,
+            "ao_pressure_reaction_projection_face_space": raw_face_space,
+            "ao_pressure_reaction_projection_raw_l2": _scalar_from_backend(
+                backend,
+                xp,
+                split.raw_source_weighted_l2,
+            ),
+            "ao_pressure_reaction_projection_corrected_l2": _scalar_from_backend(
+                backend,
+                xp,
+                split.corrected_source_weighted_l2,
+            ),
+            "ao_pressure_reaction_projection_range_l2": _scalar_from_backend(
+                backend,
+                xp,
+                split.pressure_range_weighted_l2,
+            ),
+            "ao_pressure_reaction_projection_balanced_l2": _scalar_from_backend(
+                backend,
+                xp,
+                split.balanced_weighted_l2,
+            ),
+            "ao_pressure_reaction_projection_pressure_adjoint_residual": (
+                _scalar_from_backend(backend, xp, split.pressure_adjoint_residual)
+            ),
+            "ao_pressure_reaction_projection_saddle_constraint_linf": (
+                _scalar_from_backend(backend, xp, split.saddle_constraint_linf)
+            ),
+        }
+    )
+    state.conservative_transport_certificate = certificate
+    return split_application, raw_face_space
+
+
+def _application_from_geometric_capillary_split(
+    application,
+    split,
+    *,
+    backend,
+    xp,
+) -> GeometricRuntimeCapillaryApplicationState:
+    dt = float(application.dt)
+    predictor_acceleration = tuple(
+        xp.asarray(component) for component in split.corrected_source_face_acceleration
+    )
+    pressure_acceleration = tuple(
+        xp.asarray(component) for component in split.pressure_range_face_acceleration
+    )
+    balanced_acceleration = tuple(
+        xp.asarray(component) for component in split.balanced_face_acceleration
+    )
+    predictor_increment = tuple(dt * component for component in predictor_acceleration)
+    pressure_increment = tuple(dt * component for component in pressure_acceleration)
+    balanced_increment = tuple(dt * component for component in balanced_acceleration)
+    tolerance = float(application.capillary.pressure_range_tolerance)
+    balanced_l2 = dt * _scalar_from_backend(backend, xp, split.balanced_weighted_l2)
+    balanced_max = dt * _scalar_from_backend(
+        backend,
+        xp,
+        split.max_abs_balanced_face_acceleration,
+    )
+    pressure_exact_static = balanced_l2 <= tolerance and balanced_max <= tolerance
+    return GeometricRuntimeCapillaryApplicationState(
+        capillary=application.capillary,
+        dt=dt,
+        predictor_face_acceleration=predictor_acceleration,
+        pressure_reaction_face_acceleration=pressure_acceleration,
+        predictor_face_increment=predictor_increment,
+        pressure_reaction_face_increment=pressure_increment,
+        pressure_balanced_face_increment=balanced_increment,
+        predictor_increment_weighted_l2=(
+            dt
+            * _scalar_from_backend(backend, xp, split.corrected_source_weighted_l2)
+        ),
+        pressure_reaction_increment_weighted_l2=(
+            dt * _scalar_from_backend(backend, xp, split.pressure_range_weighted_l2)
+        ),
+        pressure_balanced_increment_weighted_l2=balanced_l2,
+        max_abs_pressure_balanced_face_increment=balanced_max,
+        pressure_exact_static=pressure_exact_static,
+        capillary_drive_present=not pressure_exact_static,
+        pressure_reaction_coordinate=xp.asarray(split.pressure_range_coordinate),
+        face_hodge_weights=split.face_weight_components,
+        pressure_reaction_projection_status=split.status,
     )
 
 
@@ -189,6 +493,7 @@ def _ao_face_pair_for_projection_faces(
     grid,
     face_pair,
     reference_faces: list,
+    boundary: tuple[str, str],
     label: str,
 ) -> tuple[list, str]:
     increments = [xp.asarray(component) for component in face_pair]
@@ -198,6 +503,7 @@ def _ao_face_pair_for_projection_faces(
         xp=xp,
         grid=grid,
         face_pair=increments,
+        boundary=boundary,
     )
     if not _face_pair_shapes_match(projected, reference_faces):
         reference_shapes = tuple(tuple(face.shape) for face in reference_faces)
@@ -326,6 +632,7 @@ def _pressure_face_flux_kwargs(
     interface_psi=None,
     interface_psi_previous=None,
     transport_variational_temporaries=None,
+    include_geometric_hfe_jump: bool = False,
 ) -> dict:
     """Return face-pressure kwargs for the projection-native pressure law.
 
@@ -351,18 +658,46 @@ def _pressure_face_flux_kwargs(
     )
     if pressure_force_contract != "raw_compact_gradient":
         kwargs["pressure_force_contract"] = pressure_force_contract
+    boundary_face_space = getattr(ppe_runtime, "boundary_face_space", "full_face")
+    if boundary_face_space != "full_face":
+        kwargs["boundary_face_space"] = boundary_face_space
     if getattr(ppe_runtime, "ppe_coefficient_scheme", None) == "phase_separated":
         kwargs["coefficient_scheme"] = "phase_separated"
     if getattr(ppe_runtime, "ppe_interface_coupling_scheme", "none") == "affine_jump":
         sigma = state.sigma if interface_sigma is None else float(interface_sigma)
+        hfe_psi, hfe_pressure_jump, hfe_phase_threshold = (
+            _geometric_capillary_hfe_jump(state)
+            if include_geometric_hfe_jump
+            else (None, None, None)
+        )
+        if hfe_pressure_jump is not None:
+            interface_psi = hfe_psi
         kwargs["interface_coupling_scheme"] = "affine_jump"
-        kwargs["interface_stress_context"] = (
-            build_young_laplace_interface_stress_context(
+        if hfe_pressure_jump is None:
+            kwargs["interface_stress_context"] = (
+                build_young_laplace_interface_stress_context(
+                    xp=xp,
+                    psi=state.psi if interface_psi is None else interface_psi,
+                    kappa_lg=state.kappa,
+                    sigma=sigma,
+                    psi_previous=interface_psi_previous,
+                    **(transport_variational_temporaries or {}),
+                    face_curvature_method=(
+                        curvature_method
+                        if curvature_method in _JUMP_CURVATURE_METHODS
+                        else "nodal_cut_face"
+                    ),
+                )
+            )
+        else:
+            kwargs["interface_stress_context"] = build_interface_stress_context(
                 xp=xp,
                 psi=state.psi if interface_psi is None else interface_psi,
-                kappa_lg=state.kappa,
-                sigma=sigma,
+                pressure_jump_gas_minus_liquid=hfe_pressure_jump,
                 psi_previous=interface_psi_previous,
+                phase_threshold=(
+                    0.5 if hfe_phase_threshold is None else hfe_phase_threshold
+                ),
                 **(transport_variational_temporaries or {}),
                 face_curvature_method=(
                     curvature_method
@@ -370,7 +705,6 @@ def _pressure_face_flux_kwargs(
                     else "nodal_cut_face"
                 ),
             )
-        )
     return kwargs
 
 
@@ -411,8 +745,34 @@ def _uses_geometric_capillary_surface_slot(state: NSStepState) -> bool:
     )
 
 
+def _geometric_capillary_hfe_jump(state: NSStepState):
+    """Return q-owned explicit HFE pressure-jump data for AO capillarity."""
+    application = state.geometric_runtime_capillary_application
+    capillary = getattr(application, "capillary", None)
+    status = str(getattr(capillary, "pressure_jump_status", "none")).strip().lower()
+    if status in {"", "none"}:
+        return None, None, None
+    pressure_jump = getattr(capillary, "pressure_jump_gas_minus_liquid", None)
+    if pressure_jump is None:
+        return None, None, None
+    psi = getattr(capillary, "pressure_jump_psi", None)
+    phase_threshold = getattr(capillary, "pressure_jump_phase_threshold", 0.5)
+    return (state.psi if psi is None else psi), pressure_jump, phase_threshold
+
+
+def _uses_geometric_capillary_hfe_jump(state: NSStepState) -> bool:
+    """Return whether AO capillarity is represented as an HFE jump."""
+    _, pressure_jump, _ = _geometric_capillary_hfe_jump(state)
+    return pressure_jump is not None
+
+
 def _pressure_coordinate_history_base(*, xp, state: NSStepState, ppe_runtime):
     """Extrapolate scalar pressure coordinates for pressure-adjoint history."""
+    if _uses_geometric_capillary_hfe_jump(state):
+        # The graph HFE jump is a current-interface boundary condition, not a
+        # transported smooth pressure coordinate.  Reusing it after a moving
+        # grid rebuild mixes two different affine PPE operators.
+        return None
     previous = state.previous_base_pressure
     if previous is None:
         return None
@@ -426,6 +786,58 @@ def _pressure_coordinate_history_base(*, xp, state: NSStepState, ppe_runtime):
     ):
         return 2.0 * previous - xp.asarray(state.previous_previous_base_pressure)
     return previous
+
+
+def _affine_pressure_history_jump_offset(xp, pressure_flux_kwargs: dict | None):
+    """Return the nodal jump offset stripped from smooth pressure history.
+
+    Affine-jump face laws consume the physical discontinuous pressure in
+    ``G(p)-B(j)``.  Grid-rebuild history, however, must transport the smooth
+    phase pressure representative.  The same reduced coordinate as the HFE
+    split is ``p_reduced = p_physical - j_gl (1-psi)``.
+    """
+    if not pressure_flux_kwargs:
+        return None
+    if pressure_flux_kwargs.get("interface_coupling_scheme") != "affine_jump":
+        return None
+    context = pressure_flux_kwargs.get("interface_stress_context")
+    if context is None:
+        return None
+    psi = getattr(context, "psi", None)
+    if psi is None:
+        return None
+    pressure_jump = getattr(context, "pressure_jump_gas_minus_liquid", None)
+    if pressure_jump is None:
+        kappa = getattr(context, "kappa_lg", None)
+        sigma = float(getattr(context, "sigma", 0.0))
+        if kappa is None or sigma == 0.0:
+            return None
+        pressure_jump = -sigma * xp.asarray(kappa)
+    return xp.asarray(pressure_jump) * (1.0 - xp.asarray(psi))
+
+
+def _decode_affine_pressure_history_coordinate(
+    xp,
+    pressure_coordinate,
+    pressure_flux_kwargs: dict | None,
+):
+    """Convert the smooth stored history coordinate to physical pressure."""
+    offset = _affine_pressure_history_jump_offset(xp, pressure_flux_kwargs)
+    if offset is None:
+        return pressure_coordinate
+    return xp.asarray(pressure_coordinate) + offset
+
+
+def _encode_affine_pressure_history_coordinate(
+    xp,
+    physical_pressure,
+    pressure_flux_kwargs: dict | None,
+):
+    """Convert physical affine-jump pressure to the smooth stored coordinate."""
+    offset = _affine_pressure_history_jump_offset(xp, pressure_flux_kwargs)
+    if offset is None:
+        return physical_pressure
+    return xp.asarray(physical_pressure) - offset
 
 
 def _pressure_coordinate_history_faces(
@@ -459,6 +871,11 @@ def _pressure_coordinate_history_faces(
         capillary_force_source == "closed_interface_riesz"
         and not _uses_geometric_capillary_surface_slot(state)
     )
+    history_jump_sigma = (
+        0.0
+        if closed_interface_source or _uses_geometric_capillary_surface_slot(state)
+        else state.sigma
+    )
     interface_psi = _capillary_interface_psi(
         xp=xp,
         state=state,
@@ -473,19 +890,20 @@ def _pressure_coordinate_history_faces(
         state=state,
         curvature_method=curvature_method,
         grid=grid,
-        sigma=state.sigma,
+        sigma=history_jump_sigma,
     )
     kwargs = _pressure_face_flux_kwargs(
         xp=xp,
         state=state,
         ppe_runtime=ppe_runtime,
-        interface_sigma=0.0 if closed_interface_source else state.sigma,
+        interface_sigma=history_jump_sigma,
         curvature_method=curvature_method,
         interface_psi=interface_psi,
         interface_psi_previous=interface_psi_previous,
         transport_variational_temporaries=transport_temporaries,
     )
-    return base, div_op.pressure_fluxes(base, state.rho, **kwargs)
+    physical_base = _decode_affine_pressure_history_coordinate(xp, base, kwargs)
+    return physical_base, div_op.pressure_fluxes(physical_base, state.rho, **kwargs)
 
 
 def _closed_interface_trace_projection_diagnostics(projection) -> dict:
@@ -840,6 +1258,7 @@ def compute_ns_predictor_stage(
     ppe_coefficient_scheme: str = "phase_separated",
     conservative_momentum_transport: bool = False,
     ppe_runtime=None,
+    ppe_solver=None,
     curvature_method: str = "psi_direct_filtered",
     capillary_force_source: str = "curvature_jump",
     grid=None,
@@ -891,19 +1310,12 @@ def compute_ns_predictor_stage(
             gravity_axis=1,
         )
         gravity_accel_faces = gravity_faces.acceleration_components
-        if not is_all_periodic(bc_type, 2) and state.bc_hook is None:
-            if face_no_slip_boundary_state:
-                gravity_accel_faces = zero_wall_velocity_face_components(
-                    gravity_accel_faces,
-                    xp=xp,
-                    bc_type=bc_type,
-                )
-            else:
-                gravity_accel_faces = zero_wall_normal_face_components(
-                    gravity_accel_faces,
-                    xp=xp,
-                    bc_type=bc_type,
-                )
+        gravity_accel_faces = _apply_wall_face_state(
+            gravity_accel_faces,
+            xp=xp,
+            bc_type=bc_type,
+            face_no_slip_boundary_state=face_no_slip_boundary_state,
+        )
         state.gravity_covector_face_components = gravity_faces.covector_components
         state.gravity_accel_face_components = gravity_accel_faces
         state.gravity_face_density_components = gravity_faces.face_density_components
@@ -1187,48 +1599,55 @@ def compute_ns_predictor_stage(
                     "non-static AO capillary predictor requires face-native "
                     "predictor components"
                 )
-            increments, increment_face_space = (
-                _ao_predictor_increment_for_projection_faces(
+            if _needs_geometric_pressure_reaction_split(application):
+                application, _ = _split_pending_geometric_capillary_application(
+                    state,
+                    backend=backend,
                     xp=xp,
+                    div_op=div_op,
+                    ppe_solver=ppe_solver,
+                    ppe_runtime=ppe_runtime,
                     grid=grid,
-                    application=application,
                     reference_faces=state.predictor_face_components,
+                    curvature_method=curvature_method,
                 )
-            )
-            state.predictor_face_components = [
-                predictor_face + increment
-                for predictor_face, increment in zip(
-                    state.predictor_face_components,
-                    increments,
+            if application.pressure_exact_static:
+                certificate = dict(state.conservative_transport_certificate or {})
+                certificate.update(
+                    {
+                        "ao_static_surface_tension_applied": True,
+                        "ao_static_surface_tension_force_source": (
+                            "geometric_pressure_reaction_split"
+                        ),
+                        "ao_static_split_downstream_unblocked": True,
+                        "ao_static_surface_tension_balanced_increment_weighted_l2": (
+                            application.pressure_balanced_increment_weighted_l2
+                        ),
+                        "ao_static_surface_tension_balanced_max_abs_face_increment": (
+                            application.max_abs_pressure_balanced_face_increment
+                        ),
+                    }
                 )
-            ]
-            state.geometric_capillary_predictor_applied = True
-            ao_capillary_predictor_applied = True
-            certificate = dict(state.conservative_transport_certificate or {})
-            certificate.update(
-                {
-                    "ao_capillary_predictor_face_increment_applied": True,
-                    "ao_capillary_predictor_increment_weighted_l2": (
-                        application.predictor_increment_weighted_l2
-                    ),
-                    "ao_capillary_predictor_face_space": increment_face_space,
-                    "ao_pressure_reaction_increment_pending": True,
-                }
-            )
-            state.conservative_transport_certificate = certificate
-        if not is_all_periodic(bc_type, 2) and state.bc_hook is None:
-            if face_no_slip_boundary_state:
-                state.predictor_face_components = zero_wall_velocity_face_components(
-                    state.predictor_face_components,
-                    xp=xp,
-                    bc_type=bc_type,
-                )
+                state.conservative_transport_certificate = certificate
             else:
-                state.predictor_face_components = zero_wall_normal_face_components(
-                    state.predictor_face_components,
-                    xp=xp,
-                    bc_type=bc_type,
+                state.geometric_capillary_predictor_applied = True
+                certificate = dict(state.conservative_transport_certificate or {})
+                certificate.update(
+                    {
+                        "ao_capillary_predictor_face_increment_applied": False,
+                        "ao_capillary_predictor_increment_weighted_l2": (
+                            application.predictor_increment_weighted_l2
+                        ),
+                        "ao_capillary_pressure_jump_injection_pending": True,
+                    }
                 )
+                state.conservative_transport_certificate = certificate
+        state.predictor_face_components = _apply_wall_face_state(
+            state.predictor_face_components,
+            xp=xp,
+            bc_type=bc_type,
+            face_no_slip_boundary_state=face_no_slip_boundary_state,
+        )
         if ao_capillary_predictor_applied and hasattr(div_op, "reconstruct_nodes"):
             state.u_star, state.v_star = div_op.reconstruct_nodes(
                 state.predictor_face_components
@@ -1261,20 +1680,110 @@ def _pressure_stage_predictor_rhs(
         predictor_faces = state.predictor_face_components
     if predictor_faces is None or not hasattr(div_op, "divergence_from_faces"):
         return div_op.divergence([state.u_star, state.v_star]) / projection_dt
-    if not is_all_periodic(bc_type, 2) and state.bc_hook is None:
-        if face_no_slip_boundary_state:
-            predictor_faces = zero_wall_velocity_face_components(
-                predictor_faces,
-                xp=xp,
-                bc_type=bc_type,
-            )
-        else:
-            predictor_faces = zero_wall_normal_face_components(
-                predictor_faces,
-                xp=xp,
-                bc_type=bc_type,
-            )
+    predictor_faces = _apply_wall_face_state(
+        predictor_faces,
+        xp=xp,
+        bc_type=bc_type,
+        face_no_slip_boundary_state=face_no_slip_boundary_state,
+    )
     return div_op.divergence_from_faces(predictor_faces) / projection_dt
+
+
+def _pressure_stage_force_rhs(
+    state: NSStepState,
+    *,
+    xp,
+    div_op,
+    ppe_runtime,
+    bc_type: str,
+    face_no_slip_boundary_state: bool,
+):
+    """Return body-force divergence in the same direct face boundary space."""
+    force_components = [state.f_x / state.rho, state.f_y / state.rho]
+    boundary_face_space = getattr(ppe_runtime, "boundary_face_space", "full_face")
+    if (
+        boundary_face_space != "full_face"
+        and hasattr(div_op, "face_fluxes")
+        and hasattr(div_op, "divergence_from_faces")
+    ):
+        force_faces = div_op.face_fluxes(force_components)
+        force_faces = _apply_wall_face_state(
+            force_faces,
+            xp=xp,
+            bc_type=bc_type,
+            face_no_slip_boundary_state=face_no_slip_boundary_state,
+        )
+        return div_op.divergence_from_faces(force_faces)
+    return div_op.divergence(force_components)
+
+
+def _prepare_nonstatic_geometric_capillary_jump(
+    state: NSStepState,
+    *,
+    backend,
+    xp,
+    div_op,
+    grid,
+    bc_type: str,
+    face_no_slip_boundary_state: bool,
+) -> None:
+    """Prepare the AO conservative capillary cochain for PPE/corrector use.
+
+    A3 mapping:
+      Equation: the active-geometry split yields the component-corrected
+      surface cochain ``c_sigma``.  The projection step solves
+      ``D_f G_A p = D_f u^*/dt + D_f c_sigma`` and the corrector evaluates
+      ``G_A p - c_sigma`` through the same face pressure operator.
+      Discretization: ``c_sigma`` is converted once to the projection face
+      lattice and kept as backend-native face acceleration arrays.
+      Code: the same arrays stored here are added to the PPE RHS and later
+      passed as ``capillary_jump_components`` to ``pressure_fluxes``.
+    """
+    if state.predictor_face_components is None:
+        raise ValueError(
+            "non-static AO capillary jump requires face-native predictor "
+            "components"
+        )
+    if not hasattr(div_op, "divergence_from_faces"):
+        raise RuntimeError("non-static AO capillary jump requires face divergence")
+    application = state.geometric_runtime_capillary_application
+    acceleration, face_space = _ao_capillary_acceleration_for_projection_faces(
+        xp=xp,
+        grid=grid,
+        face_pair=application.predictor_face_acceleration,
+        reference_faces=state.predictor_face_components,
+        boundary=_ao_application_boundary(application),
+        label="corrected conservative capillary jump acceleration",
+    )
+    acceleration = _apply_wall_face_state(
+        acceleration,
+        xp=xp,
+        bc_type=bc_type,
+        face_no_slip_boundary_state=face_no_slip_boundary_state,
+    )
+    rhs = div_op.divergence_from_faces(acceleration)
+    state.geometric_capillary_jump_face_acceleration = acceleration
+    state.geometric_capillary_jump_rhs = rhs
+    state.geometric_capillary_jump_prepared = True
+    certificate = dict(state.conservative_transport_certificate or {})
+    certificate.update(
+        {
+            "ao_capillary_pressure_jump_injection_pending": False,
+            "ao_capillary_pressure_jump_prepared": True,
+            "ao_capillary_pressure_jump_face_space": face_space,
+            "ao_capillary_pressure_jump_acceleration_linf": _face_linf(
+                backend,
+                xp,
+                acceleration,
+            ),
+            "ao_capillary_pressure_jump_rhs_linf": _scalar_from_backend(
+                backend,
+                xp,
+                xp.max(xp.abs(rhs)),
+            ),
+        }
+    )
+    state.conservative_transport_certificate = certificate
 
 
 def _prepare_nonstatic_geometric_pressure_reaction(
@@ -1316,23 +1825,24 @@ def _prepare_nonstatic_geometric_pressure_reaction(
             reference_faces=state.predictor_face_components,
         )
     )
-    if not is_all_periodic(bc_type, 2) and state.bc_hook is None:
-        if face_no_slip_boundary_state:
-            increments = zero_wall_velocity_face_components(
-                increments,
-                xp=xp,
-                bc_type=bc_type,
-            )
-        else:
-            increments = zero_wall_normal_face_components(
-                increments,
-                xp=xp,
-                bc_type=bc_type,
-            )
+    increments = _apply_wall_face_state(
+        increments,
+        xp=xp,
+        bc_type=bc_type,
+        face_no_slip_boundary_state=face_no_slip_boundary_state,
+    )
     acceleration = [increment / projection_dt for increment in increments]
     rhs = div_op.divergence_from_faces(acceleration)
+    reaction_coordinate = getattr(
+        application,
+        "pressure_reaction_coordinate",
+        None,
+    )
     state.geometric_capillary_pressure_reaction_face_increment = increments
     state.geometric_capillary_pressure_reaction_face_acceleration = acceleration
+    state.geometric_capillary_pressure_reaction_coordinate = (
+        None if reaction_coordinate is None else xp.asarray(reaction_coordinate)
+    )
     state.geometric_capillary_pressure_reaction_rhs = rhs
     state.geometric_capillary_pressure_reaction_prepared = True
     certificate = dict(state.conservative_transport_certificate or {})
@@ -1358,6 +1868,9 @@ def _prepare_nonstatic_geometric_pressure_reaction(
                 backend,
                 xp,
                 xp.max(xp.abs(rhs)),
+            ),
+            "ao_pressure_reaction_coordinate_available": (
+                reaction_coordinate is not None
             ),
         }
     )
@@ -1488,6 +2001,52 @@ def _embed_nonstatic_geometric_pressure_reaction_corrector(
     state.conservative_transport_certificate = certificate
 
 
+def _install_nonstatic_geometric_pressure_coordinate(
+    state: NSStepState,
+    *,
+    xp,
+    ppe_solver,
+) -> None:
+    """Store the scalar AO pressure coordinate after face embedding.
+
+    The face corrector has already consumed ``a_pi`` directly.  The scalar
+    coordinate is retained in ``pressure_base`` only as the current-step full
+    pressure representation.  It must not become pressure history: AO geometric
+    pressure reaction is a constraint response recomputed from the current
+    active geometry, not a smooth hydrodynamic phase pressure to extrapolate
+    through HFE/affine history.
+    """
+    coordinate = state.geometric_capillary_pressure_reaction_coordinate
+    if coordinate is None:
+        raise ValueError(
+            "non-static AO pressure reaction requires the scalar coordinate "
+            "from the pressure-adjoint split"
+        )
+    state.pressure_base = xp.asarray(state.pressure_base) + xp.asarray(coordinate)
+    state.pressure = _apply_solver_interface_jump(ppe_solver, state.pressure_base)
+    certificate = dict(state.conservative_transport_certificate or {})
+    certificate.update(
+        {
+            "ao_pressure_reaction_coordinate_embedded": True,
+        }
+    )
+    state.conservative_transport_certificate = certificate
+
+
+def _smooth_pressure_history_base_without_ao_reaction(
+    xp,
+    state: NSStepState,
+):
+    """Return the smooth pressure coordinate admissible for history storage."""
+    base = xp.asarray(state.pressure_base)
+    coordinate = state.geometric_capillary_pressure_reaction_coordinate
+    if _uses_nonstatic_geometric_capillary_application(state):
+        if coordinate is None:
+            return base
+        return base - xp.asarray(coordinate)
+    return base
+
+
 def _install_pressure_jump_context(
     state: NSStepState,
     *,
@@ -1506,12 +2065,22 @@ def _install_pressure_jump_context(
     if not hasattr(ppe_solver, "set_interface_jump_context"):
         return rhs, PressureJumpStageContext(transport_temporaries={})
 
-    jump_sigma = 0.0 if closed_interface_source else physical_jump_sigma
+    hfe_psi, hfe_pressure_jump, hfe_phase_threshold = _geometric_capillary_hfe_jump(
+        state
+    )
+    use_hfe_pressure_jump = hfe_pressure_jump is not None
+    jump_sigma = (
+        0.0
+        if closed_interface_source or use_hfe_pressure_jump
+        else physical_jump_sigma
+    )
     interface_psi = _capillary_interface_psi(
         xp=xp,
         state=state,
         curvature_method=curvature_method,
     )
+    if use_hfe_pressure_jump:
+        interface_psi = hfe_psi
     interface_psi_previous = _capillary_interface_psi_previous(
         state=state,
         curvature_method=curvature_method,
@@ -1524,7 +2093,6 @@ def _install_pressure_jump_context(
         grid=jump_grid,
         sigma=physical_jump_sigma,
     )
-
     trace_projection_diagnostics = None
     corrected_capillary_components = None
     if closed_interface_source:
@@ -1586,6 +2154,10 @@ def _install_pressure_jump_context(
         kappa=state.kappa,
         sigma=jump_sigma,
         psi_previous=interface_psi_previous,
+        pressure_jump_gas_minus_liquid=hfe_pressure_jump,
+        phase_threshold=(
+            0.5 if hfe_phase_threshold is None else hfe_phase_threshold
+        ),
         **transport_temporaries,
         face_curvature_method=(
             curvature_method
@@ -1696,26 +2268,37 @@ def solve_ns_pressure_stage(
     nonstatic_geometric_capillary = _uses_nonstatic_geometric_capillary_application(
         state
     )
+    geometric_hfe_jump = (
+        nonstatic_geometric_capillary
+        and _uses_geometric_capillary_hfe_jump(state)
+    )
     if nonstatic_geometric_capillary:
         if not state.geometric_capillary_predictor_applied:
             raise ValueError(
-                "non-static AO capillary predictor requires face-native "
-                "predictor application before PPE"
+                "non-static AO capillary jump requires face-native "
+                "application admission before PPE"
             )
-        _prepare_nonstatic_geometric_pressure_reaction(
-            state,
-            backend=backend,
-            xp=xp,
-            div_op=div_op,
-            grid=_pressure_jump_grid(ppe_solver, div_op),
-            projection_dt=projection_dt,
-            bc_type=bc_type,
-            face_no_slip_boundary_state=face_no_slip_boundary_state,
-        )
+        if not geometric_hfe_jump:
+            _prepare_nonstatic_geometric_capillary_jump(
+                state,
+                backend=backend,
+                xp=xp,
+                div_op=div_op,
+                grid=_pressure_jump_grid(ppe_solver, div_op),
+                bc_type=bc_type,
+                face_no_slip_boundary_state=face_no_slip_boundary_state,
+            )
     rhs = predictor_rhs
-    if nonstatic_geometric_capillary:
-        rhs = rhs - state.geometric_capillary_pressure_reaction_rhs
-    rhs = rhs + div_op.divergence([state.f_x / state.rho, state.f_y / state.rho])
+    if nonstatic_geometric_capillary and not geometric_hfe_jump:
+        rhs = rhs + state.geometric_capillary_jump_rhs
+    rhs = rhs + _pressure_stage_force_rhs(
+        state,
+        xp=xp,
+        div_op=div_op,
+        ppe_runtime=ppe_runtime,
+        bc_type=bc_type,
+        face_no_slip_boundary_state=face_no_slip_boundary_state,
+    )
     closed_interface_source = (
         capillary_force_source == "closed_interface_riesz"
         and not _uses_geometric_capillary_surface_slot(state)
@@ -1772,7 +2355,12 @@ def solve_ns_pressure_stage(
         certificate = dict(state.conservative_transport_certificate or {})
         certificate.update(
             {
-                "ao_pressure_reaction_rhs_subtracted": True,
+                "ao_capillary_pressure_jump_rhs_added": True,
+                "ao_capillary_pressure_jump_route": (
+                    "hfe_affine_context"
+                    if geometric_hfe_jump
+                    else "external_face_cochain"
+                ),
                 "ao_scalar_ppe_rhs_linf": _scalar_from_backend(
                     backend,
                     xp,
@@ -1854,6 +2442,7 @@ def solve_ns_pressure_stage(
             interface_psi=interface_psi,
             interface_psi_previous=interface_psi_previous,
             transport_variational_temporaries=jump_context.transport_temporaries,
+            include_geometric_hfe_jump=geometric_hfe_jump,
         )
         range_projection, pressure_flux_eval_kwargs = (
             _capillary_pressure_flux_evaluation_kwargs(
@@ -1867,6 +2456,24 @@ def solve_ns_pressure_stage(
                 jump_context=jump_context,
             )
         )
+        if nonstatic_geometric_capillary and not geometric_hfe_jump:
+            if state.geometric_capillary_jump_face_acceleration is None:
+                raise RuntimeError(
+                    "non-static AO capillary jump was not prepared before "
+                    "pressure face evaluation"
+                )
+            pressure_flux_eval_kwargs = dict(pressure_flux_eval_kwargs)
+            pressure_flux_eval_kwargs["capillary_jump_components"] = (
+                state.geometric_capillary_jump_face_acceleration
+            )
+            certificate = dict(state.conservative_transport_certificate or {})
+            certificate["ao_capillary_pressure_jump_faces_bound"] = True
+            state.conservative_transport_certificate = certificate
+        elif geometric_hfe_jump:
+            certificate = dict(state.conservative_transport_certificate or {})
+            certificate["ao_capillary_pressure_jump_faces_bound"] = True
+            certificate["ao_capillary_hfe_affine_context_bound"] = True
+            state.conservative_transport_certificate = certificate
         correction_pressure = (
             xp.asarray(base_increment)
             if pressure_coordinate_history
@@ -1923,13 +2530,22 @@ def solve_ns_pressure_stage(
                 **range_projection,
             )
     if nonstatic_geometric_capillary:
-        _embed_nonstatic_geometric_pressure_reaction_corrector(
+        certificate = dict(state.conservative_transport_certificate or {})
+        certificate["ao_capillary_pressure_jump_corrector_bound"] = True
+        state.conservative_transport_certificate = certificate
+    if pressure_coordinate_history and uses_affine_face_history:
+        smooth_history_base = _smooth_pressure_history_base_without_ao_reaction(
+            xp,
             state,
-            xp=xp,
-            div_op=div_op,
-            ppe_runtime=ppe_runtime,
-            curvature_method=curvature_method,
-            pressure_flux_kwargs=pressure_flux_eval_kwargs,
+        )
+        state.pressure_history_storage_base = (
+            xp.asarray(smooth_history_base)
+            if geometric_hfe_jump
+            else _encode_affine_pressure_history_coordinate(
+                xp,
+                smooth_history_base,
+                pressure_flux_eval_kwargs,
+            )
         )
     next_p_prev_dev = xp.copy(state.pressure)
     next_p_prev = (
@@ -2234,16 +2850,12 @@ def correct_ns_velocity_stage(
                     force_faces,
                 )
             ]
-            if (
-                not is_all_periodic(bc_type, 2)
-                and state.bc_hook is None
-                and face_no_slip_boundary_state
-            ):
-                state.projected_face_components = zero_wall_velocity_face_components(
-                    state.projected_face_components,
-                    xp=xp,
-                    bc_type=bc_type,
-                )
+            state.projected_face_components = _apply_wall_face_state(
+                state.projected_face_components,
+                xp=xp,
+                bc_type=bc_type,
+                face_no_slip_boundary_state=face_no_slip_boundary_state,
+            )
             _apply_boundary_hodge_projection(
                 state,
                 xp=xp,
@@ -2280,6 +2892,12 @@ def correct_ns_velocity_stage(
                 projection_dt,
                 [state.f_x / state.rho, state.f_y / state.rho],
                 **project_kwargs,
+            )
+            state.projected_face_components = _apply_wall_face_state(
+                state.projected_face_components,
+                xp=xp,
+                bc_type=bc_type,
+                face_no_slip_boundary_state=face_no_slip_boundary_state,
             )
             _apply_boundary_hodge_projection(
                 state,

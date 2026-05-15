@@ -76,7 +76,11 @@ _GRAVITY_FORMULATION_ALIASES = {
 _GRAVITY_TRANSPORT_ADJOINTS = ("legacy", "common_flux")
 _GRAVITY_METRICS = ("legacy", "transported_face_mass")
 _GRAVITY_GATES = ("off", "diagnostic", "fail_close")
-_CLOSED_INTERFACE_ENDPOINTS = ("conservative_psi", "geometric_cell_fraction")
+_CLOSED_INTERFACE_ENDPOINTS = (
+    "conservative_psi",
+    "geometric_cell_fraction",
+    "column_height_graph",
+)
 _CLOSED_INTERFACE_METRICS = ("pressure_adjoint",)
 _CLOSED_INTERFACE_CONSTRAINTS = ("component_volume", "cell_volume")
 
@@ -207,11 +211,12 @@ def _parse_surface_tension_settings(
         if (
             capillary_force_source == "bundle_virtual_work"
             and closed_interface_contract["capillary_closed_interface_endpoint"]
-            != "geometric_cell_fraction"
+            not in {"geometric_cell_fraction", "column_height_graph"}
         ):
             raise ValueError(
                 f"{layout['paths']['surface_tension_source']}='bundle_virtual_work' "
-                "requires closed_interface.endpoint='geometric_cell_fraction'."
+                "requires closed_interface.endpoint='geometric_cell_fraction' "
+                "or 'column_height_graph'."
             )
         if "capillary_range_projection" in projection["poisson"].get("operator", {}):
             raise ValueError(
@@ -557,6 +562,7 @@ def parse_run_operator_settings(
         "ppe_dc_max_iterations": poisson_settings["ppe_dc_max_iterations"],
         "ppe_dc_tolerance": poisson_settings["ppe_dc_tolerance"],
         "ppe_dc_relaxation": poisson_settings["ppe_dc_relaxation"],
+        "ppe_dc_fail_close": poisson_settings["ppe_dc_fail_close"],
         "pressure_gradient_scheme": surface_settings["pressure_gradient_scheme"],
         "surface_tension_scheme": surface_settings["surface_tension_scheme"],
         "capillary_force_source": surface_settings["capillary_force_source"],
@@ -649,7 +655,9 @@ def _parse_closed_interface_contract(*, surface_tension: dict, path: str) -> dic
             f"{path}.residual_contract.constraints must be a sequence."
         ) from exc
     expected_constraints = (
-        ("cell_volume",) if endpoint == "geometric_cell_fraction" else ("component_volume",)
+        ("cell_volume",)
+        if endpoint in {"geometric_cell_fraction", "column_height_graph"}
+        else ("component_volume",)
     )
     if constraint_tuple != expected_constraints:
         raise ValueError(

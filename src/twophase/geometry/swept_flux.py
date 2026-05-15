@@ -24,6 +24,8 @@ import math
 from contextlib import nullcontext
 from dataclasses import dataclass
 
+import numpy as np
+
 from .cell_complex import MetricCellComplex
 from .gpu_runtime_guard import reject_device_value, reject_gpu_namespace
 from .p1_cut_geometry import (
@@ -36,6 +38,7 @@ from .p1_cut_geometry import (
 
 
 _BOUNDARY_KINDS = frozenset({"wall", "periodic"})
+_AXIS_STRIP_RAW_KERNELS: dict[tuple[str, str], object] = {}
 
 
 @dataclass(frozen=True)
@@ -766,7 +769,440 @@ def _bottom_side_horizontal_strip_area(
     )
 
 
+_AXIS_STRIP_RAW_CODE = r"""
+extern "C" {
+
+__device__ __forceinline__ void _axis_strip_edge_cross(
+    const SCALAR_T v_lo,
+    const SCALAR_T v_hi,
+    const SCALAR_T x_lo,
+    const SCALAR_T y_lo,
+    const SCALAR_T x_hi,
+    const SCALAR_T y_hi,
+    const bool inclusive,
+    bool* mask,
+    SCALAR_T* x,
+    SCALAR_T* y)
+{
+    if (inclusive) {
+        *mask = (v_lo <= (SCALAR_T)0.0) != (v_hi <= (SCALAR_T)0.0);
+    } else {
+        *mask = v_lo * v_hi < (SCALAR_T)0.0;
+    }
+    const SCALAR_T denominator = v_hi - v_lo;
+    const SCALAR_T theta = *mask ? -v_lo / denominator : (SCALAR_T)0.0;
+    *x = x_lo + theta * (x_hi - x_lo);
+    *y = y_lo + theta * (y_hi - y_lo);
+}
+
+__device__ __forceinline__ void _axis_strip_token_point4(
+    const int kind,
+    const int index,
+    const SCALAR_T px[4],
+    const SCALAR_T py[4],
+    const SCALAR_T edge_x[4],
+    const SCALAR_T edge_y[4],
+    SCALAR_T* x,
+    SCALAR_T* y)
+{
+    if (kind == 0) {
+        *x = px[index];
+        *y = py[index];
+    } else {
+        *x = edge_x[index];
+        *y = edge_y[index];
+    }
+}
+
+__device__ __forceinline__ void _axis_strip_token_point3(
+    const int kind,
+    const int index,
+    const SCALAR_T px[3],
+    const SCALAR_T py[3],
+    const SCALAR_T edge_x[3],
+    const SCALAR_T edge_y[3],
+    SCALAR_T* x,
+    SCALAR_T* y)
+{
+    if (kind == 0) {
+        *x = px[index];
+        *y = py[index];
+    } else {
+        *x = edge_x[index];
+        *y = edge_y[index];
+    }
+}
+
+__device__ __forceinline__ SCALAR_T _axis_strip_triangle_below(
+    const SCALAR_T tx0,
+    const SCALAR_T ty0,
+    const SCALAR_T tx1,
+    const SCALAR_T ty1,
+    const SCALAR_T tx2,
+    const SCALAR_T ty2,
+    const SCALAR_T bound,
+    const int axis)
+{
+    SCALAR_T px[3] = {tx0, tx1, tx2};
+    SCALAR_T py[3] = {ty0, ty1, ty2};
+    SCALAR_T values[3];
+    values[0] = (axis == 0 ? tx0 : ty0) - bound;
+    values[1] = (axis == 0 ? tx1 : ty1) - bound;
+    values[2] = (axis == 0 ? tx2 : ty2) - bound;
+    bool inside[3] = {
+        values[0] <= (SCALAR_T)0.0,
+        values[1] <= (SCALAR_T)0.0,
+        values[2] <= (SCALAR_T)0.0,
+    };
+    SCALAR_T edge_x[3];
+    SCALAR_T edge_y[3];
+    bool edge_mask[3];
+    _axis_strip_edge_cross(
+        values[0], values[1], px[0], py[0], px[1], py[1], true,
+        &edge_mask[0], &edge_x[0], &edge_y[0]);
+    _axis_strip_edge_cross(
+        values[1], values[2], px[1], py[1], px[2], py[2], true,
+        &edge_mask[1], &edge_x[1], &edge_y[1]);
+    _axis_strip_edge_cross(
+        values[2], values[0], px[2], py[2], px[0], py[0], true,
+        &edge_mask[2], &edge_x[2], &edge_y[2]);
+
+    int kind[6];
+    int index[6];
+    int count = 0;
+    const int lo[3] = {0, 1, 2};
+    const int hi[3] = {1, 2, 0};
+    #pragma unroll
+    for (int edge = 0; edge < 3; ++edge) {
+        if (inside[lo[edge]]) {
+            kind[count] = 0;
+            index[count] = lo[edge];
+            ++count;
+        }
+        if (inside[lo[edge]] != inside[hi[edge]]) {
+            kind[count] = 1;
+            index[count] = edge;
+            ++count;
+        }
+    }
+    if (count < 3) {
+        return (SCALAR_T)0.0;
+    }
+    #pragma unroll
+    for (int token = 0; token < 6; ++token) {
+        if (token < count && kind[token] == 1 && !edge_mask[index[token]]) {
+            return (SCALAR_T)0.0;
+        }
+    }
+    SCALAR_T shoelace = (SCALAR_T)0.0;
+    for (int token = 0; token < count; ++token) {
+        const int next = token + 1 == count ? 0 : token + 1;
+        SCALAR_T x0;
+        SCALAR_T y0;
+        SCALAR_T x1;
+        SCALAR_T y1;
+        _axis_strip_token_point3(
+            kind[token], index[token], px, py, edge_x, edge_y, &x0, &y0);
+        _axis_strip_token_point3(
+            kind[next], index[next], px, py, edge_x, edge_y, &x1, &y1);
+        shoelace += x0 * y1 - y0 * x1;
+    }
+    return (SCALAR_T)0.5 * shoelace;
+}
+
+__device__ __forceinline__ SCALAR_T _axis_strip_triangle_band(
+    const SCALAR_T tx0,
+    const SCALAR_T ty0,
+    const SCALAR_T tx1,
+    const SCALAR_T ty1,
+    const SCALAR_T tx2,
+    const SCALAR_T ty2,
+    const SCALAR_T lower,
+    const SCALAR_T upper,
+    const int axis)
+{
+    return _axis_strip_triangle_below(tx0, ty0, tx1, ty1, tx2, ty2, upper, axis)
+        - _axis_strip_triangle_below(tx0, ty0, tx1, ty1, tx2, ty2, lower, axis);
+}
+
+__device__ __forceinline__ SCALAR_T _axis_strip_ring_area(
+    const int count,
+    const int kind[8],
+    const int index[8],
+    const SCALAR_T px[4],
+    const SCALAR_T py[4],
+    const SCALAR_T edge_x[4],
+    const SCALAR_T edge_y[4],
+    const bool edge_mask[4],
+    const SCALAR_T lower,
+    const SCALAR_T upper,
+    const int axis)
+{
+    if (count < 3) {
+        return (SCALAR_T)0.0;
+    }
+    #pragma unroll
+    for (int token = 0; token < 8; ++token) {
+        if (token < count && kind[token] == 1 && !edge_mask[index[token]]) {
+            return (SCALAR_T)0.0;
+        }
+    }
+    SCALAR_T ox;
+    SCALAR_T oy;
+    _axis_strip_token_point4(kind[0], index[0], px, py, edge_x, edge_y, &ox, &oy);
+    SCALAR_T area = (SCALAR_T)0.0;
+    for (int token = 1; token + 1 < count; ++token) {
+        SCALAR_T x1;
+        SCALAR_T y1;
+        SCALAR_T x2;
+        SCALAR_T y2;
+        _axis_strip_token_point4(
+            kind[token], index[token], px, py, edge_x, edge_y, &x1, &y1);
+        _axis_strip_token_point4(
+            kind[token + 1], index[token + 1], px, py, edge_x, edge_y, &x2, &y2);
+        area += _axis_strip_triangle_band(ox, oy, x1, y1, x2, y2, lower, upper, axis);
+    }
+    return area;
+}
+
+__device__ __forceinline__ int _axis_strip_build_ring(
+    const bool inside[4],
+    int kind[8],
+    int index[8])
+{
+    const int lo[4] = {0, 1, 2, 3};
+    const int hi[4] = {1, 2, 3, 0};
+    int count = 0;
+    #pragma unroll
+    for (int edge = 0; edge < 4; ++edge) {
+        if (inside[lo[edge]]) {
+            kind[count] = 0;
+            index[count] = lo[edge];
+            ++count;
+        }
+        if (inside[lo[edge]] != inside[hi[edge]]) {
+            kind[count] = 1;
+            index[count] = edge;
+            ++count;
+        }
+    }
+    return count;
+}
+
+__global__ void axis_strip_area_kernel(
+    const SCALAR_T* cell_x0,
+    const SCALAR_T* cell_x1,
+    const SCALAR_T* cell_y0,
+    const SCALAR_T* cell_y1,
+    const SCALAR_T* strip_lower,
+    const SCALAR_T* strip_upper,
+    const SCALAR_T* phi_left_bottom,
+    const SCALAR_T* phi_right_bottom,
+    const SCALAR_T* phi_left_top,
+    const SCALAR_T* phi_right_top,
+    SCALAR_T* out,
+    const long long size,
+    const int axis)
+{
+    const long long item = (long long)blockIdx.x * blockDim.x + threadIdx.x;
+    if (item >= size) {
+        return;
+    }
+    const SCALAR_T x0 = cell_x0[item];
+    const SCALAR_T x1 = cell_x1[item];
+    const SCALAR_T y0 = cell_y0[item];
+    const SCALAR_T y1 = cell_y1[item];
+    SCALAR_T px[4] = {x0, x1, x1, x0};
+    SCALAR_T py[4] = {y0, y0, y1, y1};
+    SCALAR_T values[4] = {
+        phi_left_bottom[item],
+        phi_right_bottom[item],
+        phi_right_top[item],
+        phi_left_top[item],
+    };
+    bool inside[4] = {
+        values[0] < (SCALAR_T)0.0,
+        values[1] < (SCALAR_T)0.0,
+        values[2] < (SCALAR_T)0.0,
+        values[3] < (SCALAR_T)0.0,
+    };
+    SCALAR_T edge_x[4];
+    SCALAR_T edge_y[4];
+    bool edge_mask[4];
+    _axis_strip_edge_cross(
+        values[0], values[1], px[0], py[0], px[1], py[1], false,
+        &edge_mask[0], &edge_x[0], &edge_y[0]);
+    _axis_strip_edge_cross(
+        values[1], values[2], px[1], py[1], px[2], py[2], false,
+        &edge_mask[1], &edge_x[1], &edge_y[1]);
+    _axis_strip_edge_cross(
+        values[2], values[3], px[2], py[2], px[3], py[3], false,
+        &edge_mask[2], &edge_x[2], &edge_y[2]);
+    _axis_strip_edge_cross(
+        values[3], values[0], px[3], py[3], px[0], py[0], false,
+        &edge_mask[3], &edge_x[3], &edge_y[3]);
+    const int case_id =
+        (inside[0] ? 1 : 0)
+        | (inside[1] ? 2 : 0)
+        | (inside[2] ? 4 : 0)
+        | (inside[3] ? 8 : 0);
+
+    const SCALAR_T lower = strip_lower[item];
+    const SCALAR_T upper = strip_upper[item];
+    SCALAR_T area = (SCALAR_T)0.0;
+    int kind[8];
+    int index[8];
+    if (case_id == 10) {
+        kind[0] = 0;
+        index[0] = 1;
+        kind[1] = 1;
+        index[1] = 1;
+        kind[2] = 1;
+        index[2] = 0;
+        area += _axis_strip_ring_area(
+            3, kind, index, px, py, edge_x, edge_y, edge_mask, lower, upper, axis);
+        kind[0] = 0;
+        index[0] = 3;
+        kind[1] = 1;
+        index[1] = 3;
+        kind[2] = 1;
+        index[2] = 2;
+        area += _axis_strip_ring_area(
+            3, kind, index, px, py, edge_x, edge_y, edge_mask, lower, upper, axis);
+    } else {
+        const int count = _axis_strip_build_ring(inside, kind, index);
+        area += _axis_strip_ring_area(
+            count, kind, index, px, py, edge_x, edge_y, edge_mask, lower, upper, axis);
+    }
+    out[item] = area;
+}
+
+} // extern "C"
+"""
+
+
 def _axis_aligned_strip_area(
+    xp,
+    axis: str,
+    cell_x0,
+    cell_x1,
+    cell_y0,
+    cell_y1,
+    strip_lower,
+    strip_upper,
+    phi_left_bottom,
+    phi_right_bottom,
+    phi_left_top,
+    phi_right_top,
+):
+    if hasattr(xp, "RawKernel"):
+        return _axis_aligned_strip_area_raw(
+            xp,
+            axis,
+            cell_x0,
+            cell_x1,
+            cell_y0,
+            cell_y1,
+            strip_lower,
+            strip_upper,
+            phi_left_bottom,
+            phi_right_bottom,
+            phi_left_top,
+            phi_right_top,
+        )
+    return _axis_aligned_strip_area_unfused(
+        xp,
+        axis,
+        cell_x0,
+        cell_x1,
+        cell_y0,
+        cell_y1,
+        strip_lower,
+        strip_upper,
+        phi_left_bottom,
+        phi_right_bottom,
+        phi_left_top,
+        phi_right_top,
+    )
+
+
+def _axis_aligned_strip_area_raw(
+    xp,
+    axis: str,
+    cell_x0,
+    cell_x1,
+    cell_y0,
+    cell_y1,
+    strip_lower,
+    strip_upper,
+    phi_left_bottom,
+    phi_right_bottom,
+    phi_left_top,
+    phi_right_top,
+):
+    if axis not in {"x", "y"}:
+        raise ValueError(f"unsupported swept strip axis: {axis!r}")
+    raw_inputs = (
+        cell_x0,
+        cell_x1,
+        cell_y0,
+        cell_y1,
+        strip_lower,
+        strip_upper,
+        phi_left_bottom,
+        phi_right_bottom,
+        phi_left_top,
+        phi_right_top,
+    )
+    arrays = tuple(xp.asarray(value) for value in raw_inputs)
+    dtype = np.result_type(*(array.dtype for array in arrays))
+    dtype = np.dtype(dtype)
+    if dtype not in {np.dtype("float32"), np.dtype("float64")}:
+        raise TypeError(
+            "GPU swept strip RawKernel supports only float32/float64 operands"
+        )
+    arrays = tuple(xp.asarray(value, dtype=dtype) for value in raw_inputs)
+    shape = np.broadcast_shapes(*(tuple(array.shape) for array in arrays))
+    if len(shape) != 2:
+        raise ValueError("GPU swept strip RawKernel requires 2D broadcast operands")
+    size = int(np.prod(shape))
+    if size == 0:
+        return xp.zeros(shape, dtype=dtype)
+    expanded = tuple(
+        xp.ascontiguousarray(xp.broadcast_to(array, shape)) for array in arrays
+    )
+    out = xp.empty(shape, dtype=dtype)
+    kernel = _axis_strip_raw_kernel(xp, dtype)
+    threads = 256
+    blocks = (size + threads - 1) // threads
+    axis_code = 0 if axis == "x" else 1
+    try:
+        kernel(
+            (blocks,),
+            (threads,),
+            (*expanded, out, np.int64(size), np.int32(axis_code)),
+        )
+    except Exception as exc:
+        raise RuntimeError("GPU swept strip RawKernel launch failed") from exc
+    return out
+
+
+def _axis_strip_raw_kernel(xp, dtype):
+    dtype = np.dtype(dtype)
+    scalar = "double" if dtype == np.dtype("float64") else "float"
+    key = (scalar, "axis_strip_area_kernel")
+    kernel = _AXIS_STRIP_RAW_KERNELS.get(key)
+    if kernel is None:
+        code = _AXIS_STRIP_RAW_CODE.replace("SCALAR_T", scalar)
+        try:
+            kernel = xp.RawKernel(code, "axis_strip_area_kernel")
+        except Exception as exc:
+            raise RuntimeError("GPU swept strip RawKernel compilation failed") from exc
+        _AXIS_STRIP_RAW_KERNELS[key] = kernel
+    return kernel
+
+
+def _axis_aligned_strip_area_unfused(
     xp,
     axis: str,
     cell_x0,

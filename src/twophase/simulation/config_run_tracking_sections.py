@@ -5,19 +5,31 @@ from __future__ import annotations
 from typing import Any
 
 _PROJECTION_MODES = (
-    "legacy", "variable_density", "gfm", "consistent_gfm",
+    "legacy", "variable_density", "face_hodge", "gfm", "consistent_gfm",
 )
 _PROJECTION_MODE_ALIASES = {
     "standard": "legacy",
     "variable_density_only": "variable_density",
+    "projection_native_face_hodge": "face_hodge",
     "pressure_jump": "consistent_gfm",
 }
 _PROJECTION_TO_REPROJECT_MODE = {
     "legacy": "legacy",
     "variable_density": "variable_density_only",
+    "face_hodge": "face_hodge",
     "gfm": "gfm",
     "consistent_gfm": "consistent_gfm",
 }
+_GAUGE_RECONSTRUCTION_ALIASES = {
+    "none": "fixed_stratum",
+    "fixed": "fixed_stratum",
+    "fixed_stratum_projection": "fixed_stratum",
+    "compatibility_projection": "fixed_stratum",
+    "column_height": "column_height_graph",
+    "graph_height": "column_height_graph",
+    "column_height_graph_seed": "column_height_graph",
+}
+_GAUGE_RECONSTRUCTIONS = ("fixed_stratum", "column_height_graph")
 
 
 def parse_enabled(raw: Any) -> bool:
@@ -63,6 +75,22 @@ def parse_tracking_primary(
 
 def tracking_redistance(tracking: dict) -> dict:
     return tracking.get("redistance", {}) or {}
+
+
+def parse_tracking_gauge_reconstruction(
+    tracking: dict,
+    path: str = "numerics.interface.tracking.gauge_reconstruction",
+) -> str:
+    raw = tracking.get("gauge_reconstruction", "fixed_stratum")
+    if isinstance(raw, dict):
+        raw = raw.get("scheme", "fixed_stratum")
+    value = str(raw).strip().lower()
+    value = _GAUGE_RECONSTRUCTION_ALIASES.get(value, value)
+    if value not in _GAUGE_RECONSTRUCTIONS:
+        raise ValueError(
+            f"{path} must be one of {_GAUGE_RECONSTRUCTIONS}, got {raw!r}"
+        )
+    return value
 
 
 def parse_tracking_redistance_every(

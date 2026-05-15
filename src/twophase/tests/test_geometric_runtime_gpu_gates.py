@@ -8,8 +8,22 @@ import numpy as np
 from twophase.backend import Backend
 from twophase.config import GridConfig
 from twophase.core.grid import Grid
-from twophase.geometry.p1_cut_geometry import cut_geometry_2d
-from twophase.simulation.geometric_phase_runtime_gpu import _host_scalar_packet_float
+from twophase.geometry.p1_cut_geometry import P1CutGeometry, cut_geometry_2d
+from twophase.geometry.p1_cut_jacobian import P1CutDerivatives
+from twophase.geometry.phase_state import GeometricPhaseState, GeometricPhaseStratum
+from twophase.geometry.swept_flux import (
+    _axis_aligned_strip_area,
+    _axis_aligned_strip_area_unfused,
+)
+from twophase.ppe.fd_direct import _PreparedCuPySuperLUSolve
+from twophase.simulation import geometric_phase_runtime_gpu as gpu_runtime
+from twophase.simulation import geometric_volume_hodge as volume_hodge
+from twophase.simulation.geometric_phase_runtime_gpu import (
+    _host_scalar_packet_float,
+    _solve_schur_dc_fixed_gpu,
+    _solve_schur_for_active_policy_gpu,
+    _solve_schur_pcg_fixed_gpu,
+)
 
 
 class _CountingBackend:
@@ -40,6 +54,651 @@ def test_gpu_scalar_packet_uses_one_host_transfer():
         "predictor": pytest.approx(3.0e-12),
     }
     assert backend.host_transfer_count == 1
+
+
+def test_gpu_single_scalar_transfer_helper_fails_closed():
+    backend = _CountingBackend()
+    with pytest.raises(RuntimeError, match="single-scalar GPU host transfer"):
+        gpu_runtime._host_scalar_float(backend, np.asarray(1.0), "compatibility")
+    assert backend.host_transfer_count == 0
+
+
+def test_active_projection_stops_before_noop_schur_work(monkeypatch):
+    backend = _CountingBackend()
+
+    class GridStub:
+        ndim = 2
+        N = (2, 2)
+        xp = np
+        coords = (
+            np.asarray([0.0, 1.0, 2.0]),
+            np.asarray([0.0, 1.0, 2.0]),
+        )
+
+    grid = GridStub()
+    grid.backend = backend
+    q = np.ones((2, 2), dtype=float)
+    phi = np.ones((3, 3), dtype=float)
+    geometry = P1CutGeometry(
+        q=q.copy(),
+        theta=q.copy(),
+        surface_length=0.0,
+        cell_surface_lengths=np.zeros_like(q),
+        sign_margin=1.0,
+    )
+    derivatives = P1CutDerivatives(
+        jq_local=np.ones((2, 2, 4), dtype=float),
+        ds_local=np.zeros((2, 2, 4), dtype=float),
+    )
+    state = GeometricPhaseState(
+        q=q.copy(),
+        phi=phi.copy(),
+        theta=q.copy(),
+        geometry=geometry,
+        stratum=GeometricPhaseStratum(
+            node_signs=np.ones_like(phi, dtype=np.int8),
+            cell_cases=np.zeros_like(q, dtype=np.int8),
+            sign_margin=1.0,
+            level=0.0,
+        ),
+        compatibility_residual_linf=0.0,
+        compatibility_residual_l2=0.0,
+        ledger=None,
+    )
+    geometry_calls = []
+
+    def compatible_geometry(_grid, _phi, *, level):
+        geometry_calls.append(level)
+        return geometry, derivatives
+
+    def forbidden_schur(*_args, **_kwargs):
+        raise AssertionError("converged active projection must not solve Schur")
+
+    def forbidden_line_search(*_args, **_kwargs):
+        raise AssertionError("converged active projection must not line-search")
+
+    monkeypatch.setattr(gpu_runtime, "_require_gpu_array_namespace", lambda *_: None)
+    monkeypatch.setattr(
+        gpu_runtime,
+        "_geometry_and_derivatives_full",
+        compatible_geometry,
+    )
+    monkeypatch.setattr(
+        gpu_runtime,
+        "_solve_schur_for_active_policy_gpu",
+        forbidden_schur,
+    )
+    monkeypatch.setattr(
+        gpu_runtime,
+        "_residual_reducing_step_gpu",
+        forbidden_line_search,
+    )
+
+    projected = gpu_runtime._project_q_phi_compatibility_fixed_gpu(
+        grid,
+        state,
+        tolerance=1.0e-11,
+        relative_tolerance=0.0,
+        max_newton_iterations=128,
+        solver_scheme="pcg",
+        pcg_tolerance=1.0e-13,
+        pcg_max_iterations=512,
+        pcg_roundoff_floor=1.0e-15,
+        dc_tolerance=1.0e-11,
+        dc_max_iterations=8,
+        dc_relaxation=1.0,
+    )
+
+    assert geometry_calls == [0.0]
+    assert backend.host_transfer_count == 1
+    np.testing.assert_allclose(projected.phi, phi)
+    assert projected.compatibility_residual_linf == pytest.approx(0.0)
+
+
+def test_gpu_swept_flux_rejects_receiver_overfill_without_clipping():
+    class GridStub:
+        ndim = 2
+        N = (2, 1)
+        xp = np
+        backend = _CountingBackend()
+        coords = (
+            np.asarray([0.0, 1.0, 2.0]),
+            np.asarray([0.0, 1.0]),
+        )
+
+    q = np.ones(GridStub.N, dtype=float)
+    flux_x = np.asarray([[0.0], [0.1], [0.0]], dtype=float)
+    flux_y = np.zeros((2, 2), dtype=float)
+
+    with pytest.raises(ValueError, match="receiver gas capacity"):
+        gpu_runtime._apply_swept_flux_gpu(
+            GridStub(),
+            q,
+            (flux_x, flux_y),
+            dt=1.0,
+            boundary=("wall", "wall"),
+            tolerance=1.0e-12,
+        )
+    assert GridStub.backend.host_transfer_count == 1
+
+
+def test_geometric_capacity_dt_uses_exact_swept_volume_bound():
+    backend = Backend(use_gpu=False)
+    grid = Grid(GridConfig(ndim=2, N=(2, 1), L=(2.0, 1.0)), backend)
+    phi = -np.ones((3, 2), dtype=float)
+    q = np.asarray([[1.0], [0.8]], dtype=float)
+    state = GeometricPhaseState.from_q_phi(
+        grid,
+        q,
+        phi,
+        require_compatible=False,
+    )
+    velocity_x = np.asarray([[0.0], [0.5], [0.0]], dtype=float)
+    velocity_y = np.zeros((2, 2), dtype=float)
+
+    dt = gpu_runtime.estimate_geometric_swept_capacity_dt_gpu(
+        grid,
+        state,
+        (velocity_x, velocity_y),
+        dt_upper=1.0,
+        boundary=("wall", "wall"),
+        tolerance=1.0e-12,
+        bisection_iterations=24,
+    )
+
+    assert dt == pytest.approx(0.4, rel=1.0e-5)
+
+
+def test_gpu_schur_pcg_respects_device_tolerance_mask():
+    class GridStub:
+        ndim = 2
+        N = (1, 1)
+        xp = np
+
+    grid = GridStub()
+    jq_local = np.ones((1, 1, 4), dtype=float)
+    rhs = np.asarray([[8.0]])
+    row_norm = np.asarray([[4.0]])
+    active = np.asarray([[True]])
+
+    converged_initially = _solve_schur_pcg_fixed_gpu(
+        grid,
+        np,
+        jq_local,
+        rhs,
+        row_norm,
+        active,
+        max_iterations=4,
+        tolerance=100.0,
+        roundoff_floor=1.0e-14,
+    )
+    solved = _solve_schur_pcg_fixed_gpu(
+        grid,
+        np,
+        jq_local,
+        rhs,
+        row_norm,
+        active,
+        max_iterations=4,
+        tolerance=1.0e-12,
+        roundoff_floor=1.0e-14,
+    )
+
+    np.testing.assert_allclose(converged_initially, 0.0)
+    np.testing.assert_allclose(solved, 2.0)
+
+
+def test_gpu_schur_pcg_uses_fixed_shape_masked_support(monkeypatch):
+    class GridStub:
+        ndim = 2
+        N = (2, 2)
+        xp = np
+
+    grid = GridStub()
+    jq_local = np.zeros((2, 2, 4), dtype=float)
+    jq_local[0, 0, :] = 1.0
+    rhs = np.zeros((2, 2), dtype=float)
+    rhs[0, 0] = 8.0
+    row_norm = np.sum(jq_local * jq_local, axis=-1)
+    active = row_norm > 0.0
+
+    def _dynamic_support_must_not_run(*_args, **_kwargs):
+        raise AssertionError("dynamic active support discovery was called")
+
+    monkeypatch.setattr(np, "argwhere", _dynamic_support_must_not_run)
+    monkeypatch.setattr(np, "unique", _dynamic_support_must_not_run)
+
+    solved = gpu_runtime._solve_schur_pcg_fixed_gpu(
+        grid,
+        np,
+        jq_local,
+        rhs,
+        row_norm,
+        active,
+        max_iterations=4,
+        tolerance=1.0e-12,
+        roundoff_floor=1.0e-14,
+    )
+
+    expected = np.zeros((2, 2), dtype=float)
+    expected[0, 0] = 2.0
+    np.testing.assert_allclose(solved, expected)
+
+
+def test_gpu_masked_schur_direct_formula_matches_j_jt_composition():
+    class GridStub:
+        ndim = 2
+        N = (3, 2)
+        xp = np
+
+    rng = np.random.default_rng(314)
+    grid = GridStub()
+    jq_local = rng.normal(size=(3, 2, 4))
+    active = np.asarray(
+        [[True, False], [True, True], [False, True]],
+        dtype=bool,
+    )
+    jq_local = np.where(active[..., None], jq_local, 0.0)
+    row_norm = np.sum(jq_local * jq_local, axis=-1)
+    cell = rng.normal(size=(3, 2))
+    support = gpu_runtime._masked_schur_support_from_active(
+        grid,
+        np,
+        jq_local,
+        row_norm,
+        active,
+    )
+
+    direct = support.apply_schur(cell)
+    composed = support.apply_j(support.apply_j_transpose(cell))
+
+    np.testing.assert_allclose(direct, composed, rtol=1.0e-14, atol=1.0e-14)
+
+
+def test_gpu_active_cut_rows_rejects_roundoff_only_rows():
+    row_norm = np.asarray(
+        [[1.0, 1.0e-14], [0.0, 1.0e-11]],
+        dtype=float,
+    )
+
+    active = gpu_runtime._active_cut_rows_from_norm_gpu(np, row_norm)
+
+    np.testing.assert_array_equal(
+        active,
+        np.asarray([[True, False], [False, True]], dtype=bool),
+    )
+
+
+def test_gpu_masked_schur_raw_kernel_matches_vector_formula():
+    cp = pytest.importorskip("cupy")
+    try:
+        if cp.cuda.runtime.getDeviceCount() < 1:
+            pytest.skip("CUDA device unavailable")
+    except cp.cuda.runtime.CUDARuntimeError as exc:
+        pytest.skip(str(exc))
+
+    class GridStub:
+        ndim = 2
+        N = (3, 2)
+        xp = cp
+
+    rng = np.random.default_rng(2718)
+    grid = GridStub()
+    active_np = np.asarray(
+        [[True, False], [True, True], [False, True]],
+        dtype=bool,
+    )
+    jq_np = rng.normal(size=(3, 2, 4))
+    jq_np = np.where(active_np[..., None], jq_np, 0.0)
+    cell_np = rng.normal(size=(3, 2))
+    jq_local = cp.asarray(jq_np)
+    active = cp.asarray(active_np)
+    cell = cp.asarray(cell_np)
+    row_norm = cp.sum(jq_local * jq_local, axis=-1)
+    support = gpu_runtime._masked_schur_support_from_active(
+        grid,
+        cp,
+        jq_local,
+        row_norm,
+        active,
+    )
+
+    raw = support.apply_schur(cell)
+    vector = gpu_runtime._apply_schur_masked_2d_vector(
+        cp,
+        jq_local,
+        active,
+        cell,
+        grid.N,
+        (grid.N[0] + 1, grid.N[1] + 1),
+    )
+
+    cp.testing.assert_allclose(raw, vector, rtol=1.0e-12, atol=1.0e-12)
+
+
+def test_gpu_pcg_block_kernel_matches_vector_pcg():
+    cp = pytest.importorskip("cupy")
+    try:
+        if cp.cuda.runtime.getDeviceCount() < 1:
+            pytest.skip("CUDA device unavailable")
+    except cp.cuda.runtime.CUDARuntimeError as exc:
+        pytest.skip(str(exc))
+
+    class GridStub:
+        ndim = 2
+        N = (4, 4)
+        xp = cp
+
+    rng = np.random.default_rng(1618)
+    grid = GridStub()
+    active_np = np.ones(grid.N, dtype=bool)
+    jq_np = rng.normal(size=grid.N + (4,))
+    rhs_np = rng.normal(size=grid.N)
+    jq_local = cp.asarray(jq_np)
+    rhs = cp.asarray(rhs_np)
+    active = cp.asarray(active_np)
+    row_norm = cp.sum(jq_local * jq_local, axis=-1)
+    support = gpu_runtime._masked_schur_support_from_active(
+        grid,
+        cp,
+        jq_local,
+        row_norm,
+        active,
+    )
+
+    raw = gpu_runtime._solve_schur_pcg_block_raw_if_available(
+        cp,
+        jq_local,
+        rhs,
+        row_norm,
+        active,
+        None,
+        grid.N,
+        iterations=12,
+        tolerance=1.0e-12,
+        roundoff_floor=1.0e-14,
+    )
+    vector = gpu_runtime._solve_schur_pcg_fixed_gpu_vector(
+        cp,
+        rhs,
+        None,
+        support,
+        iterations=12,
+        tolerance=1.0e-12,
+        roundoff_floor=1.0e-14,
+    )
+
+    assert raw is not None
+    cp.testing.assert_allclose(raw, vector, rtol=1.0e-10, atol=1.0e-10)
+
+
+def test_gpu_geometric_volume_pcg_block_kernel_matches_vector_pcg(monkeypatch):
+    cp = pytest.importorskip("cupy")
+    try:
+        if cp.cuda.runtime.getDeviceCount() < 1:
+            pytest.skip("CUDA device unavailable")
+    except cp.cuda.runtime.CUDARuntimeError as exc:
+        pytest.skip(str(exc))
+
+    rng = np.random.default_rng(1217)
+    nx, ny = 5, 4
+    x_edges = np.cumsum(np.r_[0.0, rng.uniform(0.04, 0.2, size=nx)])
+    y_edges = np.cumsum(np.r_[0.0, rng.uniform(0.05, 0.18, size=ny)])
+    metrics = volume_hodge.build_geometric_volume_metrics(
+        cp,
+        (x_edges, y_edges),
+        (nx, ny),
+        dtype=cp.float64,
+        boundary=("periodic", "wall"),
+    )
+    rhs = cp.asarray(rng.normal(size=(nx, ny)))
+    rhs = rhs - cp.mean(rhs)
+    diag = volume_hodge.geometric_volume_flux_projection_diagonal(
+        cp,
+        metrics,
+        dtype=cp.float64,
+    )
+    raw = volume_hodge._solve_geometric_volume_flux_projection_pcg_raw_if_available(
+        cp,
+        metrics,
+        rhs,
+        diag,
+        pcg_tolerance=1.0e-13,
+        max_iterations=96,
+        roundoff_floor=1.0e-15,
+    )
+    monkeypatch.setattr(
+        volume_hodge,
+        "_solve_geometric_volume_flux_projection_pcg_raw_if_available",
+        lambda *args, **kwargs: None,
+    )
+    vector = volume_hodge.solve_geometric_volume_flux_projection_pcg(
+        cp,
+        metrics,
+        rhs,
+        diag,
+        pcg_tolerance=1.0e-13,
+        max_iterations=96,
+        roundoff_floor=1.0e-15,
+    )
+
+    assert raw is not None
+    cp.testing.assert_allclose(raw, vector, rtol=1.0e-10, atol=1.0e-10)
+
+
+def test_gpu_swept_strip_raw_kernel_matches_unfused_nonuniform_geometry():
+    cp = pytest.importorskip("cupy")
+    try:
+        if cp.cuda.runtime.getDeviceCount() < 1:
+            pytest.skip("CUDA device unavailable")
+    except cp.cuda.runtime.CUDARuntimeError as exc:
+        pytest.skip(str(exc))
+
+    rng = np.random.default_rng(811)
+    x_edges_np = np.cumsum(np.r_[0.0, rng.uniform(0.05, 0.17, size=5)])
+    y_edges_np = np.cumsum(np.r_[0.0, rng.uniform(0.04, 0.19, size=4)])
+    phi_lb_np = rng.normal(size=(5, 4))
+    phi_rb_np = rng.normal(size=(5, 4))
+    phi_lt_np = rng.normal(size=(5, 4))
+    phi_rt_np = rng.normal(size=(5, 4))
+    # Include the ambiguous P1 case-10 split and zero-adjacent cuts in the
+    # oracle comparison; these are where fail-open fallbacks most easily hide.
+    phi_lb_np[1, 1] = 1.0
+    phi_rb_np[1, 1] = -1.0
+    phi_rt_np[1, 1] = 1.0
+    phi_lt_np[1, 1] = -1.0
+    phi_lb_np[3, 2] = 0.0
+
+    x_edges = cp.asarray(x_edges_np)
+    y_edges = cp.asarray(y_edges_np)
+    phi_lb = cp.asarray(phi_lb_np)
+    phi_rb = cp.asarray(phi_rb_np)
+    phi_lt = cp.asarray(phi_lt_np)
+    phi_rt = cp.asarray(phi_rt_np)
+
+    x0 = x_edges[:-1].reshape((-1, 1))
+    x1 = x_edges[1:].reshape((-1, 1))
+    y0 = y_edges[:-1].reshape((1, -1))
+    y1 = y_edges[1:].reshape((1, -1))
+    dx = (x_edges[1:] - x_edges[:-1]).reshape((-1, 1))
+    dy = (y_edges[1:] - y_edges[:-1]).reshape((1, -1))
+
+    x_lower = x1 - 0.37 * dx
+    x_upper = x1
+    y_lower = y0
+    y_upper = y0 + 0.41 * dy
+
+    raw_x = _axis_aligned_strip_area(
+        cp, "x", x0, x1, y0, y1, x_lower, x_upper, phi_lb, phi_rb, phi_lt, phi_rt
+    )
+    oracle_x = _axis_aligned_strip_area_unfused(
+        cp, "x", x0, x1, y0, y1, x_lower, x_upper, phi_lb, phi_rb, phi_lt, phi_rt
+    )
+    raw_y = _axis_aligned_strip_area(
+        cp, "y", x0, x1, y0, y1, y_lower, y_upper, phi_lb, phi_rb, phi_lt, phi_rt
+    )
+    oracle_y = _axis_aligned_strip_area_unfused(
+        cp, "y", x0, x1, y0, y1, y_lower, y_upper, phi_lb, phi_rb, phi_lt, phi_rt
+    )
+
+    cp.testing.assert_allclose(raw_x, oracle_x, rtol=1.0e-12, atol=1.0e-12)
+    cp.testing.assert_allclose(raw_y, oracle_y, rtol=1.0e-12, atol=1.0e-12)
+
+    cases = np.arange(16, dtype=np.uint8)
+    case_values = np.ones((16, 1, 4), dtype=float)
+    for corner in range(4):
+        case_values[:, 0, corner] = np.where(cases & (1 << corner), -1.0, 1.0)
+    case_x0 = cp.asarray(np.linspace(0.0, 1.5, 16)).reshape((-1, 1))
+    case_dx = cp.asarray(np.linspace(0.05, 0.2, 16)).reshape((-1, 1))
+    case_x1 = case_x0 + case_dx
+    case_y0 = cp.asarray([[0.0]])
+    case_y1 = cp.asarray([[0.7]])
+    case_x_lower = case_x0 + 0.23 * case_dx
+    case_x_upper = case_x0 + 0.81 * case_dx
+    case_y_lower = cp.asarray([[0.11]])
+    case_y_upper = cp.asarray([[0.53]])
+    case_phi_lb = cp.asarray(case_values[:, :, 0])
+    case_phi_rb = cp.asarray(case_values[:, :, 1])
+    case_phi_rt = cp.asarray(case_values[:, :, 2])
+    case_phi_lt = cp.asarray(case_values[:, :, 3])
+
+    case_raw_x = _axis_aligned_strip_area(
+        cp,
+        "x",
+        case_x0,
+        case_x1,
+        case_y0,
+        case_y1,
+        case_x_lower,
+        case_x_upper,
+        case_phi_lb,
+        case_phi_rb,
+        case_phi_lt,
+        case_phi_rt,
+    )
+    case_oracle_x = _axis_aligned_strip_area_unfused(
+        cp,
+        "x",
+        case_x0,
+        case_x1,
+        case_y0,
+        case_y1,
+        case_x_lower,
+        case_x_upper,
+        case_phi_lb,
+        case_phi_rb,
+        case_phi_lt,
+        case_phi_rt,
+    )
+    case_raw_y = _axis_aligned_strip_area(
+        cp,
+        "y",
+        case_x0,
+        case_x1,
+        case_y0,
+        case_y1,
+        case_y_lower,
+        case_y_upper,
+        case_phi_lb,
+        case_phi_rb,
+        case_phi_lt,
+        case_phi_rt,
+    )
+    case_oracle_y = _axis_aligned_strip_area_unfused(
+        cp,
+        "y",
+        case_x0,
+        case_x1,
+        case_y0,
+        case_y1,
+        case_y_lower,
+        case_y_upper,
+        case_phi_lb,
+        case_phi_rb,
+        case_phi_lt,
+        case_phi_rt,
+    )
+    cp.testing.assert_allclose(case_raw_x, case_oracle_x, rtol=1.0e-12, atol=1.0e-12)
+    cp.testing.assert_allclose(case_raw_y, case_oracle_y, rtol=1.0e-12, atol=1.0e-12)
+
+
+def test_gpu_fd_direct_uses_explicit_spsm_solve_plan_for_same_factor():
+    cp = pytest.importorskip("cupy")
+    cpsp = pytest.importorskip("cupyx.scipy.sparse")
+    cpspla = pytest.importorskip("cupyx.scipy.sparse.linalg")
+    try:
+        if cp.cuda.runtime.getDeviceCount() < 1:
+            pytest.skip("CUDA device unavailable")
+    except cp.cuda.runtime.CUDARuntimeError as exc:
+        pytest.skip(str(exc))
+
+    matrix = cpsp.csc_matrix(
+        cp.asarray(
+            [
+                [4.0, 1.0, 0.0, 0.0],
+                [1.0, 3.0, 1.0, 0.0],
+                [0.0, 1.0, 2.5, 0.5],
+                [0.0, 0.0, 0.5, 2.0],
+            ]
+        )
+    )
+    raw_factor = cpspla.splu(matrix)
+    plan = _PreparedCuPySuperLUSolve(raw_factor, rhs_shape=(matrix.shape[0], 1))
+
+    rhs_a = cp.asarray([1.0, -2.0, 3.0, 0.5])
+    rhs_b = cp.asarray([-0.25, 0.75, 1.25, -1.5])
+    cp.testing.assert_allclose(plan.solve(rhs_a), raw_factor.solve(rhs_a))
+    prepared_analyses = plan.analysis_count
+    assert prepared_analyses == 2
+
+    cp.testing.assert_allclose(plan.solve(rhs_b), raw_factor.solve(rhs_b))
+    assert plan.analysis_count == prepared_analyses
+
+    with pytest.raises(RuntimeError, match="vector RHS"):
+        plan.solve(cp.eye(matrix.shape[0]))
+
+
+def test_gpu_schur_dc_and_dc_then_pcg_follow_yaml_scheme():
+    class GridStub:
+        ndim = 2
+        N = (1, 1)
+        xp = np
+
+    grid = GridStub()
+    jq_local = np.ones((1, 1, 4), dtype=float)
+    rhs = np.asarray([[8.0]])
+    row_norm = np.asarray([[4.0]])
+    active = np.asarray([[True]])
+
+    dc_only = _solve_schur_dc_fixed_gpu(
+        grid,
+        np,
+        jq_local,
+        rhs,
+        row_norm,
+        active,
+        max_iterations=1,
+        tolerance=1.0e-12,
+        relaxation=1.0,
+    )
+    chained = _solve_schur_for_active_policy_gpu(
+        grid,
+        np,
+        jq_local,
+        rhs,
+        row_norm,
+        active,
+        solver_scheme="dc_then_pcg",
+        pcg_tolerance=1.0e-12,
+        pcg_max_iterations=4,
+        pcg_roundoff_floor=1.0e-14,
+        dc_tolerance=1.0e-12,
+        dc_max_iterations=1,
+        dc_relaxation=1.0,
+    )
+
+    np.testing.assert_allclose(dc_only, 2.0)
+    np.testing.assert_allclose(chained, 2.0)
 
 
 def test_direct_dense_geometry_rejects_gpu_backend():

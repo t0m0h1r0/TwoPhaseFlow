@@ -329,9 +329,15 @@ def test_ch14_capillary_yaml_loads_execution_stack():
     assert cfg.physics.mu_l == pytest.approx(1.002e-3)
     assert cfg.physics.mu_g == pytest.approx(1.825e-5)
     assert cfg.physics.sigma == pytest.approx(0.0728)
-    assert cfg.run.T_final == pytest.approx(0.035379718894)
+    assert cfg.run.T_final == pytest.approx(0.046742983863)
     assert cfg.run.snap_times == pytest.approx(
-        (0.0, 0.008899695230, 0.017677817828, 0.026630729902, 0.035379718894)
+        (
+            0.0,
+            0.011685745966,
+            0.023371491932,
+            0.035057237897,
+            0.046742983863,
+        )
     )
     assert "interface_amplitude" in cfg.diagnostics
     assert any(
@@ -342,12 +348,18 @@ def test_ch14_capillary_yaml_loads_execution_stack():
         for d in cfg.diagnostics
     )
     assert "deformation" not in cfg.diagnostics
+    assert cfg.interface_state_space.scheme == "active_geometry_capillary"
     assert cfg.interface_state_space.kind == "geometric_cell_fraction"
     assert cfg.interface_state_space.conserved_variable == "q"
     assert cfg.interface_state_space.normalized_view == "theta"
     assert cfg.interface_state_space.gpu_required is True
     assert cfg.interface_state_space.fallback_policy == "none"
+    assert cfg.interface_state_space.active_projection_solver_scheme == "pcg"
+    assert cfg.interface_state_space.active_projection_pcg_tolerance == pytest.approx(
+        1.0e-13
+    )
     assert cfg.run.advection_scheme == "geometric_swept_volume"
+    assert cfg.run.interface_gauge_reconstruction == "column_height_graph"
     assert cfg.run.convection_scheme == "uccd6"
     assert cfg.run.convection_time_scheme == "imex_bdf2"
     assert cfg.run.viscous_spatial_scheme == "ccd_bulk"
@@ -367,14 +379,16 @@ def test_ch14_capillary_yaml_loads_execution_stack():
     assert cfg.run.face_flux_projection is True
     assert cfg.run.canonical_face_state is True
     assert cfg.run.face_native_predictor_state is True
+    assert cfg.run.face_no_slip_boundary_state is False
     assert cfg.run.preserve_projected_faces is True
     assert cfg.run.boundary_hodge_mode == "off"
-    assert cfg.run.boundary_hodge_state_space == "constrained_face"
+    assert cfg.run.boundary_hodge_state_space == "impermeable_face"
+    assert cfg.run.boundary_face_space == "impermeable_face"
     assert cfg.run.boundary_hodge_pressure_pairing == "restricted_variational_adjoint"
     assert cfg.run.pressure_history_mode == "pressure_coordinate"
-    assert cfg.run.pressure_history_extrapolation == "bdf2"
-    assert cfg.run.reinit_method is None
-    assert cfg.run.reproject_mode == "variable_density_only"
+    assert cfg.run.pressure_history_extrapolation == "constant"
+    assert cfg.run.reinit_method == "compatibility_projection"
+    assert cfg.run.reproject_mode == "face_hodge"
     assert cfg.run.ppe_solver == "fccd_iterative"
     assert cfg.run.pressure_scheme == "fccd_matrixfree"
     assert cfg.run.ppe_coefficient_scheme == "phase_separated"
@@ -382,13 +396,13 @@ def test_ch14_capillary_yaml_loads_execution_stack():
     assert cfg.run.capillary_force_source == "bundle_virtual_work"
     assert cfg.run.capillary_range_projection == "none"
     assert cfg.run.capillary_reaction_projection == "pressure_component_hodge"
-    assert cfg.run.capillary_closed_interface_endpoint == "geometric_cell_fraction"
+    assert cfg.run.capillary_closed_interface_endpoint == "column_height_graph"
     assert cfg.run.capillary_closed_interface_metric == "pressure_adjoint"
     assert cfg.run.capillary_closed_interface_constraints == ("cell_volume",)
     assert cfg.run.capillary_closed_interface_fail_close is True
     assert cfg.run.ppe_defect_correction is True
     assert cfg.grid.grid_rebuild_freq == 1
-    assert cfg.run.reinit_every == 0
+    assert cfg.run.reinit_every == 1
     assert cfg.run.reinit_trigger_mode == "fixed"
     assert cfg.run.interface_tracking_method == "q_cell_fraction"
     assert cfg.run.phi_primary_transport is False
@@ -410,12 +424,13 @@ def test_ch14_static_droplet_yaml_uses_base_dynamic_route():
     assert cfg.run.cfl_policy == "theory_multiplier"
     assert cfg.run.cfl == pytest.approx(1.0)
     assert cfg.run.interface_tracking_enabled is True
+    assert cfg.interface_state_space.scheme == "active_geometry_capillary"
     assert cfg.interface_state_space.kind == "geometric_cell_fraction"
     assert cfg.run.interface_tracking_method == "q_cell_fraction"
     assert cfg.run.advection_scheme == "geometric_swept_volume"
     assert cfg.run.curvature_method == "face_implicit"
-    assert cfg.run.reinit_method is None
-    assert cfg.run.reinit_every == 0
+    assert cfg.run.reinit_method == "compatibility_projection"
+    assert cfg.run.reinit_every == 1
     assert cfg.run.convection_time_scheme == "imex_bdf2"
     assert cfg.run.viscous_time_scheme == "implicit_bdf2"
     assert cfg.run.viscous_dc_max_iterations == 12
@@ -457,8 +472,8 @@ def test_ch14_oscillating_droplet_yaml_uses_signed_deformation_only():
     assert cfg.interface_state_space.kind == "geometric_cell_fraction"
     assert cfg.run.advection_scheme == "geometric_swept_volume"
     assert cfg.run.interface_tracking_method == "q_cell_fraction"
-    assert cfg.run.reinit_method is None
-    assert cfg.run.reinit_every == 0
+    assert cfg.run.reinit_method == "compatibility_projection"
+    assert cfg.run.reinit_every == 1
     assert cfg.run.capillary_force_source == "bundle_virtual_work"
     assert cfg.run.capillary_closed_interface_endpoint == "geometric_cell_fraction"
     assert cfg.run.capillary_closed_interface_constraints == ("cell_volume",)
@@ -503,21 +518,40 @@ def test_ch14_canonical_yamls_use_theory_cfl_not_fixed_dt():
 
 
 def test_ch14_canonical_yamls_share_base_numerical_stack():
+    import yaml
+
     config_dir = (
         Path(__file__).resolve().parents[3]
         / "experiment/ch14/config"
     )
 
     for path in sorted(p for p in config_dir.glob("*.yaml") if not p.name.startswith("_")):
+        raw = yaml.safe_load(path.read_text())
+        assert raw["interface"]["state_space"] == "active_geometry_capillary", path.name
         cfg = ExperimentConfig.from_yaml(path)
+        assert cfg.interface_state_space.scheme == "active_geometry_capillary", path.name
         assert cfg.interface_state_space.kind == "geometric_cell_fraction", path.name
         assert cfg.interface_state_space.gpu_required is True, path.name
         assert cfg.interface_state_space.fallback_policy == "none", path.name
+        active_solver = raw["numerics"]["projection"]["active_geometry"]["solver"]
+        assert active_solver["scheme"] == "pcg", path.name
+        assert cfg.interface_state_space.active_projection_solver_scheme == (
+            "pcg"
+        ), path.name
+        assert cfg.interface_state_space.active_projection_pcg_tolerance == (
+            pytest.approx(active_solver["pcg"]["tolerance"])
+        ), path.name
+        assert cfg.interface_state_space.active_projection_pcg_max_iterations == (
+            active_solver["pcg"]["max_iterations"]
+        ), path.name
+        assert cfg.interface_state_space.active_projection_pcg_roundoff_floor == (
+            pytest.approx(active_solver["pcg"]["roundoff_floor"])
+        ), path.name
         assert cfg.run.advection_scheme == "geometric_swept_volume", path.name
         assert cfg.run.interface_tracking_method == "q_cell_fraction", path.name
         assert cfg.run.curvature_method == "face_implicit", path.name
-        assert cfg.run.reinit_method is None, path.name
-        assert cfg.run.reinit_every == 0, path.name
+        assert cfg.run.reinit_method == "compatibility_projection", path.name
+        assert cfg.run.reinit_every == 1, path.name
         assert cfg.run.convection_scheme == "uccd6", path.name
         assert cfg.run.convection_time_scheme == "imex_bdf2", path.name
         assert cfg.run.momentum_form == "conservative_common_flux", path.name
@@ -530,15 +564,27 @@ def test_ch14_canonical_yamls_share_base_numerical_stack():
         assert cfg.run.face_flux_projection is True, path.name
         assert cfg.run.canonical_face_state is True, path.name
         assert cfg.run.face_native_predictor_state is True, path.name
+        free_slip = (raw.get("boundary_condition") or {}).get("type") in {
+            "free_slip",
+            "slip",
+        }
+        assert cfg.run.face_no_slip_boundary_state is (not free_slip), path.name
         assert cfg.run.preserve_projected_faces is True, path.name
         assert cfg.run.boundary_hodge_mode == "off", path.name
-        assert cfg.run.boundary_hodge_state_space == "constrained_face", path.name
-        assert (
-            cfg.run.boundary_hodge_pressure_pairing
-            == "restricted_variational_adjoint"
+        expected_state_space = "impermeable_face" if free_slip else "constrained_face"
+        expected_pairing = "restricted_variational_adjoint"
+        assert cfg.run.boundary_hodge_state_space == expected_state_space, path.name
+        assert cfg.run.boundary_face_space == (
+            "impermeable_face" if free_slip else "full_face"
         ), path.name
+        assert cfg.run.boundary_hodge_pressure_pairing == expected_pairing, path.name
         assert cfg.run.pressure_history_mode == "pressure_coordinate", path.name
-        assert cfg.run.pressure_history_extrapolation == "bdf2", path.name
+        expected_pressure_history = raw["numerics"]["projection"][
+            "pressure_history"
+        ]["extrapolation"]
+        assert cfg.run.pressure_history_extrapolation == (
+            expected_pressure_history
+        ), path.name
         assert cfg.run.pressure_scheme == "fccd_matrixfree", path.name
         assert cfg.run.ppe_coefficient_scheme == "phase_separated", path.name
         assert cfg.run.ppe_interface_coupling_scheme == "affine_jump", path.name
@@ -548,10 +594,12 @@ def test_ch14_canonical_yamls_share_base_numerical_stack():
             cfg.run.capillary_reaction_projection
             == "pressure_component_hodge"
         ), path.name
-        assert (
-            cfg.run.capillary_closed_interface_endpoint
-            == "geometric_cell_fraction"
-        ), path.name
+        expected_endpoint = (
+            "column_height_graph"
+            if cfg.run.interface_gauge_reconstruction == "column_height_graph"
+            else "geometric_cell_fraction"
+        )
+        assert cfg.run.capillary_closed_interface_endpoint == expected_endpoint, path.name
         assert (
             cfg.run.capillary_closed_interface_constraints
             == ("cell_volume",)
@@ -559,7 +607,21 @@ def test_ch14_canonical_yamls_share_base_numerical_stack():
         assert cfg.run.pressure_force_contract == "variational_adjoint", path.name
         assert cfg.run.scalar_operator_pairing == "variational_operator", path.name
         assert cfg.run.ppe_defect_correction is True, path.name
-        assert cfg.run.ppe_dc_max_iterations == 12, path.name
+        ppe_corrections = raw["numerics"]["projection"]["poisson"]["solver"][
+            "corrections"
+        ]
+        assert cfg.run.ppe_dc_max_iterations == (
+            ppe_corrections["max_iterations"]
+        ), path.name
+        assert cfg.run.ppe_dc_max_iterations >= 12, path.name
+        assert cfg.run.ppe_dc_tolerance == pytest.approx(
+            ppe_corrections["tolerance"]
+        ), path.name
+        assert cfg.run.ppe_dc_relaxation == pytest.approx(
+            ppe_corrections["relaxation"]
+        ), path.name
+        assert ppe_corrections["fail_close"] is True, path.name
+        assert cfg.run.ppe_dc_fail_close is True, path.name
 
 
 def test_ch14_rayleigh_taylor_yaml_uses_periodic_wall_common_flux_route():
@@ -606,7 +668,7 @@ def test_ch14_rising_bubble_yaml_loads_execution_stack():
     assert cfg.output.checkpoint_interval == pytest.approx(0.005)
     assert cfg.run.momentum_form == "conservative_common_flux"
     assert cfg.interface_state_space.kind == "geometric_cell_fraction"
-    assert cfg.run.reinit_every == 0
+    assert cfg.run.reinit_every == 1
     assert cfg.run.reinit_trigger_mode == "fixed"
     assert cfg.run.interface_tracking_method == "q_cell_fraction"
     assert cfg.run.phi_primary_transport is False
@@ -624,6 +686,7 @@ def test_ch14_rising_bubble_yaml_loads_execution_stack():
     assert cfg.run.face_flux_projection is True
     assert cfg.run.canonical_face_state is True
     assert cfg.run.face_native_predictor_state is True
+    assert cfg.run.face_no_slip_boundary_state is True
     assert cfg.run.preserve_projected_faces is True
     assert cfg.run.boundary_hodge_mode == "off"
     assert cfg.run.boundary_hodge_state_space == "constrained_face"
@@ -645,6 +708,46 @@ def test_ch14_rising_bubble_yaml_loads_execution_stack():
     assert cfg.run.capillary_closed_interface_metric == "pressure_adjoint"
     assert cfg.run.capillary_closed_interface_constraints == ("cell_volume",)
     assert cfg.run.capillary_closed_interface_fail_close is True
+
+
+def test_constrained_face_state_rejects_disabled_no_slip_face_state():
+    with pytest.raises(ValueError, match="face_no_slip_boundary_state=true"):
+        ExperimentConfig.from_dict(_minimal({
+            "numerics": {
+                "projection": {
+                    "mode": "face_hodge",
+                    "face_flux_projection": True,
+                    "canonical_face_state": True,
+                    "face_native_predictor_state": True,
+                    "face_no_slip_boundary_state": False,
+                    "preserve_projected_faces": True,
+                    "boundary_hodge": {
+                        "mode": "off",
+                        "state_space": "constrained_face",
+                    },
+                },
+            },
+        }))
+
+
+def test_impermeable_face_state_rejects_no_slip_face_state():
+    with pytest.raises(ValueError, match="face_no_slip_boundary_state=false"):
+        ExperimentConfig.from_dict(_minimal({
+            "numerics": {
+                "projection": {
+                    "mode": "face_hodge",
+                    "face_flux_projection": True,
+                    "canonical_face_state": True,
+                    "face_native_predictor_state": True,
+                    "face_no_slip_boundary_state": True,
+                    "preserve_projected_faces": True,
+                    "boundary_hodge": {
+                        "mode": "off",
+                        "state_space": "impermeable_face",
+                    },
+                },
+            },
+        }))
 
 
 def test_capillary_range_projection_parses_and_requires_affine_jump():

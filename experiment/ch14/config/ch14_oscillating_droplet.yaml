@@ -4,6 +4,8 @@
 # properties at about 20 C (rho_l=998.2, rho_g=1.204, sigma=0.0728),
 # the area-equivalent radius sqrt(ab)=4.974937 mm gives
 # omega0=59.578473371 and T=0.105460663082 s.
+# YAML ownership: scheme choices, numerical parameters, and initial state are
+# user-owned and explicit below; code only validates and derives internal ledgers.
 
 experiment:
   type: ellipse
@@ -28,45 +30,7 @@ grid:
             alpha: 2.0
 
 interface:
-  state_space:
-    kind: geometric_cell_fraction
-    conserved_variable: q
-    normalized_view: theta
-    gauge:
-      variable: phi
-      trace: p1_levelset
-    compatibility:
-      constraint: hard_cell_volume
-      units: physical_volume
-      projection:
-        implementation: active_cached
-        dense_reference: test_only
-        gpu_contract:
-          required: true
-          active_storage: struct_of_arrays
-          inner_host_transfers: forbidden
-          dense_runtime_fallback: forbidden
-          record_kernel_counters: true
-        method: fixed_stratum_schur
-        metric: screened_gauge_hodge
-        fail_close: true
-        trust_region: sign_margin
-        residual_tolerance: 1.0e-11
-        condition_gate: fail_close
-        support_budget:
-          max_active_ratio: 0.25
-          max_support_stream_ratio: 0.25
-          max_epoch_growth_ratio: 1.5
-          on_overrun: fail_close
-        solver:
-          primary: active_pcg_newton
-          accelerators:
-            dc_candidate:
-              enabled: true
-              role: proposal_only
-              on_reject: discard_candidate
-          fallback:
-            policy: none
+  state_space: active_geometry_capillary
   thickness:
     mode: local
     base_factor: 1.5
@@ -76,9 +40,9 @@ interface:
       # route is fail-closed for pressure-jump production configs.
       method: face_implicit
   reinitialization:
-    algorithm: none
+    algorithm: compatibility_projection
     schedule:
-      every_steps: 0
+      every_steps: 1
     profile:
       eps_scale: 1.0
       ridge_sigma_0: 3.0
@@ -146,9 +110,22 @@ numerics:
             constraints: [cell_volume]
             fail_close: true
   projection:
+    active_geometry:
+      solver:
+        scheme: pcg
+        convergence:
+          norm: linf
+          absolute_tolerance: 1.0e-11
+          relative_tolerance: 0.0
+          max_iterations: 32
+        pcg:
+          tolerance: 1.0e-12
+          max_iterations: 256
+          roundoff_floor: 1.0e-14
     face_flux_projection: true
     canonical_face_state: true
     face_native_predictor_state: true
+    face_no_slip_boundary_state: true
     preserve_projected_faces: true
     boundary_hodge:
       # SP-AN state-space contract shared by ch14 production YAMLs.  The
@@ -186,6 +163,7 @@ numerics:
           max_iterations: 12
           tolerance: 1.0e-8
           relaxation: 0.7
+          fail_close: true
         base_solver:
           discretization: fd
           kind: direct
