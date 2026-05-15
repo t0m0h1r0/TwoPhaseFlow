@@ -86,6 +86,24 @@ def _interface_mode_projection(psi, v, x_coord, y_coord, *, mode: int, length: f
     return eta_mode, v_mode, float(np.max(np.abs(v_int)))
 
 
+def _q_height_mode(backend, grid, phase, *, mode: int, length: float, y_mid: float):
+    """Return the AO-owned column-volume graph mode from q itself."""
+    if phase is None:
+        return 0.0
+    q = _to_host(backend, phase.q)
+    x_edges = np.asarray(grid.coords[0], dtype=float)
+    y_edges = np.asarray(grid.coords[1], dtype=float)
+    dx = np.diff(x_edges)
+    x_center = 0.5 * (x_edges[:-1] + x_edges[1:])
+    height = y_edges[0] + np.sum(q, axis=1) / dx
+    return _weighted_cos_projection(
+        x_center,
+        height - y_mid,
+        mode=mode,
+        length=length,
+    )
+
+
 def _face_y_mode(
     backend,
     div_op,
@@ -235,12 +253,22 @@ def main() -> None:
     snap_idx = 0
 
     print(
-        "step,t,dt,eta_cos,eta_theta_cos,eta_phi_cos,v_cos,v_abs_max,"
+        "step,t,dt,eta_cos,eta_theta_cos,eta_phi_cos,q_height_cos,"
+        "q_rate_cos,v_cos,v_abs_max,"
         "min_dx,min_dy,"
         "compat_linf,div_u,raw_accel_cos,predictor_accel_cos,"
         "reaction_accel_cos,balanced_accel_cos,projected_face_linf,yl_normal,"
         "ppe_dc_linf,ppe_dc_conv,ppe_rhs,face_hodge_pre,face_hodge_post,"
         "projected_wall_linf,predictor_wall_linf,reaction_wall_linf,balanced_wall_linf"
+    )
+    initial_phase = getattr(solver, "_geometric_phase_state", None)
+    prev_q_height_mode = _q_height_mode(
+        backend,
+        solver._grid,
+        initial_phase,
+        mode=mode,
+        length=length,
+        y_mid=y_mid,
     )
     t = 0.0
     eta_mode, v_mode, v_abs = _interface_mode_projection(
@@ -259,6 +287,8 @@ def main() -> None:
         f"{eta_mode:.12e}",
         f"{eta_mode:.12e}",
         f"{eta_mode:.12e}",
+        f"{prev_q_height_mode:.12e}",
+        "0.000000000000e+00",
         f"{v_mode:.12e}",
         f"{v_abs:.12e}",
         f"{_min_grid_spacing(solver._grid)[0]:.12e}",
@@ -435,6 +465,20 @@ def main() -> None:
             length=length,
             y_mid=y_mid,
         )
+        q_height_mode = _q_height_mode(
+            backend,
+            grid,
+            phase,
+            mode=mode,
+            length=length,
+            y_mid=y_mid,
+        )
+        q_rate_mode = (
+            (q_height_mode - prev_q_height_mode) / dt
+            if dt > 0.0
+            else 0.0
+        )
+        prev_q_height_mode = q_height_mode
         boundary = tuple(cap.material.face_hodge.boundary)
         raw_accel_mode = _face_y_mode(
             backend,
@@ -606,6 +650,8 @@ def main() -> None:
             f"{eta_mode:.12e}",
             f"{eta_theta_mode:.12e}",
             f"{eta_phi_mode:.12e}",
+            f"{q_height_mode:.12e}",
+            f"{q_rate_mode:.12e}",
             f"{v_mode:.12e}",
             f"{v_abs:.12e}",
             f"{min_dx:.12e}",

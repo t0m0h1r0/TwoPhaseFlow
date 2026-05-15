@@ -111,7 +111,14 @@ $m=2$，$L_x=0.02\,\mathrm{m}$，$\theta_0=0$ とする．
   T_\sigma=\frac{2\pi}{\omega_\sigma}=0.046742983863\,\mathrm{s}
 \]
 を連続体の基準時刻とする．
-ただし，論文に掲載する 2 次元 snapshot は，
+ただし，現時点の図表と下記の完走値は，連続 level-set
+（CLS）経路で得た履歴結果であり，最新のアクティブ幾何毛管分解
+（AO）経路の検証結果ではない．したがって，これらの時刻と振幅履歴を
+AO の合格基準として用いてはならない．最新 AO 経路では，
+$q$ が所有する列体積グラフ，分相 PPE と HFE による圧力ジャンプ境界式，
+pressure-component Hodge reaction，および界面追随格子再構築後の
+metric 一貫性を同時に満たすことを別途検証する．
+旧 CLS 図として論文に掲載する 2 次元 snapshot は，
 非負 envelope ではなく，計算された符号付き mode-2 界面振幅
 \texttt{signed\_interface\_amplitude} の戻り窓を使って選ぶ．
 すなわち起点，上側から平坦化する点，下側最大，ふたたび平坦化する点，
@@ -138,7 +145,7 @@ $m=2$，$L_x=0.02\,\mathrm{m}$，$\theta_0=0$ とする．
         $\mu_l=1.002\times10^{-3}\,\mathrm{Pa\,s}$，
         $\mu_g=1.825\times10^{-5}\,\mathrm{Pa\,s}$，
         $\sigma=0.0728\,\mathrm{N/m}$，$g=0$
-  \item 時間：掲載窓 $T=0.035379718894\,\mathrm{s}$，
+  \item 時間：旧 CLS 掲載窓 $T=0.035379718894\,\mathrm{s}$，
         理論 CFL multiplier $1.0$
   \item 出力：\texttt{signed\_interface\_amplitude}，
         \texttt{volume\_conservation}，\texttt{kinetic\_energy}，
@@ -148,7 +155,7 @@ $m=2$，$L_x=0.02\,\mathrm{m}$，$\theta_0=0$ とする．
 
 \subsubsection{結果と判定}
 
-N=32 の掲載窓 run は $1623$ samples で
+以下の数値は旧 CLS 経路の掲載窓結果である．N=32 の掲載窓 run は $1623$ samples で
 $t=0.035379718894\,\mathrm{s}$ に到達し，
 すべての保存診断と snapshot field は有限値を保った．
 CFL は全区間で毛管制限が支配し，
@@ -165,12 +172,12 @@ $3.402\times10^{-11}$ から最大 $1.659\times10^{-5}$ まで増加し，
 終端では $8.964\times10^{-6}$ である．
 体積ドリフトは最大 $1.556\times10^{-8}$，
 終端 $1.132\times10^{-9}$ であり，掲載窓では丸め誤差に近い水準へ保たれる．
-この結果は，幾何セル分率輸送，bundle Young--Laplace work，
-pressure-component Hodge reaction，pressure-coordinate history，
-Hodge 逆適用済み面補間，
-および格子再構築時の投影済み面共鎖移送を同時に使う
-アクティブ幾何毛管分解の完走を示す．
-ただし，U12 で棄却した全圧力像への過射影を成功と読むものではない．
+この結果は最新 AO 経路の完走証明ではない．AO 経路の判定では，
+CLS 由来の snapshot 窓ではなく，連続理論の初期加速度
+$A''(0)=-\omega_\sigma^2A_0$，AO 離散表面エネルギーの一次変分，
+分相 PPE+HFE の同一圧力演算子，および $q$ 列高さ振幅の整合を
+検証対象とする．U12 で棄却した全圧力像への過射影を成功と読むことも，
+旧 CLS の戻り窓を AO の周期再現と読むことも許されない．
 
 \begin{figure}[!htbp]
 \centering
