@@ -1,0 +1,11 @@
+{
+  "branch": "codex/ra-paper-review-ch1-14-2-20260516",
+  "branch_slug": "codex-ra-paper-review-ch1-14-2-20260516",
+  "session_id": "CHK-RA-PAPER-REVIEW-CH1-14-2-001",
+  "id_prefix": "RA-PAPER-REVIEW-CH1-14-2",
+  "worktree": ".claude/worktrees/codex-ra-paper-review-ch1-14-2-20260516",
+  "started_at": "2026-05-16T00:00:00+0900",
+  "owner": "ResearchArchitect",
+  "scope": "paper chapters 1-13 and chapter 14 through section 14.2",
+  "merge_policy": "no main merge without explicit user instruction; main merge must use --no-ff; keep source worktree usable unless explicitly told otherwise"
+}
