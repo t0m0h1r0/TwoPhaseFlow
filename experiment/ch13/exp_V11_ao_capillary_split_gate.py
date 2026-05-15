@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
-"""[V11] AO-Fast capillary split integration pre-gate.
+"""[V11] Active-geometry capillary split integration gate.
 
 Paper ref: Chapter 13 V11.
 
-This experiment promotes the U12 algebraic split diagnostic into a Chapter 13
-admission gate. It checks that the non-static capillary wave remains rejected
-by the current GPU AO-Fast packet even when pressure history is represented as
-face acceleration. Passing this gate means fail-close behavior is reliable; it
-does not admit AO-Fast as a production physical benchmark.
+This experiment promotes the U12 algebraic split diagnostic and graph-HFE
+component contracts into a Chapter 13 admission gate. Passing this gate means
+the old all-pressure-image split remains rejected, while the production
+active-geometry route is guarded by current-interface HFE jumps, smooth
+pressure-coordinate history, and regular-stratum grid rebuilding.
 
 Usage
 -----
@@ -25,8 +25,10 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "src"))
 
 from experiment.ch12.exp_U12_ao_capillary_split_gate import (  # noqa: E402
     CaseSpec,
+    assert_component_contracts,
+    component_rows_from_results,
     compute_results,
-    is_fail_close,
+    is_pending_packet,
     make_figures,
     rows_from_results,
 )
@@ -82,8 +84,11 @@ def assert_v11_acceptance(results: dict, *, require_gpu: bool) -> None:
             raise AssertionError(f"V11 {case_id} component probe did not detect wave")
         if require_gpu and gpu["status"] != "ok":
             raise AssertionError(f"V11 {case_id} GPU row did not run")
-        if require_gpu and not is_fail_close(gpu):
-            raise AssertionError(f"V11 {case_id} GPU packet did not fail-close")
+        if require_gpu and not is_pending_packet(gpu):
+            raise AssertionError(f"V11 {case_id} GPU packet did not stop at split-pending")
+        if require_gpu and float(gpu["balanced_l2"]) <= 0.0:
+            raise AssertionError(f"V11 {case_id} GPU packet erased non-static drive")
+    assert_component_contracts(results)
 
 
 def print_summary(results: dict) -> None:
@@ -95,7 +100,13 @@ def print_summary(results: dict) -> None:
             f"V11 {case_id}: "
             f"component_balanced={float(component['balanced_l2']):.6e}, "
             f"gpu_status={gpu['status']}, "
-            f"gpu_fail_close={is_fail_close(gpu)}"
+            f"gpu_split_pending={is_pending_packet(gpu)}"
+        )
+    for row in component_rows_from_results(results):
+        print(
+            f"V11 contract {row['metric']}: "
+            f"value={float(row['value']):.6e}, "
+            f"criterion={row['criterion']}, passed={bool(row['passed'])}"
         )
 
 
@@ -104,7 +115,7 @@ def main() -> None:
     parser.add_argument(
         "--require-gpu",
         action="store_true",
-        help="Require GPU packet rows to run and fail-close on non-static waves.",
+        help="Require GPU packet rows to run and stop at split-pending on non-static waves.",
     )
     args = parser.parse_args()
     if args.plot_only:
@@ -115,7 +126,7 @@ def main() -> None:
     assert_v11_acceptance(results, require_gpu=args.require_gpu)
     make_figures(
         results,
-        title="V11 AO-Fast capillary split pre-gate",
+        title="V11 active-geometry capillary split integration gate",
         figure_name="V11_ao_capillary_split_gate",
         paper_fig=PAPER_FIG,
         out_dir=OUT,

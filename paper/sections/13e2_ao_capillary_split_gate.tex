@@ -21,6 +21,17 @@ $q$ 所有グラフ HFE 圧力ジャンプ，
 の正則層ガードを
 同時に満たすことを，アクティブ幾何毛管分解の統合条件として固定する．
 
+\paragraph{追加・再試の根拠．}
+第14章の最新毛管波結果は，U12 の旧代数反例だけでなく，
+$q$ 所有グラフ HFE，pressure-coordinate history の分離，
+HFE admission，および界面追随格子の正則層保持に依存する．
+V11 では，これらの単体契約を U12 から引き継ぎつつ，
+pressure-coordinate と face-acceleration の履歴表現を変えても
+旧全圧力像への過射影が非静的波の物理駆動を消すこと，
+現行 GPU packet が split-pending 境界で停止して非静的駆動を残すことを
+再試する．これにより，旧 fail-close 仕様ではなく，
+現在の分相 PPE+HFE 経路へ接続する受理境界として V11 を更新する．
+
 \paragraph{検査項目．}
 V11 は以下を同時に要求する．
 \begin{enumerate}[noitemsep]
@@ -58,8 +69,10 @@ V11 は以下を同時に要求する．
 平坦・静的ゲート & 平坦界面はゼロ駆動．静的問題で非零駆動を作る経路は標準経路へ入れない． & \checkmark \\
 全圧力像の反例 & N32/N64 毛管波で厳密全圧力分解は釣合い駆動を $0$ にする．これは成功ではなく過射影の反例である． & \checkmark 診断 \\
 成分体積 Hodge 診断 & 同じ毛管波で成分体積 Hodge 診断は N32/N64 の釣合いノルム $2.1176/2.3055$ を検出する．ただしこれは最終 $R_p$ の代替証明ではなく非静的性の診断である． & \checkmark 診断 \\
-$q$ 所有グラフ HFE & 圧力ジャンプは $j_{gl}^{G}=-(\sigma/\Delta x_i)\partial S_G/\partial H_i$，切断面は $\psi_G=h_G(q)-y$．pressure-coordinate history へ不連続ジャンプを保存せず，現在格子で面ジャンプを再構築する． & \checkmark 契約 \\
-追随格子正則層 & 620 step 診断で支配法線方向ガードにより $\Delta x_{\min}=6.25\times10^{-4}\,\mathrm{m}$ を保持し，PPE RHS は $\Ord{10^4}$ に留まった．全 active 軸移動で見られた接線方向格子崩壊は再現しない． & \checkmark \\
+$q$ 所有グラフ HFE & 非一様 $x$ 格子で $\|j_{gl}^{G}\|_\infty=11.5323$，$\Delta x$ 加重平均 $1.30\times10^{-16}$，波頂ジャンプは負．pressure-coordinate history へ不連続ジャンプを保存せず，現在格子で面ジャンプを再構築する． & \checkmark 契約 \\
+履歴・admission & graph HFE jump は BDF2 pressure history から除外される．HFE admission は $dt$ 倍増分ではなく空間駆動で判定され，$dt=10^{-8}$，増分 $10^{-14}$，空間駆動 $10^{-6}$ の非静的 packet を受理した． & \checkmark 契約 \\
+追随格子正則層 & ほぼ水平な毛管波で支配法線方向ガードは $x$ 方向変位 $0$，$y$ 最大変位 $2.50\times10^{-3}$．全 active 軸移動で見られた接線方向格子崩壊は再現しない． & \checkmark \\
+GPU split-pending 境界 & pressure-coordinate と face-acceleration の履歴表現のどちらでも，現行 GPU packet は split-pending で停止し，N32 毛管波の非静的駆動 $2.40\times10^{-5}$ を消さない． & \checkmark 境界 \\
 1 周期統合走行 & 第~\ref{sec:val_capillary}節の N32 毛管波は $T_\sigma=0.046742983863\,\mathrm{s}$ まで完走し，体積ドリフト最大 $4.66\times10^{-14}$，運動エネルギー最大 $8.32\times10^{-6}$，終端振幅比 $0.794$ を得た． & \checkmark 物理ベンチへ接続 \\
 最終採用境界 & $R_p$，Hodge 逆適用済み面補間，$q$ 所有グラフ HFE，移動格子面共鎖，圧力履歴座標，正則層ガード，DC 収束判定を同時に満たす経路だけをアクティブ幾何毛管分解として標準物理経路へ入れる． & \checkmark 契約 \\
 \bottomrule
@@ -68,10 +81,11 @@ $q$ 所有グラフ HFE & 圧力ジャンプは $j_{gl}^{G}=-(\sigma/\Delta x_i)
 
 \begin{figure}[htbp]
 \centering
-\includegraphics[width=0.78\linewidth]{figures/ch13_v11_ao_capillary_split_gate.pdf}
+\includegraphics[width=0.96\linewidth]{figures/ch13_v11_ao_capillary_split_gate.pdf}
 \caption{V11：アクティブ幾何毛管分解の統合ゲート．
 圧力座標と面加速度の履歴表現を含め，
-非静的波では全圧力像への過射影を棄却し，最終 $R_p$ 契約へ進めることを確認する．}
+非静的波では全圧力像への過射影を棄却し，GPU packet が split-pending 境界で
+駆動を残すこと，および graph-HFE/追随格子契約が通ることを確認する．}
 \label{fig:V11_ao_gate}
 \end{figure}
 
