@@ -31,6 +31,7 @@ from ..backend import is_device_array
 from ..core.array_checks import all_arrays_exact_zero
 from ..core.boundary import is_periodic_axis
 from ..coupling.interface_stress_closure import (
+    build_interface_stress_context,
     build_young_laplace_interface_stress_context,
     evaluate_interface_face_curvature_lg,
     interface_stress_context_is_active,
@@ -233,6 +234,8 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         kappa,
         sigma: float,
         psi_previous=None,
+        pressure_jump_gas_minus_liquid=None,
+        phase_threshold: float = 0.5,
         face_curvature_method: str = "nodal_cut_face",
         transport_variational_nodal_covector=None,
         transport_variational_psi=None,
@@ -243,28 +246,56 @@ class PPESolverFCCDMatrixFree(IPPESolver):
         Both legacy ``jump_decomposition`` and affine paths consume the
         oriented Young--Laplace jump ``j_gl=p_gas-p_liquid=-σ κ_lg``.
         """
-        self._interface_jump_context = build_fccd_interface_jump_context(
-            xp=self.xp,
-            backend=self.backend,
-            psi=psi,
-            kappa=kappa,
-            sigma=sigma,
-        )
-        context = build_young_laplace_interface_stress_context(
-            xp=self.xp,
-            psi=psi,
-            kappa_lg=kappa,
-            sigma=sigma,
-            psi_previous=psi_previous,
-            face_curvature_method=face_curvature_method,
-            transport_variational_nodal_covector=(
-                transport_variational_nodal_covector
-            ),
-            transport_variational_psi=transport_variational_psi,
-            transport_variational_previous_surface_energy=(
-                transport_variational_previous_surface_energy
-            ),
-        )
+        if pressure_jump_gas_minus_liquid is None:
+            self._interface_jump_context = build_fccd_interface_jump_context(
+                xp=self.xp,
+                backend=self.backend,
+                psi=psi,
+                kappa=kappa,
+                sigma=sigma,
+            )
+            context = build_young_laplace_interface_stress_context(
+                xp=self.xp,
+                psi=psi,
+                kappa_lg=kappa,
+                sigma=sigma,
+                psi_previous=psi_previous,
+                face_curvature_method=face_curvature_method,
+                transport_variational_nodal_covector=(
+                    transport_variational_nodal_covector
+                ),
+                transport_variational_psi=transport_variational_psi,
+                transport_variational_previous_surface_energy=(
+                    transport_variational_previous_surface_energy
+                ),
+            )
+        else:
+            jump = self.xp.asarray(pressure_jump_gas_minus_liquid)
+            kappa_dev = self.xp.zeros_like(jump)
+            self._interface_jump_context = {
+                "psi": self.xp.asarray(psi),
+                "kappa": kappa_dev,
+                "pressure_jump_gas_minus_liquid": jump,
+                "psi_host": None,
+                "kappa_host": None,
+                "pressure_jump_gas_minus_liquid_host": None,
+                "sigma": 0.0,
+            }
+            context = build_interface_stress_context(
+                xp=self.xp,
+                psi=psi,
+                pressure_jump_gas_minus_liquid=jump,
+                psi_previous=psi_previous,
+                phase_threshold=phase_threshold,
+                face_curvature_method=face_curvature_method,
+                transport_variational_nodal_covector=(
+                    transport_variational_nodal_covector
+                ),
+                transport_variational_psi=transport_variational_psi,
+                transport_variational_previous_surface_energy=(
+                    transport_variational_previous_surface_energy
+                ),
+            )
         self._interface_stress_context = context
 
     def clear_interface_jump_context(self) -> None:

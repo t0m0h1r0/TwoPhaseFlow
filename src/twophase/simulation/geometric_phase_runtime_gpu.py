@@ -546,6 +546,13 @@ def materialise_geometric_graph_capillary_state_gpu(
     dx = x[1:] - x[:-1]
     column_volume = xp.sum(q, axis=1)
     height = y[0] + column_volume / dx
+    height_nodes = _periodic_graph_node_heights_from_column_volume_gpu(
+        xp,
+        column_volume=column_volume,
+        dx=dx,
+        lower=y[0],
+    )
+    graph_jump_psi = height_nodes.reshape((-1, 1)) - y.reshape((1, -1))
     lower = y[0]
     upper = y[-1]
     height_bounds = _host_scalar_packet_float(
@@ -568,6 +575,19 @@ def materialise_geometric_graph_capillary_state_gpu(
     slope_right = dh / segment_length
     slope_left = xp.roll(slope_right, 1)
     height_gradient = sigma * (slope_left - slope_right)
+    # Virtual work for a liquid-below graph gives
+    # ``dE = (p_liquid - p_gas) dq``.  HFE affine jumps consume the opposite
+    # convention, ``j_gl = p_gas - p_liquid``.
+    pressure_jump_column = -height_gradient / dx
+    pressure_jump_x = _periodic_cell_center_to_node_gpu(
+        xp,
+        pressure_jump_column,
+        dx,
+    )
+    pressure_jump = xp.broadcast_to(
+        pressure_jump_x.reshape((-1, 1)),
+        tuple(phase_state.phi.shape),
+    )
 
     y_lower = y[:-1].reshape((1, -1))
     y_upper = y[1:].reshape((1, -1))
@@ -665,16 +685,27 @@ def materialise_geometric_graph_capillary_state_gpu(
         boundary=material.face_hodge.boundary,
     )
     zero_surface_tension = sigma == 0.0
+    drive_packet = _host_scalar_packet_float(
+        grid.backend,
+        [
+            ("graph capillary weighted l2", capillary_riesz.weighted_acceleration_l2),
+            ("graph capillary max", capillary_riesz.max_abs_face_covector),
+        ],
+    )
+    pressure_exact_static = zero_surface_tension or (
+        drive_packet["graph capillary weighted l2"] <= tolerance
+        and drive_packet["graph capillary max"] <= tolerance
+    )
     return GeometricRuntimeCapillaryState(
         material=material,
         pressure_capillary_hodge=hodge,
         pressure_range_status=(
             "pressure_exact_static"
-            if zero_surface_tension
-            else "pressure_reaction_projection_pending"
+            if pressure_exact_static
+            else "hfe_pressure_jump"
         ),
-        pressure_exact_static=zero_surface_tension,
-        capillary_drive_present=not zero_surface_tension,
+        pressure_exact_static=pressure_exact_static,
+        capillary_drive_present=not pressure_exact_static,
         pressure_range_tolerance=tolerance,
         capillary_force_face_covectors=face_covectors,
         capillary_force_acceleration=acceleration,
@@ -699,8 +730,19 @@ def materialise_geometric_graph_capillary_state_gpu(
         component_reaction_accelerations=component_reaction_accelerations,
         pressure_reaction_projection_status=(
             "pressure_hodge_diagnostic"
-            if zero_surface_tension
-            else "pressure_reaction_projection_pending"
+            if pressure_exact_static
+            else "hfe_pressure_jump"
+        ),
+        pressure_jump_gas_minus_liquid=pressure_jump,
+        # HFE must cut the q-owned graph interface, not the auxiliary AO gauge
+        # ``phi`` after compatibility projection.  Its phase convention is
+        # ``psi < threshold`` = gas, so use ``h(x)-y`` for liquid below.
+        pressure_jump_psi=graph_jump_psi,
+        pressure_jump_phase_threshold=float(phase_state.stratum.level),
+        pressure_jump_status=(
+            "none"
+            if pressure_exact_static
+            else "column_height_graph_hfe"
         ),
     )
 
@@ -1744,6 +1786,79 @@ def _face_incidence_adjoint_gpu(grid, cell_values, *, boundary):
         covector_y[:, 0] = seam
         covector_y[:, -1] = seam
     return covector_x, covector_y
+
+
+def _periodic_cell_center_to_node_gpu(xp, values, widths):
+    """Interpolate periodic cell-centered graph data to duplicated nodes."""
+    cell = xp.asarray(values)
+    w = xp.asarray(widths, dtype=cell.dtype)
+    n = int(cell.shape[0])
+    if n < 1:
+        raise ValueError("periodic graph interpolation requires at least one cell")
+    nodes = xp.empty((n + 1,), dtype=cell.dtype)
+    seam = (w[0] * cell[-1] + w[-1] * cell[0]) / (w[-1] + w[0])
+    nodes[0] = seam
+    nodes[-1] = seam
+    if n > 1:
+        denom = w[:-1] + w[1:]
+        nodes[1:n] = (w[1:] * cell[:-1] + w[:-1] * cell[1:]) / denom
+    return nodes
+
+
+def _periodic_graph_node_heights_from_column_volume_gpu(
+    xp,
+    *,
+    column_volume,
+    dx,
+    lower,
+):
+    """Recover periodic graph node heights from q-owned column volumes."""
+    volume = xp.asarray(column_volume)
+    widths = xp.asarray(dx, dtype=volume.dtype)
+    nx = int(volume.shape[0])
+    if nx < 1:
+        raise ValueError("periodic graph height reconstruction needs cells")
+    column_rhs = 2.0 * volume / widths
+    modes = xp.arange(nx, dtype=volume.dtype)
+    angles = (
+        2.0
+        * xp.asarray(np.pi, dtype=volume.dtype)
+        * modes
+        / xp.asarray(nx, dtype=volume.dtype)
+    )
+    eigenvalues = 1.0 + xp.exp(1j * angles)
+    denom = xp.real(eigenvalues * xp.conj(eigenvalues))
+    denom_floor = (
+        xp.asarray(100.0 * np.finfo(np.dtype(volume.dtype)).eps, dtype=volume.dtype)
+        * xp.max(denom)
+    )
+    rhs_hat = xp.fft.fft(column_rhs)
+    height_hat = xp.where(
+        denom > denom_floor,
+        xp.conj(eigenvalues) * rhs_hat / denom,
+        xp.zeros_like(rhs_hat),
+    )
+    heights_periodic = xp.asarray(lower, dtype=volume.dtype) + xp.real(
+        xp.fft.ifft(height_hat)
+    )
+    graph_total = xp.sum(
+        widths
+        * (
+            0.5
+            * (
+                heights_periodic
+                + xp.roll(heights_periodic, -1)
+            )
+            - xp.asarray(lower, dtype=volume.dtype)
+        )
+    )
+    heights_periodic = heights_periodic + (
+        xp.sum(volume) - graph_total
+    ) / xp.sum(widths)
+    heights = xp.empty((nx + 1,), dtype=volume.dtype)
+    heights[:-1] = heights_periodic
+    heights[-1] = heights_periodic[0]
+    return heights
 
 
 def _single_cell_volume_reaction_accelerations_gpu(

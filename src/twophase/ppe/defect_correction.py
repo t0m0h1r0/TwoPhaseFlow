@@ -104,6 +104,8 @@ class PPESolverDefectCorrection(IPPESolver):
         kappa,
         sigma: float,
         psi_previous=None,
+        pressure_jump_gas_minus_liquid=None,
+        phase_threshold: float = 0.5,
         face_curvature_method: str = "nodal_cut_face",
         transport_variational_nodal_covector=None,
         transport_variational_psi=None,
@@ -117,6 +119,10 @@ class PPESolverDefectCorrection(IPPESolver):
                     kappa=kappa,
                     sigma=sigma,
                     psi_previous=psi_previous,
+                    pressure_jump_gas_minus_liquid=(
+                        pressure_jump_gas_minus_liquid
+                    ),
+                    phase_threshold=phase_threshold,
                     face_curvature_method=face_curvature_method,
                     transport_variational_nodal_covector=(
                         transport_variational_nodal_covector

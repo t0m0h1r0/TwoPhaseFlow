@@ -26,17 +26,26 @@ from twophase.ppe.defect_correction import PPESolverDefectCorrection
 from twophase.ppe.fd_direct import PPESolverFDDirect
 from twophase.ppe.fccd_matrixfree import PPESolverFCCDMatrixFree
 from twophase.simulation.divergence_ops import FCCDDivergenceOperator
+from twophase.simulation.geometric_phase_runtime import (
+    GeometricRuntimeCapillaryApplicationState,
+    validate_geometric_runtime_capillary_application_admitted,
+)
 from twophase.simulation.ns_pipeline import TwoPhaseNSSolver
 from twophase.simulation.ns_step_state import NSStepState
+from twophase.simulation.geometric_phase_runtime_gpu import (
+    _periodic_graph_node_heights_from_column_volume_gpu,
+)
 from twophase.simulation.ns_step_services import (
     _capillary_interface_psi,
     _capillary_interface_psi_previous,
     _decode_affine_pressure_history_coordinate,
     _encode_affine_pressure_history_coordinate,
     _interface_supported_curvature,
+    _pressure_coordinate_history_base,
     _smooth_pressure_history_base_without_ao_reaction,
 )
 from twophase.coupling.interface_stress_closure import build_interface_stress_context
+from twophase.coupling.interface_stress_closure import signed_pressure_jump_gradient
 from twophase.levelset.curvature_psi import CurvatureCalculatorPsi
 from twophase.levelset.fccd_advection import FCCDLevelSetAdvection
 from twophase.simulation.config_io import ExperimentConfig
@@ -915,8 +924,15 @@ def test_column_height_graph_gauge_reconstruction_uses_q_column_volume():
 
     phi = np.asarray(solver._backend.to_host(solver._graph_phi_from_column_volume(q)))
     height_nodes = y[0] - phi[:, 0]
+    hfe_height_nodes = _periodic_graph_node_heights_from_column_volume_gpu(
+        np,
+        column_volume=np.sum(q, axis=1),
+        dx=dx,
+        lower=y[0],
+    )
 
     np.testing.assert_allclose(height_nodes[0], height_nodes[-1])
+    np.testing.assert_allclose(hfe_height_nodes, height_nodes, atol=1.0e-13)
     graph_column_volume = dx * (
         0.5 * (height_nodes[:-1] + height_nodes[1:]) - y[0]
     )
@@ -931,6 +947,22 @@ def test_column_height_graph_gauge_reconstruction_uses_q_column_volume():
     np.testing.assert_allclose(graph_volume, target_volume)
     assert np.all(phi[:, 0] < 0.0)
     assert np.all(phi[:, -1] > 0.0)
+
+    context = build_interface_stress_context(
+        xp=np,
+        psi=-phi,
+        pressure_jump_gas_minus_liquid=np.ones_like(phi),
+        phase_threshold=0.0,
+    )
+    jump_y = signed_pressure_jump_gradient(
+        xp=np,
+        grid=solver._grid,
+        context=context,
+        axis=1,
+    )
+    cut_y = np.abs(jump_y) > 0.0
+    assert np.any(cut_y)
+    assert np.all(jump_y[cut_y] > 0.0)
 
 
 def test_column_height_graph_projection_is_deferred_until_q_owned_gauge():
@@ -2782,6 +2814,107 @@ def test_nonstatic_ao_pressure_history_excludes_constraint_reaction_coordinate()
     history_base = _smooth_pressure_history_base_without_ao_reaction(xp, state)
 
     np.testing.assert_allclose(history_base, smooth_pressure)
+
+
+def test_graph_hfe_pressure_jump_does_not_reuse_pressure_coordinate_history():
+    """Moving graph HFE jumps define the current affine PPE, not history data."""
+    xp = np
+    previous = np.asarray([[1.0, 2.0], [4.0, 8.0]])
+    state = NSStepState(
+        psi=np.ones_like(previous),
+        u=np.zeros_like(previous),
+        v=np.zeros_like(previous),
+        dt=1.0e-3,
+        rho_l=1.0,
+        rho_g=1.0,
+        sigma=1.0,
+        mu=0.0,
+        g_acc=0.0,
+        rho_ref=1.0,
+        mu_l=None,
+        mu_g=None,
+        bc_hook=None,
+        step_index=0,
+        previous_base_pressure=previous,
+        previous_previous_base_pressure=0.5 * previous,
+        geometric_runtime_capillary_application=SimpleNamespace(
+            capillary=SimpleNamespace(
+                pressure_jump_status="column_height_graph_hfe",
+                pressure_jump_gas_minus_liquid=np.full_like(previous, 3.0),
+                pressure_jump_psi=np.zeros_like(previous),
+                pressure_jump_phase_threshold=0.0,
+            ),
+        ),
+    )
+    ppe_runtime = SimpleNamespace(pressure_history_extrapolation="bdf2")
+
+    history_base = _pressure_coordinate_history_base(
+        xp=xp,
+        state=state,
+        ppe_runtime=ppe_runtime,
+    )
+
+    assert history_base is None
+
+
+def test_hfe_pressure_jump_admission_uses_drive_not_dt_scaled_increment():
+    """HFE non-static admission is a spatial-drive contract, not a CFL test."""
+    capillary = SimpleNamespace(
+        pressure_range_tolerance=1.0e-11,
+        capillary_force_weighted_acceleration_l2=1.0e-6,
+        max_abs_capillary_force_face_covector=1.0e-6,
+    )
+    zero = (np.zeros((2, 3)), np.zeros((3, 2)))
+    application = GeometricRuntimeCapillaryApplicationState(
+        capillary=capillary,
+        dt=1.0e-8,
+        predictor_face_acceleration=zero,
+        pressure_reaction_face_acceleration=zero,
+        predictor_face_increment=zero,
+        pressure_reaction_face_increment=zero,
+        pressure_balanced_face_increment=zero,
+        predictor_increment_weighted_l2=1.0e-14,
+        pressure_reaction_increment_weighted_l2=0.0,
+        pressure_balanced_increment_weighted_l2=1.0e-14,
+        max_abs_pressure_balanced_face_increment=1.0e-14,
+        pressure_exact_static=False,
+        capillary_drive_present=True,
+        pressure_reaction_projection_status="hfe_pressure_jump",
+    )
+
+    validate_geometric_runtime_capillary_application_admitted(application)
+
+
+def test_gpu_stratum_guard_moves_dominant_normal_axis_only():
+    """Nearly horizontal graph interfaces must not squeeze x cells."""
+    grid = Grid(
+        GridConfig(
+            ndim=2,
+            N=(8, 8),
+            L=(1.0, 1.0),
+            alpha_grid=2.0,
+            fitting_axes=(True, True),
+            fitting_dx_min_floor=(1.0e-4, 1.0e-4),
+        ),
+        Backend(use_gpu=False),
+    )
+    x = np.asarray(grid.coords[0])
+    y = np.asarray(grid.coords[1])
+    X, Y = np.meshgrid(x, y, indexing="ij")
+    phi = 0.5 - Y + 1.0e-8 * np.cos(2.0 * np.pi * X)
+    candidate = [x.copy(), y.copy()]
+
+    shifted = grid._enforce_regular_interface_stratum_backend(
+        np,
+        phi,
+        [x.copy(), y.copy()],
+        candidate,
+        fitting_axes=(True, True),
+        fitting_dx_floor=(1.0e-4, 1.0e-4),
+    )
+
+    np.testing.assert_allclose(shifted[0], x, rtol=0.0, atol=0.0)
+    assert np.max(np.abs(shifted[1] - y)) > 0.0
 
 
 def test_fccd_not_constructed_when_unused():

@@ -14,7 +14,10 @@ from .ns_predictor_assembly import (
     select_gravity_aligned_axis,
     select_transverse_axis,
 )
-from ..coupling.interface_stress_closure import build_young_laplace_interface_stress_context
+from ..coupling.interface_stress_closure import (
+    build_interface_stress_context,
+    build_young_laplace_interface_stress_context,
+)
 from ..coupling.capillary_geometry import apply_wall_compatible_curvature
 from ..coupling.closed_interface_riesz import closed_interface_riesz_cochain
 from ..coupling.transport_variational_capillary import (
@@ -629,6 +632,7 @@ def _pressure_face_flux_kwargs(
     interface_psi=None,
     interface_psi_previous=None,
     transport_variational_temporaries=None,
+    include_geometric_hfe_jump: bool = False,
 ) -> dict:
     """Return face-pressure kwargs for the projection-native pressure law.
 
@@ -661,14 +665,39 @@ def _pressure_face_flux_kwargs(
         kwargs["coefficient_scheme"] = "phase_separated"
     if getattr(ppe_runtime, "ppe_interface_coupling_scheme", "none") == "affine_jump":
         sigma = state.sigma if interface_sigma is None else float(interface_sigma)
+        hfe_psi, hfe_pressure_jump, hfe_phase_threshold = (
+            _geometric_capillary_hfe_jump(state)
+            if include_geometric_hfe_jump
+            else (None, None, None)
+        )
+        if hfe_pressure_jump is not None:
+            interface_psi = hfe_psi
         kwargs["interface_coupling_scheme"] = "affine_jump"
-        kwargs["interface_stress_context"] = (
-            build_young_laplace_interface_stress_context(
+        if hfe_pressure_jump is None:
+            kwargs["interface_stress_context"] = (
+                build_young_laplace_interface_stress_context(
+                    xp=xp,
+                    psi=state.psi if interface_psi is None else interface_psi,
+                    kappa_lg=state.kappa,
+                    sigma=sigma,
+                    psi_previous=interface_psi_previous,
+                    **(transport_variational_temporaries or {}),
+                    face_curvature_method=(
+                        curvature_method
+                        if curvature_method in _JUMP_CURVATURE_METHODS
+                        else "nodal_cut_face"
+                    ),
+                )
+            )
+        else:
+            kwargs["interface_stress_context"] = build_interface_stress_context(
                 xp=xp,
                 psi=state.psi if interface_psi is None else interface_psi,
-                kappa_lg=state.kappa,
-                sigma=sigma,
+                pressure_jump_gas_minus_liquid=hfe_pressure_jump,
                 psi_previous=interface_psi_previous,
+                phase_threshold=(
+                    0.5 if hfe_phase_threshold is None else hfe_phase_threshold
+                ),
                 **(transport_variational_temporaries or {}),
                 face_curvature_method=(
                     curvature_method
@@ -676,7 +705,6 @@ def _pressure_face_flux_kwargs(
                     else "nodal_cut_face"
                 ),
             )
-        )
     return kwargs
 
 
@@ -717,8 +745,34 @@ def _uses_geometric_capillary_surface_slot(state: NSStepState) -> bool:
     )
 
 
+def _geometric_capillary_hfe_jump(state: NSStepState):
+    """Return q-owned explicit HFE pressure-jump data for AO capillarity."""
+    application = state.geometric_runtime_capillary_application
+    capillary = getattr(application, "capillary", None)
+    status = str(getattr(capillary, "pressure_jump_status", "none")).strip().lower()
+    if status in {"", "none"}:
+        return None, None, None
+    pressure_jump = getattr(capillary, "pressure_jump_gas_minus_liquid", None)
+    if pressure_jump is None:
+        return None, None, None
+    psi = getattr(capillary, "pressure_jump_psi", None)
+    phase_threshold = getattr(capillary, "pressure_jump_phase_threshold", 0.5)
+    return (state.psi if psi is None else psi), pressure_jump, phase_threshold
+
+
+def _uses_geometric_capillary_hfe_jump(state: NSStepState) -> bool:
+    """Return whether AO capillarity is represented as an HFE jump."""
+    _, pressure_jump, _ = _geometric_capillary_hfe_jump(state)
+    return pressure_jump is not None
+
+
 def _pressure_coordinate_history_base(*, xp, state: NSStepState, ppe_runtime):
     """Extrapolate scalar pressure coordinates for pressure-adjoint history."""
+    if _uses_geometric_capillary_hfe_jump(state):
+        # The graph HFE jump is a current-interface boundary condition, not a
+        # transported smooth pressure coordinate.  Reusing it after a moving
+        # grid rebuild mixes two different affine PPE operators.
+        return None
     previous = state.previous_base_pressure
     if previous is None:
         return None
@@ -2011,12 +2065,22 @@ def _install_pressure_jump_context(
     if not hasattr(ppe_solver, "set_interface_jump_context"):
         return rhs, PressureJumpStageContext(transport_temporaries={})
 
-    jump_sigma = 0.0 if closed_interface_source else physical_jump_sigma
+    hfe_psi, hfe_pressure_jump, hfe_phase_threshold = _geometric_capillary_hfe_jump(
+        state
+    )
+    use_hfe_pressure_jump = hfe_pressure_jump is not None
+    jump_sigma = (
+        0.0
+        if closed_interface_source or use_hfe_pressure_jump
+        else physical_jump_sigma
+    )
     interface_psi = _capillary_interface_psi(
         xp=xp,
         state=state,
         curvature_method=curvature_method,
     )
+    if use_hfe_pressure_jump:
+        interface_psi = hfe_psi
     interface_psi_previous = _capillary_interface_psi_previous(
         state=state,
         curvature_method=curvature_method,
@@ -2029,7 +2093,6 @@ def _install_pressure_jump_context(
         grid=jump_grid,
         sigma=physical_jump_sigma,
     )
-
     trace_projection_diagnostics = None
     corrected_capillary_components = None
     if closed_interface_source:
@@ -2091,6 +2154,10 @@ def _install_pressure_jump_context(
         kappa=state.kappa,
         sigma=jump_sigma,
         psi_previous=interface_psi_previous,
+        pressure_jump_gas_minus_liquid=hfe_pressure_jump,
+        phase_threshold=(
+            0.5 if hfe_phase_threshold is None else hfe_phase_threshold
+        ),
         **transport_temporaries,
         face_curvature_method=(
             curvature_method
@@ -2201,23 +2268,28 @@ def solve_ns_pressure_stage(
     nonstatic_geometric_capillary = _uses_nonstatic_geometric_capillary_application(
         state
     )
+    geometric_hfe_jump = (
+        nonstatic_geometric_capillary
+        and _uses_geometric_capillary_hfe_jump(state)
+    )
     if nonstatic_geometric_capillary:
         if not state.geometric_capillary_predictor_applied:
             raise ValueError(
                 "non-static AO capillary jump requires face-native "
                 "application admission before PPE"
             )
-        _prepare_nonstatic_geometric_capillary_jump(
-            state,
-            backend=backend,
-            xp=xp,
-            div_op=div_op,
-            grid=_pressure_jump_grid(ppe_solver, div_op),
-            bc_type=bc_type,
-            face_no_slip_boundary_state=face_no_slip_boundary_state,
-        )
+        if not geometric_hfe_jump:
+            _prepare_nonstatic_geometric_capillary_jump(
+                state,
+                backend=backend,
+                xp=xp,
+                div_op=div_op,
+                grid=_pressure_jump_grid(ppe_solver, div_op),
+                bc_type=bc_type,
+                face_no_slip_boundary_state=face_no_slip_boundary_state,
+            )
     rhs = predictor_rhs
-    if nonstatic_geometric_capillary:
+    if nonstatic_geometric_capillary and not geometric_hfe_jump:
         rhs = rhs + state.geometric_capillary_jump_rhs
     rhs = rhs + _pressure_stage_force_rhs(
         state,
@@ -2284,6 +2356,11 @@ def solve_ns_pressure_stage(
         certificate.update(
             {
                 "ao_capillary_pressure_jump_rhs_added": True,
+                "ao_capillary_pressure_jump_route": (
+                    "hfe_affine_context"
+                    if geometric_hfe_jump
+                    else "external_face_cochain"
+                ),
                 "ao_scalar_ppe_rhs_linf": _scalar_from_backend(
                     backend,
                     xp,
@@ -2365,6 +2442,7 @@ def solve_ns_pressure_stage(
             interface_psi=interface_psi,
             interface_psi_previous=interface_psi_previous,
             transport_variational_temporaries=jump_context.transport_temporaries,
+            include_geometric_hfe_jump=geometric_hfe_jump,
         )
         range_projection, pressure_flux_eval_kwargs = (
             _capillary_pressure_flux_evaluation_kwargs(
@@ -2378,7 +2456,7 @@ def solve_ns_pressure_stage(
                 jump_context=jump_context,
             )
         )
-        if nonstatic_geometric_capillary:
+        if nonstatic_geometric_capillary and not geometric_hfe_jump:
             if state.geometric_capillary_jump_face_acceleration is None:
                 raise RuntimeError(
                     "non-static AO capillary jump was not prepared before "
@@ -2390,6 +2468,11 @@ def solve_ns_pressure_stage(
             )
             certificate = dict(state.conservative_transport_certificate or {})
             certificate["ao_capillary_pressure_jump_faces_bound"] = True
+            state.conservative_transport_certificate = certificate
+        elif geometric_hfe_jump:
+            certificate = dict(state.conservative_transport_certificate or {})
+            certificate["ao_capillary_pressure_jump_faces_bound"] = True
+            certificate["ao_capillary_hfe_affine_context_bound"] = True
             state.conservative_transport_certificate = certificate
         correction_pressure = (
             xp.asarray(base_increment)
@@ -2456,7 +2539,9 @@ def solve_ns_pressure_stage(
             state,
         )
         state.pressure_history_storage_base = (
-            _encode_affine_pressure_history_coordinate(
+            xp.asarray(smooth_history_base)
+            if geometric_hfe_jump
+            else _encode_affine_pressure_history_coordinate(
                 xp,
                 smooth_history_base,
                 pressure_flux_eval_kwargs,

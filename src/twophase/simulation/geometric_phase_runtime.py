@@ -72,6 +72,10 @@ class GeometricRuntimeCapillaryState:
     max_abs_residual_face_covector: float
     component_reaction_accelerations: tuple[tuple[Any, Any], ...] = ()
     pressure_reaction_projection_status: str = "pressure_hodge_diagnostic"
+    pressure_jump_gas_minus_liquid: Any = None
+    pressure_jump_psi: Any = None
+    pressure_jump_phase_threshold: float = 0.5
+    pressure_jump_status: str = "none"
 
 
 @dataclass(frozen=True)
@@ -149,6 +153,17 @@ def validate_geometric_runtime_capillary_application_admitted(
                 "non-static AO capillary packet has zero pressure-balanced "
                 "drive; classify it as pressure-exact static before the "
                 "predictor stage"
+            )
+        return
+    if status == "hfe_pressure_jump":
+        capillary = application.capillary
+        if (
+            capillary.capillary_force_weighted_acceleration_l2 <= tolerance
+            and capillary.max_abs_capillary_force_face_covector <= tolerance
+        ):
+            raise ValueError(
+                "non-static AO HFE pressure-jump packet has zero drive; "
+                "classify it as pressure-exact static before the predictor stage"
             )
         return
     if application.capillary_drive_present:

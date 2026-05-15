@@ -21,6 +21,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 
 from ..coupling.interface_stress_closure import (
+    build_interface_stress_context,
     build_young_laplace_interface_stress_context,
 )
 from ..gpu_sparse_solve import _PreparedCuPySuperLUSolve
@@ -130,27 +131,48 @@ class PPESolverFDDirect(IPPESolver):
         kappa,
         sigma: float,
         psi_previous=None,
+        pressure_jump_gas_minus_liquid=None,
+        phase_threshold: float = 0.5,
         face_curvature_method: str = "nodal_cut_face",
         transport_variational_nodal_covector=None,
         transport_variational_psi=None,
         transport_variational_previous_surface_energy=None,
     ) -> None:
         """Bind affine-jump geometry to the low-order DC correction matrix."""
-        self._interface_stress_context = build_young_laplace_interface_stress_context(
-            xp=self.xp,
-            psi=psi,
-            kappa_lg=kappa,
-            sigma=sigma,
-            psi_previous=psi_previous,
-            face_curvature_method=face_curvature_method,
-            transport_variational_nodal_covector=(
-                transport_variational_nodal_covector
-            ),
-            transport_variational_psi=transport_variational_psi,
-            transport_variational_previous_surface_energy=(
-                transport_variational_previous_surface_energy
-            ),
-        )
+        if pressure_jump_gas_minus_liquid is None:
+            self._interface_stress_context = (
+                build_young_laplace_interface_stress_context(
+                    xp=self.xp,
+                    psi=psi,
+                    kappa_lg=kappa,
+                    sigma=sigma,
+                    psi_previous=psi_previous,
+                    face_curvature_method=face_curvature_method,
+                    transport_variational_nodal_covector=(
+                        transport_variational_nodal_covector
+                    ),
+                    transport_variational_psi=transport_variational_psi,
+                    transport_variational_previous_surface_energy=(
+                        transport_variational_previous_surface_energy
+                    ),
+                )
+            )
+        else:
+            self._interface_stress_context = build_interface_stress_context(
+                xp=self.xp,
+                psi=psi,
+                pressure_jump_gas_minus_liquid=pressure_jump_gas_minus_liquid,
+                psi_previous=psi_previous,
+                phase_threshold=phase_threshold,
+                face_curvature_method=face_curvature_method,
+                transport_variational_nodal_covector=(
+                    transport_variational_nodal_covector
+                ),
+                transport_variational_psi=transport_variational_psi,
+                transport_variational_previous_surface_energy=(
+                    transport_variational_previous_surface_energy
+                ),
+            )
         self.ppb.set_interface_stress_context(self._interface_stress_context)
         self._factor = None
         self._prepared_rho_token = None

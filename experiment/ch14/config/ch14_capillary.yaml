@@ -168,7 +168,7 @@ numerics:
       gate: diagnostic
     pressure_history:
       form: pressure_coordinate
-      extrapolation: bdf2
+      extrapolation: constant
       reaction: variational_adjoint
       metric: transported_face_mass
       range_gate: fail_close

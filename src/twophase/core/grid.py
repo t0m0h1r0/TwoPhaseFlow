@@ -855,6 +855,9 @@ class Grid:
                 coords,
             )
             violation = xp.abs(phi_new) < value_floor_dev
+            gradients = {}
+            winner_axis = xp.full(phi_new.shape, -1, dtype=xp.int64)
+            winner_abs = xp.full_like(phi_new, -1.0)
             for axis in active_axes:
                 gradient = self._nodal_levelset_gradient_backend(
                     xp,
@@ -862,12 +865,18 @@ class Grid:
                     coords[axis],
                     axis,
                 )
+                gradients[axis] = gradient
+                abs_gradient = xp.abs(gradient)
+                update = abs_gradient > winner_abs
+                winner_abs = xp.where(update, abs_gradient, winner_abs)
+                winner_axis = xp.where(update, axis, winner_axis)
+            for axis in active_axes:
                 coords[axis] = self._apply_regular_stratum_line_shift_backend(
                     xp,
                     coords[axis],
                     phi_new,
-                    gradient,
-                    violation,
+                    gradients[axis],
+                    violation & (winner_axis == axis),
                     axis,
                     value_floor_dev,
                     floor=max(
