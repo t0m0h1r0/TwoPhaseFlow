@@ -91,9 +91,9 @@ CSF 体積力ではなく §~\ref{sec:split_ppe_pressure_jump_formulation} の
 第~\ref{sec:validation}章では静止円形液滴を重複させず，毛管波，振動液滴，
 気泡上昇，Rayleigh--Taylor のように有限界面運動を伴う物理応答だけを扱う．
 
-本判定は \texttt{ch14\_static\_droplet.yaml} 系譜で用意した
-標準設定を，V3 の圧力ジャンプ側補助診断として取り込むものである．
-構成は periodic，interface-fitted $\alpha=2$，FCCD/TVD--RK3 界面輸送，
+本判定は第14章の静止液滴設定と同じ
+標準構成を，V3 の圧力ジャンプ側補助診断として取り込むものである．
+構成は周期境界，界面適合非一様格子 $\alpha=2$，FCCD/TVD--RK3 界面輸送，
 UCCD6/IMEX--BDF2 運動量更新，圧力ジャンプ付きアフィン PPE，
 閉界面 Riesz 毛管源，圧力補正と随伴な残差受理条件，
 圧力成分 Hodge 反応，変分的な演算子対応，

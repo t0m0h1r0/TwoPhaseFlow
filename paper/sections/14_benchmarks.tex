@@ -23,7 +23,7 @@
 本稿では形状破綻が現れる前の初期窓 $0\le t\le0.03\,\mathrm{s}$ に掲載範囲を限定する．
 Rayleigh--Taylor では，浮力が安定化ではなく不安定成長を作る配置で，
 線形増幅から非線形形状形成までを追う．
-静止円形液滴は production-stack static gate を含めて第~\ref{sec:verification}章で扱ったため，
+静止円形液滴は標準構成の静止平衡ゲートとして第~\ref{sec:verification}章で扱ったため，
 本章では重複させない．
 
 % ═══════════════════════════════════════════════════════════════════
@@ -34,36 +34,36 @@ Rayleigh--Taylor では，浮力が安定化ではなく不安定成長を作る
 4 本のベンチマークは，実験ごとに幾何・境界条件・重力を変える一方で，
 次の共通数値構成を共有する：
 \begin{itemize}[noitemsep,leftmargin=2em]
-  \item interface-fitted 非一様格子 $\alpha=2$，
-        移動界面追従ケースでは毎 step rebuild，
+  \item 界面適合非一様格子 $\alpha=2$，
+        移動界面追従ケースでは各時間段で格子を再構築，
   \item FCCD 保存形界面輸送 + TVD--RK3，
   \item UCCD6 対流 + IMEX--BDF2，CCD 粘性 + implicit--BDF2 + defect correction，
   \item アクティブ幾何毛管分解：
         幾何セル分率 $q_C$ を主状態とし，
-        bundle Young--Laplace work と
-        pressure-component Hodge reaction で毛管面共鎖を構成，
-        Hodge 逆適用済み面増分を投影面空間へ同次元補間，
+        Young--Laplace 束仮想仕事と
+        圧力反力成分で毛管面共鎖を構成し，
+        面 Hodge で加速度へ写した増分を投影面空間へ同次元補間，
   \item Ridge--Eikonal 再初期化を各ベンチマークの設定に従って適用し，
-        本章の毛管波と振動液滴では毎 step profile restoration を行う，
+        本章の毛管波と振動液滴では各時間段でプロファイルを復元する，
   \item 向き付き pressure-jump
-        $j_{gl}=p_g-p_l=-\sigma\kappa_{lg}$ を現在の切断面 face law で評価する
+        $j_{gl}=p_g-p_l=-\sigma\kappa_{lg}$ を現在の切断面法則で評価する
         phase-separated FCCD PPE + affine jump，
   \item 射影と同じ面フラックスと正準面速度による界面輸送，
         および格子再構築時の投影済み面共鎖移送．
 \end{itemize}
-したがって本章で比較するのは solver option の違いではなく，
+したがって本章で比較するのは求解器選択の違いではなく，
 同じ離散閉包を異なる物理状況へ置いたときの応答である．
 
 非一様格子を採用できる条件は，格子密度比 $\alpha$ そのものではなく，
 投影・浮力残差・速度補正・界面輸送が同じ面位置を共有することである．
 投影形 PPE が $D_fA_fG_f$ を用い，solve 形では $-D_fA_fG_f$ を解くなら，
 corrector は同じ $A_fG_f$ で速度を補正し，
-浮力残差も同じ face-gradient chain 上で評価する
+浮力残差も同じ面勾配系列上で評価する
 （式~\eqref{eq:same_face_projection_closure}）．
 さらに，projection で得た正準面速度を
 式~\eqref{eq:projection_native_psi_transport} に直接渡す．
 節点へ再構成した速度から界面フラックスを作り直す経路は，
-同じ離散化の別表現ではなく，面速度空間の契約の破れである．
+同じ離散化の別表現ではなく，面速度空間の受理条件から外れる．
 
 各ベンチマークは，時間履歴診断と snapshot 診断を組み合わせて判定する．
 時間履歴では体積保存，運動エネルギー，界面振幅，変形量，重心，
@@ -111,15 +111,14 @@ $m=2$，$L_x=0.02\,\mathrm{m}$，$\theta_0=0$ とする．
   T_\sigma=\frac{2\pi}{\omega_\sigma}=0.046742983863\,\mathrm{s}
 \]
 を連続体の基準時刻とする．
-本節の掲載値は，旧 CLS 経路ではなく，
-第~\ref{sec:ao_fast_state_space}節のアクティブ幾何毛管分解を用いた
-最新の本番経路で得た 1 周期結果である．
+本節の掲載値は，第~\ref{sec:ao_fast_state_space}節の採用条件を満たす
+アクティブ幾何毛管分解の標準経路で得た 1 周期結果である．
 この経路では，輸送される物理量はセル液相体積 $q_C$，
 界面ゲージは式~\eqref{eq:ao_q_owned_graph_gauge} の列体積グラフ，
 毛管仕事は式~\eqref{eq:ao_graph_surface_energy}--\eqref{eq:ao_graph_capillary_covector}，
 HFE 圧力ジャンプは式~\eqref{eq:ao_graph_hfe_jump}--\eqref{eq:ao_graph_hfe_face_law}
 で与える．
-速度へ入る毛管成分は face Hodge 上の pressure-component reaction であり，
+速度へ入る毛管成分は面 Hodge で定義した圧力反力成分であり，
 追随格子では式~\eqref{eq:ao_face_cochain_regrid} の投影済み面共鎖移送と
 式~\eqref{eq:grid_regular_stratum_axis}--\eqref{eq:grid_regular_stratum_shift}
 の正則層ガードを同時に満たす．
@@ -143,7 +142,7 @@ HFE 圧力ジャンプは式~\eqref{eq:ao_graph_hfe_jump}--\eqref{eq:ao_graph_hf
   \item 時間：$T=T_\sigma=0.046742983863\,\mathrm{s}$，
         理論 CFL multiplier $1.0$
   \item スキーム：$q$ の幾何掃引輸送，列体積グラフ追跡，
-        bundle Young--Laplace work，pressure-component Hodge reaction，
+        Young--Laplace 束仮想仕事，圧力反力成分，
         phase-separated FCCD PPE + affine-jump HFE，DC 収束判定，
         active-geometry PCG 互換射影
   \item 出力：\texttt{signed\_interface\_amplitude}，
@@ -154,9 +153,9 @@ HFE 圧力ジャンプは式~\eqref{eq:ao_graph_hfe_jump}--\eqref{eq:ao_graph_hf
 
 \subsubsection{結果と判定}
 
-N=32 の 1 周期 run は $2585$ samples で
+N=32 の 1 周期計算は $2585$ samples で
 $t=T_\sigma=0.046742983863\,\mathrm{s}$ に到達し，
-pre-blowup 判定は発火しなかった．
+事前停止判定は発火しなかった．
 追随格子は終端で
 \[
   \Delta x_{\min}=6.25\times10^{-4}\,\mathrm{m},
@@ -198,7 +197,7 @@ $q$ を所有者とする幾何掃引輸送と追随格子再構築は
 1 周期の範囲で機械丸め水準の保存性を保った．
 圧力図は絶対値ではなく
 $p-\langle p\rangle$ の対称 robust 色軸で描く．
-これは，本経路の圧力が HFE ジャンプと face-Hodge reaction を含む
+これは，本経路の圧力が HFE ジャンプと面 Hodge 上の圧力反力を含む
 ゲージ代表であり，絶対圧の一色塗りでは圧力差を読めないためである．
 
 \begin{figure}[!htbp]
@@ -218,7 +217,7 @@ $p-\langle p\rangle$ の対称 robust 色軸で描く．
 速度場は $\frac14T_\sigma$ 近傍で界面を平坦化する向きを持ち，
 終端では上側最大位相へ戻りつつ，粘性散逸と $32^2$ 表現により
 初期振幅より小さい．
-圧力 snapshot は界面近傍の Hodge 代表として読み，
+圧力スナップショットは界面近傍の Hodge 代表として読み，
 diffuse interface を滑らかに塗りつぶした絶対圧分布としては解釈しない．
 
 \begin{figure}[!htbp]
@@ -258,12 +257,12 @@ $0,\frac14T_\sigma,\frac12T_\sigma,\frac34T_\sigma,T_\sigma$ 近傍を示す．
 
 このケースの判定は，
 「平坦界面の毛管剛性が正しい向きで PPE/corrector に伝わり，
-幾何セル分率輸送，投影済み面共鎖移送，pressure-coordinate history，
+幾何セル分率輸送，投影済み面共鎖移送，圧力履歴座標，
 グラフ HFE 圧力ジャンプ，正則層ガード，FCCD PPE，
 IMEX--BDF2 運動量更新が有界な復元振動を保つ」
 である．
 この結果により，後続の液滴・気泡・Rayleigh--Taylor で用いる
-同じ bundle Young--Laplace work と $j_{gl}$ contract を，
+同じ Young--Laplace 束仮想仕事と $j_{gl}$ の面法則を，
 界面曲率の符号に対して分岐させずに使える．
 ただし，U12 で棄却した全圧力像過射影はこの結果の一部ではない．
 
