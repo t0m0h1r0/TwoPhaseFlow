@@ -4,8 +4,8 @@
 
 User memo target: evolve the presentation-generation agent so it treats deck work as a reproducible production pipeline, not a one-shot slide-writing request.
 
-Worktree: `.claude/worktrees/codex-ra-presentation-agent-evolution-20260516`  
-Branch: `codex/ra-presentation-agent-evolution-20260516`  
+Worktree: `.claude/worktrees/codex-ra-presentation-agent-evolution-20260516`
+Branch: `codex/ra-presentation-agent-evolution-20260516`
 Prompt source commit in `prompts/meta`: `a375209`
 
 ## External Source Check

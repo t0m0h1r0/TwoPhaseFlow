@@ -10,8 +10,8 @@ Core workflow added:
 
 This continues `CHK-RA-PRES-AGT-001` and `CHK-RA-PRES-AGT-002` in the same worktree and branch.
 
-Worktree: `.claude/worktrees/codex-ra-presentation-agent-evolution-20260516`  
-Branch: `codex/ra-presentation-agent-evolution-20260516`  
+Worktree: `.claude/worktrees/codex-ra-presentation-agent-evolution-20260516`
+Branch: `codex/ra-presentation-agent-evolution-20260516`
 Prompt source commit in `prompts/meta`: `5b7ba5f`
 
 ## External Source Check

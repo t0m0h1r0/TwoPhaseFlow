@@ -8,8 +8,8 @@ User memo target: extend the presentation agent beyond visual/deck generation in
 
 This continues `CHK-RA-PRES-AGT-001` in the same worktree and branch.
 
-Worktree: `.claude/worktrees/codex-ra-presentation-agent-evolution-20260516`  
-Branch: `codex/ra-presentation-agent-evolution-20260516`  
+Worktree: `.claude/worktrees/codex-ra-presentation-agent-evolution-20260516`
+Branch: `codex/ra-presentation-agent-evolution-20260516`
 Prompt source commit in `prompts/meta`: `0e7ea8b`
 
 ## External Source Check
