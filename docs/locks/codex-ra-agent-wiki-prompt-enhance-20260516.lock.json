@@ -1,0 +1,11 @@
+{
+  "branch": "codex/ra-agent-wiki-prompt-enhance-20260516",
+  "branch_slug": "codex-ra-agent-wiki-prompt-enhance-20260516",
+  "session_id": "05bad576-f8cf-48a5-97cd-342a9fb8573c",
+  "worktree_path": ".claude/worktrees/codex-ra-agent-wiki-prompt-enhance-20260516",
+  "holder_agent": "ResearchArchitect",
+  "acquired_at": "2026-05-16T17:16:20+09:00",
+  "expires_at": "2026-05-17T17:16:20+09:00",
+  "meta_version": "7.1.0",
+  "scope": "extract wiki knowledge useful for agent enhancement; update prompts/meta and supporting artifacts/ledger; no main merge"
+}
