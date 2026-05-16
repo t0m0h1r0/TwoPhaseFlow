@@ -1181,6 +1181,72 @@ def test_affine_jump_ppe_rhs_respects_impermeable_face_space():
     np.testing.assert_allclose(rhs, 0.0, atol=1.0e-14)
 
 
+def test_constrained_face_ppe_operator_and_affine_rhs_share_face_space():
+    """No-slip restricted PPE must execute ``D_h P_c G_A`` in the operator."""
+    backend = Backend(use_gpu=False)
+    cfg = SimulationConfig(
+        grid=GridConfig(ndim=2, N=(3, 3), L=(3.0, 3.0)),
+    )
+    grid = Grid(cfg.grid, backend)
+    ccd = CCDSolver(grid, backend, bc_type="wall")
+    fccd = FCCDSolver(grid, backend, bc_type="wall", ccd_solver=ccd)
+    div_op = FCCDDivergenceOperator(fccd)
+    psi = np.ones(grid.shape)
+    psi[1:, :] = 0.0
+    kappa = np.full(grid.shape, 2.0)
+    rho = np.ones(grid.shape)
+    rho[psi >= 0.5] = 1000.0
+    p = np.arange(np.prod(grid.shape), dtype=float).reshape(grid.shape)
+    cfg_obj = type(
+        "Cfg",
+        (),
+        {
+            "ppe_coefficient_scheme": "phase_separated",
+            "ppe_interface_coupling_scheme": "affine_jump",
+            "pressure_force_contract": "variational_adjoint",
+            "scalar_operator_pairing": "variational_operator",
+            "boundary_face_space": "constrained_face",
+            "ppe_preconditioner": "none",
+        },
+    )()
+    ppe = PPESolverFCCDMatrixFree(backend, cfg_obj, grid, fccd)
+    ppe.set_interface_jump_context(psi=psi, kappa=kappa, sigma=3.0)
+    ppe.prepare_operator(rho)
+
+    constrained_faces = div_op.pressure_fluxes(
+        p,
+        rho,
+        pressure_gradient="fccd",
+        pressure_force_contract="variational_adjoint",
+        coefficient_scheme="phase_separated",
+        interface_coupling_scheme="none",
+        boundary_face_space="constrained_face",
+    )
+    expected_operator = div_op.divergence_from_faces(constrained_faces)
+    applied = ppe._apply_operator_core(p)
+
+    for face in constrained_faces:
+        np.testing.assert_allclose(face[0, :], 0.0)
+        np.testing.assert_allclose(face[-1, :], 0.0)
+        np.testing.assert_allclose(face[:, 0], 0.0)
+        np.testing.assert_allclose(face[:, -1], 0.0)
+    np.testing.assert_allclose(applied, expected_operator, rtol=1.0e-12, atol=1.0e-12)
+
+    affine_faces = div_op.pressure_fluxes(
+        np.zeros(grid.shape),
+        rho,
+        pressure_gradient="fccd",
+        pressure_force_contract="variational_adjoint",
+        coefficient_scheme="phase_separated",
+        interface_coupling_scheme="affine_jump",
+        interface_stress_context=ppe._interface_stress_context,
+        boundary_face_space="constrained_face",
+    )
+    expected_rhs = -div_op.divergence_from_faces(affine_faces)
+    rhs = ppe._add_affine_interface_jump_rhs(np.zeros(grid.shape))
+    np.testing.assert_allclose(rhs, expected_rhs, rtol=1.0e-12, atol=1.0e-12)
+
+
 @pytest.mark.gpu
 def test_affine_jump_impermeable_gpu_hot_path_has_no_host_transfer(
     gpu_backend,

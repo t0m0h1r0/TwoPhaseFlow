@@ -574,9 +574,7 @@ def test_ch14_canonical_yamls_share_base_numerical_stack():
         expected_state_space = "impermeable_face" if free_slip else "constrained_face"
         expected_pairing = "restricted_variational_adjoint"
         assert cfg.run.boundary_hodge_state_space == expected_state_space, path.name
-        assert cfg.run.boundary_face_space == (
-            "impermeable_face" if free_slip else "full_face"
-        ), path.name
+        assert cfg.run.boundary_face_space == expected_state_space, path.name
         assert cfg.run.boundary_hodge_pressure_pairing == expected_pairing, path.name
         assert cfg.run.pressure_history_mode == "pressure_coordinate", path.name
         expected_pressure_history = raw["numerics"]["projection"][
@@ -690,6 +688,7 @@ def test_ch14_rising_bubble_yaml_loads_execution_stack():
     assert cfg.run.preserve_projected_faces is True
     assert cfg.run.boundary_hodge_mode == "off"
     assert cfg.run.boundary_hodge_state_space == "constrained_face"
+    assert cfg.run.boundary_face_space == "constrained_face"
     assert cfg.run.boundary_hodge_wall_retraction == "metric_projection"
     assert cfg.run.boundary_hodge_metric == "transported_face_mass"
     assert cfg.run.boundary_hodge_pressure_pairing == "restricted_variational_adjoint"

@@ -316,8 +316,9 @@ def build_run_cfg(options: RunCfgBuilderOptions) -> RunCfg:
         pressure_force_contract=options.operator_settings["pressure_force_contract"],
         scalar_operator_pairing=options.operator_settings["scalar_operator_pairing"],
         boundary_face_space=(
-            "impermeable_face"
-            if boundary_hodge["state_space"] == "impermeable_face"
+            boundary_hodge["state_space"]
+            if boundary_hodge["state_space"]
+            in {"impermeable_face", "constrained_face"}
             else "full_face"
         ),
         pressure_history_mode=options.operator_settings["pressure_history_mode"],
