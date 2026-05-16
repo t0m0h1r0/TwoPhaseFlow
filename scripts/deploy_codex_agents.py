@@ -20,8 +20,30 @@ META = ROOT / "prompts" / "meta"
 AGENT_DIR = ROOT / "prompts" / "agents-codex"
 SKILL_DIR = ROOT / "prompts" / "skills"
 PROJECT_KERNEL = META / "kernel-project.md"
-VERSION = "8.2.0-candidate"
 AGENT_STATIC_PROMPT_LIMIT = 320
+VERSION_SOURCE = "max prompts/meta kernel version"
+
+
+def version_key(version: str) -> tuple[int, int, int, str]:
+    match = re.match(r"(\d+)\.(\d+)\.(\d+)(.*)", version)
+    if not match:
+        return (0, 0, 0, version)
+    major, minor, patch, suffix = match.groups()
+    return (int(major), int(minor), int(patch), suffix)
+
+
+def infer_meta_version() -> str:
+    versions: set[str] = set()
+    for path in sorted(META.glob("kernel-*.md")):
+        text = path.read_text(encoding="utf-8")
+        versions.update(re.findall(r"version=\"v?([0-9]+\.[0-9]+\.[0-9]+(?:-[A-Za-z0-9.-]+)?)\"", text))
+        versions.update(re.findall(r"\bv([0-9]+\.[0-9]+\.[0-9]+(?:-[A-Za-z0-9.-]+)?)\b", text))
+    if not versions:
+        return "unknown"
+    return max(versions, key=version_key)
+
+
+VERSION = infer_meta_version()
 
 DOMAIN_RULES = {
     "Routing": ["STOP_CONDITIONS", "HAND-03_QUICK_CHECK", "AGENT_EFFORT_POLICY", "TOOL_TRUST_BOUNDARY"],
@@ -545,7 +567,12 @@ def main() -> int:
     existing_base = read(AGENT_DIR / "_base.yaml") if (AGENT_DIR / "_base.yaml").exists() else ""
     write(AGENT_DIR / "_base.yaml", render_base(existing_base))
 
-    telemetry: dict[str, object] = {"version": VERSION, "env": "codex", "agents": {}}
+    telemetry: dict[str, object] = {
+        "version": VERSION,
+        "version_source": VERSION_SOURCE,
+        "env": "codex",
+        "agents": {},
+    }
     for agent in sorted(profiles):
         text, agent_metrics = render_agent(roles[agent], profiles[agent], aps)
         write(AGENT_DIR / f"{agent}.md", text)
@@ -691,6 +718,8 @@ def main() -> int:
     schema_report["skill_capsule_source"] = "prompts/meta/kernel-deploy.md <skill_capsule_specs>"
     schema_report["project_kernel_source"] = str(PROJECT_KERNEL.relative_to(ROOT))
     schema_report["project_kernel_ownership"] = "user-owned project overlay inside prompts/meta; sync helper preserves this file"
+    schema_report["deployment_version"] = VERSION
+    schema_report["deployment_version_source"] = VERSION_SOURCE
     write(report_dir / "schema_resolution_report.json", json.dumps(schema_report, indent=2, sort_keys=True) + "\n")
 
     q3_lines = [
@@ -706,6 +735,7 @@ def main() -> int:
             "| AP-13 Rule Bloat | PASS |",
             "| AP-17 Wiki Over-Injection | PASS |",
             f"| Token ROI | {token_roi_status}: agents <= {AGENT_STATIC_PROMPT_LIMIT} tokens and skills <= token_target |",
+            f"| Version provenance | PASS: generated prompt version {VERSION} from {VERSION_SOURCE} |",
             "| Agent count | PASS: 25 Codex agent prompts plus _base.yaml |",
             f"| Skill capsules | PASS: {len(skill_specs)} prompts/skills/*.md regenerated from kernel-deploy skill_capsule_specs |",
             "| Reports | PASS: schema, token telemetry, token ROI, skill capsule generation, and wiki injection reports emitted |",

@@ -1,5 +1,5 @@
 # TheoryAuditor - THEORY Domain
-# GENERATED 8.2.0-candidate | TIER-3 | env: codex | source: prompts/meta
+# GENERATED 8.7.0-candidate | TIER-3 | env: codex | source: prompts/meta
 ## PURPOSE: Independent re-derivation gate for Theory artifacts. Devil's Advocate for T-Domain.
 ## DELIVERABLES: Independent derivation (NEVER reads TheoryArchitect work first), comparison table (equation-by-equation), PASS/FAIL verdict
 ## AUTHORITY: [Gatekeeper] Read T artifacts + paper; write docs/interface/CheckSpec.md (sign only); gate T→L interface

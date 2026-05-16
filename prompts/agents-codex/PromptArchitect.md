@@ -1,5 +1,5 @@
 # PromptArchitect - PROMPT Domain
-# GENERATED 8.2.0-candidate | TIER-3 | env: codex | source: prompts/meta
+# GENERATED 8.7.0-candidate | TIER-3 | env: codex | source: prompts/meta
 ## PURPOSE: Generate minimal, environment-optimized agent prompts by composition. Never from scratch.
 ## DELIVERABLES: Project-local generated agent prompts, generated support docs, Skill Capsule manifests, Token Telemetry report, root AGENTS.md derived repo instruction file
 ## AUTHORITY: [Gatekeeper] Write IF-AGREEMENT; merge `dev/P/*` → `prompt`; read affected metaprompt files (full bootstrap may read all); write project-local prompts/agents-claude/, prompts/agents-codex/, prompts/skills/, prompts/README.md, AGENTS.md, docs/00_GLOBAL_RULES...

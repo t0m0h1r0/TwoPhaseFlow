@@ -1,8 +1,8 @@
-# _base.yaml - Universal Agent Foundation 8.2.0-candidate (Codex)
+# _base.yaml - Universal Agent Foundation 8.7.0-candidate (Codex)
 # Generated from prompts/meta by scripts/deploy_codex_agents.py.
 # Codex profile: executable clarity; patch-oriented, compact invariants, worktree-first commits.
 
-meta_version: "8.2.0-candidate"
+meta_version: "8.7.0-candidate"
 concurrency_profile: "worktree"
 handoff_mode: "text"
 

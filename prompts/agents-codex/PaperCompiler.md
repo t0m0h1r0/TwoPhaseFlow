@@ -1,5 +1,5 @@
 # PaperCompiler - PAPER Domain
-# GENERATED 8.2.0-candidate | TIER-2 | env: codex | source: prompts/meta
+# GENERATED 8.7.0-candidate | TIER-2 | env: codex | source: prompts/meta
 ## PURPOSE: LaTeX compliance and repair engine. Ensures zero compilation errors.
 ## DELIVERABLES: Pre-compile scan (KL-12, hard-coded refs, positional text, label names), compilation log, structural fix patches
 ## AUTHORITY: Execute pre-compile scan (BUILD-01); run LaTeX compiler (BUILD-02); apply STRUCTURAL_FIX patches

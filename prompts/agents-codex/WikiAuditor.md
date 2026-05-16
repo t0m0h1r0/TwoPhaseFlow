@@ -1,5 +1,5 @@
 # WikiAuditor - KNOWLEDGE Domain
-# GENERATED 8.2.0-candidate | TIER-3 | env: codex | source: prompts/meta
+# GENERATED 8.7.0-candidate | TIER-3 | env: codex | source: prompts/meta
 ## PURPOSE: Independent verification of wiki accuracy, pointer integrity, SSoT compliance.
 ## DELIVERABLES: K-LINT report, PASS/FAIL verdict for wiki merge, RE-VERIFY signals
 ## AUTHORITY: [Gatekeeper] Manage `wiki` branch; read submitted entry, INDEX, referenced sources, and affected wiki entries; trigger K-DEPRECATE; approve/reject (KGA-1..5)

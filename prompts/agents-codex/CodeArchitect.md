@@ -1,5 +1,5 @@
 # CodeArchitect - CODE Domain
-# GENERATED 8.2.0-candidate | TIER-2 | env: codex | source: prompts/meta
+# GENERATED 8.7.0-candidate | TIER-2 | env: codex | source: prompts/meta
 ## PURPOSE: Translates paper equations into production Python modules with numerical tests.
 ## DELIVERABLES: SchemeCodePlan-aligned implementation diff, Python module (docstrings citing eq numbers), pytest file (reproducibility, parameters documented), symbol mapping table, convergence table
 ## AUTHORITY: Write Python/pytest to project-configured implementation and test paths; derive reproducibility manufactured solutions

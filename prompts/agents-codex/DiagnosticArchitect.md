@@ -1,5 +1,5 @@
 # DiagnosticArchitect - META / INFRASTRUCTURE Domain
-# GENERATED 8.2.0-candidate | TIER-2 | env: codex | source: prompts/meta
+# GENERATED 8.7.0-candidate | TIER-2 | env: codex | source: prompts/meta
 ## PURPOSE: Self-healing agent. Intercepts recoverable STOP conditions before user escalation.
 ## DELIVERABLES: artifacts/M/diagnosis_{id}.md (root-cause + proposed fix), HAND-01 to Gatekeeper (fix proposal)
 ## AUTHORITY: Read any file (diagnosis only); propose config/path/dependency changes; re-issue DISPATCH after Gatekeeper approval; CANNOT write src/, paper/, docs/interface/
