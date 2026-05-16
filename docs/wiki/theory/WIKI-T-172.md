@@ -9,11 +9,11 @@ sources:
     description: "Capillary AO-Fast falsification ledger and root cause"
   - commit: 9ddafa77
     description: "Projected face cochain transport across grid rebuild"
-  - path: src/twophase/ns/ns_step_services.py
+  - path: src/twophase/simulation/ns_step_services.py
     description: "Pressure-history coordinate storage and face-law decode"
-  - path: src/twophase/ns/ns_grid_rebuild.py
+  - path: src/twophase/simulation/ns_grid_rebuild.py
     description: "Projected face component remap during grid rebuild"
-  - path: src/twophase/projection/velocity_reprojector_basic.py
+  - path: src/twophase/simulation/velocity_reprojector_basic.py
     description: "FaceHodgeReprojector"
 depends_on:
   - "[[WIKI-T-018]]"
@@ -110,14 +110,14 @@ the right smooth coordinate; it does not justify a fixed-count low-order solve.
 
 ## Code Anchors
 
-- `src/twophase/ns/ns_grid_rebuild.py`: returns and propagates
+- `src/twophase/simulation/ns_grid_rebuild.py`: returns and propagates
   `projected_face_components` through rebuild.
-- `src/twophase/projection/velocity_reprojector_basic.py`:
+- `src/twophase/simulation/velocity_reprojector_basic.py`:
   `FaceHodgeReprojector.reproject_faces` maps the transported face cochain to
   the new metric.
-- `src/twophase/ns/ns_pipeline.py`: wires projected faces through regular and
+- `src/twophase/simulation/ns_pipeline.py`: wires projected faces through regular and
   pre-timestep geometric rebuild flows.
-- `src/twophase/ns/ns_step_services.py`: owns pressure-coordinate history and
+- `src/twophase/simulation/ns_step_services.py`: owns pressure-coordinate history and
   current face-law pressure reconstruction.
 
 ## Acceptance Evidence

@@ -10,10 +10,10 @@ sources:
   - commit: 9ddafa77
     description: "Stabilize AO capillary grid rebuild by transporting projected face cochains"
   - path: experiment/ch14/config/ch14_capillary.yaml
-    description: "Current quarter-period capillary production configuration"
-  - path: src/twophase/ns/ns_grid_rebuild.py
+    description: "Current capillary-wave production configuration"
+  - path: src/twophase/simulation/ns_grid_rebuild.py
     description: "Grid rebuild path that now carries projection-native face components"
-  - path: src/twophase/projection/velocity_reprojector_basic.py
+  - path: src/twophase/simulation/velocity_reprojector_basic.py
     description: "FaceHodgeReprojector implementation"
 depends_on:
   - "[[WIKI-X-050]]"

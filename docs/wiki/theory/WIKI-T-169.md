@@ -111,6 +111,17 @@ compiled_at: "2026-05-10"
 
 # Geometric Cell Fraction State-Space Reformulation
 
+## 2026-05-16 Curation Note
+
+This broad state-space card began as a proposed geometric-cell-fraction
+reformulation.  The current Chapter 14 production reading is the scoped
+`active_geometry_capillary` route summarized in [[WIKI-X-054]],
+[[WIKI-E-063]], and [[WIKI-P-019]].  Use this card for the underlying
+q/geometric-carrier theory and YAML state-space boundaries, but do not expose
+older internal names such as `geometric_cell_fraction` as the user-facing
+front door and do not cite the early full-pressure-image split as an admitted
+physical route.
+
 ## Notation Convention
 
 Living notation uses Greek symbols for the geometric objects derived from the
