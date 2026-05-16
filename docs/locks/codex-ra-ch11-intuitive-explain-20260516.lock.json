@@ -1,0 +1,11 @@
+{
+  "branch": "codex/ra-ch11-intuitive-explain-20260516",
+  "branch_slug": "ra-ch11-intuitive-explain-20260516",
+  "session_id": "85916c85-f3c8-4e8b-a5c7-00e385a0ac2b",
+  "worktree_path": ".claude/worktrees/codex-ra-ch11-intuitive-explain-20260516",
+  "holder_agent": "ResearchArchitect",
+  "acquired_at": "2026-05-16T17:26:56+09:00",
+  "expires_at": "2026-05-17T17:26:56+09:00",
+  "meta_version": "5.1.0",
+  "scope": "Chapter 11 paper explanation pass; add concise intuitive reader guidance while preserving equations and algorithm contracts"
+}
