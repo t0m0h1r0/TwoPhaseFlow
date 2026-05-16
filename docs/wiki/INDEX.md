@@ -1,4 +1,4 @@
-# Wiki Index — 388 entries
+# Wiki Index — 389 entries
 
 ## Active Retrieval Gate
 
@@ -48,7 +48,10 @@ provenance, but cards marked
 SUPERSEDED or REFERENCE must not be used as current algorithm policy without
 their curation notes. For wiki-wide inventory and curation passes, use
 [WIKI-M-032](meta/WIKI-M-032.md) with the active retrieval gate and index audit
-before making broad wiki changes.
+before making broad wiki changes. For paper review and revision passes, use
+[WIKI-M-033](meta/WIKI-M-033.md) so readability work is judged by cognitive
+load, box necessity, section responsibility, naming consistency, and validation
+rather than decoration.
 
 ## Theory (173)
 
@@ -380,7 +383,7 @@ before making broad wiki changes.
 | [WIKI-P-018](paper/WIKI-P-018.md) | Chapters 1-13 Recent Paper-Theory Contract Digest |
 | [WIKI-P-019](paper/WIKI-P-019.md) | Chapter 14 Active-Geometry Capillary Benchmark Paper Contract |
 
-## Meta (32)
+## Meta (33)
 
 | REF-ID | Title |
 |--------|-------|
@@ -416,6 +419,7 @@ before making broad wiki changes.
 | [WIKI-M-030](meta/WIKI-M-030.md) | Meta-Prompt Evolution Needs Telemetry, Skills, and Tool-Trust Gates |
 | [WIKI-M-031](meta/WIKI-M-031.md) | Review Artifacts Close the Loop with Finding, Fix, and Validation |
 | [WIKI-M-032](meta/WIKI-M-032.md) | Wiki Inventory Curation Uses Layered Evidence Passes |
+| [WIKI-M-033](meta/WIKI-M-033.md) | Paper Review Revisions Should Reduce Cognitive Load, Not Add Decoration |
 
 ## Code (46)
 
