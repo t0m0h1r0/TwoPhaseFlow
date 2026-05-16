@@ -25,7 +25,7 @@ src/twophase/
 ├── core/                       # Shared data structures
 │   ├── field.py                # ScalarField, VectorField wrappers
 │   ├── flow_state.py           # FlowState dataclass (velocity, psi, rho, mu, kappa, pressure)
-│   ├── grid.py                 # Grid — node-centered, interface-fitted, metric tensors
+│   ├── grid.py                 # Grid — node-centered, boundary-fitted metric tensors
 │   ├── metrics.py              # compute_metrics() — CCD/FD metric computation (SRP extraction)
 │   ├── boundary.py             # BCType enum, BoundarySpec, pad_ghost_cells
 │   └── components.py           # SimulationComponents dataclass (17 fields)
@@ -384,18 +384,18 @@ All under `src/twophase/pressure/*.py` forward to `pressure/solvers/*.py`:
 | `00_abstract.tex` | Abstract | CCD-PPE O(h⁶), CLS, Balanced-Force summary |
 | `01_introduction.tex` | §1 Introduction | Background, 4 challenges, novelty table |
 | `02_governing.tex` + `02b_surface_tension.tex` + `02c_nondim_curvature.tex` | §2 | One-Fluid NS, CSF, Heaviside, ψ-convention |
-| `03_levelset.tex` + `03b_cls_transport.tex` + `03c_levelset_mapping.tex` | §3 | CLS advection, reinitialization, ψ-φ mapping |
+| `03_levelset.tex` + `03b_cls_transport.tex` + `03c_levelset_mapping.tex` + `03d_ridge_eikonal.tex` | §3 | CLS advection, reinitialization, ψ-φ mapping, Ridge-Eikonal interface reconstruction |
 | `04_ccd.tex` + `04b_ccd_bc.tex` + `04c_dccd_derivation.tex` + `04d_uccd6.tex` + `04e_fccd.tex` + `04f_face_jet.tex` | §4 | O(h⁶), block Thomas, boundary scheme, DCCD/UCCD6/FCCD/face-jet |
-| `05_reinitialization.tex` + `05b_cls_stages.tex` | §5 | CLS Ridge-Eikonal reinitialization, A-F 6 stages |
+| `05_reinitialization.tex` + `05a_ridge_eikonal_details.tex` + `05b_cls_stages.tex` | §5 | CLS Ridge-Eikonal reinitialization, comparison paths, A-F 6 stages |
 | `06_scheme_per_variable.tex` + `06b_advection.tex` + `06c_fccd_advection.tex` + `06d_viscous_3layer.tex` | §6 | Per-variable spatial discretization, CLS/momentum FCCD advection, viscous 3-layer |
-| `07_time_integration.tex` | §7 | TVD-RK3/IMEX-BDF2/CN defect-correction, velocity-PPE ordering, CFL |
-| `08_collocate.tex` + `08b_pressure.tex` + `08c_bf_failure.tex` + `08d_bf_seven_principles.tex` + `08e_fccd_bf.tex` | §8 | Collocated-grid pressure coupling, BF failure modes/principles, pressure-jump face cochain, FCCD BF sub-system |
+| `07_time_integration.tex` + `07b_defect_viscous.tex` + `07c_capillary_projection_buoyancy.tex` + `07d_order_timestep.tex` | §7 | TVD-RK3/IMEX-BDF2/CN defect-correction, capillary/projection/buoyancy ordering, CFL |
+| `08_collocate.tex` + `08b_pressure.tex` + `08c_bf_failure.tex` + `08d_bf_seven_principles.tex` + `08e_fccd_bf.tex` | §8 | Collocated-grid pressure coupling, BF failure modes/principles, pressure-jump face cochain, FCCD BF subsystem |
 | `09_ccd_poisson.tex` + `09b1_split_ppe.tex` + `09b2_fccd_projection.tex` + `09b3_pressure_jump_form.tex` + `09b4_capillary_work_state.tex` + `09c_hfe.tex` + `09d_defect_correction.tex` + `09e_ppe_bc.tex` + `09f_pressure_summary.tex` | §9 | Variable-density PPE, split-PPE, HFE, defect correction, BC |
-| `10_grid.tex` + `10a1_2d_tracking_grid.tex` + `10a2_epsilon_width_constraints.tex` + `10b_ccd_extensions.tex` + `10c_fccd_nonuniform.tex` + `10d_ridge_eikonal_nonuniform.tex` | §10 | Non-uniform interface-fitted grid, CCD/FCCD/Ridge-Eikonal non-uniform extensions |
-| `11_full_algorithm.tex` + `11b1_full_timestep.tex` + `11b2_state_contracts.tex` + `11c_dccd_bootstrap.tex` + `11d_pure_fccd_dns.tex` | §11 | Full solver loop, operator mapping, DCCD bootstrap, pure FCCD DNS architecture |
+| `10_grid.tex` + `10a1_2d_tracking_grid.tex` + `10a2_epsilon_width_constraints.tex` + `10b_ccd_extensions.tex` + `10c_fccd_nonuniform.tex` + `10d_ridge_eikonal_nonuniform.tex` | §10 | Non-uniform and boundary-fitted grid, CCD/FCCD/Ridge-Eikonal non-uniform extensions |
+| `11_full_algorithm.tex` + `11b1_full_timestep.tex` + `11b2_state_contracts.tex` + `11c_dccd_bootstrap.tex` + `11d_pure_fccd_dns.tex` + `11e_ao_fast_state_space.tex` | §11 | Full solver loop, operator mapping, DCCD bootstrap, pure FCCD DNS architecture, active-geometry capillary state space |
 | `12_component_verification.tex` (+ sub-files) | §12 | Component-level mathematical verification (CCD/DCCD/curvature/CLS/HFE/PPE/RK3) |
 | `13_verification.tex` + `13a`–`13d` + `13e1`–`13e2` + `13f` | §13 | NS physical consistency: force balance, conservation, accuracy, coupling, limits, error budget |
-| `14_benchmarks.tex` | §14 | Multi-phase flow benchmarks (capillary wave, rising bubble, Taylor deformation) |
+| `14_benchmarks.tex` + `14a_capillary_wave.tex` + `14b_oscillating_droplet.tex` + `14c_rising_bubble.tex` + `14d_rayleigh_taylor.tex` + `14e_benchmark_summary.tex` | §14 | Two-phase physical benchmarks: capillary wave, oscillating droplet, rising bubble, Rayleigh-Taylor, summary |
 | `15_conclusion.tex` | §15 | Summary, future work |
 | `appendix_*_s*.tex` (21 files, A–E) | Appendix | Interface math, CCD coefficients, implementation, schemes, solver analysis |
 
