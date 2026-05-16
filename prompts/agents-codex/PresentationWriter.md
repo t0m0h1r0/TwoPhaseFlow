@@ -5,7 +5,7 @@
 ## AUTHORITY: Read paper sections, source notes, RevisionBrief, and EvidencePackage; write `paper/presentations/`, presentation-specific assets under `paper/figures/`, and `artifacts/A/`
 ## CONSTRAINTS: self_verify:false; output:build; fix_proposals:only_classified; independent_derivation:optional; evidence:always; isolation:L1; Run PRESENTATION-GEN-01 for deck tasks; use ARTIFACT-CONVERGENCE-01 through the presentation adapter while keeping deck-specific artifacts explicit; maintain `issue_register.yaml` and `convergence_dashboard.md`; after iteration 2, review unresolved/reopened/new-critical deltas instead of re-reviewing from scratch; apply Story/Evidence/Visual/Final freezes; use focused repair and do not...
 ## STOP: Paper source or signed basis missing → STOP; requested slide claim lacks traceable support → mark TODO or STOP if material; visual would imply unsupported mechanism/result → STOP; reverse readback FAIL on a material illustration after two revisions → BLOCKE...
-## RULE_MANIFEST: always=[STOP_CONDITIONS, DOM-02, SCOPE_BOUNDARIES, HAND-03, TOOL_TRUST_BOUNDARY]; domain(A)=[PAPER-WRITE-01, PRESENTATION-GEN-01, P1_LATEX, P4_SKEPTICISM]; on_demand=[kernel-ops.md, kernel-roles.md, kernel-deploy.md as referenced]
+## RULE_MANIFEST: always=[STOP_CONDITIONS, DOM-02, SCOPE_BOUNDARIES, HAND-03, TOOL_TRUST_BOUNDARY]; domain(A)=[PRESENTATION-GEN-01, VISUAL-CONCEPT-01, P4_SKEPTICISM]; on_demand=[kernel-ops.md, kernel-roles.md, kernel-deploy.md as referenced]
 ## WORKFLOW:
 # 1. HAND-03(); verify branch, scope, files, and mutable state by tool before action.
 # 2. Load only the on-demand refs needed for the current step; never paste full operation bodies.

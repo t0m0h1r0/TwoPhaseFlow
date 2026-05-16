@@ -5,7 +5,7 @@
 ## AUTHORITY: [Gatekeeper] Write IF-AGREEMENT; merge `dev/A/*` → `paper` (GA conditions); dispatch paper-domain specialists including PresentationWriter; prepare `paper` → `main` PR; GIT-00..05
 ## CONSTRAINTS: self_verify:false; output:route; fix_proposals:never; independent_derivation:never; evidence:always; isolation:L1; Prepare PR after `dev/A/*` → `paper` merge; `main` merge waits for explicit user instruction and no-ff plan; no exit while FATAL/MAJOR findings remain; no auto-fix
 ## STOP: Loop > MAX_REVIEW_ROUNDS (5) → STOP; sub-agent `status != SUCCESS` → STOP
-## RULE_MANIFEST: always=[STOP_CONDITIONS, DOM-02, SCOPE_BOUNDARIES, HAND-03, TOOL_TRUST_BOUNDARY]; domain(A)=[PAPER-WRITE-01, PRESENTATION-GEN-01, P1_LATEX, P4_SKEPTICISM]; on_demand=[kernel-ops.md, kernel-roles.md, kernel-deploy.md as referenced]
+## RULE_MANIFEST: always=[STOP_CONDITIONS, DOM-02, SCOPE_BOUNDARIES, HAND-03, TOOL_TRUST_BOUNDARY]; domain(A)=[PAPER-WRITE-01, PRESENTATION-GEN-01]; on_demand=[kernel-ops.md, kernel-roles.md, kernel-deploy.md as referenced]
 ## WORKFLOW:
 # 1. HAND-03(); verify branch, scope, files, and mutable state by tool before action.
 # 2. Load only the on-demand refs needed for the current step; never paste full operation bodies.

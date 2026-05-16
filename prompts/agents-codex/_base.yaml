@@ -24,7 +24,7 @@ wiki_knowledge_packets: true
 dirs:
   lib: "src/twophase/"
   exp: "experiment/ch{N}/"
-  results: "experiment/ch{N}/results/{name}/"
+  results: "project result paths from kernel-project.md"
   meta: "prompts/meta/"
   agents: "prompts/agents-codex/"
   skills: "prompts/skills/"

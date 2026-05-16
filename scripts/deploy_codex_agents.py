@@ -26,7 +26,7 @@ DOMAIN_RULES = {
     "Routing": ["STOP_CONDITIONS", "HAND-03_QUICK_CHECK", "AGENT_EFFORT_POLICY", "TOOL_TRUST_BOUNDARY"],
     "THEORY": ["A3_TRACEABILITY", "AU1_AUTHORITY", "DERIVE_FIRST"],
     "CODE": ["SCHEME-CODE-01", "C1_SOLID", "C2_PRESERVE", "TEST_HANDOFF"],
-    "PAPER": ["PAPER-WRITE-01", "PRESENTATION-GEN-01", "P1_LATEX", "P4_SKEPTICISM"],
+    "PAPER": [],
     "PROMPT": ["Q1_TEMPLATE", "Q2_SOURCE_TRACE", "Q3_AUDIT", "Q4_COMPRESSION", "WIKI_PACKET_GATE"],
     "AUDIT": ["AU2_GATE", "BROKEN_SYMMETRY", "DERIVE_FIRST"],
     "KNOWLEDGE": ["K_COMPILE", "K_LINT", "WIKI_FIRST", "ACTIVE_RETRIEVAL_GATE"],
@@ -70,6 +70,14 @@ SKILLS_BY_AGENT = {
     "TraceabilityManager": ["SKILL-HANDOFF-AUDIT"],
     "DevOpsArchitect": ["SKILL-GIT-WORKTREE", "SKILL-TOOL-TRUST"],
     "DiagnosticArchitect": ["SKILL-HANDOFF-AUDIT", "SKILL-CONDENSE-V2", "SKILL-TOOL-TRUST"],
+}
+
+ROLE_RULES_BY_AGENT = {
+    "PaperWorkflowCoordinator": ["PAPER-WRITE-01", "PRESENTATION-GEN-01"],
+    "PaperWriter": ["PAPER-WRITE-01", "P1_LATEX", "P4_SKEPTICISM"],
+    "PresentationWriter": ["PRESENTATION-GEN-01", "VISUAL-CONCEPT-01", "P4_SKEPTICISM"],
+    "PaperReviewer": ["PAPER-WRITE-01", "PRESENTATION-GEN-01", "VISUAL-CONCEPT-01", "P4_SKEPTICISM"],
+    "PaperCompiler": ["P1_LATEX"],
 }
 
 WIKI_PACKETS_BY_AGENT = {
@@ -301,13 +309,40 @@ def field_text(text: str, fallback: str) -> str:
     return truncate(text if text.strip() else fallback)
 
 
+def project_dirs_from_kernel() -> dict[str, str]:
+    if not PROJECT_KERNEL.exists():
+        return {
+            "lib": "project implementation paths from kernel-project.md",
+            "exp": "project experiment paths from kernel-project.md",
+            "results": "project result paths from kernel-project.md",
+        }
+    text = read(PROJECT_KERNEL)
+
+    def first(pattern: str, fallback: str) -> str:
+        match = re.search(pattern, text)
+        return match.group(1).strip() if match else fallback
+
+    exp = first(r"Experiment scripts \(`([^`]+)`\)", "project experiment paths from kernel-project.md")
+    if exp.endswith("*.py"):
+        exp = exp.rsplit("/", 1)[0] + "/"
+
+    return {
+        "lib": first(r"Solver core \(`([^`]+)`\)", "project implementation paths from kernel-project.md"),
+        "exp": exp,
+        "results": first(r"results\s+`([^`]+)`", "project result paths from kernel-project.md"),
+    }
+
+
 def render_agent(role: Role, profile: Profile, aps: dict[str, dict[str, str]]) -> tuple[str, dict[str, int]]:
     tier = tier_number(profile, role.agent)
     ap_ids = role_aps(role.agent, tier, aps)
     ap_line = "; ".join(f"{ap_id}({truncate(aps[ap_id]['title'], 48)})" for ap_id in ap_ids)
     skills = SKILLS_BY_AGENT.get(role.agent, ["SKILL-HANDOFF-AUDIT"])
     wiki_packets = WIKI_PACKETS_BY_AGENT.get(role.agent, [])
-    domain_rules = DOMAIN_RULES.get(role.domain, DOMAIN_RULES["META"])
+    domain_rules = [
+        *DOMAIN_RULES.get(role.domain, DOMAIN_RULES["META"]),
+        *ROLE_RULES_BY_AGENT.get(role.agent, []),
+    ]
     domain_id = DOMAIN_ID.get(role.domain, "M")
     output = [
         f"# {role.agent} - {role.domain} Domain",
@@ -348,6 +383,7 @@ def render_agent(role: Role, profile: Profile, aps: dict[str, dict[str, str]]) -
 
 
 def render_base(existing: str) -> str:
+    project_dirs = project_dirs_from_kernel()
     codex_runtime = ""
     m = re.search(r"codex_runtime:\n(?:  .+\n)+", existing)
     if m:
@@ -376,9 +412,9 @@ research_workflow_skills: true
 wiki_knowledge_packets: true
 
 dirs:
-  lib: "src/twophase/"
-  exp: "experiment/ch{{N}}/"
-  results: "experiment/ch{{N}}/results/{{name}}/"
+  lib: "{project_dirs['lib']}"
+  exp: "{project_dirs['exp']}"
+  results: "{project_dirs['results']}"
   meta: "prompts/meta/"
   agents: "prompts/agents-codex/"
   skills: "prompts/skills/"

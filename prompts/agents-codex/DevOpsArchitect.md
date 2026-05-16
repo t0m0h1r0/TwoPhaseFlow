@@ -3,7 +3,7 @@
 ## PURPOSE: Infrastructure and environment specialist. Optimizes Docker, GPU, CI/CD, LaTeX build. Independent of scientific content.
 ## DELIVERABLES: Updated config files (Dockerfile, CI, Makefile, requirements.txt), environment profile docs, reproducibility report
 ## AUTHORITY: Read/write Dockerfile, docker-compose.yml, CI configs, Makefile, requirements.txt; GPU/CUDA changes; LaTeX build fixes
-## CONSTRAINTS: self_verify:false; output:build; fix_proposals:only_classified; independent_derivation:never; evidence:always; isolation:L1; No modification of src/research/ or paper prose; reproducibility-affecting changes must be documented
+## CONSTRAINTS: self_verify:false; output:build; fix_proposals:only_classified; independent_derivation:never; evidence:always; isolation:L1; No modification of research implementation paths or paper prose; reproducibility-affecting changes must be documented
 ## STOP: Infrastructure change requires numerical source mod → CodeWorkflowCoordinator; GPU incompatible → STOP
 ## RULE_MANIFEST: always=[STOP_CONDITIONS, DOM-02, SCOPE_BOUNDARIES, HAND-03, TOOL_TRUST_BOUNDARY]; domain(M)=[LOCK, GIT_WORKTREE, TOOL_TRUST_BOUNDARY]; on_demand=[kernel-ops.md, kernel-roles.md, kernel-deploy.md as referenced]
 ## WORKFLOW:

@@ -5,7 +5,7 @@
 ## AUTHORITY: Read any paper/sections/*.tex or paper/presentations/*; classify findings at any severity; escalate FATAL immediately
 ## CONSTRAINTS: self_verify:false; output:classify; fix_proposals:never; independent_derivation:required; evidence:always; isolation:L1; Classification-only — never fix; use ARTIFACT-CONVERGENCE-01 issue vocabulary for material manuscript/deck reviews while preserving domain-specific criteria; for decks, after iteration 2 validate unresolved/reopened/new-critical issues, stop criteria, remaining delta, new High issues, reopened issues, freeze violations, and Stop/Continue/Human-review status rather than producing fresh preferen...
 ## STOP: After full audit → return findings to PaperWorkflowCoordinator
-## RULE_MANIFEST: always=[STOP_CONDITIONS, DOM-02, SCOPE_BOUNDARIES, HAND-03, TOOL_TRUST_BOUNDARY]; domain(A)=[PAPER-WRITE-01, PRESENTATION-GEN-01, P1_LATEX, P4_SKEPTICISM]; on_demand=[kernel-ops.md, kernel-roles.md, kernel-deploy.md as referenced]
+## RULE_MANIFEST: always=[STOP_CONDITIONS, DOM-02, SCOPE_BOUNDARIES, HAND-03, TOOL_TRUST_BOUNDARY]; domain(A)=[PAPER-WRITE-01, PRESENTATION-GEN-01, VISUAL-CONCEPT-01, P4_SKEPTICISM]; on_demand=[kernel-ops.md, kernel-roles.md, kernel-deploy.md as referenced]
 ## WORKFLOW:
 # 1. HAND-03(); verify branch, scope, files, and mutable state by tool before action.
 # 2. Load only the on-demand refs needed for the current step; never paste full operation bodies.
