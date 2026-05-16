@@ -25,9 +25,8 @@ $\rho^{n+1}$ と $\kappa_{lg}^{n+1}$ を確定する．次に NS 予測子で
 
 本稿が採用する項別配分は次表である：
 
-\begin{tcolorbox}[colback=blue!3!white,colframe=blue!50!black,
-                  title=\textbf{本稿の項別時間積分},
-                  fonttitle=\small\bfseries,boxrule=0.4pt,arc=2pt]
+\paragraph{本稿の項別時間積分}
+\begin{center}
 \small
 \renewcommand{\arraystretch}{\PaperTableArrayStretch}
 \begin{tabular}{@{}p{0.30\linewidth}p{0.40\linewidth}p{0.22\linewidth}@{}}
@@ -42,7 +41,7 @@ NS 対流 & IMEX-BDF2（EXT2 外挿） & §\ref{sec:time_level1} \\
 浮力（上昇気泡） & Balanced--Force 浮力分解（陽的残差） & §\ref{sec:time_buoyancy} \\
 \hline
 \end{tabular}
-\end{tcolorbox}
+\end{center}
 
 表は\textbf{物理項ごとの時間処理}を分類したものであり，
 1 ステップ内の因果順序そのものではない．実際の順序は前段で述べた通り
