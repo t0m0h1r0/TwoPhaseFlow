@@ -16,7 +16,7 @@
 \begin{tabular}{@{}r>{\raggedright\arraybackslash}p{0.64\linewidth}@{}}
 界面追跡： & FCCD 保存形 CLS（$\psi\equiv H_\varepsilon(-\phi)$，液相 $1$／気相 $0$）+ Ridge--Eikonal 再初期化\\
 空間離散： & CCD（内点 $\Ord{h^6}$），FCCD（面演算子 $\Ord{h^4}$），UCCD6，DCCD（移流安定化；圧力適用は禁止），非一様格子\\
-格子構造： & コロケート格子 + Balanced-Force 七原則 + FCCD 面ジェット sub-system\\
+格子構造： & コロケート格子 + Balanced-Force 七原則 + FCCD 面ジェット部分系\\
 時間積分： & TVD-RK3（CLS），IMEX-BDF2/EXT2（NS 対流），implicit-BDF2 + DC（粘性），IPC 圧力増分\\
 圧力・毛管閉包： & 圧力ジャンプ型 分相 FCCD-PPE + HFE + DC 収束判定 + アクティブ幾何毛管分解（§~\ref{sec:split_ppe_recovery}, §~\ref{sec:ao_fast_state_space}）\\
               & smoothed Heaviside 一括 PPE は低密度比・縮約検証経路として扱い，標準経路は分相圧力ジャンプ経路\\[4pt]
