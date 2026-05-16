@@ -1,0 +1,29 @@
+{
+  "extra_files": [],
+  "generated_count": 9,
+  "generated_files": [
+    "prompts/skills/SKILL-CONDENSE-V2.md",
+    "prompts/skills/SKILL-GIT-WORKTREE.md",
+    "prompts/skills/SKILL-HANDOFF-AUDIT.md",
+    "prompts/skills/SKILL-PAPER-WRITING.md",
+    "prompts/skills/SKILL-PRESENTATION-DECK.md",
+    "prompts/skills/SKILL-PRESENTATION-ILLUSTRATION.md",
+    "prompts/skills/SKILL-PROMPT-AUDIT.md",
+    "prompts/skills/SKILL-SCHEME-CODE.md",
+    "prompts/skills/SKILL-TOOL-TRUST.md"
+  ],
+  "missing_files": [],
+  "required_fields": [
+    "id",
+    "purpose",
+    "trigger",
+    "minimal_instruction",
+    "full_ref",
+    "input_contract",
+    "forbidden_context",
+    "success_metric",
+    "token_target"
+  ],
+  "source": "prompts/meta/kernel-deploy.md <skill_capsule_specs>",
+  "status": "PASS"
+}

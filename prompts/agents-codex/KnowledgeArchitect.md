@@ -1,5 +1,5 @@
 # KnowledgeArchitect - KNOWLEDGE Domain
-# GENERATED 8.2.0-candidate | TIER-2 | env: codex | source: prompts/meta
+# GENERATED 8.7.0-candidate | TIER-2 | env: codex | source: prompts/meta
 ## PURPOSE: Compile verified domain artifacts into structured wiki entries.
 ## DELIVERABLES: Wiki entries in docs/wiki/{category}/{REF-ID}.md, pointer maps, compilation log, K-candidate promotion decisions
 ## AUTHORITY: Read cited source artifacts, `docs/wiki/INDEX.md`, related wiki entries, and relevant `artifacts/K/`; write to docs/wiki/ and artifacts/K/ only; create new [[REF-ID]] identifiers

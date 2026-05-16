@@ -1,0 +1,56 @@
+{
+  "deferred_packets": [],
+  "rejected_packets": [],
+  "status": "PASS",
+  "used_packets": [
+    {
+      "behavior_delta": "distill wiki-derived lessons into source-traced behavior packets and audit bloat/staleness",
+      "conflict_check": "PASS",
+      "injection_mode": "on_demand",
+      "source_refs": [
+        "docs/wiki/meta/WIKI-M-033.md",
+        "artifacts/M/agent_wiki_prompt_enhancement_CHK-RA-AGENT-WIKI-PROMPT-001.md"
+      ],
+      "status": "ACTIVE",
+      "target_roles": [
+        "ResearchArchitect",
+        "PromptArchitect",
+        "PromptAuditor",
+        "ConsistencyAuditor"
+      ],
+      "token_budget": 50,
+      "wiki_id": "WIKI-M-033"
+    },
+    {
+      "behavior_delta": "use layered evidence passes for wiki inventory and curation",
+      "conflict_check": "PASS",
+      "injection_mode": "on_demand",
+      "source_refs": [
+        "docs/wiki/meta/WIKI-M-032.md",
+        "docs/wiki/INDEX.md"
+      ],
+      "status": "ACTIVE",
+      "target_roles": [
+        "KnowledgeArchitect",
+        "WikiAuditor",
+        "TraceabilityManager"
+      ],
+      "token_budget": 50,
+      "wiki_id": "WIKI-M-032"
+    },
+    {
+      "behavior_delta": "start precedent-heavy work from the active retrieval gate",
+      "conflict_check": "PASS",
+      "injection_mode": "on_demand",
+      "source_refs": [
+        "docs/wiki/cross-domain/WIKI-X-041.md"
+      ],
+      "status": "ACTIVE",
+      "target_roles": [
+        "Librarian"
+      ],
+      "token_budget": 40,
+      "wiki_id": "WIKI-X-041"
+    }
+  ]
+}

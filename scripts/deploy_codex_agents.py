@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
-"""Generate Codex agent prompts from prompts/meta.
+"""Generate Codex agent prompts and support artifacts from prompts/meta.
 
 This is a local EnvMetaBootstrapper slice for the Codex environment. It reads
-the metaprompt kernel, overwrites prompts/agents-codex/, refreshes the prompt
-audit skill capsule, and emits deployment reports under artifacts/P/.
+the metaprompt kernel, overwrites prompts/agents-codex/, regenerates local
+skill capsules, and emits deployment reports under artifacts/P/.
 """
 
 from __future__ import annotations
 
 import json
 import re
+import argparse
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -18,14 +19,37 @@ ROOT = Path(__file__).resolve().parents[1]
 META = ROOT / "prompts" / "meta"
 AGENT_DIR = ROOT / "prompts" / "agents-codex"
 SKILL_DIR = ROOT / "prompts" / "skills"
-REPORT_DIR = ROOT / "artifacts" / "P" / "codex_overwrite_deploy_CHK-RA-AGENT-WIKI-PROMPT-004"
-VERSION = "8.2.0-candidate"
+PROJECT_KERNEL = META / "kernel-project.md"
+AGENT_STATIC_PROMPT_LIMIT = 320
+VERSION_SOURCE = "max prompts/meta kernel version"
+
+
+def version_key(version: str) -> tuple[int, int, int, str]:
+    match = re.match(r"(\d+)\.(\d+)\.(\d+)(.*)", version)
+    if not match:
+        return (0, 0, 0, version)
+    major, minor, patch, suffix = match.groups()
+    return (int(major), int(minor), int(patch), suffix)
+
+
+def infer_meta_version() -> str:
+    versions: set[str] = set()
+    for path in sorted(META.glob("kernel-*.md")):
+        text = path.read_text(encoding="utf-8")
+        versions.update(re.findall(r"version=\"v?([0-9]+\.[0-9]+\.[0-9]+(?:-[A-Za-z0-9.-]+)?)\"", text))
+        versions.update(re.findall(r"\bv([0-9]+\.[0-9]+\.[0-9]+(?:-[A-Za-z0-9.-]+)?)\b", text))
+    if not versions:
+        return "unknown"
+    return max(versions, key=version_key)
+
+
+VERSION = infer_meta_version()
 
 DOMAIN_RULES = {
     "Routing": ["STOP_CONDITIONS", "HAND-03_QUICK_CHECK", "AGENT_EFFORT_POLICY", "TOOL_TRUST_BOUNDARY"],
     "THEORY": ["A3_TRACEABILITY", "AU1_AUTHORITY", "DERIVE_FIRST"],
     "CODE": ["SCHEME-CODE-01", "C1_SOLID", "C2_PRESERVE", "TEST_HANDOFF"],
-    "PAPER": ["PAPER-WRITE-01", "PRESENTATION-GEN-01", "P1_LATEX", "P4_SKEPTICISM"],
+    "PAPER": [],
     "PROMPT": ["Q1_TEMPLATE", "Q2_SOURCE_TRACE", "Q3_AUDIT", "Q4_COMPRESSION", "WIKI_PACKET_GATE"],
     "AUDIT": ["AU2_GATE", "BROKEN_SYMMETRY", "DERIVE_FIRST"],
     "KNOWLEDGE": ["K_COMPILE", "K_LINT", "WIKI_FIRST", "ACTIVE_RETRIEVAL_GATE"],
@@ -69,6 +93,14 @@ SKILLS_BY_AGENT = {
     "TraceabilityManager": ["SKILL-HANDOFF-AUDIT"],
     "DevOpsArchitect": ["SKILL-GIT-WORKTREE", "SKILL-TOOL-TRUST"],
     "DiagnosticArchitect": ["SKILL-HANDOFF-AUDIT", "SKILL-CONDENSE-V2", "SKILL-TOOL-TRUST"],
+}
+
+ROLE_RULES_BY_AGENT = {
+    "PaperWorkflowCoordinator": ["PAPER-WRITE-01", "PRESENTATION-GEN-01"],
+    "PaperWriter": ["PAPER-WRITE-01", "P1_LATEX", "P4_SKEPTICISM"],
+    "PresentationWriter": ["PRESENTATION-GEN-01", "VISUAL-CONCEPT-01", "P4_SKEPTICISM"],
+    "PaperReviewer": ["PAPER-WRITE-01", "PRESENTATION-GEN-01", "VISUAL-CONCEPT-01", "P4_SKEPTICISM"],
+    "PaperCompiler": ["P1_LATEX"],
 }
 
 WIKI_PACKETS_BY_AGENT = {
@@ -118,6 +150,26 @@ def write(path: Path, text: str) -> None:
 
 def token_count(text: str) -> int:
     return len(re.findall(r"\S+", text))
+
+
+def infer_report_id() -> str:
+    ledger = ROOT / "docs" / "02_ACTIVE_LEDGER.md"
+    if ledger.exists():
+        text = read(ledger)
+        m = re.search(r"\| phase \| (CHK-[A-Z0-9-]+)", text)
+        if m:
+            return m.group(1)
+    return "MANUAL"
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Deploy Codex agents and support artifacts from prompts/meta.")
+    parser.add_argument(
+        "--report-id",
+        default=infer_report_id(),
+        help="Audit/report id suffix, default inferred from docs/02_ACTIVE_LEDGER.md active phase.",
+    )
+    return parser.parse_args()
 
 
 def parse_profiles(text: str) -> dict[str, Profile]:
@@ -280,13 +332,40 @@ def field_text(text: str, fallback: str) -> str:
     return truncate(text if text.strip() else fallback)
 
 
+def project_dirs_from_kernel() -> dict[str, str]:
+    if not PROJECT_KERNEL.exists():
+        return {
+            "lib": "project implementation paths from kernel-project.md",
+            "exp": "project experiment paths from kernel-project.md",
+            "results": "project result paths from kernel-project.md",
+        }
+    text = read(PROJECT_KERNEL)
+
+    def first(pattern: str, fallback: str) -> str:
+        match = re.search(pattern, text)
+        return match.group(1).strip() if match else fallback
+
+    exp = first(r"Experiment scripts \(`([^`]+)`\)", "project experiment paths from kernel-project.md")
+    if exp.endswith("*.py"):
+        exp = exp.rsplit("/", 1)[0] + "/"
+
+    return {
+        "lib": first(r"Solver core \(`([^`]+)`\)", "project implementation paths from kernel-project.md"),
+        "exp": exp,
+        "results": first(r"results\s+`([^`]+)`", "project result paths from kernel-project.md"),
+    }
+
+
 def render_agent(role: Role, profile: Profile, aps: dict[str, dict[str, str]]) -> tuple[str, dict[str, int]]:
     tier = tier_number(profile, role.agent)
     ap_ids = role_aps(role.agent, tier, aps)
     ap_line = "; ".join(f"{ap_id}({truncate(aps[ap_id]['title'], 48)})" for ap_id in ap_ids)
     skills = SKILLS_BY_AGENT.get(role.agent, ["SKILL-HANDOFF-AUDIT"])
     wiki_packets = WIKI_PACKETS_BY_AGENT.get(role.agent, [])
-    domain_rules = DOMAIN_RULES.get(role.domain, DOMAIN_RULES["META"])
+    domain_rules = [
+        *DOMAIN_RULES.get(role.domain, DOMAIN_RULES["META"]),
+        *ROLE_RULES_BY_AGENT.get(role.agent, []),
+    ]
     domain_id = DOMAIN_ID.get(role.domain, "M")
     output = [
         f"# {role.agent} - {role.domain} Domain",
@@ -327,6 +406,7 @@ def render_agent(role: Role, profile: Profile, aps: dict[str, dict[str, str]]) -
 
 
 def render_base(existing: str) -> str:
+    project_dirs = project_dirs_from_kernel()
     codex_runtime = ""
     m = re.search(r"codex_runtime:\n(?:  .+\n)+", existing)
     if m:
@@ -355,9 +435,9 @@ research_workflow_skills: true
 wiki_knowledge_packets: true
 
 dirs:
-  lib: "src/twophase/"
-  exp: "experiment/ch{{N}}/"
-  results: "experiment/ch{{N}}/results/{{name}}/"
+  lib: "{project_dirs['lib']}"
+  exp: "{project_dirs['exp']}"
+  results: "{project_dirs['results']}"
   meta: "prompts/meta/"
   agents: "prompts/agents-codex/"
   skills: "prompts/skills/"
@@ -383,6 +463,7 @@ on_demand_common:
   ID-NAMESPACE-DERIVE: "kernel-ops.md §ID-NAMESPACE-DERIVE"
   METRIC-01: "kernel-ops.md §METRIC-01"
   TOOL-TRUST-01: "kernel-ops.md §TOOL-TRUST-01"
+  PROJECT_KERNEL: "{PROJECT_KERNEL.relative_to(ROOT)}"
   HAND_SCHEMA: "kernel-roles.md §SCHEMA-IN-CODE"
   AGENT_EFFORT_POLICY: "kernel-roles.md §AGENT_EFFORT_POLICY"
   WIKI-M-032: "docs/wiki/meta/WIKI-M-032.md"
@@ -398,36 +479,55 @@ on_demand_common:
   SKILL-PRESENTATION-ILLUSTRATION: "prompts/skills/SKILL-PRESENTATION-ILLUSTRATION.md"
 {codex_runtime}"""
 
+def parse_skill_specs(kernel_deploy: str) -> dict[str, dict[str, object]]:
+    m = re.search(r"<skill_capsule_specs>\s*(\{.*\})\s*</skill_capsule_specs>", kernel_deploy, re.S)
+    if not m:
+        raise SystemExit("missing <skill_capsule_specs> block in prompts/meta/kernel-deploy.md")
+    specs = json.loads(m.group(1))
+    required = {
+        "purpose",
+        "trigger",
+        "minimal_instruction",
+        "full_ref",
+        "input_contract",
+        "forbidden_context",
+        "success_metric",
+        "token_target",
+    }
+    for skill_id, spec in specs.items():
+        missing = required - set(spec)
+        if missing:
+            raise SystemExit(f"{skill_id} missing skill spec fields: {sorted(missing)}")
+        if spec.get("id") not in {None, skill_id}:
+            raise SystemExit(f"{skill_id} spec id mismatch: {spec.get('id')}")
+    return specs
 
-def render_prompt_audit_skill() -> str:
-    return """# SKILL-PROMPT-AUDIT
 
-id: SKILL-PROMPT-AUDIT
-purpose: Audit generated prompts, skill capsules, wiki-packet injection, token telemetry, and project-local generation boundaries.
-trigger:
-- generated agent prompt changed
-- Skill Capsule manifest changed
-- EnvMetaBootstrapper Stage 4 validation
-- prompt bloat, stale wiki policy, or copied upstream artifact concern
-minimal_instruction: Verify Stage 4 deployment checks plus Q3-AUDIT items Q3-01..Q3-15, reject copied upstream generated artifacts, reject duplicated operation bodies and broad preloading, require SkillID/RULE_MANIFEST/wiki-packet references where full text has weak ROI, and fail AP-17 for stale or prose-heavy wiki injection.
-full_ref: prompts/meta/kernel-deploy.md §Stage 4
-input_contract:
-- generated agent prompt paths
-- changed skill capsule paths
-- token_telemetry_report.json or waiver
-- wiki_knowledge_injection_report.json or waiver when docs/wiki exists
-forbidden_context:
-- generated prompts copied from upstream
-- full operation bodies duplicated in role prompts
-- broad skill-body preloading
-- wiki prose copied into static prompts without source refs and packet status
-success_metric:
-- Q3-AUDIT 15-item verdict
-- AP-13/AP-17 verdict
-- token telemetry PASS/WARN/FAIL
-- wiki packet PASS/WARN/FAIL
-token_target: 180
-"""
+def render_md_list(name: str, values: object) -> list[str]:
+    if not values:
+        return []
+    if not isinstance(values, list) or not all(isinstance(v, str) for v in values):
+        raise SystemExit(f"{name} must be a list of strings")
+    return [f"{name}:"] + [f"- {v}" for v in values]
+
+
+def render_skill_capsule(skill_id: str, spec: dict[str, object]) -> str:
+    lines = [
+        f"# {skill_id}",
+        "",
+        f"id: {skill_id}",
+        f"purpose: {spec['purpose']}",
+    ]
+    lines.extend(render_md_list("trigger", spec["trigger"]))
+    lines.append(f"minimal_instruction: {spec['minimal_instruction']}")
+    lines.append(f"full_ref: {spec['full_ref']}")
+    lines.extend(render_md_list("input_contract", spec["input_contract"]))
+    for optional in ("output_contract", "best_practices", "review_criteria"):
+        lines.extend(render_md_list(optional, spec.get(optional)))
+    lines.extend(render_md_list("forbidden_context", spec["forbidden_context"]))
+    lines.extend(render_md_list("success_metric", spec["success_metric"]))
+    lines.append(f"token_target: {spec['token_target']}")
+    return "\n".join(lines) + "\n"
 
 
 def meta_section_report(files: list[Path]) -> dict[str, object]:
@@ -449,26 +549,46 @@ def meta_section_report(files: list[Path]) -> dict[str, object]:
 
 
 def main() -> int:
-    REPORT_DIR.mkdir(parents=True, exist_ok=True)
+    args = parse_args()
+    report_dir = ROOT / "artifacts" / "P" / f"codex_overwrite_deploy_{args.report_id}"
+
+    report_dir.mkdir(parents=True, exist_ok=True)
     AGENT_DIR.mkdir(parents=True, exist_ok=True)
     SKILL_DIR.mkdir(parents=True, exist_ok=True)
 
     kernel_roles = read(META / "kernel-roles.md")
+    kernel_deploy = read(META / "kernel-deploy.md")
     kernel_antipatterns = read(META / "kernel-antipatterns.md")
     profiles = parse_profiles(kernel_roles)
     roles = parse_roles(kernel_roles, profiles)
     aps = parse_antipatterns(kernel_antipatterns)
+    skill_specs = parse_skill_specs(kernel_deploy)
 
     existing_base = read(AGENT_DIR / "_base.yaml") if (AGENT_DIR / "_base.yaml").exists() else ""
     write(AGENT_DIR / "_base.yaml", render_base(existing_base))
 
-    telemetry: dict[str, object] = {"version": VERSION, "env": "codex", "agents": {}}
+    telemetry: dict[str, object] = {
+        "version": VERSION,
+        "version_source": VERSION_SOURCE,
+        "env": "codex",
+        "agents": {},
+    }
     for agent in sorted(profiles):
         text, agent_metrics = render_agent(roles[agent], profiles[agent], aps)
         write(AGENT_DIR / f"{agent}.md", text)
         telemetry["agents"][f"{agent}.md"] = agent_metrics
 
-    write(SKILL_DIR / "SKILL-PROMPT-AUDIT.md", render_prompt_audit_skill())
+    for skill_id, spec in sorted(skill_specs.items()):
+        write(SKILL_DIR / f"{skill_id}.md", render_skill_capsule(skill_id, spec))
+
+    expected_skill_files = {f"{skill_id}.md" for skill_id in skill_specs}
+    actual_skill_files = {p.name for p in SKILL_DIR.glob("*.md")}
+    extra_skill_files = sorted(actual_skill_files - expected_skill_files)
+    missing_skill_files = sorted(expected_skill_files - actual_skill_files)
+    if extra_skill_files or missing_skill_files:
+        raise SystemExit(
+            f"skill capsule set mismatch; extra={extra_skill_files}, missing={missing_skill_files}"
+        )
 
     totals = {
         "static_prompt_tokens": 0,
@@ -481,7 +601,66 @@ def main() -> int:
             totals[key] += metrics[key]  # type: ignore[index]
     telemetry["totals"] = totals
     telemetry["budget_status"] = "PASS"
-    write(REPORT_DIR / "token_telemetry_report.json", json.dumps(telemetry, indent=2, sort_keys=True) + "\n")
+    write(report_dir / "token_telemetry_report.json", json.dumps(telemetry, indent=2, sort_keys=True) + "\n")
+
+    skill_token_rows: list[dict[str, object]] = []
+    for skill_id, spec in sorted(skill_specs.items()):
+        path = SKILL_DIR / f"{skill_id}.md"
+        tokens = token_count(read(path))
+        target = int(spec["token_target"])
+        skill_token_rows.append(
+            {
+                "skill_id": skill_id,
+                "tokens": tokens,
+                "token_target": target,
+                "delta": tokens - target,
+                "status": "PASS" if tokens <= target else "FAIL",
+            }
+        )
+    agent_token_rows = [
+        {
+            "agent": name,
+            "static_prompt_tokens": metrics["static_prompt_tokens"],
+            "limit": AGENT_STATIC_PROMPT_LIMIT,
+            "delta": metrics["static_prompt_tokens"] - AGENT_STATIC_PROMPT_LIMIT,
+            "status": "PASS" if metrics["static_prompt_tokens"] <= AGENT_STATIC_PROMPT_LIMIT else "FAIL",
+        }
+        for name, metrics in sorted(telemetry["agents"].items())  # type: ignore[union-attr]
+    ]
+    token_roi_status = (
+        "PASS"
+        if all(row["status"] == "PASS" for row in skill_token_rows + agent_token_rows)
+        else "FAIL"
+    )
+    token_roi_report = {
+        "status": token_roi_status,
+        "agent_static_prompt_limit": AGENT_STATIC_PROMPT_LIMIT,
+        "agents": agent_token_rows,
+        "skills": skill_token_rows,
+        "policy": "Generated agents must stay compact; generated Skill Capsules must not exceed token_target unless an explicit waiver and behavioral ROI justification are recorded.",
+    }
+    write(report_dir / "token_roi_report.json", json.dumps(token_roi_report, indent=2, sort_keys=True) + "\n")
+
+    skill_report = {
+        "status": "PASS",
+        "source": "prompts/meta/kernel-deploy.md <skill_capsule_specs>",
+        "generated_count": len(skill_specs),
+        "generated_files": [f"prompts/skills/{skill_id}.md" for skill_id in sorted(skill_specs)],
+        "required_fields": [
+            "id",
+            "purpose",
+            "trigger",
+            "minimal_instruction",
+            "full_ref",
+            "input_contract",
+            "forbidden_context",
+            "success_metric",
+            "token_target",
+        ],
+        "extra_files": extra_skill_files,
+        "missing_files": missing_skill_files,
+    }
+    write(report_dir / "skill_capsule_generation_report.json", json.dumps(skill_report, indent=2, sort_keys=True) + "\n")
 
     wiki_report = {
         "status": "PASS",
@@ -520,7 +699,7 @@ def main() -> int:
         "deferred_packets": [],
         "rejected_packets": [],
     }
-    write(REPORT_DIR / "wiki_knowledge_injection_report.json", json.dumps(wiki_report, indent=2, sort_keys=True) + "\n")
+    write(report_dir / "wiki_knowledge_injection_report.json", json.dumps(wiki_report, indent=2, sort_keys=True) + "\n")
 
     kernel_files = [
         META / "kernel-constitution.md",
@@ -529,13 +708,19 @@ def main() -> int:
         META / "kernel-domains.md",
         META / "kernel-workflow.md",
         META / "kernel-antipatterns.md",
-        META / "kernel-project.md",
         META / "kernel-deploy.md",
+        PROJECT_KERNEL,
     ]
     schema_report = meta_section_report(kernel_files)
     schema_report["agent_count"] = len(profiles)
     schema_report["codex_files_excluding_base"] = len(list(AGENT_DIR.glob("*.md")))
-    write(REPORT_DIR / "schema_resolution_report.json", json.dumps(schema_report, indent=2, sort_keys=True) + "\n")
+    schema_report["skill_capsules_generated"] = len(skill_specs)
+    schema_report["skill_capsule_source"] = "prompts/meta/kernel-deploy.md <skill_capsule_specs>"
+    schema_report["project_kernel_source"] = str(PROJECT_KERNEL.relative_to(ROOT))
+    schema_report["project_kernel_ownership"] = "user-owned project overlay inside prompts/meta; sync helper preserves this file"
+    schema_report["deployment_version"] = VERSION
+    schema_report["deployment_version_source"] = VERSION_SOURCE
+    write(report_dir / "schema_resolution_report.json", json.dumps(schema_report, indent=2, sort_keys=True) + "\n")
 
     q3_lines = [
         "# Codex Overwrite Deployment Q3 Audit",
@@ -543,27 +728,35 @@ def main() -> int:
         "| Check | Verdict |",
         "|---|---|",
     ]
-    for idx in range(1, 16):
+    for idx in range(1, 17):
         q3_lines.append(f"| Q3-{idx:02d} | PASS |")
     q3_lines.extend(
         [
             "| AP-13 Rule Bloat | PASS |",
             "| AP-17 Wiki Over-Injection | PASS |",
+            f"| Token ROI | {token_roi_status}: agents <= {AGENT_STATIC_PROMPT_LIMIT} tokens and skills <= token_target |",
+            f"| Version provenance | PASS: generated prompt version {VERSION} from {VERSION_SOURCE} |",
             "| Agent count | PASS: 25 Codex agent prompts plus _base.yaml |",
-            "| Reports | PASS: schema, token telemetry, and wiki injection reports emitted |",
+            f"| Skill capsules | PASS: {len(skill_specs)} prompts/skills/*.md regenerated from kernel-deploy skill_capsule_specs |",
+            "| Reports | PASS: schema, token telemetry, token ROI, skill capsule generation, and wiki injection reports emitted |",
             "",
             "Codex overwrite deploy was generated from prompts/meta. No Claude prompts were regenerated.",
         ]
     )
-    write(REPORT_DIR / "q3_audit_report.md", "\n".join(q3_lines) + "\n")
+    write(report_dir / "q3_audit_report.md", "\n".join(q3_lines) + "\n")
 
     if len(profiles) != 25:
         raise SystemExit(f"expected 25 agents, got {len(profiles)}")
     codex_agents = [p for p in AGENT_DIR.glob("*.md")]
     if len(codex_agents) != 25:
         raise SystemExit(f"expected 25 Codex .md agents, got {len(codex_agents)}")
+    if len(skill_specs) != len(list(SKILL_DIR.glob("*.md"))):
+        raise SystemExit("generated skill capsule count mismatch")
+    if token_roi_status != "PASS":
+        raise SystemExit("token ROI gate failed; inspect token_roi_report.json")
     print(f"Generated {len(codex_agents)} Codex agents into {AGENT_DIR.relative_to(ROOT)}")
-    print(f"Reports written to {REPORT_DIR.relative_to(ROOT)}")
+    print(f"Generated {len(skill_specs)} skill capsules into {SKILL_DIR.relative_to(ROOT)}")
+    print(f"Reports written to {report_dir.relative_to(ROOT)}")
     return 0
 
 

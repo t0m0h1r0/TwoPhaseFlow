@@ -1,8 +1,8 @@
-# _base.yaml - Universal Agent Foundation 8.2.0-candidate (Codex)
+# _base.yaml - Universal Agent Foundation 8.7.0-candidate (Codex)
 # Generated from prompts/meta by scripts/deploy_codex_agents.py.
 # Codex profile: executable clarity; patch-oriented, compact invariants, worktree-first commits.
 
-meta_version: "8.2.0-candidate"
+meta_version: "8.7.0-candidate"
 concurrency_profile: "worktree"
 handoff_mode: "text"
 
@@ -24,7 +24,7 @@ wiki_knowledge_packets: true
 dirs:
   lib: "src/twophase/"
   exp: "experiment/ch{N}/"
-  results: "experiment/ch{N}/results/{name}/"
+  results: "project result paths from kernel-project.md"
   meta: "prompts/meta/"
   agents: "prompts/agents-codex/"
   skills: "prompts/skills/"
@@ -50,6 +50,7 @@ on_demand_common:
   ID-NAMESPACE-DERIVE: "kernel-ops.md §ID-NAMESPACE-DERIVE"
   METRIC-01: "kernel-ops.md §METRIC-01"
   TOOL-TRUST-01: "kernel-ops.md §TOOL-TRUST-01"
+  PROJECT_KERNEL: "prompts/meta/kernel-project.md"
   HAND_SCHEMA: "kernel-roles.md §SCHEMA-IN-CODE"
   AGENT_EFFORT_POLICY: "kernel-roles.md §AGENT_EFFORT_POLICY"
   WIKI-M-032: "docs/wiki/meta/WIKI-M-032.md"

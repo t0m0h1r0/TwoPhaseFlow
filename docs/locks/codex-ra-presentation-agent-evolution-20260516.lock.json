@@ -1,0 +1,11 @@
+{
+  "branch": "codex/ra-presentation-agent-evolution-20260516",
+  "branch_slug": "codex-ra-presentation-agent-evolution-20260516",
+  "session_id": "669B8CF4-FC33-4EFF-8A70-50BE4D9D1841",
+  "worktree_path": ".claude/worktrees/codex-ra-presentation-agent-evolution-20260516",
+  "holder_agent": "ResearchArchitect",
+  "acquired_at": "2026-05-16T21:12:00+09:00",
+  "expires_at": "2026-05-17T21:12:00+09:00",
+  "meta_version": "7.1.0",
+  "scope": "evolve presentation-generation agent behavior from user memos, including convergence-controlled review loops; update metaprompt/skills/prompts; strict prompt audit; no main merge"
+}

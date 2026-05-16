@@ -1,0 +1,163 @@
+{
+  "agents": {
+    "CodeArchitect.md": {
+      "loaded_rule_tokens": 4,
+      "skill_trigger_tokens": 2,
+      "static_prompt_tokens": 241,
+      "wiki_static_tokens": 0
+    },
+    "CodeCorrector.md": {
+      "loaded_rule_tokens": 4,
+      "skill_trigger_tokens": 2,
+      "static_prompt_tokens": 231,
+      "wiki_static_tokens": 0
+    },
+    "CodeWorkflowCoordinator.md": {
+      "loaded_rule_tokens": 4,
+      "skill_trigger_tokens": 3,
+      "static_prompt_tokens": 293,
+      "wiki_static_tokens": 0
+    },
+    "ConsistencyAuditor.md": {
+      "loaded_rule_tokens": 3,
+      "skill_trigger_tokens": 3,
+      "static_prompt_tokens": 254,
+      "wiki_static_tokens": 8
+    },
+    "DevOpsArchitect.md": {
+      "loaded_rule_tokens": 3,
+      "skill_trigger_tokens": 2,
+      "static_prompt_tokens": 217,
+      "wiki_static_tokens": 0
+    },
+    "DiagnosticArchitect.md": {
+      "loaded_rule_tokens": 3,
+      "skill_trigger_tokens": 3,
+      "static_prompt_tokens": 220,
+      "wiki_static_tokens": 0
+    },
+    "EvidenceAnalyst.md": {
+      "loaded_rule_tokens": 4,
+      "skill_trigger_tokens": 1,
+      "static_prompt_tokens": 219,
+      "wiki_static_tokens": 0
+    },
+    "ExperimentRunner.md": {
+      "loaded_rule_tokens": 4,
+      "skill_trigger_tokens": 1,
+      "static_prompt_tokens": 226,
+      "wiki_static_tokens": 0
+    },
+    "KnowledgeArchitect.md": {
+      "loaded_rule_tokens": 4,
+      "skill_trigger_tokens": 2,
+      "static_prompt_tokens": 226,
+      "wiki_static_tokens": 6
+    },
+    "Librarian.md": {
+      "loaded_rule_tokens": 4,
+      "skill_trigger_tokens": 1,
+      "static_prompt_tokens": 211,
+      "wiki_static_tokens": 8
+    },
+    "PaperCompiler.md": {
+      "loaded_rule_tokens": 1,
+      "skill_trigger_tokens": 1,
+      "static_prompt_tokens": 196,
+      "wiki_static_tokens": 0
+    },
+    "PaperReviewer.md": {
+      "loaded_rule_tokens": 4,
+      "skill_trigger_tokens": 3,
+      "static_prompt_tokens": 269,
+      "wiki_static_tokens": 0
+    },
+    "PaperWorkflowCoordinator.md": {
+      "loaded_rule_tokens": 2,
+      "skill_trigger_tokens": 3,
+      "static_prompt_tokens": 245,
+      "wiki_static_tokens": 0
+    },
+    "PaperWriter.md": {
+      "loaded_rule_tokens": 3,
+      "skill_trigger_tokens": 1,
+      "static_prompt_tokens": 235,
+      "wiki_static_tokens": 0
+    },
+    "PresentationWriter.md": {
+      "loaded_rule_tokens": 3,
+      "skill_trigger_tokens": 2,
+      "static_prompt_tokens": 291,
+      "wiki_static_tokens": 0
+    },
+    "PromptArchitect.md": {
+      "loaded_rule_tokens": 5,
+      "skill_trigger_tokens": 3,
+      "static_prompt_tokens": 262,
+      "wiki_static_tokens": 7
+    },
+    "PromptAuditor.md": {
+      "loaded_rule_tokens": 5,
+      "skill_trigger_tokens": 2,
+      "static_prompt_tokens": 266,
+      "wiki_static_tokens": 7
+    },
+    "ResearchArchitect.md": {
+      "loaded_rule_tokens": 3,
+      "skill_trigger_tokens": 3,
+      "static_prompt_tokens": 301,
+      "wiki_static_tokens": 8
+    },
+    "SimulationAnalyst.md": {
+      "loaded_rule_tokens": 4,
+      "skill_trigger_tokens": 1,
+      "static_prompt_tokens": 218,
+      "wiki_static_tokens": 0
+    },
+    "TaskPlanner.md": {
+      "loaded_rule_tokens": 3,
+      "skill_trigger_tokens": 3,
+      "static_prompt_tokens": 292,
+      "wiki_static_tokens": 0
+    },
+    "TestRunner.md": {
+      "loaded_rule_tokens": 4,
+      "skill_trigger_tokens": 2,
+      "static_prompt_tokens": 241,
+      "wiki_static_tokens": 0
+    },
+    "TheoryArchitect.md": {
+      "loaded_rule_tokens": 3,
+      "skill_trigger_tokens": 1,
+      "static_prompt_tokens": 196,
+      "wiki_static_tokens": 0
+    },
+    "TheoryAuditor.md": {
+      "loaded_rule_tokens": 3,
+      "skill_trigger_tokens": 2,
+      "static_prompt_tokens": 218,
+      "wiki_static_tokens": 0
+    },
+    "TraceabilityManager.md": {
+      "loaded_rule_tokens": 4,
+      "skill_trigger_tokens": 1,
+      "static_prompt_tokens": 196,
+      "wiki_static_tokens": 8
+    },
+    "WikiAuditor.md": {
+      "loaded_rule_tokens": 4,
+      "skill_trigger_tokens": 2,
+      "static_prompt_tokens": 213,
+      "wiki_static_tokens": 7
+    }
+  },
+  "budget_status": "PASS",
+  "env": "codex",
+  "totals": {
+    "loaded_rule_tokens": 88,
+    "skill_trigger_tokens": 50,
+    "static_prompt_tokens": 5977,
+    "wiki_static_tokens": 59
+  },
+  "version": "8.2.0-candidate"
+}

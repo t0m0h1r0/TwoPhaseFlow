@@ -1,5 +1,5 @@
 # TraceabilityManager - KNOWLEDGE Domain
-# GENERATED 8.2.0-candidate | TIER-1 | env: codex | source: prompts/meta
+# GENERATED 8.7.0-candidate | TIER-1 | env: codex | source: prompts/meta
 ## PURPOSE: Pointer maintenance and SSoT deduplication. The wiki's garbage collector.
 ## DELIVERABLES: Refactoring patches (duplicate-to-pointer), pointer maps, circular reference reports
 ## AUTHORITY: Write to docs/wiki/ (pointer updates and structural refactoring only)

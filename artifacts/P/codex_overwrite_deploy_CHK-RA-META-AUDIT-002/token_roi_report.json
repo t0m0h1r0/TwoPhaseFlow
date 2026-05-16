@@ -1,0 +1,247 @@
+{
+  "agent_static_prompt_limit": 320,
+  "agents": [
+    {
+      "agent": "CodeArchitect.md",
+      "delta": -79,
+      "limit": 320,
+      "static_prompt_tokens": 241,
+      "status": "PASS"
+    },
+    {
+      "agent": "CodeCorrector.md",
+      "delta": -89,
+      "limit": 320,
+      "static_prompt_tokens": 231,
+      "status": "PASS"
+    },
+    {
+      "agent": "CodeWorkflowCoordinator.md",
+      "delta": -27,
+      "limit": 320,
+      "static_prompt_tokens": 293,
+      "status": "PASS"
+    },
+    {
+      "agent": "ConsistencyAuditor.md",
+      "delta": -66,
+      "limit": 320,
+      "static_prompt_tokens": 254,
+      "status": "PASS"
+    },
+    {
+      "agent": "DevOpsArchitect.md",
+      "delta": -103,
+      "limit": 320,
+      "static_prompt_tokens": 217,
+      "status": "PASS"
+    },
+    {
+      "agent": "DiagnosticArchitect.md",
+      "delta": -100,
+      "limit": 320,
+      "static_prompt_tokens": 220,
+      "status": "PASS"
+    },
+    {
+      "agent": "EvidenceAnalyst.md",
+      "delta": -101,
+      "limit": 320,
+      "static_prompt_tokens": 219,
+      "status": "PASS"
+    },
+    {
+      "agent": "ExperimentRunner.md",
+      "delta": -94,
+      "limit": 320,
+      "static_prompt_tokens": 226,
+      "status": "PASS"
+    },
+    {
+      "agent": "KnowledgeArchitect.md",
+      "delta": -94,
+      "limit": 320,
+      "static_prompt_tokens": 226,
+      "status": "PASS"
+    },
+    {
+      "agent": "Librarian.md",
+      "delta": -109,
+      "limit": 320,
+      "static_prompt_tokens": 211,
+      "status": "PASS"
+    },
+    {
+      "agent": "PaperCompiler.md",
+      "delta": -124,
+      "limit": 320,
+      "static_prompt_tokens": 196,
+      "status": "PASS"
+    },
+    {
+      "agent": "PaperReviewer.md",
+      "delta": -51,
+      "limit": 320,
+      "static_prompt_tokens": 269,
+      "status": "PASS"
+    },
+    {
+      "agent": "PaperWorkflowCoordinator.md",
+      "delta": -75,
+      "limit": 320,
+      "static_prompt_tokens": 245,
+      "status": "PASS"
+    },
+    {
+      "agent": "PaperWriter.md",
+      "delta": -85,
+      "limit": 320,
+      "static_prompt_tokens": 235,
+      "status": "PASS"
+    },
+    {
+      "agent": "PresentationWriter.md",
+      "delta": -29,
+      "limit": 320,
+      "static_prompt_tokens": 291,
+      "status": "PASS"
+    },
+    {
+      "agent": "PromptArchitect.md",
+      "delta": -58,
+      "limit": 320,
+      "static_prompt_tokens": 262,
+      "status": "PASS"
+    },
+    {
+      "agent": "PromptAuditor.md",
+      "delta": -54,
+      "limit": 320,
+      "static_prompt_tokens": 266,
+      "status": "PASS"
+    },
+    {
+      "agent": "ResearchArchitect.md",
+      "delta": -19,
+      "limit": 320,
+      "static_prompt_tokens": 301,
+      "status": "PASS"
+    },
+    {
+      "agent": "SimulationAnalyst.md",
+      "delta": -102,
+      "limit": 320,
+      "static_prompt_tokens": 218,
+      "status": "PASS"
+    },
+    {
+      "agent": "TaskPlanner.md",
+      "delta": -28,
+      "limit": 320,
+      "static_prompt_tokens": 292,
+      "status": "PASS"
+    },
+    {
+      "agent": "TestRunner.md",
+      "delta": -79,
+      "limit": 320,
+      "static_prompt_tokens": 241,
+      "status": "PASS"
+    },
+    {
+      "agent": "TheoryArchitect.md",
+      "delta": -124,
+      "limit": 320,
+      "static_prompt_tokens": 196,
+      "status": "PASS"
+    },
+    {
+      "agent": "TheoryAuditor.md",
+      "delta": -102,
+      "limit": 320,
+      "static_prompt_tokens": 218,
+      "status": "PASS"
+    },
+    {
+      "agent": "TraceabilityManager.md",
+      "delta": -124,
+      "limit": 320,
+      "static_prompt_tokens": 196,
+      "status": "PASS"
+    },
+    {
+      "agent": "WikiAuditor.md",
+      "delta": -107,
+      "limit": 320,
+      "static_prompt_tokens": 213,
+      "status": "PASS"
+    }
+  ],
+  "policy": "Generated agents must stay compact; generated Skill Capsules must not exceed token_target unless an explicit waiver and behavioral ROI justification are recorded.",
+  "skills": [
+    {
+      "delta": -65,
+      "skill_id": "SKILL-CONDENSE-V2",
+      "status": "PASS",
+      "token_target": 170,
+      "tokens": 105
+    },
+    {
+      "delta": -37,
+      "skill_id": "SKILL-GIT-WORKTREE",
+      "status": "PASS",
+      "token_target": 150,
+      "tokens": 113
+    },
+    {
+      "delta": -56,
+      "skill_id": "SKILL-HANDOFF-AUDIT",
+      "status": "PASS",
+      "token_target": 140,
+      "tokens": 84
+    },
+    {
+      "delta": -27,
+      "skill_id": "SKILL-PAPER-WRITING",
+      "status": "PASS",
+      "token_target": 220,
+      "tokens": 193
+    },
+    {
+      "delta": -83,
+      "skill_id": "SKILL-PRESENTATION-DECK",
+      "status": "PASS",
+      "token_target": 460,
+      "tokens": 377
+    },
+    {
+      "delta": -30,
+      "skill_id": "SKILL-PRESENTATION-ILLUSTRATION",
+      "status": "PASS",
+      "token_target": 180,
+      "tokens": 150
+    },
+    {
+      "delta": -34,
+      "skill_id": "SKILL-PROMPT-AUDIT",
+      "status": "PASS",
+      "token_target": 180,
+      "tokens": 146
+    },
+    {
+      "delta": -49,
+      "skill_id": "SKILL-SCHEME-CODE",
+      "status": "PASS",
+      "token_target": 220,
+      "tokens": 171
+    },
+    {
+      "delta": -51,
+      "skill_id": "SKILL-TOOL-TRUST",
+      "status": "PASS",
+      "token_target": 160,
+      "tokens": 109
+    }
+  ],
+  "status": "PASS"
+}

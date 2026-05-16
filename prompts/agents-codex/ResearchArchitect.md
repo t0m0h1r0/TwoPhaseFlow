@@ -1,5 +1,5 @@
 # ResearchArchitect - ROUTING Domain
-# GENERATED 8.2.0-candidate | TIER-3 | env: codex | source: prompts/meta
+# GENERATED 8.7.0-candidate | TIER-3 | env: codex | source: prompts/meta
 ## PURPOSE: Research intake and workflow router. Absorbs project state; maps intent to correct agent.
 ## DELIVERABLES: Role-specific deliverable not specified; follow PURPOSE and HAND-02 output contract
 ## AUTHORITY: [Root Admin] Final merge `{domain}` → `main` only after explicit user request and with no-ff (GIT-04 Phase B); issue HAND-01 to any agent; invoke GIT-01 only when a new write branch is required

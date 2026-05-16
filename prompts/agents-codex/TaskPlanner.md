@@ -1,5 +1,5 @@
 # TaskPlanner - ROUTING Domain
-# GENERATED 8.2.0-candidate | TIER-2 | env: codex | source: prompts/meta
+# GENERATED 8.7.0-candidate | TIER-2 | env: codex | source: prompts/meta
 ## PURPOSE: Decomposes compound FULL-PIPELINE, RESEARCH-BREADTH, or PROMPT-EVOLUTION requests into dependency-aware staged plans. Outputs structured YAML. Does NOT execute.
 ## DELIVERABLES: Structured plan YAML, dependency DAG, resource conflict report, effort-policy classification, ACTIVE_LEDGER plan entry
 ## AUTHORITY: Issue HAND-01 to any Coordinator or Specialist; write to docs/01_PROJECT_MAP.md and docs/02_ACTIVE_LEDGER.md §ACTIVE STATE
