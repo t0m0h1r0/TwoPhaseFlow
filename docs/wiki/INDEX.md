@@ -1,4 +1,4 @@
-# Wiki Index — 393 entries
+# Wiki Index — 394 entries
 
 ## Active Retrieval Gate
 
@@ -54,7 +54,10 @@ distilled into source-traced behavior packets, JIT references, and prompt audit
 gates instead of copied into generated prompts. For paper review and revision
 passes, use [WIKI-M-034](meta/WIKI-M-034.md) so readability work is judged by
 cognitive load, box necessity, section responsibility, naming consistency, and
-validation rather than decoration. For broad or whole-scope paper review
+validation rather than decoration. For meta-prompt deployment/review passes,
+use [WIKI-M-035](meta/WIKI-M-035.md) so project boundaries, native adapters,
+role manifests, generated artifacts, and token ROI gates stay aligned. For
+broad or whole-scope paper review
 prompts, use [WIKI-P-021](paper/WIKI-P-021.md) so local review gates for
 math intuition, structure, file responsibility, boxes, citations, artifacts,
 and validation are repeated as the scope widens. For formula-heavy paper
@@ -398,7 +401,7 @@ support.
 | [WIKI-P-021](paper/WIKI-P-021.md) | Whole-Scope Paper Review Reuses Local Review Gates |
 | [WIKI-P-022](paper/WIKI-P-022.md) | Formula-Heavy Paper Sections Need Ownership-Ledger Prose |
 
-## Meta (34)
+## Meta (35)
 
 | REF-ID | Title |
 |--------|-------|
@@ -436,6 +439,7 @@ support.
 | [WIKI-M-032](meta/WIKI-M-032.md) | Wiki Inventory Curation Uses Layered Evidence Passes |
 | [WIKI-M-033](meta/WIKI-M-033.md) | Meta-Prompt Evolution Uses Wiki Packets and Prompt Audit Gates |
 | [WIKI-M-034](meta/WIKI-M-034.md) | Paper Review Revisions Should Reduce Cognitive Load, Not Add Decoration |
+| [WIKI-M-035](meta/WIKI-M-035.md) | Meta-Prompt Deployment Needs Project Boundaries, Native Adapters, and Token ROI Gates |
 
 ## Code (46)
 
