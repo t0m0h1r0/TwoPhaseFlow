@@ -50,7 +50,7 @@ $32^2$ の粘性・離散・追随格子計算が 1 周期後に
 HFE 圧力ジャンプは式~\eqref{eq:ao_graph_hfe_jump}--\eqref{eq:ao_graph_hfe_face_law}
 で与える．
 速度へ入る毛管成分は面 Hodge で定義した圧力反力成分であり，
-追随格子では式~\eqref{eq:ao_face_cochain_regrid} の投影済み面共鎖移送と
+追随格子では式~\eqref{eq:ao_face_cochain_regrid} の射影後面量の移送と
 式~\eqref{eq:grid_regular_stratum_axis}--\eqref{eq:grid_regular_stratum_shift}
 の正則層ガードを同時に満たす．
 本ケースでは重力を切るため，初期加速度は曲率と圧力ジャンプだけで決まる．
@@ -144,11 +144,11 @@ $p-\langle p\rangle$ の外れ値に強い対称色軸で描く．
 2 次元場としては，\autoref{fig:ch14_capillary_psi_snapshots} に
 界面形状の 1 周期推移を示し，
 \autoref{fig:ch14_capillary_velocity_pressure_snapshots} に速度場と
-圧力 Hodge 代表を示す．
+圧力代表を示す．
 速度場は $\frac14T_\sigma$ 近傍で界面を平坦化する向きを持ち，
 終端では上側最大位相へ戻りつつ，粘性散逸と $32^2$ 表現により
 初期振幅より小さい．
-圧力スナップショットは界面近傍の Hodge 代表として読み，
+圧力スナップショットは界面近傍の圧力代表として読み，
 拡散界面を滑らかに塗りつぶした絶対圧分布としては解釈しない．
 
 \begin{figure}[!htbp]
@@ -177,7 +177,7 @@ $0,\frac14T_\sigma,\frac12T_\sigma,\frac34T_\sigma,T_\sigma$ 近傍を示す．
 \includegraphics[width=0.19\linewidth]{figures/ch14_capillary_pressure_tq2.pdf}
 \includegraphics[width=0.19\linewidth]{figures/ch14_capillary_pressure_tq3.pdf}
 \includegraphics[width=0.19\linewidth]{figures/ch14_capillary_pressure_t1.pdf}
-\caption{N=32，アクティブ幾何毛管波の 2 次元速度場と圧力 Hodge 代表．
+\caption{N=32，アクティブ幾何毛管波の 2 次元速度場と圧力代表．
 上段は速度場，下段は圧力代表であり，左から
 $0,\frac14T_\sigma,\frac12T_\sigma,\frac34T_\sigma,T_\sigma$ 近傍を示す．
 上段は背景スカラー場を描かず，矢印の長さと色で速度ベクトルを表す．
@@ -188,7 +188,7 @@ $0,\frac14T_\sigma,\frac12T_\sigma,\frac34T_\sigma,T_\sigma$ 近傍を示す．
 
 このケースの判定は，
 「平坦界面の毛管剛性が正しい向きで PPE 補正段に伝わり，
-幾何セル分率輸送，投影済み面共鎖移送，圧力履歴座標，
+幾何セル分率輸送，射影後面量の移送，圧力履歴座標，
 グラフ HFE 圧力ジャンプ，正則層ガード，FCCD PPE，
 IMEX--BDF2 運動量更新が有界な復元振動を保つ」
 である．

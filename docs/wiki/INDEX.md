@@ -63,7 +63,9 @@ math intuition, structure, file responsibility, boxes, citations, artifacts,
 and validation are repeated as the scope widens. For formula-heavy paper
 sections, use [WIKI-P-022](paper/WIKI-P-022.md) so equations are introduced
 through ownership, update, output, and diagnostic ledgers rather than as
-standalone symbol sequences. For paper citation-survey passes, use
+standalone symbol sequences. For paper placement-review passes, use
+[WIKI-P-023](paper/WIKI-P-023.md) so correct details are checked against their
+chapter/front-matter responsibility before they are kept in place. For paper citation-survey passes, use
 [WIKI-P-020](paper/WIKI-P-020.md) so references are added only after
 claim-level source verification and are placed at the manuscript claim they
 support.
@@ -374,7 +376,7 @@ support.
 | [WIKI-E-062](experiment/WIKI-E-062.md) | Static Droplet Pressure Images Must Use Hodge Representatives |
 | [WIKI-E-063](experiment/WIKI-E-063.md) | U12/V11 AO-Fast Capillary Split Gates |
 
-## Paper (22)
+## Paper (23)
 
 | REF-ID | Title |
 |--------|-------|
@@ -400,6 +402,7 @@ support.
 | [WIKI-P-020](paper/WIKI-P-020.md) | Paper Citation Additions Need Claim-Level Source Verification |
 | [WIKI-P-021](paper/WIKI-P-021.md) | Whole-Scope Paper Review Reuses Local Review Gates |
 | [WIKI-P-022](paper/WIKI-P-022.md) | Formula-Heavy Paper Sections Need Ownership-Ledger Prose |
+| [WIKI-P-023](paper/WIKI-P-023.md) | Paper Placement Review Keeps Front Matter and Chapters Responsible |
 
 ## Meta (35)
 

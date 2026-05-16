@@ -1,0 +1,9 @@
+{
+  "branch": "codex/ra-paper-review-cover-ch14-2-20260516",
+  "worktree": ".claude/worktrees/codex-ra-paper-review-cover-ch14-2-20260516",
+  "task": "Strict ResearchArchitect review and revision from cover/front matter through Chapter 14 section 14.2, including placement-appropriateness review.",
+  "id_prefix": "RA-PAPER-COVER-14P2",
+  "session_id": "C8A5CEE6-DD2D-4A0E-8BA0-18EA378A9AE2",
+  "created_at": "2026-05-16",
+  "status": "active"
+}
