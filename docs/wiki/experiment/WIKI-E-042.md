@@ -6,7 +6,7 @@ status: ACTIVE
 superseded_by: null
 tags: [chapter13, v10, cls, mass_correction, type_b, type_d, shape_error]
 sources:
-  - path: paper/sections/13e_nonuniform_ns.tex
+  - path: paper/sections/13e1_nonuniform_ns.tex
     description: "V10-a/b two-axis verdicts for mass and shape"
   - path: paper/sections/13f_error_budget.tex
     description: "V10 mass/shape rows in the integrated accuracy table"

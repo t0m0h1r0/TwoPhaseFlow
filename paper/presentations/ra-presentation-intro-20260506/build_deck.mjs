@@ -49,7 +49,7 @@ const slides = [
     title: "One-Fluid 表現は入口であり、圧力ジャンプの扱いが出口を決める",
     lead: "CLS は界面を保存形に追跡し、Young--Laplace ジャンプは CSF 体積力ではなく pressure-jump として PPE に渡す。",
     source: "Governing equations; surface tension jump; CLS; split PPE",
-    sourceFiles: ["paper/sections/02_governing.tex", "paper/sections/02b_surface_tension.tex", "paper/sections/03_levelset.tex", "paper/sections/09b_split_ppe.tex"],
+    sourceFiles: ["paper/sections/02_governing.tex", "paper/sections/02b_surface_tension.tex", "paper/sections/03_levelset.tex", "paper/sections/09b1_split_ppe.tex"],
     visual: "equationFlow",
     flow: [
       ["psi = H_e(-phi)", "保存形界面変数"],
@@ -88,7 +88,7 @@ const slides = [
     title: "高密度比では、一括PPEではなく分相PPEとして圧力を閉じる",
     lead: "相内Poisson、HFE場延長、欠陥補正DCを組み合わせ、ジャンプ条件をPPEとcorrectorが共有する。",
     source: "Split PPE; HFE; defect correction; component verification",
-    sourceFiles: ["paper/sections/09b_split_ppe.tex", "paper/sections/09c_hfe.tex", "paper/sections/09d_defect_correction.tex", "paper/sections/12u6_split_ppe_dc_hfe.tex"],
+    sourceFiles: ["paper/sections/09b1_split_ppe.tex", "paper/sections/09c_hfe.tex", "paper/sections/09d_defect_correction.tex", "paper/sections/12u6_split_ppe_dc_hfe.tex"],
     visual: "pressureClosure",
     metrics: [
       ["HFE 1D", "h^5.91", "Hermite 場延長"],

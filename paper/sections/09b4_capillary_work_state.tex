@@ -1,0 +1,538 @@
+\subsubsection{毛管補正量の変分構成・許容面速度状態空間・平衡判定}
+\label{sec:split_ppe_capillary_range_projection}
+% ─────────────────────────────────────────────────────────────────────────────
+
+圧力ジャンプ形式では，表面張力を CSF 体積力として予測段階へ入れない．
+したがって速度補正に現れる毛管寄与は，面上の既知圧力ジャンプ勾配，
+またはそれと同じ面補正枠に置かれた表面エネルギーの Riesz 表現である．
+以降，$A_f$ を式~\eqref{eq:split_ppe_affine_face_flux} の
+面係数（$\alpha_f$；逆密度・切断面係数・重みを含む）と書き，
+\begin{equation}
+  c_f^{\mathrm{YL}}(j_{gl}) \equiv A_f B_f(j_{gl})
+  \label{eq:capillary_jump_face_cochain}
+\end{equation}
+を Young--Laplace 切断面代表と呼ぶ．ただし本稿の物理受理条件は，
+この未補正曲率代表を無条件に正しい力とみなすことではない．
+離散毛管力は，物理輸送の終点
+\begin{equation}
+  q_c \equiv q_T
+  =
+  \psi_{\mathrm{after\ transport\ before\ reinit}}
+  \label{eq:capillary_transport_endpoint}
+\end{equation}
+上で定義する．すなわち Ridge--Eikonal 射影後の
+$q^{n+1}$ ではなく，保存形 CLS 移流が実際に運んだ
+再初期化前の物理輸送終点を毛管仕事の幾何状態とする．
+これは現在の解法が実際に発展させる保存形面 \(\psi\) の終点
+（保存形面フラックスが運んだ \(\psi\) 状態）であり，
+トレース頂点 Riesz 代表は本稿の標準経路ではない．
+この終点で，現在の FCCD 面輸送が誘導する
+節点変分を
+\begin{equation}
+  T_f(q_c)w_f
+  =
+  -D_f^\psi\!\left(P_f q_c\,w_f\right)
+  \label{eq:capillary_transport_jacobian}
+\end{equation}
+と書く．$P_f$ は標準 CLS 移流で用いる面値写像であり，
+$D_f^\psi$ は同じ保存形面発散である．閉界面の
+P1 marching-squares 表面測度 $S_h(q_c)$ と各成分の sharp volume
+$V_{m,h}(q_c)$ から，表面エネルギーの Riesz 代表を
+\begin{equation}
+  \langle s_f,w_f\rangle_{M_A}
+  =
+  -\,\mathrm{D}_{q}\!\left(\sigma S_h\right)_{q_c}
+     [T_f(q_c)w_f],
+  \qquad
+  s_f
+  =
+  -M_A^{-1}T_f(q_c)^{T}\nabla_q\!\left(\sigma S_h\right)_{q_c}.
+  \label{eq:capillary_surface_energy_riesz_cochain}
+\end{equation}
+ここで $M_A$ は診断用に任意に選ぶ面質量ではなく，
+標準の圧力面フラックス演算子と随伴な面重みである．
+すなわち，ジャンプを消した標準圧力面フラックスを
+\begin{equation}
+  G_A p
+  \equiv
+  \mathrm{pressure\_fluxes}(p,\rho_c;\mathrm{zero\ jump})
+  \label{eq:capillary_active_pressure_range_operator}
+\end{equation}
+と書くとき，$G_A$ と $M_A$ は
+式~\eqref{eq:pressure_reaction_green_identity} の圧力仕事恒等式を満たす組であり，
+一様係数の場合は通常の面運動量質量に縮約する．
+現在の分相 FCCD/FVM 面発散でこの条件を満たす代表は，
+物理面 $f=(i+1/2,j)$ を例にとれば
+\begin{equation}
+  (G_Ap)_f
+  =
+  A_f\,\frac{p_{i+1,j}-p_{i,j}}{H_f}
+  \quad
+  \text{（各軸で同様；周期軸は物理商空間で隣接値を取る）}
+  \label{eq:variational_pressure_two_point_face}
+\end{equation}
+である．これは低次化のための便宜ではなく，固定した $D_f$ と面係数 $A_f$ に対する
+Riesz 随伴代表である．高次コンパクト勾配を同じ場所で評価しても，
+$D_fG$ が同じスカラー PPE を与えるだけでは式~\eqref{eq:pressure_reaction_green_identity}
+の仕事恒等式は保証されない．
+実際，$\widetilde G=G_A+Z,\ D_fZ=0,\ Z\ne0$ という代表差が残ると，
+PPE は同じ発散を満たしても，補正段の圧力仕事と毛管 Hodge 分解は別の面空間を見てしまう．
+同じ理由で，保存形共通フラックス経路では
+この $D_f$ は第~\ref{sec:cls_advection}節の
+$q,m,\bm{p}_m$ 輸送で使う $D_f$ と同一でなければならない．
+圧力射影が $D_f^{P}\bu_f=0$ を満たしていても，
+輸送が別の $D_f^{\mathrm{tr}}$ で
+$q^{n+1}=q^n-\Delta tD_f^{\mathrm{tr}}F_q$ を評価すれば，
+$D_f^{\mathrm{tr}}\bu_f$ が非零となり，圧力仕事に記録されない質量・運動量圧縮が入る．
+したがって圧力反力の随伴性と共通フラックスの保存性は，
+同じ向き付き面複体を共有する一つの条件である．
+
+この幾何互換条件は，全セルで毎回同じ計算量を払うことを要求しない．
+正則な固定 stratum \(S\) 上では，界面が切る能動セル集合を
+\[
+  A=\{C:\,0<Q_h^S(\phi)_C<|C|\}
+\]
+とし，一面 halo と周期商・壁所有関係を含めた能動表を作る．
+full/empty セルは状態フラグとして保持し，
+符号余裕が失われない限り切断幾何を再評価しない．
+各能動セルで
+\[
+  \gamma_C=\min_{ab\in E_C^\times}|\phi_b-\phi_a|,
+  \qquad
+  m_C=\min_{v\in C}|\phi_v|,
+  \qquad
+  \beta_C=
+  \frac{\|\delta\phi\|_{\infty,C}}{\min(\gamma_C,m_C)}
+  \label{eq:ao_fast_fixed_stratum_beta}
+\]
+を定める．ここで \(E_C^\times\) はゼロ等値線が横切る辺集合である．
+\(\beta_C\le\beta_*<1\) なら，固定 stratum 内の P1 切断写像は局所節点値の滑らかな関数であり，
+\begin{align}
+  Q_h^S(\phi+\delta\phi)_C
+  &=
+  Q_h^S(\phi)_C + J_{q,C}\delta\phi_C + R_{Q,C},
+  &
+  |R_{Q,C}|
+  &\le C_Q |C|\beta_C^2,
+  \label{eq:ao_fast_q_remainder}
+  \\
+  S_h^S(\phi+\delta\phi)_C
+  &=
+  S_h^S(\phi)_C + dS_C\delta\phi_C + R_{S,C},
+  &
+  |R_{S,C}|
+  &\le C_S |\Gamma_C|\beta_C^2 .
+  \label{eq:ao_fast_surface_remainder}
+\end{align}
+定数 \(C_Q,C_S\) は局所 case，格子 aspect 比，および交差余裕にのみ依存し，
+全セル数には依存しない．二次の secant/Hessian 候補を使う場合は，
+同じ stratum 上で \(\Ord{\beta_C^3}\) の提案誤差を持つことを別途検証する．
+ただし式~\eqref{eq:ao_fast_q_remainder}--\eqref{eq:ao_fast_surface_remainder}
+は候補生成の精度条件であり，受理条件ではない．受理時には能動 stratum 上で
+厳密な \(Q_h^S,S_h^S\) を再評価し，
+\[
+  \|Q_h^S(\phi^+)-q^-\|_{H_C^{-1}},
+  \qquad
+  \min_C \min(\gamma_C,m_C),
+  \qquad
+  \Delta S_\Pi
+\]
+を物理体積単位で検査する．
+
+互換射影は，能動 stratum 上で再評価した幾何体積残差，
+符号・交差余裕，および射影仕事を同時に満たす場合だけ受理する．
+どれか一つでも満たさない候補を，別の圧力空間やゼロ駆動継続へ自動的に置き換えてはならない．
+したがって本稿で必要なのは反復手順の細部ではなく，
+受理時に厳密な幾何互換条件と $R_p$ 分解が同時に成立しているという判定である．
+CCD/DCCD/FCCD/UCCD は \(\phi\) 予測，\(W_\eta\)，面状態再構成，
+圧力随伴診断のような滑らかな補助写像には使えるが，
+不連続な \(\theta_C\) を滑らか場として微分したり，
+\(Q_h,J_q,T_q,dS_h\) を置き換えたりしてはならない．
+
+壁面境界を持つ計算では，この面複体の状態空間自体を制限する．
+面速度空間を $F_h$，節点速度への再構成を $R_h$，
+no-slip 壁トレース抽出を $B_h^w$ とし，
+\begin{equation}
+  C_w = B_h^wR_h,\qquad
+  F_w=\ker C_w
+  \label{eq:wall_constrained_face_space}
+\end{equation}
+を定義する．有効な速度状態は
+$F_h$ の任意元ではなく $F_w$ の元でなければならない．
+すなわち，圧力射影で発散を消した後に節点壁速度だけを上書きする経路は，
+輸送に使う face state と公開する nodal state を分裂させるため採用しない．
+壁制約は射影後の修復ではなく，圧力反力を定義する前の状態空間である．
+任意の正定値面計量 $M$ に対する壁 retract は，
+\begin{equation}
+  P_w^{(M)}f
+  =
+  \arg\min_{\eta_f\in F_w}
+  \frac12\|\eta_f-f\|_{M}^{2}
+  \label{eq:wall_metric_projection_problem}
+\end{equation}
+で定義される．この変分問題の KKT 条件を消去すると
+\begin{equation}
+  P_w^{(M)}
+  =
+  I
+  -
+  M^{-1}C_w^T
+  \left(C_wM^{-1}C_w^T\right)^{+}
+  C_w ,
+  \qquad
+  C_wP_w^{(M)}=0,\quad
+  \left(P_w^{(M)}\right)^2=P_w^{(M)} ,
+  \label{eq:wall_metric_retraction}
+\end{equation}
+を得る．さらに
+\[
+  \langle P_w^{(M)}a,b\rangle_M
+  =
+  \langle a,P_w^{(M)}b\rangle_M,\qquad
+  f-P_w^{(M)}f\in M^{-1}\mathcal{R}(C_w^T)
+\]
+である．すなわち，取り除かれた成分は admissible variation
+$\eta_f\in F_w$ に仕事をしない壁反力そのものである．
+この事実が，壁処理を数値的な後置 clamp ではなく
+Lagrange--d'Alembert 型の制約反力として読む根拠である．
+
+計量は役割に応じて二つ現れる．速度状態の保存形輸送には
+\[
+  M_f=Q_f\rho_f,\qquad P_w^{(f)}=P_w^{(M_f)}
+\]
+を使う．ここで $Q_f$ は非一様格子の face control measure である．
+一方，圧力仕事と毛管 Hodge 診断には作用中の圧力計量
+\begin{equation}
+  M_A = Q_f/\alpha_f,\qquad P_w^{(A)}=P_w^{(M_A)}
+  \label{eq:pressure_metric_roles}
+\end{equation}
+を使う．この二つの計量は互換に取り替えるものではない．
+前者は輸送される速度状態の壁制約，後者は
+式~\eqref{eq:pressure_reaction_green_identity} の圧力仕事を測る面計量である．
+
+したがって壁付きの圧力反力代表は全自由度面空間の後置補正ではなく，
+制約空間 $F_w$ 上の随伴として
+\begin{equation}
+  G_w p = P_w^{(A)}G_Ap,\qquad
+  D_w = D_f|_{F_w},\qquad
+  K_wp\equiv D_fP_w^{(A)}G_Ap = D_fP_w^{(f)} f^\dagger
+  \label{eq:restricted_pressure_operator}
+\end{equation}
+を満たす候補として検証する．ここで $f^\dagger$ は予測面速度状態であり，
+補正後の状態は
+\begin{equation}
+  f^{n+1}
+  =
+  P_w^{(f)}f^\dagger
+  -
+  P_w^{(A)}G_Ap,\qquad
+  C_wf^{n+1}=0,\quad D_ff^{n+1}=0
+  \label{eq:restricted_wall_pressure_update}
+\end{equation}
+である．この式は「まず壁を満たす状態空間に入り，その空間内で圧力反力を選ぶ」
+という順序を明示している．
+本稿の標準計算では，この制約付き圧力複体が
+\[
+  \langle G_wp,\eta_f\rangle_{M_A}
+  +
+  \langle p,D_f\eta_f\rangle_{W_p}=0
+  \quad(\eta_f\in F_w)
+\]
+を満たすことを診断条件とし，未検証のまま
+全自由度圧力射影と壁面だけの修復を標準補正として使わない．
+さらに，圧力ポテンシャルで $F_w$ 内の非圧縮補正を本当に張れるためには
+\begin{equation}
+  \operatorname{rank}K_w
+  =
+  \operatorname{rank}(D_f|_{F_w}),\qquad
+  D_fP_w^{(f)}f^\dagger\in\mathcal{R}(K_w)
+  \label{eq:restricted_pressure_rank_gate}
+\end{equation}
+が必要である．圧力の定数ゲージや周期方向の商空間は
+$K_w$ の核として処理し，この rank 条件を満たさない場合は
+壁反力と圧力反力を同じ複体として閉じられない．
+周期軸を含む場合は，この条件を全節点配列ではなく
+周期商空間で読む．周期軸 $a$ では終端節点面は物理境界ではなく
+$q_{N_a}\sim q_0$ という同値類である．
+節点商空間への制限を $R_Q$，同値類代表から全配列への展開を $E_Q$，
+面速度状態商空間への展開を $E_F$ と書く．
+周期軸に法線を持つ face 成分はすでに $N_a$ 個の循環 face だけを持つが，
+周期軸に接する face 成分は終端写像面を持つため，
+\[
+  (E_F f)^{(b)}_{N_a,\ldots}=(E_F f)^{(b)}_{0,\ldots}
+  \qquad (b\ne a)
+\]
+で展開する．このとき混合境界の制約付き complex は
+\begin{equation}
+  D_{\mathrm{per}} = R_QD_hE_F,\qquad
+  C_w=B_wR_hE_F,\qquad
+  G_w=P_w^{(A)}G_AE_Q,\qquad
+  K_w=D_{\mathrm{per}}G_w
+  \label{eq:periodic_wall_quotient_complex}
+\end{equation}
+である．圧力内積の control volume も写像行を捨てるのではなく，
+source 行へ畳み込んでから $R_Q$ で制限する．
+したがって混合周期壁の階数条件は
+\begin{equation}
+  \operatorname{rank}K_w
+  =
+  \operatorname{rank}(D_{\mathrm{per}}|_{F_w})
+  \label{eq:periodic_wall_quotient_rank_gate}
+\end{equation}
+であり，full array 上の
+$\operatorname{rank}(D_hP_wG_A)$ ではない．
+全壁トポロジでは $R_Q=E_Q=E_F=I$ であり，
+この式は式~\eqref{eq:restricted_pressure_rank_gate} に戻る．
+この商空間で測ると，左右周期・上下壁の小格子 probe は
+制限 Green 恒等式と rank 条件を丸め誤差まで満たす．
+
+体積制約の反力も同じ写像で
+\begin{equation}
+  B_{m,f}
+  =
+  M_A^{-1}T_f(q_c)^{T}\nabla_qV_{m,h}(q_c),
+  \qquad
+  B_h=[\,B_{1,f}\ \cdots\ B_{M,f}\,]
+  \label{eq:capillary_component_volume_reactions}
+\end{equation}
+として面空間に置く．式~\eqref{eq:capillary_jump_face_cochain} の
+切断面 Young--Laplace 代表を用いる場合も，
+それが式~\eqref{eq:capillary_surface_energy_riesz_cochain} の
+表面エネルギーの仮想仕事と同じ面上補正量を近似していることが
+受理条件であり，形状が真円・楕円に見えるかでは判定しない．
+
+壁付き診断では，毛管 cochain と体積反力も同じ制約空間で読む．
+すなわち
+\begin{equation}
+  s_{w,f}=P_w^{(A)}s_f,\qquad
+  B_{w,h}=P_w^{(A)}B_h,\qquad
+  \mathcal{R}^{V}_{w,h}
+  =
+  \mathcal{R}(G_w)+\mathcal{R}(B_{w,h})
+  \label{eq:constrained_capillary_reaction_space}
+\end{equation}
+を定義し，制約付き Hodge 残差を
+\begin{equation}
+  h_{\sigma,w}
+  =
+  \left(I-\Pi_{\mathcal{R}^{V}_{w,h}}^{M_A}\right)s_{w,f}
+  \label{eq:constrained_capillary_hodge_residual}
+\end{equation}
+とする．制限 Green 恒等式と rank 条件が成り立つとき，
+$h_{\sigma,w}$ は
+\[
+  h_{\sigma,w}\in F_w,\qquad
+  D_fh_{\sigma,w}=0,\qquad
+  B_{w,h}^TM_Ah_{\sigma,w}=0
+\]
+を満たす．したがって，壁反力・圧力反力・成分体積反力で説明できる静的成分を除いた，
+admissible な毛管駆動だけが残る．これが壁付き静止液滴の速度リング残差や
+上昇気泡の壁近傍残差を，同じ数学的判定で読むための理論支柱である．
+
+このとき，補正段階が使う圧力補正量は
+\begin{equation}
+  a_f(p;\widehat c_\sigma) = G_Ap-\widehat c_{\sigma,f}
+  \label{eq:capillary_pressure_face_cochain}
+\end{equation}
+である．PPE は
+\begin{equation}
+  D_fG_Ap = r_h + D_f\widehat c_{\sigma,f}
+  \label{eq:capillary_affine_ppe_general}
+\end{equation}
+を解くので，静止液滴のように $r_h=0$ であっても
+$D_fa_f=0$ しか強制しない．しかし Young--Laplace 静止平衡の離散条件は
+\begin{equation}
+  \bu^\ast=0,\qquad
+  G_Ap_{\mathrm{YL}}-s_f+B_h\lambda=0
+  \label{eq:discrete_young_laplace_static_face_balance}
+\end{equation}
+であり，単に $D_fa_f=0$ であることより強い．
+ここで $\lambda$ は各液滴成分の体積制約反力である．
+式~\eqref{eq:discrete_young_laplace_static_face_balance} が破れると，
+残差が体積保存・非圧縮を満たす許容速度空間に残る．
+それは静止解では寄生流れの原因であり，非平衡界面では
+表面エネルギーが速度場へ渡す物理的な毛管加速度である．
+
+この条件を，圧力で表せる成分と残りの成分への面空間の直交分解（Hodge 分解）で書く．圧力勾配が到達できる面上補正量の空間を
+\begin{equation}
+  \mathcal{R}_h
+  =
+  \left\{
+    G_A q_h\;\middle|\;
+    q_h\in\mathcal{Q}_h,\ \langle q_h,1\rangle_h=0
+  \right\}
+  \label{eq:capillary_pressure_gradient_range}
+\end{equation}
+とし，体積反力を含む静的反力空間を
+\begin{equation}
+  \mathcal{R}_{h}^{V}
+  =
+  \mathcal{R}_h+\operatorname{range}(B_h)
+  \label{eq:capillary_augmented_reaction_range}
+\end{equation}
+とする．任意の毛管補正量は $M_A$ 内積で
+\begin{equation}
+  s_f
+  =
+  \Pi_{\mathcal{R}_{h}^{V}}^{M_A}s_f
+  +h_{\sigma,f},
+  \qquad
+  h_{\sigma,f}
+  =
+  H_{\mathrm{aug}}s_f
+  \label{eq:capillary_hodge_decomposition}
+\end{equation}
+と分解される．$h_{\sigma,f}$ は
+\[
+  D_f h_{\sigma,f}=0,\qquad B_h^T M_A h_{\sigma,f}=0
+\]
+を満たす体積保存・発散なし成分である．
+静的液滴の受理条件は $h_{\sigma,f}=0$ であり，
+非平衡界面の毛管駆動条件は $h_{\sigma,f}\ne0$ である．
+この判定は連結成分ごとの体積制約と面空間の直交性で決まり，
+円・楕円などの形状名を使わない．
+
+標準補正で用いる成分反力は，単に $s_f$ を
+$\mathcal{R}_h$ へ射影するのではなく，次の鞍点条件で決める：
+\begin{equation}
+  h_f=s_f-G_Ap-B_h\mu,\qquad
+  D_fh_f=0,\qquad
+  B_h^TM_Ah_f=0 .
+  \label{eq:capillary_component_saddle}
+\end{equation}
+この式は，圧力反力と成分体積反力を取り除いたあとに残る
+許容毛管駆動が，非圧縮かつ体積保存の仮想速度空間へ
+直交射影されたものであることを意味する．
+計算上はこの鞍点系を PPE 求解のみで消去する．任意の面上補正量 $c$ に対し，
+\begin{equation}
+  L_A(c)=G_Ap_c,\qquad
+  D_fG_Ap_c=D_fc,\qquad
+  Z_A(c)=c-L_A(c)
+  \label{eq:capillary_range_projection}
+\end{equation}
+と定義する．$Z_A(c)$ は現在の圧力勾配で表せる範囲から外れた残差である．
+このとき成分鞍点系は小さな線形系
+\begin{equation}
+  C_{ij}=Z_A(B_i)^TM_AZ_A(B_j),\qquad
+  r_i=Z_A(B_i)^TM_AZ_A(s),\qquad
+  C\mu=r
+  \label{eq:capillary_component_saddle_elimination}
+\end{equation}
+へ縮約され，
+ここで $C_{ij}$ と $r_i$ は圧力勾配値域へ射影した後の
+Hodge 残差同士の計量で組む．
+$B_i^TM_AZ_A(B_j)$ のように未射影の成分と射影後成分を混ぜる式は，
+$Z_A$ が厳密な自己随伴射影である場合にのみ等価であり，
+実際の PPE 許容残差下では正定値な成分 Gram 行列を壊し得る．
+\begin{equation}
+  \widehat c_{\sigma,f}=s_f-B_h\mu,\qquad
+  h_{\sigma,f}=Z_A(s_f)-Z_A(B_h)\mu
+  \label{eq:capillary_corrected_cochain_and_drive}
+\end{equation}
+を得る．PPE 右辺と第7段の補正段に渡す標準補正量は
+$\widehat c_{\sigma,f}$ であり，最終的な面加速度は
+$h_{\sigma,f}$ である．
+
+一方，式~\eqref{eq:capillary_range_projection} は，同じ PPE 演算子と
+同じゲージを用いる\emph{診断代表}でもある．
+式~\eqref{eq:capillary_range_projection} は新しい物理モデルでも低次有限差分の代替経路でもない．
+PPE と補正段がすでに採用している $D_fG_A$ の到達範囲に
+毛管補正量の発散右辺を写したとき，どの成分が圧力反力で表せるかを測る．
+したがって
+\begin{equation}
+  D_fL_A(c) = D_fc
+  \label{eq:capillary_range_projection_same_rhs}
+\end{equation}
+が解法許容値まで成り立ち，式~\eqref{eq:capillary_affine_ppe_general}
+の発散右辺は変わらない．しかし，ここで
+$s_f\leftarrow L_A(s_f)$ と置換してはならない．
+ゼロ予測速度の非平衡界面では，この置換が
+$h_{\sigma,f}$ を代数的に削除し，表面エネルギーが作る加速度を消すからである．
+圧力で表せる範囲へ射影した後の面釣合
+\begin{equation}
+  a_f^{\mathrm{diag}}(p)
+  =
+  G_Ap-L_A(s_f)
+  \label{eq:range_projected_capillary_face_balance}
+\end{equation}
+は，圧力求解と毛管補正量の到達範囲整合を測るための診断量であり，
+標準補正は式~\eqref{eq:capillary_pressure_face_cochain} の
+成分補正済み補正量 $\widehat c_{\sigma,f}$ を用いる．
+
+本稿の診断量は
+\begin{equation}
+  \eta_H
+  =
+  \frac{\|h_{\sigma,f}\|_{M_A}}
+       {\max(\|s_f\|_{M_A},\epsilon_H)},\qquad
+  \eta_R
+  =
+  \frac{\|Z_A(s_f)\|_{M_A}}
+       {\max(\|s_f\|_{M_A},\epsilon_H)},\qquad
+  \eta_a
+  =
+  \|G_Ap-\widehat c_{\sigma,f}\|_{M_A}
+  \label{eq:capillary_hodge_gate}
+\end{equation}
+である．$\eta_H$ は体積制約付き静的反力で消せない
+表面エネルギー補正量の大きさであり，静止解では
+$\eta_H\approx0$，振動すべき非平衡界面では $\eta_H$ が非零でなければならない．
+$\eta_R$ は成分反力を除く前の未補正表面補正量が
+圧力勾配で表せる範囲の外へどれだけ出ているかを測る原因診断，
+$\eta_a$ は実際に補正段階へ渡る補正済み補正量の
+面釣合ノルムである．
+圧力ジャンプ形式では非保存的な表面せん断や Marangoni 力を
+$h_{\sigma,f}$ として暗黙に混入してはならない．そのような物理を扱う場合は，
+圧力ジャンプとは別の接線応力項として運動量方程式に明示的に入れる必要がある．
+また，診断量はそれが本当に作用している operator と同じ空間で定義される場合に限り
+物理判断へ用いる．active な圧力ジャンプ経路では，
+切断面 Young--Laplace 代表や表面エネルギー Riesz 代表が実効毛管 cochain であり，
+節点 $\psi$ 直接曲率の最大値をそのまま標準毛管力の大きさとは読まない．
+同様に，PPE 右辺の診断は，closed-interface 源と履歴圧力面加速度を加えた後，
+実際に solver へ渡す右辺で定義する：
+\begin{equation}
+  b_p^{\mathrm{diag}}
+  =
+  b_p^{\mathrm{pred}}
+  +D_f\widehat c_{\sigma,f}
+  +D_f a_{p,f}^{\,n}
+  \quad\text{（該当項がある場合）}.
+  \label{eq:diagnostic_contract_active_route}
+\end{equation}
+CSF 体積力を使わない圧力ジャンプ経路では，
+節点力との差を取る旧来の balanced-force residual は
+作用中の毛管共鎖の残差ではない．
+本稿の標準経路では，表面張力を
+式~\eqref{eq:capillary_surface_energy_riesz_cochain} の
+表面エネルギーの仮想仕事として構成し，
+式~\eqref{eq:capillary_component_saddle}--\eqref{eq:capillary_hodge_gate} の
+圧力仕事と随伴な毛管平衡判定で
+静的平衡・非平衡駆動・離散不整合を同じ面空間上で分離する．
+
+同じ理由で，圧力スナップショットの表示も面上の加速度と整合していなければならない．
+圧力ジャンプ経路で可視化すべき圧力は，保存された
+$a_{p,f}=A_f(G_fp-B_f(j))$ から同相内グラフ勾配を最小二乗で復元した
+同相内圧力代表である．界面帯の未補正節点値はジャンプ補正前の内部自由度であり，
+同相内スカラー圧力の代表ではない．したがって界面帯を ``未定義'' として隠す表示や，
+未補正節点値をそのまま相内圧力と読む表示は，本章の圧力代表から外す．
+圧力スナップショットは計算経路ではなく診断代表であり，PPE と速度補正の閉包は
+保存された面上加速度 $a_{p,f}$ によって定義される．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{格子再生成後の再投影における圧力ジャンプ情報の分離}
+\label{sec:split_ppe_regrid_guard}
+% ─────────────────────────────────────────────────────────────────────────────
+
+界面適合格子の動的再構築（\S\ref{sec:grid_ale}）では
+速度再投影 PPE が圧力射影段階に先立つ整合化問題として現れる．
+直前時刻の圧力ジャンプ $J_p^\chi$（典型的には $j_{gl}^n$）を継承すると
+不連続合成圧力が再投影方程式内で微分され，人工運動エネルギーを生む．
+したがって再投影 PPE の閉包条件には
+界面ジャンプ情報（$\psi,\kappa_{lg},\sigma,j_{gl}$）を含めず，
+圧力射影段階の PPE のみが $[p]_\Gamma$ を保持する分離原則を採る．
+格子再生成後は界面面幾何データ（界面交差位置，$s_f$，$H_f$，$\alpha_f$，$j_f$）と
+HFE 延長に必要な片側データを補間値として継承せず，
+現在の $\phi,\psi$ と格子幾何データから式~\eqref{eq:regrid_face_geometry} として再定義する．
+これは $\psi$ の直接線形補間とは別の数学的要請である．
+式~\eqref{eq:ale_grid_gcl}--\eqref{eq:ale_conservative_update} に整合する全変数の再写像が数学的に定義されない限り，
+格子再生成を含む圧力ジャンプ閉包の完全性は主張しない．

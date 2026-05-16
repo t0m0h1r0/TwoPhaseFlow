@@ -1,0 +1,156 @@
+\subsection{欠陥補正法：高次残差を固定点にする共通原理}
+\label{sec:defect_correction_main}
+
+本稿では，欠陥補正法（Defect Correction; DC）を
+\textbf{時間積分法そのもの}ではなく，各時間ステップで現れる
+高次空間離散の線形系を効率よく解くための共通補正原理として用いる．
+すなわち，高次演算子 $A_H$ で離散化された線形系
+\begin{equation}
+  A_H x = b
+  \label{eq:dc_target_system}
+\end{equation}
+に対し，残差（欠陥）は必ず $A_H$ で評価し，補正方程式だけを
+より安価で解きやすい近似演算子 $A_L$ で解く．
+$A_L$ は収束経路を決める補助演算子であり，収束先は常に
+式~\eqref{eq:dc_target_system} の高次系である．
+
+\subsubsection{共通三段階}
+\label{sec:dc_algorithm}
+
+初期推定 $x^{(0)}$ から以下を反復する：
+\begin{equation}
+  \boxed{%
+  \begin{aligned}
+    &\textbf{段階 1（欠陥の算出）：}\quad
+      r^{(m)} = b - A_H x^{(m)}
+    \\[4pt]
+    &\textbf{段階 2（補正方程式）：}\quad
+      A_L\,\delta x^{(m+1)} = r^{(m)}
+    \\[4pt]
+    &\textbf{段階 3（解の更新）：}\quad
+      x^{(m+1)} = x^{(m)} + \omega\,\delta x^{(m+1)}
+  \end{aligned}
+  }
+  \label{eq:dc_three_step}
+\end{equation}
+ここで $\omega$ は緩和係数である．反復行列は
+$I-\omega A_L^{-1}A_H$ であり，収束には
+\begin{equation}
+  \rho\!\left(I-\omega A_L^{-1}A_H\right) < 1
+  \label{eq:dc_contract_common}
+\end{equation}
+が必要である．この条件は「$A_L$ が $A_H$ と同じ解を持つ」ことを要求しない．
+必要なのは，$A_L^{-1}$ が $A_H$ の誤差成分を縮小する十分よい近似逆作用であることだけである．
+
+\subsubsection{精度受理条件}
+\label{sec:dc_accuracy}
+
+DC の精度は低次演算子 $A_L$ の形式精度ではなく，
+\textbf{高次演算子 $A_H$ に対する外側残差}で決まる．
+反復停止時に
+\begin{equation}
+  \|b-A_Hx^{(m)}\| \le \varepsilon_{\mathrm{DC}}
+  \label{eq:dc_accuracy_contract}
+\end{equation}
+を満たせば，線形解法誤差は高次離散系
+\eqref{eq:dc_target_system} の解法許容誤差 $\varepsilon_{\mathrm{DC}}$ に抑えられる．
+したがって $A_L$ を低次化・因子化・スカラー近似しても，
+それが変えるのは収束率と計算コストであり，
+十分な外側残差低下を確認する限り，空間離散 $A_H$ の設計精度は維持される．
+
+本稿ではこの受理条件を二箇所で用いる．第一に，粘性項の implicit-BDF2 では
+$A_H=I-\tau\mathcal{L}_{\nu,H}$ とし，低次 Helmholtz $A_L$ で補正する
+（§\ref{sec:time_viscous}）．第二に，PPE では $A_H=L_H$，
+$A_L=L_L$ とし，CCD Poisson の高次残差を低次補助 Poisson で補正する
+（§\ref{sec:defect_correction_ppe}）．この順序で述べる理由は，
+DC が PPE 固有の工夫ではなく，高次残差を固定点にする共通原理だからである．
+
+\subsection{粘性項：implicit-BDF2 + 欠陥補正}
+\label{sec:time_viscous}
+
+本稿の粘性項処理は \textbf{implicit-BDF2 法 + 欠陥補正（DC）}
+である．予測子式 \eqref{eq:predictor_imex_bdf2} の粘性ブロック
+$\mathcal{V}(\bu^*)$ を完全陰的に扱うことで純粘性 CFL 制約
+$\nu\Delta t/h^2=\Ord{1}$ を
+消滅させる．純陽的処理では水--空気級の $h$ 縮小と
+$\nu\Delta t/h^2=\Ord{1}$ の安定条件により
+$\Delta t$ が対流 CFL より 1--2 桁厳しくなり実用不可となる．
+
+\paragraph{Helmholtz 形主定式}
+BDF2 の係数 $\gamma=2/3$ で陰的化した粘性ブロックは
+\begin{equation}
+  \bigl(I - \gamma\Delta t\,\mathcal{L}_{\nu}\bigr)\bu^* = \mathcal{R}^{n,n-1},
+  \qquad
+  \mathcal{L}_{\nu} = \rho^{-1}\bnabla\cdot\bigl[\mu(\bnabla + \bnabla^T)\bigr]
+  \label{eq:helmholtz_implicit_bdf2}
+\end{equation}
+の Helmholtz 形となる．ここで $\mathcal{R}^{n,n-1}$ は式~\eqref{eq:predictor_imex_bdf2}
+右辺の対流外挿 $-\mathcal{C}^{\mathrm{EXT2}}$ と浮力残差 $\bm{a}^{n+1}_{\mathrm{res}}$
+および BDF2 履歴項 $(4\bu^n - \bu^{n-1})/3$ をまとめたものである．
+左辺演算子 $A = I - \gamma\Delta t\,\mathcal{L}_{\nu}$ は，等密度・等粘性の極限で
+$L^2$ 内積に関し対称正定値となるが，変密度 $\rho^{-1}$ 重みおよび
+$\mu(\bnabla+\bnabla^T)$ の非可換構造により一般には非対称である
+（$\rho$--重み付き内積 $(u,v)_\rho:=\int \rho\,u\cdot v\,dV$ の下では SPD と
+なる構成も知られるが，本稿では標準 $L^2$ 内積で離散化する）．
+この非対称性を持つ全応力 Helmholtz 系に対し，
+§\ref{sec:defect_correction_main} の欠陥補正原理を適用する．
+
+\paragraph{粘性 Helmholtz DC}
+\label{sec:viscous_bdf2_dc}
+高次演算子を
+$A_H=I-\tau\mathcal{L}_{\nu,H}$（$\tau=\gamma\Delta t$）とし，
+低次補正演算子を $A_L=I-\tau\mathcal{L}_{\nu,L}$ とする．
+$\mathcal{L}_{\nu,H}$ は §\ref{sec:viscous_3layer} の CCD 領域内部 +
+界面法線--接線応力閉包で評価し，
+$\mathcal{L}_{\nu,L}$ は同じ $\mu,\rho$，同じ境界位相，同じ界面帯を共有する
+2 次の対角応力拡散 Helmholtz とする：
+\begin{equation}
+  r^{(m)} = \mathcal{R}^{n,n-1}-A_H\bu^{(m)},\qquad
+  A_L\delta\bu^{(m+1)} = r^{(m)},\qquad
+  \bu^{(m+1)}=\bu^{(m)}+\omega\delta\bu^{(m+1)} .
+  \label{eq:viscous_bdf2_dc}
+\end{equation}
+固定点は $A_H\bu=\mathcal{R}^{n,n-1}$ そのものであるため，
+$A_L$ は到達先の精度ではなく収束経路だけを決める．
+収束条件は
+\begin{equation}
+  \rho\!\left(I-\omega A_L^{-1}A_H\right)<1
+  \label{eq:viscous_bdf2_dc_contract}
+\end{equation}
+であり，Helmholtz の単位行列項により Poisson 型 PPE より低周波の零空間問題は弱い．
+一方で大きな $\tau$，急峻な $\mu/\rho$ ジャンプ，界面帯の閉包切替では
+$A_H$ と $A_L$ のスペクトル距離が拡大するため，
+低次側を定数係数 Poisson へ落とすことは禁止し，同じ $\mu,\rho$ と境界制約を持つ
+Helmholtz 補正解として構成する．
+
+\paragraph{低次 Helmholtz の選択と精度}
+粘性 DC にしても精度上の問題が生じない条件は明確である：
+外側残差 $r=b-A_H\bu$ を全応力の高次演算子で評価し，
+式~\eqref{eq:dc_accuracy_contract} を満たすまで補正することである．
+低次 Helmholtz は成分別の対角応力拡散でも，
+共通スカラー Helmholtz 近似でもよい．2 次元では応力テンソルの対角重み
+$(2,1)$ と $(1,2)$ に対し，スカラー近似
+$A_S=I-\tau c\,\rho^{-1}\bnabla\cdot(\mu\bnabla)$，$c=(d+1)/d=3/2$
+は成分別低次演算子とスペクトル同値である．したがって $A_S$ は固定点を変えず，
+補正方程式の近似逆作用を安価にするだけである．
+いずれの低次補正演算子を用いる場合でも，高次 $A_H$ 残差で精度を判定する．
+
+\paragraph{安定性：A-stable と粘性 CFL 消滅}
+BDF2 は A-stable (Hairer--Wanner~\cite{HairerWanner1996} Sec.~V.1) であり，
+粘性ブロックを完全陰的に扱うことで
+純粘性拡散による粘性 CFL $\mathrm{CFL}_{\nu}=\nu\Delta t/h^2$
+は時間刻み制約から消滅する．
+したがって本段落が述べるのは粘性由来の上限が消えることだけであり，
+最終的な時間刻みは式~\eqref{eq:dt_per_term} の項別最小値で決まる．
+
+\paragraph{クロス微分項の DC 残差処理}
+implicit-BDF2 + DC 経路では，変粘性応力テンソルのクロス微分項
+$\mathcal{D}_{\mathrm{c}}$ を高次残差 $A_H\bu^{(m)}$ の中で評価する．
+したがって固定点は全応力演算子の陰解であり，クロス項の時間遅れは生じない．
+一方，低次補正 $A_L$ は補正方程式を分離可能にするため速度成分ごとの対角応力拡散に分け，
+クロス結合は DC 残差で補正する．
+このとき粘性項の時間精度は BDF2 の $\Ord{\Delta t^2}$ に一致する．
+界面近傍で $\mu$ が急変しても，クロス項を時間的に外挿して別扱いするのではなく，
+同じ高次残差の中で評価するため，粘性由来の 1 次分離誤差を導入しない．
+
+% -------------------------------------------------------------------------------

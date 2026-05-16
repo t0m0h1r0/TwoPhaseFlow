@@ -390,11 +390,11 @@ All under `src/twophase/pressure/*.py` forward to `pressure/solvers/*.py`:
 | `06_scheme_per_variable.tex` + `06b_advection.tex` + `06c_fccd_advection.tex` + `06d_viscous_3layer.tex` | §6 | Per-variable spatial discretization, CLS/momentum FCCD advection, viscous 3-layer |
 | `07_time_integration.tex` | §7 | TVD-RK3/IMEX-BDF2/CN defect-correction, velocity-PPE ordering, CFL |
 | `08_collocate.tex` + `08b_pressure.tex` + `08c_bf_failure.tex` + `08d_bf_seven_principles.tex` + `08e_fccd_bf.tex` | §8 | Collocated-grid pressure coupling, BF failure modes/principles, pressure-jump face cochain, FCCD BF sub-system |
-| `09_ccd_poisson.tex` + `09b_split_ppe.tex` + `09c_hfe.tex` + `09d_defect_correction.tex` + `09e_ppe_bc.tex` + `09f_pressure_summary.tex` | §9 | Variable-density PPE, split-PPE, HFE, defect correction, BC |
-| `10_grid.tex` + `10b_ccd_extensions.tex` + `10c_fccd_nonuniform.tex` + `10d_ridge_eikonal_nonuniform.tex` | §10 | Non-uniform interface-fitted grid, CCD/FCCD/Ridge-Eikonal non-uniform extensions |
-| `11_full_algorithm.tex` + `11c_dccd_bootstrap.tex` + `11d_pure_fccd_dns.tex` | §11 | Full solver loop, operator mapping, DCCD bootstrap, pure FCCD DNS architecture |
+| `09_ccd_poisson.tex` + `09b1_split_ppe.tex` + `09b2_fccd_projection.tex` + `09b3_pressure_jump_form.tex` + `09b4_capillary_work_state.tex` + `09c_hfe.tex` + `09d_defect_correction.tex` + `09e_ppe_bc.tex` + `09f_pressure_summary.tex` | §9 | Variable-density PPE, split-PPE, HFE, defect correction, BC |
+| `10_grid.tex` + `10a1_2d_tracking_grid.tex` + `10a2_epsilon_width_constraints.tex` + `10b_ccd_extensions.tex` + `10c_fccd_nonuniform.tex` + `10d_ridge_eikonal_nonuniform.tex` | §10 | Non-uniform interface-fitted grid, CCD/FCCD/Ridge-Eikonal non-uniform extensions |
+| `11_full_algorithm.tex` + `11b1_full_timestep.tex` + `11b2_state_contracts.tex` + `11c_dccd_bootstrap.tex` + `11d_pure_fccd_dns.tex` | §11 | Full solver loop, operator mapping, DCCD bootstrap, pure FCCD DNS architecture |
 | `12_component_verification.tex` (+ sub-files) | §12 | Component-level mathematical verification (CCD/DCCD/curvature/CLS/HFE/PPE/RK3) |
-| `13_verification.tex` + `13b`–`13i` | §13 | NS physical consistency: force balance, conservation, accuracy, coupling, limits, error budget |
+| `13_verification.tex` + `13a`–`13d` + `13e1`–`13e2` + `13f` | §13 | NS physical consistency: force balance, conservation, accuracy, coupling, limits, error budget |
 | `14_benchmarks.tex` | §14 | Multi-phase flow benchmarks (capillary wave, rising bubble, Taylor deformation) |
 | `15_conclusion.tex` | §15 | Summary, future work |
 | `appendix_*_s*.tex` (21 files, A–E) | Appendix | Interface math, CCD coefficients, implementation, schemes, solver analysis |

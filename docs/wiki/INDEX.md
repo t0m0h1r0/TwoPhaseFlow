@@ -1,4 +1,4 @@
-# Wiki Index — 389 entries
+# Wiki Index — 390 entries
 
 ## Active Retrieval Gate
 
@@ -51,7 +51,10 @@ their curation notes. For wiki-wide inventory and curation passes, use
 before making broad wiki changes. For meta-prompt or agent evolution from wiki
 knowledge, use [WIKI-M-033](meta/WIKI-M-033.md) so candidate lessons are
 distilled into source-traced behavior packets, JIT references, and prompt audit
-gates instead of copied into generated prompts.
+gates instead of copied into generated prompts. For paper review and revision
+passes, use [WIKI-M-034](meta/WIKI-M-034.md) so readability work is judged by
+cognitive load, box necessity, section responsibility, naming consistency, and
+validation rather than decoration.
 
 ## Theory (173)
 
@@ -383,7 +386,7 @@ gates instead of copied into generated prompts.
 | [WIKI-P-018](paper/WIKI-P-018.md) | Chapters 1-13 Recent Paper-Theory Contract Digest |
 | [WIKI-P-019](paper/WIKI-P-019.md) | Chapter 14 Active-Geometry Capillary Benchmark Paper Contract |
 
-## Meta (33)
+## Meta (34)
 
 | REF-ID | Title |
 |--------|-------|
@@ -420,6 +423,7 @@ gates instead of copied into generated prompts.
 | [WIKI-M-031](meta/WIKI-M-031.md) | Review Artifacts Close the Loop with Finding, Fix, and Validation |
 | [WIKI-M-032](meta/WIKI-M-032.md) | Wiki Inventory Curation Uses Layered Evidence Passes |
 | [WIKI-M-033](meta/WIKI-M-033.md) | Meta-Prompt Evolution Uses Wiki Packets and Prompt Audit Gates |
+| [WIKI-M-034](meta/WIKI-M-034.md) | Paper Review Revisions Should Reduce Cognitive Load, Not Add Decoration |
 
 ## Code (46)
 

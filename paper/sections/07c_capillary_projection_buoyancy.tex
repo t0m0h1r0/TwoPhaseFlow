@@ -1,0 +1,258 @@
+\subsection{界面張力項：表面エネルギー仮想仕事に基づく毛管閉包}
+\label{sec:time_csf}
+% -------------------------------------------------------------------------------
+
+本稿の表面張力は，連続表面力
+（Continuum Surface Force; CSF; Brackbill--Kothe--Zemach \cite{Brackbill1992}）型の運動量右辺体積力
+として陽的に加えるのではなく，\textbf{表面エネルギーの仮想仕事を
+PPE/補正段と同じ面補正枠へ写した毛管補正量} として扱う．
+Young--Laplace 圧力ジャンプ $j_{gl}=-\sigma\kappa_{lg}$ はその切断面代表であるが，
+標準毛管力の受理条件は形状名や未補正曲率値ではなく，
+再初期化前の移流後状態における表面エネルギーの仮想仕事が
+同じ圧力仕事の面空間で定義されることである．
+さらに成分ごとの体積制約反力を成分体積制約付き鞍点系で取り除き，
+静的平衡成分と非平衡の毛管駆動を分離する．本節は時間積分の
+観点でその因果順序と時間次数への寄与を整理する．物理的な界面張力 CFL 制約は
+界面波の解像条件として §\ref{sec:val_capillary} で扱う．
+
+\noindent\textbf{$\psi^{n+1}$ 先行確定の前提：}
+本節の入力となる界面位置 $\psi^{n+1}$ は §\ref{sec:time_level1}
+（式~\eqref{eq:cls_tvd_rk3_psi}）で TVD-RK3 により先行更新済みであり，
+密度 $\rho^{n+1}=\rho_g+(\rho_l-\rho_g)\psi^{n+1}$ と曲率 $\kappa_{lg}^{n+1}$ が
+確定値として PPE 右辺に与えられる．ただし毛管仕事の幾何状態は
+Ridge--Eikonal 射影後の再初期化済み場ではなく，
+保存形移流が実際に運んだ $q_c$（再初期化前の移流後場）である．
+再初期化の幾何変化は §\ref{ch:cls_specific} の射影誤差として別勘定に置き，
+毛管仕事と混ぜない．
+
+\paragraph{PPE 右辺の圧力ジャンプ}
+界面 $\Gamma$ における Young--Laplace 条件 $j_{gl}=p_g-p_l=-\sigma\kappa_{lg}$
+を法線方向に展開すると，圧力勾配のジャンプは
+\begin{equation}
+  \bigl[\bnabla p\cdot\hat{\bm n}_{lg}\bigr]_\Gamma
+  = \bnabla_\Gamma\!\cdot(J_p\hat{\bm n}_{lg}),
+  \qquad J_p=j_{gl}
+  \label{eq:pressure_jump_csf}
+\end{equation}
+で与えられる（$\delta_\Gamma$ は $\Gamma$ 上の表面 Dirac，
+$\psi$ は CLS フェーズ場）．ジャンプ分解形式は，予測子の右辺には
+体積力を加えず，補正子で解く PPE
+\begin{equation}
+  \bnabla\!\cdot\!\bigl(\rho^{-1}\bnabla\delta p^{n+1}\bigr)
+  = \frac{1}{\Delta t}\bnabla\!\cdot \bu^{*}
+  \;+\;\bnabla\!\cdot\!\bigl(\rho^{-1}J_p^{n+1}\,\delta_\Gamma\,\hat{\bm n}_{lg}\bigr)
+  \label{eq:ppe_jump_decomposed}
+\end{equation}
+の \textbf{右辺第 2 項} として表面張力寄与を埋め込む．
+$\kappa_{lg}^{n+1}$ は TVD-RK3 で更新済みの $\psi^{n+1}$ から FCCD 評価し
+（§\ref{sec:CCD} の曲率定式参照），予測子段では $\kappa_{lg}^{n}$ を
+用いない．
+
+\paragraph{表面エネルギー仮想仕事と成分体積制約付き鞍点系}
+式~\eqref{eq:ppe_jump_decomposed} は連続式の所属を示すが，
+離散補正で使う毛管補正量は未補正ジャンプの文字通りの差分ではなく，
+式~\eqref{eq:capillary_surface_energy_riesz_cochain} の
+表面エネルギー Riesz 代表 $s_f$ である．
+圧力反力が到達できる有効範囲を $G_Ap$，成分体積反力を $B_h\mu$ とすると，
+標準補正量は
+\[
+  \widehat c_{\sigma,f}=s_f-B_h\mu
+\]
+であり，$\mu$ は
+式~\eqref{eq:capillary_component_saddle}--\eqref{eq:capillary_component_saddle_elimination}
+の圧力仕事と随伴な鞍点系で決める．
+この処理は発散右辺を変えずに非圧縮・体積保存の仮想速度空間へ整合させるものであり，
+非平衡界面の圧力反力に吸収されない成分
+$h_{\sigma,f}$ を削除しない．
+式~\eqref{eq:capillary_range_projection} の $Z_A$ または $L_A$ は，
+静的平衡判定量と原因診断の代表であって，
+$s_f$ を圧力勾配の到達範囲へ事前に置換する操作ではない．
+壁付き計算では同じ記述を full face 空間ではなく
+式~\eqref{eq:wall_constrained_face_space} の $F_w$ 上で読む．
+壁トレースを満たさない面成分を圧力補正後に消す方法は，
+非圧縮射影と no-slip 射影を別々の状態空間で解くことになり，
+保存形共通フラックスの時間履歴に入れてはならない．
+
+この面補正量を予測面速度へ入れる際の次元も固定する．
+アクティブ幾何毛管分解では，毛管共変量はまず
+式~\eqref{eq:ao_hodge_divided_face_increment} の幾何面 Hodge 逆で
+面加速度（または $\Delta t$ 倍の面速度増分）へ写される．
+その後，投影面空間へ渡す写像は
+式~\eqref{eq:ao_projection_face_bridge} の面間補間だけであり，
+ここで面長による再除算を行わない．
+すなわち，表面エネルギー仕事を面共変量として定義する段階と，
+運動量予測子へ入る面加速度を定義する段階を混同しない．
+
+\paragraph{同時刻結合による分離誤差の抑制}
+本稿では予測子に表面張力体積力を先入れせず，PPE 段で
+$J_p^{n+1}$，$\widehat c_{\sigma,f}^{\,n+1}$，$\delta p^{n+1}$ を
+同時刻で結合する．これにより
+$\kappa_{lg}$，圧力増分，速度補正が同じ界面位置 $\psi^{n+1}$ を参照し，
+滑らかな界面・均質流域では圧力補正の設計次数と整合する．
+一方，圧力ジャンプと成分体積制約付き射影を含む二相結合系では，
+界面帯の低正則性が実効時間次数を律速しうるため，
+この段落は「全結合系が常に純粋 2 次」とは主張しない．
+Hysing らの 2 次元上昇気泡検証問題 \cite{Hysing2009} は，
+寄生流速と界面応力閉包を同一 $\Delta t$・同一空間離散で
+評価するための基準問題として用いる．
+
+\paragraph{採用構成の対象範囲}
+水--空気級の密度比（$\rho_l/\rho_g = 10^3$）では，界面張力を
+圧力ジャンプとして PPE に内蔵し，さらに表面エネルギーの仮想仕事を
+圧力仕事と随伴な成分体積制約付き鞍点系で閉じることが，
+静的寄生流抑制と非平衡毛管駆動の保持の双方に必要である．
+したがって本稿の時間積分設計では，
+表面エネルギー仮想仕事に基づく毛管閉包 + 成分体積制約付き鞍点系を表面張力項の標準構成とする．
+
+% -------------------------------------------------------------------------------
+% 毛管波時間刻み制約は物理解像条件であるため検証章で扱う．
+% -------------------------------------------------------------------------------
+\phantomsection\label{sec:time_capillary}
+
+\noindent\textbf{物理的 CFL 制約の所属}：
+表面張力に起因する時間刻み制約（界面波分散関係に基づく上限~\cite{DennerVanWachem2015}）は
+本節の同時刻圧力ジャンプ閉包とは独立に残る\textbf{物理解像}条件であり，
+分散関係・係数の選定・検証数値は検証章
+（§\ref{sec:val_capillary}）で一括して扱う．本章では以降
+$\Delta t_\sigma$ と総称し，律速合成式
+（式~\eqref{eq:dt_per_term}）の一項として参照する．
+
+% -------------------------------------------------------------------------------
+\subsection{圧力投影：IPC + FCCD PPE}
+\label{sec:ipc_derivation}
+% -------------------------------------------------------------------------------
+
+IPC 法では，圧力 Poisson 方程式において絶対圧力 $p^{n+1}$ の代わりに
+\textbf{圧力増分 $\delta p \equiv p^{n+1} - p^n$} を未知変数として解く
+（予測速度を発散自由速度へ写す射影過程）：
+\[
+  \Delta t_{\mathrm{proj}} =
+  \begin{cases}
+    \gamma\Delta t,\quad \gamma=2/3, & \text{IMEX-BDF2 ステップ},\\
+    \Delta t, & \text{BDF1 起動ステップ}.
+  \end{cases}
+\]
+\begin{align*}
+  &\text{PPE：}\quad \bnabla\cdot\!\left(\frac{1}{\rho^{n+1}}\bnabla(\delta p)\right)
+    = \frac{1}{\Delta t_{\mathrm{proj}}}\bnabla\cdot\bu^*\\
+  &\text{補正：}\quad \bu^{n+1} = \bu^* - \frac{\Delta t_{\mathrm{proj}}}{\rho^{n+1}}\bnabla(\delta p),
+  \qquad p^{n+1} = p^n + \delta p
+\end{align*}
+CCD 演算子 $\mathcal{L}^{\rho}_{\mathrm{CCD}}$ は絶対圧力版と\textbf{完全に同一}であり，
+求解対象変数が $p^{n+1}$ から $\delta p$ に変わるだけである．
+この定式化により，標準 Chorin 法~\cite{Chorin1968}の人工的圧力境界層に起因する
+$\Ord{\Delta t}$ スプリッティング誤差が $\Ord{\Delta t^2}$ に低減される
+（Guermond et al., \textit{Comput. Methods Appl. Mech. Engrg.} \textbf{195}, 2006~\cite{Guermond2006}）．
+
+\noindent\textbf{証明の概略（主要項のみ）：}
+予測子は対流 EXT2，粘性 implicit-BDF2，浮力残差の同時刻評価により，
+圧力投影前の速度を $\Ord{\Delta t^2}$ で近似する．
+PPE は
+$\bnabla\cdot\bigl(\rho^{-1}\bnabla\delta p\bigr)=\bnabla\cdot\bu^*/\Delta t_{\mathrm{proj}}$
+を満たし，補正式に代入すると $\bnabla\cdot\bu^{n+1}=0$ が離散的に成り立つ．
+ここで未知量を絶対圧力 $p^{n+1}$ ではなく
+$\delta p=p^{n+1}-p^n$ とするため，圧力境界条件は
+時刻 $n+1$ と $n$ の差分ノイマン条件として課される．
+非圧縮流の正則な圧力場では $\delta p=\Ord{\Delta t}$ であり，
+この差分条件は圧力境界層を 1 ステップの圧力増分へ局在化させる．
+したがって圧力補正が導入する速度誤差は予測子の
+$\Ord{\Delta t^2}$ 誤差を上回らず，変密度係数 $\rho^{n+1}$ を
+同じ時刻の $\psi^{n+1}$ から評価する限り，
+予測子--投影の合成は $\Ord{\Delta t^2}$ に閉じる．
+この評価は van Kan~\cite{vanKan1986} の増分圧力補正，
+Pyo--Shen~\cite{PyoShen2007} の変密度圧力補正，
+および Guermond--Quartapelle~\cite{GuermondQuartapelle1998} の
+PPE 形式圧力投影の安定性・収束性に基づく．
+
+\paragraph{FCCD PPE と欠陥補正の役割}
+本稿の PPE 求解は，左辺の楕円型作用素
+$\bnabla\!\cdot\!(\rho^{-1}\bnabla\cdot)$ を FCCD（§\ref{sec:CCD}）で離散化し，
+一括 PPE 経路では変密度の積の微分則を評価し，
+高密度比の分相 PPE 経路では相内定数密度 Poisson と界面ジャンプ条件に分ける．
+非対称性の高い変密度演算子に対しては欠陥補正により高次残差を固定点とするが，
+一括 PPE の残差停滞は分相 PPE への経路選択診断であり，
+固定回数 DC だけで界面帯の空間誤差を消す主張ではない．
+境界条件・界面ジャンプ・PPE 右辺の
+表面張力寄与（式~\eqref{eq:ppe_jump_decomposed}）も同じ高次残差に含めるため，
+圧力増分は圧力ジャンプ補正量と非圧縮拘束を同時に満たす解へ収束する
+（PPE 求解節：§\ref{sec:ppe_solve}）．
+
+\paragraph{安定性：投影演算子の射影性}
+連続レベルでは Helmholtz--Hodge 分解により $\bu^{n+1}$ は
+$\bu^{*}$ の発散自由部分への直交射影である．離散 PPE がこの射影性を
+保つ限り（FCCD ラプラシアンが半正定値，境界条件がノイマン型で整合的），
+圧力投影段階は新たな成長因子を導入しない．従って IPC 全体の
+$L^2$ エネルギーノルムは予測子段階の安定性
+（§\ref{sec:time_level1}・§\ref{sec:time_viscous}）で律速される．
+
+% -------------------------------------------------------------------------------
+\subsection{浮力項：Balanced--Force 浮力分解（陽的残差評価）}
+\label{sec:time_buoyancy}
+% -------------------------------------------------------------------------------
+
+本稿の上昇気泡系では重力下で水--空気密度比 $\rho_l/\rho_g = 10^3$
+の浮力が支配項となる．素朴に $-\rho g \hat{z}$ を予測子右辺へ
+加えると，静止状態でも有限の予測子発散が生じ，PPE 段階で
+非物理的な圧力勾配と寄生流が誘起される．本稿では Brackbill--Kothe--Zemach
+（1992）\cite{Brackbill1992} の現代的解釈に沿って
+\textbf{Balanced--Force 浮力分解}を採用する．
+
+\noindent\textbf{$\psi^{n+1}$ 先行確定の前提：}
+本節の浮力体積力に必要な密度 $\rho^{n+1}$ は，
+§\ref{sec:time_level1}（\eqref{eq:cls_tvd_rk3_psi}）で確定した
+$\psi^{n+1}$ から $\rho^{n+1}=\rho_g+(\rho_l-\rho_g)\psi^{n+1}$ で
+構成される．静水圧成分は PPE に吸収され，残差成分のみが
+本節の陽的時間積分の対象となる．
+
+\paragraph{静水圧 / 残差分解}
+体積加速度 $\bm{a}_{\mathrm{buoy}} = -\rho g \hat{z}/\rho = -g\hat{z}$ を
+基準密度 $\rho_{\mathrm{ref}}$ を用いて
+\begin{equation}
+  \bm{a}_{\mathrm{buoy}} = -\frac{\rho_{\mathrm{ref}}}{\rho}g\hat{z}
+                       \;-\;\frac{\rho - \rho_{\mathrm{ref}}}{\rho}g\hat{z}
+  \label{eq:buoy_split}
+\end{equation}
+と分解する．第 1 項は密度に依存する静水圧成分で，圧力場
+$p_{\mathrm{hs}} = -\rho_{\mathrm{ref}}\,g\,z$ として PPE に吸収される
+（境界条件のみ調整）．第 2 項のみ予測子右辺に陽的に加える：
+\begin{equation}
+  \bm{a}_{\mathrm{residual}} = -\frac{\rho - \rho_{\mathrm{ref}}}{\rho}\,g\,\hat{z}.
+  \label{eq:buoy_residual}
+\end{equation}
+界面遠方では $\rho \to \rho_{\mathrm{ref}}$ を選べば $\bm{a}_{\mathrm{residual}}\to 0$
+となり，気相内部・液相内部で予測子発散がゼロに近づく．
+
+\paragraph{寄生流抑制原理}
+素朴 $-\rho g \hat{z}$ では PPE 右辺
+$\bnabla\!\cdot(\rho^{-1}\bnabla\delta p) = \bnabla\!\cdot\bu^{*}/\Delta t$
+に静水圧勾配の離散誤差 $\Ord{h}$ が混入し，
+界面近傍の寄生流速 $|u_{\mathrm{spurious}}| \sim g\Delta t$ が
+$\Ord{10^{-2}}$ レベルで定常的に残る．Balanced--Force 浮力分解では
+静水圧成分が解析的に PPE で打ち消され，残差成分のみが
+$\delta_\Gamma$ 局在の有限源となるため，定常 $|u_{\mathrm{spurious}}|$
+は $\Ord{\Delta t\,h^{p}}$（$p$ は PPE 空間精度）まで抑制される．
+
+\paragraph{安定性：浮力波制約と Brunt--Väisälä 周波数}
+連続成層流体では浮力波（gravity wave）の固有周波数が
+\textbf{Brunt--Väisälä 周波数} $N_{\mathrm{BV}}$ で与えられる：
+\begin{equation}
+  N_{\mathrm{BV}} = \sqrt{-g\,\partial_z \ln\rho}.
+  \label{eq:brunt_vaisala}
+\end{equation}
+界面が鋭い CLS 表現では $\partial_z\ln\rho$ が界面厚さ $\sim 3h$ に
+局在し，$N_{\mathrm{BV}} \sim \sqrt{g/h}$．陽的時間積分では
+$\Delta t \lesssim N_{\mathrm{BV}}^{-1} \sim \sqrt{h/g}$ が浮力波解像
+の必要条件として現れる．低 We（弱表面張力）の系では本制約が
+顕在化しうる．具体的な数値検証は検証章（\S\ref{sec:val_rising_bubble}）
+に委ねる．
+
+\begin{tcolorbox}[colback=yellow!5,colframe=orange!60!black,title={\textbf{適用範囲：浮力分解の有効ケース}}]
+\label{warn:balanced_buoy_scope}
+Balanced--Force 浮力分解は\textbf{有意な重力 $g \neq 0$ かつ
+密度比 $\rho_l/\rho_g \gg 1$} のケース（典型例：上昇気泡）で
+有効である．無重力（$g=0$）の系では重力項そのものが
+無効化されるため，本節の議論は適用されず，予測子右辺の
+体積力項は省略される．
+\end{tcolorbox}
+
+% -------------------------------------------------------------------------------

@@ -6,7 +6,7 @@ status: ACTIVE
 superseded_by: null
 tags: [ppe, gauge, pressure_jump, face_gradient, neumann, balanced_force]
 sources:
-  - path: paper/sections/09b_split_ppe.tex
+  - path: paper/sections/09b2_fccd_projection.tex
     description: "Jump-corrected face flux invariant and gauge choice"
   - path: paper/sections/09e_ppe_bc.tex
     description: "Neumann zero-mode handling and gauge principles"

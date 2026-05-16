@@ -1,0 +1,41 @@
+\subsection{固定 \texorpdfstring{$\varepsilon_\Gamma$}{epsilonGamma} 標準経路と空間可変 Heaviside 幅の制約}
+\label{sec:eps_spatial_variable}
+% ─────────────────────────────────────────────────────────────────────────────
+
+本章の標準経路では，CLS/Heaviside の界面厚み $\varepsilon_\Gamma$ は空間的に固定する．
+この選択により，Heaviside/デルタ関数の振幅，圧力ジャンプ面幾何，
+速度補正が同じ界面厚みを参照する．
+一方，非一様格子では一様な $\varepsilon_\Gamma = C_\varepsilon h$ の代わりに，
+局所格子幅に比例する空間可変場
+\begin{equation}
+  \varepsilon_\Gamma(\bx) = N_{\Gamma,\text{cells}} \cdot h_{\mathrm{local}}(\bx),
+  \quad h_{\mathrm{local}}(i,j) = \max(h_x(i),\, h_y(j))
+  \label{eq:eps_xi_cells}
+\end{equation}
+を考えることはできる（$N_{\Gamma,\text{cells}}$ は $\xi$ 空間でのセル数）．
+界面近傍（細かいセル）では $\varepsilon_\Gamma$ が小さく，遠方（粗いセル）では大きくなるが，
+$\xi$ 空間では常に $N_{\Gamma,\text{cells}}$ セル幅で Heaviside 遷移が解像される．
+一様格子では $h_{\mathrm{local}} = h$ となり固定スカラー $\varepsilon_\Gamma$ と一致する．
+したがって本稿の既定は固定 $\varepsilon_\Gamma$ であり，空間可変 $\varepsilon_\Gamma(\bx)$ は
+デルタ関数型体積力を用いない圧力ジャンプ/GFM 型の閉包条件に限って検討する．
+
+\begin{tcolorbox}[warnbox, title={空間可変 $\varepsilon_\Gamma(\bx)$ と CSF 表面張力の非互換性}]
+\label{box:eps_xi_csf_warning}
+式~\eqref{eq:eps_xi_cells} の空間可変 $\varepsilon_\Gamma$ は，
+CSF 表面張力モデル（デルタ関数型体積力）との組み合わせで
+寄生流れを著しく増幅させるため，本稿では併用しない．
+機構は，$\varepsilon_\Gamma$ の空間変動に伴うデルタ関数 $\delta_{\varepsilon_\Gamma}(\phi)$
+の振幅不整合であり，細い格子と粗い格子の境界で非物理的な表面力が発生する．
+
+$N_{\Gamma,\text{cells}}$ を空間可変幅として許容できるのは，\textbf{表面張力を GFM（Ghost Fluid Method）または
+圧力ジャンプ PPE で計算する場合に限られる}：デルタ関数を介さず圧力ジャンプを直接課すため，
+CSF の振幅不整合を避けられる可能性がある（§~\ref{sec:pressure_accuracy_summary} 参照）．
+この閉包は静止界面または有限時間の小変形問題に限った幾何検討であり，長時間移動界面の汎用性を意味しない．
+また，座標変換の計量係数は滑らかな場の微分を非一様化する仕組みであり，
+ジャンプ補正項 $B_f(j)$ を自動的に非一様化するわけではない．
+圧力ジャンプ経路では $B_f^{\mathrm{nu}}=s_fj_f/H_f$ を
+面演算子として明示的に構成し，PPE と速度補正に接続する必要がある．
+加えて，$N_{\Gamma,\text{cells}} \ge 1.5$ が必要である：
+それ未満では界面近傍の細かいセルで Heaviside 遷移が 1 セル幅未満となり
+解像不足になる．
+\end{tcolorbox}

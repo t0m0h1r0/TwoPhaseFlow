@@ -1,0 +1,58 @@
+\subsection{総括}
+\label{sec:val_summary}
+% ═══════════════════════════════════════════════════════════════════
+
+\begin{table}[htbp]
+\centering
+\caption{第~\ref{sec:validation}章の物理ベンチマークと判定軸}
+\label{tab:ch14_summary}
+\PaperTableDenseSetup
+\begin{tabular}{>{\raggedright\arraybackslash}p{2.8cm}>{\raggedright\arraybackslash}p{3.6cm}>{\raggedright\arraybackslash}p{5.2cm}>{\raggedright\arraybackslash}p{1.8cm}}
+\toprule
+ベンチマーク & 条件 & 主に読む診断 & 判定 \\
+\midrule
+毛管波 &
+  $32^2$，$T=T_\sigma=0.046742983863\,\mathrm{s}$，水--空気，
+  $\lambda=10\,\mathrm{mm}$，$x$ 周期/$y$ 壁面 &
+  \texttt{signed\_interface\_amplitude} の復元位相，
+  \texttt{kinetic\_energy} の有界振動，
+  \texttt{volume\_conservation} &
+  \checkmark \\
+振動液滴 &
+  $32^2$，$T=0.105460663082\,\mathrm{s}$，水--空気，
+  periodic，$D_0=0.10$ &
+  \texttt{signed\_deformation}，
+  \texttt{volume\_conservation}，
+  P1 sharp area，運動エネルギー交換 &
+  未合格 \\
+単一気泡上昇 &
+  $32\times64$，掲載窓 $0\le t\le0.03\,\mathrm{s}$，
+  $10\,\mathrm{mm}\times20\,\mathrm{mm}$，水--空気，$g=9.81$ &
+  $y_c(t)$，\texttt{mean\_rise\_velocity}，
+  \texttt{deformation}，diffuse 体積保存，$\psi$ snapshot，
+  $t\simeq0.04\,\mathrm{s}$ 以降の形状破綻 &
+  初期窓のみ \\
+Rayleigh--Taylor &
+  $128\times512$，$T=7$，水/シリコーン油，$g=9.81$ &
+  \texttt{interface\_amplitude} の線形成長率，
+  mushroom 形成，\texttt{kinetic\_energy}，体積保存 &
+  \checkmark \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+4 本のベンチマークは，同じ標準構成を
+異なる物理機構へ置いたときの成功条件を分担している．
+毛管波は pressure-jump の符号と毛管復元力を確認した．
+振動液滴は，有限値で 1 周期完走する一方，
+P1 sharp area が終端で $+25.9\%$ 増えるため，
+閉界面保存量の同一 cochain 化がまだ不足していることを示した．
+単一気泡上昇は，$0\le t\le0.03\,\mathrm{s}$ の初期窓で
+浮力残差と射影が同じ面速度空間を共有することを確認したが，
+後続時刻の形状保存は未解決として合格 claim から外した．
+Rayleigh--Taylor は，復元ではなく不安定成長を起こす配置でも
+同じ閉包が形状発展を支えることを示した．
+したがって本章の結論は，個別部品が単体で正しいだけでなく，
+移動界面二相流の代表的な安定振動・初期浮力上昇・不安定成長に対して
+同じ stack が有効に働く範囲と，閉界面振動でなお破れている
+保存量契約および気泡長時間形状保存の境界を同時に示した，という点にある．

@@ -6,7 +6,7 @@ status: ACTIVE
 superseded_by: null
 tags: [chapter13, v8, v9, v10, nonuniform_grid, future_gate]
 sources:
-  - path: paper/sections/13e_nonuniform_ns.tex
+  - path: paper/sections/13e1_nonuniform_ns.tex
     description: "Scope limits for V8 fixed nonuniform static droplet, V9 epsilon switch, and V10 CLS advection"
 depends_on:
   - "[[WIKI-T-135]]"

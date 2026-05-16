@@ -6,8 +6,10 @@ status: ACTIVE
 superseded_by: null
 tags: [hfe, pressure_history, affine_jump, projection, predictor, face_acceleration]
 sources:
-  - path: paper/sections/09b_split_ppe.tex
-    description: "HFE role and affine pressure-history face acceleration"
+  - path: paper/sections/09b1_split_ppe.tex
+    description: "HFE role in the split-PPE closure"
+  - path: paper/sections/09b2_fccd_projection.tex
+    description: "Affine pressure-history face acceleration"
   - path: paper/sections/09c_hfe.tex
     description: "HFE projection-stage placement and conditional necessity"
 depends_on:
