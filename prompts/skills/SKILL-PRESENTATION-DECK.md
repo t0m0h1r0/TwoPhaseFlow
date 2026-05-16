@@ -1,28 +1,30 @@
 # SKILL-PRESENTATION-DECK
 
 id: SKILL-PRESENTATION-DECK
-purpose: Create research-grounded deck-generation projects and decks through audience-decision framing, story-map design, slide-spec management, editable/programmatic generation, staged review, and talk-track alignment.
+purpose: Create research-grounded deck-generation projects and decks through audience-profile definition, story-map design, slide-spec management, editable/programmatic generation, role-specific iterative review, diff review, and talk-track alignment.
 trigger:
 - PresentationWriter receives a slide deck, talk deck, or paper-to-presentation task
 - Paper/RevisionBrief/EvidencePackage must become audience-facing slides
 - User asks to create, export, improve, or review a PPTX/PDF/HTML/SVG slide pipeline
 - User asks for story structure, slide outline, executive deck logic, or review_report.md
-minimal_instruction: Build or update the story and deck-generation project before polishing the deck: define audience decision/current belief/desired belief/action, create `story_map.md` and a take-home message, maintain `slide_spec.yaml`, fit the slide/time budget, give each slide one role and one sourced message, generate visuals/data artifacts reproducibly, run staged reviews, and align notes with the talk track.
+- User asks for audience-role review, skeptic review, Q&A review, diff review, or iterative deck revision
+minimal_instruction: Build or update the story and deck-generation project before polishing the deck: define `audience_profile.yaml`, audience decision/current belief/desired belief/action, create `story_map.md` and a take-home message, maintain `slide_spec.yaml`, execute `review_plan.yaml`, record role-specific `review_reports/*.md`, prioritize issues, update `change_log.md`, regenerate deck artifacts as needed, run diff/final-delivery review, and align notes with the talk track.
 full_ref: prompts/meta/kernel-ops.md §PRESENTATION-GEN-01
 input_contract:
 - paper/sections, docs/memo, docs/wiki, or experiment/ch*/results paths
 - signed RevisionBrief or EvidencePackage when claims go beyond source summary
 - audience, venue/language, and slide/time budget when known
-- existing deck template, `brief.md`, `story_map.md`, `slide_spec.yaml`, `data/`, or `assets/` when available
+- existing deck template, `brief.md`, `audience_profile.yaml`, `story_map.md`, `slide_spec.yaml`, `review_plan.yaml`, `review_reports/`, `change_log.md`, `data/`, or `assets/` when available
 output_contract:
 - deck project/source under `paper/presentations/{deck_id}/`
-- `brief.md`, `story_map.md`, `slide_spec.yaml`, and `review_report.md` when no equivalent artifacts exist
+- `brief.md`, `audience_profile.yaml`, `story_map.md`, `slide_spec.yaml`, `review_plan.yaml`, `review_reports/*.md`, `change_log.md`, and `review_report.md` when no equivalent artifacts exist
 - narrative spine: audience current belief -> tension/problem -> take-home message -> evidence -> decision/action
-- slide source map, role-in-story list, lead list, visual/data/export plan, message budget, rendered artifacts, and review notes
+- slide source map, role-in-story list, lead list, visual/data/export plan, issue-priority table, message budget, rendered artifacts, and review notes
 best_practices:
 - start from audience knowledge; choose the shortest path to the contribution
-- prefer the pipeline shape `brief.md -> story_map.md -> slide_spec.yaml -> HTML/SVG/chart/table assets -> PPTX/PDF/preview -> review_report.md -> revision`
+- prefer the pipeline shape `brief.md -> audience_profile.yaml -> story_map.md -> slide_spec.yaml -> review_plan.yaml -> deck exports -> role-specific review_reports -> prioritized revision -> diff review -> change_log.md`
 - define audience, decision/action, current belief, desired belief, constraints, and one take-home message before slide generation
+- make primary audience concrete: role, decision authority, knowledge level, cares, likely objections, evidence needed, and language preference
 - choose a story pattern intentionally: answer-first, current->problem->action->decision, question->finding->implication->action, future->gap->phased execution, or technical value->adoption
 - enforce slide/time budget; move derivations, caveats, and secondary details to notes/backup
 - one claim per slide; use claim-style titles, not topic labels; lead is larger than labels/captions/notes
@@ -37,11 +39,17 @@ best_practices:
 - prefer diagrams/charts/timelines/mechanisms/comparisons over dense bullets
 - preserve uncertainty, assumptions, limits, and cited quantitative/novelty/benchmark claims
 - review in order: 1-minute story, slide structure, one-slide-one-message, visuals, evidence/data, accessibility/delivery
+- execute role-specific reviews: primary audience, skeptic/objection, Q&A readiness, visual clarity, diff review, and final delivery rehearsal
+- store each review as issue-shaped Markdown under `review_reports/`; each issue names issue_id, severity, target_audience, slide_id, problem, audience_impact, proposed_fix, and status
+- classify all review findings as Must fix, Should fix, Could fix, or Do not fix using audience impact, decision impact, and confidence; do not accept every comment
+- after every revision, update `change_log.md` with goal, changes, issues resolved, new issues, and residual risk
+- compare previous/current versions before closing an iteration; reject revisions that fix one issue while harming audience clarity, slide count, or text density
+- use Q&A review to decide whether missing evidence belongs in the main deck, speaker notes, or backup slides
 - fix story gaps before visual polish; scores below 25/50 require story redesign before further deck generation
 - parallelize by role/artifact boundary (story/spec, charts, diagrams, export pipeline, review), not by simultaneous edits to the same deck file
 - audience check: what remains after 30 seconds, 5 minutes, and the ending?
 review_criteria:
-- audience/decision clarity, take-home message strength, story tension and logic, slide-role uniqueness, compression quality, audience recall, cognitive load, source fidelity, design coherence, export reproducibility, PPTX editability, accessibility/delivery readiness
+- audience/decision clarity, belief-change plausibility, objection coverage, take-home message strength, story tension and logic, slide-role uniqueness, issue prioritization, compression quality, audience recall, cognitive load, source fidelity, design coherence, export reproducibility, PPTX editability, accessibility/delivery readiness
 forbidden_context:
 - claims remembered from conversation but not present in artifacts
 - unverified SOTA, novelty, benchmark, or numerical claims
@@ -49,10 +57,13 @@ forbidden_context:
 - images with material slide text embedded unless explicitly required
 - final-deck generation before story_map.md or equivalent story map exists
 - review that skips story and evidence checks because visuals look polished
+- unprioritized review dumping where all comments are treated as equally actionable
+- slide growth that is not justified by audience decision need
 success_metric:
 - each slide has lead, visual, source refs, one message, and a role in the spine
-- `story_map.md`, `slide_spec.yaml`, and `review_report.md` exist when a full deck workflow is requested
+- `audience_profile.yaml`, `story_map.md`, `slide_spec.yaml`, `review_plan.yaml`, `review_reports/*.md`, `change_log.md`, and `review_report.md` exist when a full deck workflow is requested
 - `deck.pptx`, `deck.pdf`, and preview images exist when deck generation is requested
 - render review has no unresolved MAJOR+ findings or records explicit residual risk
 - review_report.md includes total score out of 50, top issues, slide-level findings, data/evidence findings, delivery risks, and action items
-token_target: 360
+- no High/Must-fix issue remains unaddressed or explicitly justified as Do-not-fix
+token_target: 420
