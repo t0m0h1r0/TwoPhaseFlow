@@ -6,7 +6,7 @@ status: ACTIVE
 superseded_by: null
 tags: [chapter13, v9, local_epsilon, nonuniform_grid, stack_diagnostic, no_regression]
 sources:
-  - path: paper/sections/13e_nonuniform_ns.tex
+  - path: paper/sections/13e1_nonuniform_ns.tex
     description: "V9 nominal/local epsilon switch diagnostic under the §14 stack"
   - path: paper/sections/13f_error_budget.tex
     description: "V9 stack-diagnostic row in the integrated accuracy table"

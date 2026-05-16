@@ -12,7 +12,7 @@ sources:
     description: "U9 DCCD-on-pressure prohibition"
   - path: paper/sections/13d_density_ratio.tex
     description: "V7 coupled-stack capillary/projection order limitation"
-  - path: paper/sections/13e_nonuniform_ns.tex
+  - path: paper/sections/13e1_nonuniform_ns.tex
     description: "V10 mass/shape axis split and fixed-grid limits"
   - path: paper/sections/13f_error_budget.tex
     description: "Integrated error-budget interpretation"

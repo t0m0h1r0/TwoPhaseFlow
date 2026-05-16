@@ -5,7 +5,7 @@ domain: theory
 status: ACTIVE
 tags: [projection_native, cls_transport, face_flux, conservation]
 sources:
-  - path: paper/sections/09b_split_ppe.tex
+  - path: paper/sections/09b4_capillary_work_state.tex
   - path: paper/sections/14_benchmarks.tex
   - path: docs/02_ACTIVE_LEDGER.md
 ---

@@ -6,7 +6,7 @@ status: ACTIVE
 superseded_by: null
 tags: [pressure_jump, ppe, projection, pressure_increment, young_laplace]
 sources:
-  - path: paper/sections/09b_split_ppe.tex
+  - path: paper/sections/09b1_split_ppe.tex
     description: "Unknown-specific pressure-jump contract for full pressure vs pressure increment"
 depends_on:
   - "[[WIKI-T-083]]"

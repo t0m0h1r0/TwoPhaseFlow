@@ -6,7 +6,7 @@ status: ACTIVE
 superseded_by: null
 tags: [pressure_jump, ppe, capillary, verification_gate, hfe, curvature]
 sources:
-  - path: paper/sections/09b_split_ppe.tex
+  - path: paper/sections/09b1_split_ppe.tex
     description: "Jump-corrected face-gradient scope and remaining validation gates"
   - path: paper/sections/09f_pressure_summary.tex
     description: "Pressure-jump closure conditions and non-guarantees"

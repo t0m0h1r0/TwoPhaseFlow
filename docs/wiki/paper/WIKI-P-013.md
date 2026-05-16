@@ -223,7 +223,7 @@ Files created or edited by Phase.
 - [x] `paper/sections/08c_pressure_filter.tex` (stub → 85 行, SP-J §4):
       片側 DCCD フィルタの系統的バイアス, 両辺対称整合要件,
       安全性マトリクス, 既定禁止ポリシー.
-- [x] `paper/sections/09b_split_ppe.tex` (+190 行, SP-M §5–§8):
+- [x] `paper/sections/09b1_split_ppe.tex` (+190 行, SP-M §5–§8):
       純 FCCD 分相アーキテクチャ, 分相 adjoint pair + SPD,
       GFM ghost jet stitching, 相別ゲージ pin + compatibility,
       pressure-jump formulation, regrid guard.

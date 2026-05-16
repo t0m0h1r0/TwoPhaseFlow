@@ -14,15 +14,17 @@ sources:
     description: "Per-variable operator routing for CLS, momentum, pressure, and capillary closure"
   - path: paper/sections/08b_pressure.tex
     description: "Variational pressure-reaction representative and Green identity"
-  - path: paper/sections/09b_split_ppe.tex
-    description: "Pressure-jump PPE, capillary face cochain, component saddle system, and Hodge gate"
+  - path: paper/sections/09b1_split_ppe.tex
+    description: "Pressure-jump PPE framework and HFE/GFM closure"
+  - path: paper/sections/09b4_capillary_work_state.tex
+    description: "Capillary face cochain, component saddle system, and Hodge gate"
   - path: paper/sections/11_full_algorithm.tex
     description: "One-step algorithm contract and standard-route boundary"
   - path: paper/sections/13_verification.tex
     description: "Integrated V-series grammar for pressure-jump/capillary projection evidence"
   - path: paper/sections/13d_density_ratio.tex
     description: "V6/V7 reading for density-ratio robustness and capillary-coupled effective order"
-  - path: paper/sections/13e_nonuniform_ns.tex
+  - path: paper/sections/13e1_nonuniform_ns.tex
     description: "V9 operator-group diagnostic for nominal/local epsilon switch"
   - path: paper/sections/13f_error_budget.tex
     description: "Error-budget interpretation after pressure-jump and capillary-projection updates"

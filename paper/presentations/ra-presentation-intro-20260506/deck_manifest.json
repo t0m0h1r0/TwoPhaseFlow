@@ -82,7 +82,7 @@
         "paper/sections/02_governing.tex",
         "paper/sections/02b_surface_tension.tex",
         "paper/sections/03_levelset.tex",
-        "paper/sections/09b_split_ppe.tex"
+        "paper/sections/09b1_split_ppe.tex"
       ],
       "visual": "equationFlow",
       "flow": [
@@ -168,7 +168,7 @@
       "lead": "相内Poisson、HFE場延長、欠陥補正DCを組み合わせ、ジャンプ条件をPPEとcorrectorが共有する。",
       "source": "Split PPE; HFE; defect correction; component verification",
       "sourceFiles": [
-        "paper/sections/09b_split_ppe.tex",
+        "paper/sections/09b1_split_ppe.tex",
         "paper/sections/09c_hfe.tex",
         "paper/sections/09d_defect_correction.tex",
         "paper/sections/12u6_split_ppe_dc_hfe.tex"

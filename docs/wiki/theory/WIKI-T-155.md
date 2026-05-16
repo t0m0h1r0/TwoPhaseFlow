@@ -5,7 +5,7 @@ domain: theory
 status: ACTIVE
 tags: [discrete_variational_principle, curvature, pressure_work, ale, remap]
 sources:
-  - path: paper/sections/09b_split_ppe.tex
+  - path: paper/sections/09b4_capillary_work_state.tex
   - path: paper/sections/13f_error_budget.tex
   - path: docs/02_ACTIVE_LEDGER.md
 ---

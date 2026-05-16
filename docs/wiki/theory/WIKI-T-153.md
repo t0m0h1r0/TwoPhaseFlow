@@ -5,7 +5,7 @@ domain: theory
 status: ACTIVE
 tags: [affine_jump, pressure_history, face_cochain, projection_native]
 sources:
-  - path: paper/sections/09b_split_ppe.tex
+  - path: paper/sections/09b2_fccd_projection.tex
   - path: paper/sections/14_benchmarks.tex
   - path: docs/02_ACTIVE_LEDGER.md
 ---

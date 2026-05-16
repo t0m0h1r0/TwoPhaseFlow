@@ -7,7 +7,7 @@ tags: [static_droplet, projection_closure, ridge_eikonal, pressure_hodge, negati
 sources:
   - path: docs/memo/short_paper/SP-AE_pressure_hodge_static_droplet_lessons.md
   - path: docs/memo/short_paper/SP-AD_ridge_eikonal_transport_variational_coupling.md
-  - path: paper/sections/09b_split_ppe.tex
+  - path: paper/sections/09b4_capillary_work_state.tex
   - path: paper/sections/13b_twophase_static.tex
   - path: docs/02_ACTIVE_LEDGER.md
 depends_on:
