@@ -44,7 +44,8 @@
 \input{sections/04f_face_jet}         %% §4.7（面ジェット統合）
 
 %% §5: CLS 専用アルゴリズム — Ridge-Eikonal 再初期化 + A-F 6 段階
-\input{sections/05_reinitialization}  %% §5.1 CLS 再初期化 (Ridge-Eikonal) + §5 chapter intro
+\input{sections/05_reinitialization}  %% §5.1 CLS 再初期化の基本・質量収支・実行条件
+\input{sections/05a_ridge_eikonal_details} %% §5.1続き 比較経路・Ridge--Eikonal 詳細・受理条件
 \input{sections/05b_cls_stages}       %% §5.2 CLS A-F 6 段階
 \clearpage
 
@@ -79,7 +80,9 @@
 \clearpage
 
 %% §10: 界面適合非一様格子 — CCD 派生スキームの非一様拡張
-\input{sections/10_grid}              %% §10（界面適合格子の構築 章ヘッダーを内包）
+\input{sections/10_grid}              %% §10 格子密度・座標変換・格子点座標
+\input{sections/10a_2d_tracking_grid} %% §10続き 2D 格子生成・追随格子比較
+\input{sections/10a2_epsilon_width_constraints} %% §10続き 固定ε標準経路と可変幅制約
 \input{sections/10b_ccd_extensions}   %% §10続き（CCD の非一様格子適用）
 \input{sections/10c_fccd_nonuniform}  %% §10.4 非一様 FCCD
 \input{sections/10d_ridge_eikonal_nonuniform} %% §10.5 Ridge--Eikonal 非一様
@@ -106,9 +109,17 @@
 %% Parent stub 13_verification.tex 内で 6 sub-file (13a-13f) を順次 \input する．
 \input{sections/13_verification}                    %% §13：統合検証 V1-V10 (parent + sub-file展開)
 \clearpage
-\input{sections/14_benchmarks}        %% §14：多相流ベンチマークと物理現象の検証
+\input{sections/14_benchmarks}        %% §14 ベンチマーク共通構成
+\input{sections/14a_capillary_wave}   %% §14.1 毛管波
+\input{sections/14b_oscillating_droplet} %% §14.2 振動液滴
+\input{sections/14c_rising_bubble}    %% §14.3 単一気泡上昇
+\input{sections/14d_rayleigh_taylor}  %% §14.4 Rayleigh--Taylor
+\input{sections/14e_benchmark_summary} %% §14 総括
 \clearpage
-\input{sections/15_conclusion}        %% §15（まとめと今後の課題）
+\input{sections/15_conclusion}        %% §15.1 本稿の貢献
+\input{sections/15b_results_summary}  %% §15.2 達成成果のサマリ
+\input{sections/15c_future_work}      %% §15.3 今後の課題
+\input{sections/15d_reader_message}   %% §15.4 学習者へのメッセージ
 
 \bibliographystyle{plain}
 \bibliography{bibliography}

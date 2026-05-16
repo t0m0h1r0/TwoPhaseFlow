@@ -1,0 +1,32 @@
+\subsection{学習者へのメッセージ}
+\label{sec:message}
+% ═══════════════════════════════════════════════════════════════════════════════
+
+本稿を最後まで読み通した読者は，気液二相流 CFD の主要な数値的困難と
+その克服手法を体系的に習得したことになる．
+しかし，本稿は「スタート地点」に過ぎない．
+
+気液二相流の数値計算は，界面の物理（表面張力，接触角，相変化），
+数値スキームの精度と安定性，そして高性能計算の工学的要請が
+複雑に絡み合う，活発な研究フロンティアである．
+本稿で学んだ基礎—One-Fluid 定式化，CLS 法，CCD 法，Projection 法—は，
+いずれも最新の研究論文にも引き続き登場する普遍的な技術要素である．
+
+次のステップとして，以下を推奨する：
+\begin{enumerate}
+  \item 本稿の三本柱（CCD 高次群／分相 PPE+HFE+DC／BF+FCCD 面ジェット）を
+        一つずつ実装し，
+        §\ref{sec:numerical_integrity}（U1 CCD ／ U2 PPE ／ U3 非一様 ／
+        U4 Eikonal ／ U5 Heaviside ／ U6 分相 PPE+HFE+DC ／ U7 BF 静止液滴 ／
+        U8 時間積分 ／ U9 DCCD 禁止 ／ U10 保存形共通フラックス ／
+        U11 制約 面速度状態 ／ U12 アクティブ幾何毛管分解ゲート），
+        §\ref{sec:verification}（V1--V11 統合検証），
+        §\ref{sec:validation}（毛管波・振動液滴・気泡上昇・Rayleigh--Taylor）で段階的に検証する．
+  \item Tryggvason \textit{et al.}~\cite{Tryggvason2011}，Prosperetti~\cite{Prosperetti1981}，
+        Chandrasekhar~\cite{Chandrasekhar1961}，Hysing ら~\cite{Hysing2009} など，
+        二相流 CFD の標準テキスト・古典理論・既往 DNS で知識を補完する．
+  \item 文献~\cite{OlssonKreiss2005}（CLS），\cite{JiangShu1996}（WENO5），
+        \cite{ChuFan1998}（CCD）の原論文を熟読し，省略された数学的詳細を習得する．
+\end{enumerate}
+
+本稿の定式化が，気液二相流数値解析の研究・教育に貢献することを期待する．

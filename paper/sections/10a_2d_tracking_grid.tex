@@ -1,0 +1,257 @@
+\subsection{2 次元格子生成への拡張}
+\label{sec:grid_2d}
+
+本節では，1次元の構成を2次元に拡張する方法を示す．
+2次元では $x$ 方向と $y$ 方向の格子を\textbf{独立に}生成する（テンソル積格子）．
+
+\paragraph{テンソル積格子の構成}
+
+2次元テンソル積格子は，$x$ 方向と $y$ 方向の1次元格子（§~\ref{sec:grid_gen}）を独立に生成し，
+その直積として構成する．各方向の密度関数は，非周期壁の寄与を含めて：
+\begin{align*}
+  \omega^x_i &= 1 + A_{\Gamma,x} I_{\Gamma,x}(x_i) + A_{W,x}I_{W,x}(x_i), &
+  \bar{\phi}^x_i &= \min_j |\phi^{(0)}_{i,j}| \\
+  \omega^y_j &= 1 + A_{\Gamma,y} I_{\Gamma,y}(y_j) + A_{W,y}I_{W,y}(y_j), &
+  \bar{\phi}^y_j &= \min_i |\phi^{(0)}_{i,j}|
+\end{align*}
+で与えられ，§~\ref{sec:grid_gen} の段階2--5で物理座標 $\{x_i\}$, $\{y_j\}$ と
+計量係数 $\{J_x|_i\}$, $\{J_y|_j\}$ を得る．
+周期方向または一様格子として指定された方向では $A_{W,a}=0$ とし，
+指定済みの界面適合格子または一様格子へ厳密に縮退する．
+
+格子構成には初期水準集合場 $\phi^{(0)}$ が必要だが，$\phi^{(0)}$ の評価自体に格子が必要であるという
+循環参照が存在する．この解消を含む初期化の数学的順序は
+付録~\ref{app:bootstrap} で述べる．
+
+\paragraph{テンソル積格子の仮定と制限}
+テンソル積格子は「$x$ 方向格子と $y$ 方向格子の直積」であるため，以下の特性を持つ：
+\begin{itemize}
+  \item \textbf{直交格子：} 格子線は $x$ 方向と $y$ 方向に平行であり，常に直交する．
+        変換行列のオフ対角項はゼロ（$\partial\xi/\partial y = \partial\eta/\partial x = 0$）．
+  \item \textbf{界面傾き対応：} 界面が斜め（例：45°）の場合，界面近傍の格子細分化が
+        $x$ 方向と $y$ 方向の両方で自動的に行われる（$\min_j|\phi_{i,j}|$ を使うため）．
+  \item \textbf{制限：} 界面が1本の直線または単純閉曲線の場合には有効だが，
+        複数の界面が互いに異なる方向を向く場合，一方の方向での細分化が過剰になる可能性がある．
+\end{itemize}
+
+\noindent\textbf{複数界面診断．}
+各格子線上の界面帯交差数
+\[
+  m_x(i)=\#\{j:\ |\phi_{i,j}|<c_\Gamma\varepsilon_\Gamma\},\qquad
+  m_y(j)=\#\{i:\ |\phi_{i,j}|<c_\Gamma\varepsilon_\Gamma\}
+\]
+を監視し，$\max_i m_x(i)$ または $\max_j m_y(j)$ が単一閉曲線の想定を超える場合は，
+テンソル積非一様格子の過剰細分化の兆候として記録する．
+多数気泡，分裂，薄膜，斜め界面の密集では，一様格子または局所 AMR 的手法を優先する．
+
+\textbf{本稿での幾何学的仮定：} 座標変換式（式~\eqref{eq:transform_1st_correct}, \eqref{eq:transform_2nd_correct}）は
+直交テンソル積格子を前提としており，$\partial x/\partial\eta = \partial y/\partial\xi = 0$ が成立する．
+非直交格子では追加のオフ対角計量項が必要になるため，本稿の適用範囲外となる．
+
+\subsection{追随格子設計と固定格子比較の条件}
+\label{sec:grid_ale}
+
+格子は物理時間 $t=0$ における初期水準集合値 $\phi^{(0)}$ から
+§~\ref{sec:grid_gen} の構成で生成する（初期化順序全体は付録~\ref{app:bootstrap} 参照）．
+非一様格子で本稿が検証する経路は固定格子上の対照試験であり，
+物理時間ステップごとに現在の界面から格子を再生成する
+\textbf{界面追随格子}は，以下の保存・再投影・履歴リセット条件を満たすときにだけ
+標準経路として扱える．
+以下では，時間固定格子と，追随格子を標準化するための閉包条件を分けて述べる：
+
+\begin{tcolorbox}[mybox, title={固定格子経路と追随格子経路}]
+\label{box:grid_modes}
+\textbf{時間固定格子（対照検証・比較経路）：}
+$t=0$ に $\phi^{(0)}$ から格子を生成し，全時間段階で同一格子を使用する（$\bm{v}_\text{mesh}=0$）．
+格子運動に由来する ALE 項は消えるため，格子再生成による一次時間誤差を持ち込まない．
+界面が初期精細化帯内に留まる問題（定常または有限時間の小変形問題）では空間解像度が維持される．
+界面がその帯を離れる場合の支配誤差は時間積分ではなく，界面帯の空間解像度不足として扱う．
+
+\textbf{追随格子（標準化に必要な閉包条件）：}
+各時間段階で $\phi^{(n)}$ から格子を再生成し，界面周辺の解像度を追随させる．
+追随格子を標準化するには，格子速度 $\bm{v}_\text{mesh}$ を含む ALE 項または
+それと同等な保存的再写像を保存則へ入れる必要がある．
+格子写像を $\bx=\bm{\chi}^{n}(\bm{\xi})$，新旧格子の同一参照面 $\hat f$ 上の速度を
+\[
+  \bm{v}_{\mathrm{mesh},f}^{n+1/2}
+  =
+  \frac{\bm{\chi}^{n+1}(\bm{\xi}_{\hat f})
+        -\bm{\chi}^{n}(\bm{\xi}_{\hat f})}{\Delta t}
+  \label{eq:mesh_velocity_regrid}
+\]
+で定義する．このとき，各セル $K$ は離散幾何保存則
+\[
+  |K^{n+1}|-|K^n|
+  =
+  \Delta t
+  \sum_{f\subset\partial K}
+    \bm{v}_{\mathrm{mesh},f}^{n+1/2}\cdot\bm{n}_f\, |f|
+  \label{eq:ale_grid_gcl}
+\]
+を満たさなければならない．式~\eqref{eq:ale_grid_gcl} は定数場を定数のまま保つための
+最小条件であり，これを満たさない格子再生成は保存則以前に不適合である．
+保存量 $q\in\{\psi,\rho,\rho u,\rho v\}$ は新格子上で
+\[
+  |K^{n+1}|q_K^{n+1}
+  =
+  |K^n|q_K^n
+  -\Delta t
+  \sum_{f\subset\partial K}
+    \mathcal{F}_f\!\left(q;\bu^{n+1/2}
+      -\bm{v}_{\mathrm{mesh},f}^{n+1/2}\right)|f|
+  +\Delta t\,|K|^{n+1/2}S_K
+  \label{eq:ale_conservative_update}
+\]
+として更新または保存的に再写像する．
+さらに表面エネルギー $E_\Gamma$ を離散勾配型に扱う場合，
+変分恒等式は同一の再写像段階に属する二端点の間でのみ意味を持つ：
+\begin{equation}
+  \overline{\nabla E_\Gamma}^{\,n\to n+1}_{\chi^n,\chi^{n+1}}
+  \cdot
+  \left(\psi^{n+1}_{\chi^{n+1}}-\mathcal R_{n\to n+1}\psi^n_{\chi^n}\right)
+  =
+  E_\Gamma^{\chi^{n+1}}(\psi^{n+1})
+  -
+  E_\Gamma^{\chi^{n+1}}(\mathcal R_{n\to n+1}\psi^n).
+  \label{eq:ale_discrete_gradient_endpoint_locality}
+\end{equation}
+ここで $\mathcal R_{n\to n+1}$ は同じ保存的再写像である．
+古い格子 $\chi^n$ 上の表面エネルギー終点を，
+再写像の発生していない後続段階へ持ち越すと，
+式~\eqref{eq:ale_discrete_gradient_endpoint_locality} の両辺は異なる測度上の量を比較するため，
+圧力仕事との変分的対応を失う．
+したがって ALE/離散勾配の終点は
+\textbf{現在の再写像段階に局所化された状態量}であり，
+時間履歴量として後続段階へ再利用してはならない．
+本稿の離散化はこの式を演算子分割して扱う：
+物理輸送を旧格子上で行った後，$\phi,\psi$ または幾何セル分率 $q$ から格子を再生成し，
+保存量を保存的に写像する．
+さらに，投影済み速度は節点場ではなく面共鎖として新格子へ移送し，
+新しい Hodge 計量で再投影する（式~\eqref{eq:ao_face_cochain_regrid}）．
+この再投影では前格子の圧力ジャンプや幾何反力を履歴量として持ち込まず，
+滑らかな圧力座標だけを新しい格子上で再構築または外挿する．
+保存的再写像を欠くと，格子の再配置そのものが保存則の欠落項として現れ，時間精度を一次へ落としうる．
+精度劣化の物理的起源は，格子再生成が誘発する\textbf{実質格子速度} $\bm{v}_\text{mesh}=\Ord{1}$ が
+保存則残差 $\partial_t(\rho\psi) + \bnabla\cdot(\rho\psi(\bu-\bm{v}_\text{mesh}))=0$ で
+$\bm{v}_\text{mesh}$ 項を落とすことに由来する．
+
+\textbf{追随格子における保存量と履歴量：}
+移動界面を追随格子の閉包へ拡張するには，
+$u,v,p,\delta p,\rho,\mu,\kappa_{lg},\hat{\bm n}_{lg},\phi,\psi$，
+HFE 延長文脈，粘性陰解法の履歴量，および投影済み面速度共鎖を，
+同一時刻の新しい格子へ保存的かつ整合的に写す必要がある．
+単一の界面指示場だけを補間しても，運動量，密度，圧力履歴，界面幾何が同じ離散面を共有しない．
+そのため追随格子を採用する場合は，保存量を新セル体積で補正し，
+投影済み面共鎖を移送してから速度を再投影し，
+不連続ジャンプや幾何反力を含む履歴を捨て，
+滑らかな圧力座標・対流・粘性履歴だけを再生成格子上で整合させる．
+
+\textbf{追随格子における圧力ジャンプ面幾何：}
+再生成後の格子では，ジャンプ補正付き面勾配の界面交差位置，向き $s_f$，
+局所物理面距離 $H_f$，面係数 $\alpha_f$，ジャンプ値
+$j_f=-\sigma\kappa_{lg,f}$，および
+$B_f^{\mathrm{nu}}=s_fj_f/H_f$ を\textbf{必ず再構築}する．
+すなわち面データは
+\[
+  \mathcal{J}_f^{n+1}
+  =
+  \mathcal{G}_f\!\left(\phi^{n+1},\psi^{n+1},\bm{\chi}^{n+1}\right)
+  =
+  \left(x_{\Gamma,f},s_f,H_f,\alpha_f,
+        \kappa_{lg,f},j_f,B_f^{\mathrm{nu}}\right)
+  \label{eq:regrid_face_geometry}
+\]
+として現在の界面と現在の格子から評価する．
+これらは $\psi,u,v$ のように補間される場ではなく，現在の界面幾何と現在の格子から作る面ソースである．
+圧力履歴，IPC 圧力増分，HFE 延長場，界面面幾何データを前格子から補間して引き継いではならない．
+圧力履歴を用いる場合でも，引き継ぐのは式~\eqref{eq:ao_pressure_coordinate_split} の
+滑らかな圧力座標であり，現在格子の切断面で定まる Young--Laplace ジャンプや
+幾何毛管反力は各段で再評価する．
+速度再投影 PPE には前時間段階のジャンプ条件を渡さず，
+主段階 PPE と速度補正だけが再構築済みの同一界面面データを共有する
+（§~\ref{sec:split_ppe_regrid_guard}）．
+
+\textbf{追随格子における正則層ガード：}
+P1 cut-cell 幾何写像 $Q_h^S(\phi)$ と面ジャンプ幾何は，
+節点が界面上に乗らず，同じ cut stratum $S$ に留まる範囲で微分可能である．
+したがって，格子再生成後にある節点 $\bm z_{ij}$ が
+$|\phi(\bm z_{ij})|<\phi_{\min}$ を満たす場合は，
+符号をごく小さくずらすのではなく，正則層を保つための座標線補正として扱う．
+補正可能な座標方向集合を $\mathcal{A}_{ij}$ とし，
+\begin{equation}
+  a_\ast(i,j)=
+  \arg\max_{a\in\mathcal{A}_{ij}}
+  |\partial_a\phi(\bm z_{ij})|
+  \label{eq:grid_regular_stratum_axis}
+\end{equation}
+を選ぶ．実際に動かすのはこの支配法線方向の座標線だけであり，
+\begin{equation}
+  \delta\chi_{a_\ast}
+  =
+  \operatorname{clip}\!\left[
+  \operatorname{sgn}(\phi_{ij})\operatorname{sgn}(\partial_{a_\ast}\phi_{ij})
+  \frac{\phi_{\min}-|\phi_{ij}|}{|\partial_{a_\ast}\phi_{ij}|+\epsilon_g}
+  \right],
+  \qquad
+  \delta\chi_b=0\quad(b\ne a_\ast)
+  \label{eq:grid_regular_stratum_shift}
+\end{equation}
+とする．clip は隣接格子幅の正値性と最小幅制約だけを課す．
+この式は界面法線方向へ最小距離だけ逃がす正則層条件であり，
+接線方向の格子線を同時に動かす安定化ではない．
+たとえばほぼ水平な毛管波では $|\partial_y\phi|\gg|\partial_x\phi|$ であるため，
+$y$ 格子線だけを補正し，周期 $x$ 方向の $\Delta x$ を縮めない．
+全ての active 軸を同時に動かすと，界面幾何とは無関係な接線方向格子幅が崩れ，
+$H_f$，$B_f^{\mathrm{nu}}$，PPE 右辺が物理毛管剛性ではなく
+格子退化で支配されるため，標準経路では受理しない．
+
+\textbf{追随格子の閉包条件：}
+追随格子を標準経路として扱うための閉包は，
+(i) 式~\eqref{eq:ale_grid_gcl} の離散幾何保存則，
+(ii) 式~\eqref{eq:ale_conservative_update} の ALE 保存更新または同等の保存的再写像，
+(iii) 式~\eqref{eq:ao_face_cochain_regrid} の投影済み面共鎖移送，
+(iv) 全履歴量の整合リセットまたは滑らかな座標での再構築，
+(v) 式~\eqref{eq:regrid_face_geometry} の界面面データ再構築，
+(vi) 式~\eqref{eq:grid_regular_stratum_axis}--\eqref{eq:grid_regular_stratum_shift}
+の正則層ガード，
+を満たすものとして定義する．
+これらのいずれかを外した簡略経路は，比較・診断用であり，
+標準の界面追随格子経路とは呼ばない．
+\end{tcolorbox}
+
+\noindent\textbf{格子追随誤差の本編判定．}
+1 ステップあたりの界面移動量を $\delta=|\bu|\Delta t$ とすると，
+保存的再写像なしに格子だけを動かす誤差は
+\[
+  \varepsilon_{\mathrm{ALE}}
+  \sim
+  |\bm{v}_{\mathrm{mesh}}|\,|\bnabla\psi|\,\Delta t
+  \sim
+  U_\Gamma\,\frac{\Delta t}{\varepsilon_\Gamma}
+  \label{eq:ale_omission_error}
+\]
+で見積もられる．
+したがって界面追随格子を標準経路として採用する場合は，毎ステップ再生成と同時に
+式~\eqref{eq:ale_conservative_update} 相当の保存的再写像，速度再投影，履歴リセット，
+式~\eqref{eq:regrid_face_geometry} の界面面幾何再構築，
+および式~\eqref{eq:grid_regular_stratum_axis}--\eqref{eq:grid_regular_stratum_shift}
+の正則層ガードを行う．
+固定格子（モード1）は対照検証経路，毎ステップ再生成（モード2）は
+上記閉包が揃う場合に限る追随格子経路である．
+
+\begin{center}
+\PaperTableSetup
+\begin{tabular}{>{\raggedright\arraybackslash}p{50mm}c>{\raggedright\arraybackslash}p{44mm}}
+\hline
+条件 & 移動量 $\delta/h$ & 必要な閉包 \\
+\hline
+緩やかな界面変形 & $<0.1$ & 固定格子比較も可能 \\
+追随格子を採用する移動界面 & $\approx0.5$ & 毎ステップ追随 + 保存的再写像 \\
+大密度比・高速界面 & $>1$ & 追随格子，速度再投影，履歴リセット，面幾何再構築を必須化 \\
+\hline
+\end{tabular}
+\end{center}
+
+付録~\ref{app:grid_ale} は式~\eqref{eq:ale_omission_error} の補足見積もりだけを記す．
+
+% ─────────────────────────────────────────────────────────────────────────────
