@@ -276,8 +276,6 @@ class PPESolverFVMMatrixFree(IPPESolver):
             dv_node=self._dv_node,
             rho=self.xp.asarray(rho),
             axis=axis,
-            bc_type=self.bc_type,
-            boundary_face_space=self.boundary_face_space,
         )
 
     def apply(self, p):

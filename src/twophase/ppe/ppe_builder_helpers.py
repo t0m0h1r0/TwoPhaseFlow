@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from ..core.boundary import boundary_axes, is_periodic_axis
+from ..core.boundary import is_periodic_axis
 
 
 def _face_inverse_density_for_indices(builder, *, rho_flat, idx_L_xp, idx_R_xp):
@@ -75,16 +75,6 @@ def build_ppe_matrix_triplets(builder, rho) -> tuple:
             idx_L_xp=idx_L_xp,
             idx_R_xp=idx_R_xp,
         )
-        idx_L_h, _idx_R_h = builder._face_indices[ax]
-        a_f = _apply_direct_face_space_to_coeff(
-            builder,
-            a_f,
-            ax=ax,
-            idx_L_h=idx_L_h,
-            strides=strides,
-            cache_key=("face_space_mask", ax, "interior"),
-        )
-
         if not builder.grid.uniform:
             d_f_xp, dv_L_xp, dv_R_xp = _get_nonuniform_face_cache(
                 builder,
@@ -113,15 +103,6 @@ def build_ppe_matrix_triplets(builder, rho) -> tuple:
                 idx_L_xp=idx_wL_xp,
                 idx_R_xp=idx_wR_xp,
             )
-            idx_wL_h, _idx_wR_h = builder._wrap_face_indices[ax]
-            a_w = _apply_direct_face_space_to_coeff(
-                builder,
-                a_w,
-                ax=ax,
-                idx_L_h=idx_wL_h,
-                strides=strides,
-                cache_key=("face_space_mask", ax, "wrap"),
-            )
             if not builder.grid.uniform:
                 d_wrap, dv_wL, dv_wR = _get_nonuniform_wrap_cache(builder, ax=ax)
                 coeff_wL = a_w / d_wrap / dv_wL
@@ -148,51 +129,6 @@ def prepare_ppe_rhs_vector(builder, rhs_field):
     if builder._periodic_image_dofs is not None:
         rhs_vec[builder._periodic_image_dofs] = 0.0
     return rhs_vec
-
-
-def _apply_direct_face_space_to_coeff(
-    builder,
-    face_coeff,
-    *,
-    ax: int,
-    idx_L_h,
-    strides: list[int],
-    cache_key: tuple,
-):
-    """Zero low-order face coefficients outside the configured direct face space."""
-    space = getattr(builder, "boundary_face_space", "full_face")
-    if space == "full_face":
-        return face_coeff
-    if cache_key not in builder._gpu_coeff_cache:
-        axes = boundary_axes(builder.bc_type, builder.ndim)
-        active = np.ones(idx_L_h.shape, dtype=bool)
-        if space == "impermeable_face":
-            if axes[ax] == "wall":
-                coord = _axis_coord(idx_L_h, ax, strides, builder.shape_field)
-                active &= (coord != 0) & (coord != builder.N[ax] - 1)
-        else:
-            for wall_axis, kind in enumerate(axes):
-                if kind != "wall":
-                    continue
-                coord = _axis_coord(
-                    idx_L_h,
-                    wall_axis,
-                    strides,
-                    builder.shape_field,
-                )
-                upper = (
-                    builder.N[wall_axis] - 1
-                    if wall_axis == ax
-                    else builder.N[wall_axis]
-                )
-                active &= (coord != 0) & (coord != upper)
-        builder._gpu_coeff_cache[cache_key] = builder.xp.asarray(active)
-    active = builder._gpu_coeff_cache[cache_key]
-    return builder.xp.where(active, face_coeff, 0.0)
-
-
-def _axis_coord(flat_indices, axis: int, strides: list[int], shape_field) -> np.ndarray:
-    return (np.asarray(flat_indices) // strides[axis]) % shape_field[axis]
 
 
 def build_ppe_index_arrays(builder) -> None:

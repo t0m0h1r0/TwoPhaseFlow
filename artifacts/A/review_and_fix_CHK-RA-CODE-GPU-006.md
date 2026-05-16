@@ -4,6 +4,14 @@ Date: 2026-05-16
 Branch: `codex/ra-code-paper-gpu-review-20260516`
 Worktree: `.claude/worktrees/codex-ra-code-paper-gpu-review-20260516`
 
+## Supersession Note
+
+CHK-RA-CODE-GPU-007 supersedes the coefficient-masking part of this artifact.
+The follow-up one-period capillary rerun showed that applying the high-order
+direct face-flux mask to low-order FVM sparse adjacency coefficients made the
+DC base singular.  `boundary_face_space` metadata threading remains, but the
+low-order FVM coefficient zeroing described below was removed in CHK-RA-CODE-GPU-007.
+
 ## Request
 
 User requested a strict review and repair loop:
