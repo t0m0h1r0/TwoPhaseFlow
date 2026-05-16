@@ -1,28 +1,33 @@
 # SKILL-PRESENTATION-DECK
 
 id: SKILL-PRESENTATION-DECK
-purpose: Create research-grounded deck-generation projects and decks through staged planning, slide-spec management, editable/programmatic generation, render review, and talk-track alignment.
+purpose: Create research-grounded deck-generation projects and decks through audience-decision framing, story-map design, slide-spec management, editable/programmatic generation, staged review, and talk-track alignment.
 trigger:
 - PresentationWriter receives a slide deck, talk deck, or paper-to-presentation task
 - Paper/RevisionBrief/EvidencePackage must become audience-facing slides
 - User asks to create, export, improve, or review a PPTX/PDF/HTML/SVG slide pipeline
-minimal_instruction: Build or update the deck-generation project before polishing the deck: derive the narrative spine, maintain `brief.md`/`slide_spec.yaml` when useful, fit the slide/time budget, give each slide one sourced message, generate visuals/data artifacts reproducibly, render-review exports, and align notes with the talk track.
+- User asks for story structure, slide outline, executive deck logic, or review_report.md
+minimal_instruction: Build or update the story and deck-generation project before polishing the deck: define audience decision/current belief/desired belief/action, create `story_map.md` and a take-home message, maintain `slide_spec.yaml`, fit the slide/time budget, give each slide one role and one sourced message, generate visuals/data artifacts reproducibly, run staged reviews, and align notes with the talk track.
 full_ref: prompts/meta/kernel-ops.md §PRESENTATION-GEN-01
 input_contract:
 - paper/sections, docs/memo, docs/wiki, or experiment/ch*/results paths
 - signed RevisionBrief or EvidencePackage when claims go beyond source summary
 - audience, venue/language, and slide/time budget when known
-- existing deck template, `brief.md`, `slide_spec.yaml`, `data/`, or `assets/` when available
+- existing deck template, `brief.md`, `story_map.md`, `slide_spec.yaml`, `data/`, or `assets/` when available
 output_contract:
 - deck project/source under `paper/presentations/{deck_id}/`
-- `brief.md` and `slide_spec.yaml` when no equivalent spec exists
-- narrative spine: audience problem -> paper insight -> evidence -> implication
-- slide source map, lead list, visual/data/export plan, message budget, rendered artifacts, and review notes
+- `brief.md`, `story_map.md`, `slide_spec.yaml`, and `review_report.md` when no equivalent artifacts exist
+- narrative spine: audience current belief -> tension/problem -> take-home message -> evidence -> decision/action
+- slide source map, role-in-story list, lead list, visual/data/export plan, message budget, rendered artifacts, and review notes
 best_practices:
 - start from audience knowledge; choose the shortest path to the contribution
-- prefer the pipeline shape `brief.md -> slide_spec.yaml -> HTML/SVG/chart/table assets -> PPTX/PDF/preview`
+- prefer the pipeline shape `brief.md -> story_map.md -> slide_spec.yaml -> HTML/SVG/chart/table assets -> PPTX/PDF/preview -> review_report.md -> revision`
+- define audience, decision/action, current belief, desired belief, constraints, and one take-home message before slide generation
+- choose a story pattern intentionally: answer-first, current->problem->action->decision, question->finding->implication->action, future->gap->phased execution, or technical value->adoption
 - enforce slide/time budget; move derivations, caveats, and secondary details to notes/backup
 - one claim per slide; use claim-style titles, not topic labels; lead is larger than labels/captions/notes
+- make the recommendation or decision ask visible by slide 2 for executive/decision decks unless the brief is exploratory
+- record each slide's role_in_story, evidence_needed, and risk_if_removed; remove or merge slides with duplicate roles
 - visual hierarchy: lead -> visual -> labels -> source note
 - keep titles, body text, simple tables, and source notes editable; use SVG/HTML/raster assets only for complex diagrams, charts, or conceptual art where editability loss is justified
 - generate charts from source data; never invent numbers; mark missing data as TODO/placeholders
@@ -31,17 +36,23 @@ best_practices:
 - use SKILL-PRESENTATION-ILLUSTRATION only for conceptual or reverse-readback visual tasks
 - prefer diagrams/charts/timelines/mechanisms/comparisons over dense bullets
 - preserve uncertainty, assumptions, limits, and cited quantitative/novelty/benchmark claims
+- review in order: 1-minute story, slide structure, one-slide-one-message, visuals, evidence/data, accessibility/delivery
+- fix story gaps before visual polish; scores below 25/50 require story redesign before further deck generation
 - parallelize by role/artifact boundary (story/spec, charts, diagrams, export pipeline, review), not by simultaneous edits to the same deck file
 - audience check: what remains after 30 seconds, 5 minutes, and the ending?
 review_criteria:
-- narrative clarity, compression quality, audience recall, cognitive load, source fidelity, design coherence, export reproducibility, PPTX editability
+- audience/decision clarity, take-home message strength, story tension and logic, slide-role uniqueness, compression quality, audience recall, cognitive load, source fidelity, design coherence, export reproducibility, PPTX editability, accessibility/delivery readiness
 forbidden_context:
 - claims remembered from conversation but not present in artifacts
 - unverified SOTA, novelty, benchmark, or numerical claims
 - whole-slide rasterization as the default route for an editable deck
 - images with material slide text embedded unless explicitly required
+- final-deck generation before story_map.md or equivalent story map exists
+- review that skips story and evidence checks because visuals look polished
 success_metric:
 - each slide has lead, visual, source refs, one message, and a role in the spine
+- `story_map.md`, `slide_spec.yaml`, and `review_report.md` exist when a full deck workflow is requested
 - `deck.pptx`, `deck.pdf`, and preview images exist when deck generation is requested
 - render review has no unresolved MAJOR+ findings or records explicit residual risk
-token_target: 300
+- review_report.md includes total score out of 50, top issues, slide-level findings, data/evidence findings, delivery risks, and action items
+token_target: 360
