@@ -1247,6 +1247,44 @@ def test_constrained_face_ppe_operator_and_affine_rhs_share_face_space():
     np.testing.assert_allclose(rhs, expected_rhs, rtol=1.0e-12, atol=1.0e-12)
 
 
+def test_fd_direct_low_order_base_respects_constrained_face_space():
+    """DC low-order base must use the same direct boundary face space as ``L_H``."""
+    import scipy.sparse as sp
+
+    backend = Backend(use_gpu=False)
+    cfg = SimulationConfig(
+        grid=GridConfig(ndim=2, N=(3, 3), L=(3.0, 3.0)),
+    )
+    grid = Grid(cfg.grid, backend)
+    rho = np.ones(grid.shape)
+
+    def matrix_for(space: str):
+        solver = PPESolverFDDirect(
+            backend,
+            grid,
+            bc_type="wall",
+            boundary_face_space=space,
+        )
+        (data, rows, cols), shape = solver.ppb.build(rho)
+        return sp.coo_matrix((data, (rows, cols)), shape=shape).tocsr(), solver
+
+    full, _full_solver = matrix_for("full_face")
+    impermeable, _impermeable_solver = matrix_for("impermeable_face")
+    constrained, constrained_solver = matrix_for("constrained_face")
+
+    tangent_wall_l = np.ravel_multi_index((1, 0), grid.shape)
+    tangent_wall_r = np.ravel_multi_index((2, 0), grid.shape)
+    normal_wall_l = np.ravel_multi_index((1, 0), grid.shape)
+    normal_wall_r = np.ravel_multi_index((1, 1), grid.shape)
+
+    assert constrained_solver.boundary_face_space == "constrained_face"
+    assert constrained_solver.ppb.boundary_face_space == "constrained_face"
+    assert abs(full[tangent_wall_l, tangent_wall_r]) > 0.0
+    assert abs(impermeable[tangent_wall_l, tangent_wall_r]) > 0.0
+    assert constrained[tangent_wall_l, tangent_wall_r] == pytest.approx(0.0)
+    assert constrained[normal_wall_l, normal_wall_r] == pytest.approx(0.0)
+
+
 @pytest.mark.gpu
 def test_affine_jump_impermeable_gpu_hot_path_has_no_host_transfer(
     gpu_backend,

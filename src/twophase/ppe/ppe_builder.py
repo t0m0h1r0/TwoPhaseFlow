@@ -31,6 +31,7 @@ import numpy as np
 from typing import TYPE_CHECKING
 
 from ..core.boundary import is_all_periodic
+from ..simulation.face_boundary import normalise_boundary_face_space
 
 if TYPE_CHECKING:
     from ..backend import Backend
@@ -74,6 +75,7 @@ class PPEBuilder:
         coefficient_scheme: str = "phase_density",
         interface_coupling_scheme: str = "none",
         interface_stress_context=None,
+        boundary_face_space: str = "full_face",
     ):
         self.backend = backend
         self.xp = backend.xp
@@ -85,6 +87,7 @@ class PPEBuilder:
         self.coefficient_scheme = str(coefficient_scheme).strip().lower()
         self.interface_coupling_scheme = str(interface_coupling_scheme).strip().lower()
         self.interface_stress_context = interface_stress_context
+        self.boundary_face_space = normalise_boundary_face_space(boundary_face_space)
 
         # Total degrees of freedom = number of grid nodes
         self.n_dof = int(np.prod(self.shape_field))
