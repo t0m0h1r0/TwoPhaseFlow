@@ -13,6 +13,7 @@ from .ns_option_canonicalizer import (
     pressure_scheme_for_ppe_solver,
     validate_pressure_jump_ppe_compatibility,
 )
+from .face_boundary import normalise_boundary_face_space
 
 
 @dataclass(frozen=True)
@@ -229,9 +230,9 @@ def normalise_ns_ppe_runtime(
     scalar_operator_pairing = str(
         getattr(options, "scalar_operator_pairing", "legacy")
     ).strip().lower()
-    boundary_face_space = str(
+    boundary_face_space = normalise_boundary_face_space(
         getattr(options, "boundary_face_space", "full_face")
-    ).strip().lower().replace("-", "_")
+    )
     pressure_history_mode = str(
         getattr(options, "pressure_history_mode", "face_acceleration")
     ).strip().lower()
@@ -300,14 +301,6 @@ def normalise_ns_ppe_runtime(
             "Unsupported scalar_operator_pairing="
             f"'{getattr(options, 'scalar_operator_pairing', None)}'. "
             "Use legacy|require_certified|variational_operator."
-        )
-    if boundary_face_space in {"free_slip", "slip", "impermeable", "no_through"}:
-        boundary_face_space = "impermeable_face"
-    if boundary_face_space not in {"full_face", "impermeable_face"}:
-        raise ValueError(
-            "Unsupported boundary_face_space="
-            f"'{getattr(options, 'boundary_face_space', None)}'. "
-            "Use full_face|impermeable_face."
         )
     if (
         pressure_force_contract == "raw_compact_gradient"

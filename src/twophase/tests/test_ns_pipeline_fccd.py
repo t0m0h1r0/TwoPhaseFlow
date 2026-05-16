@@ -896,6 +896,7 @@ def test_ch14_capillary_yaml_builds_solver():
     assert isinstance(solver._ppe_solver.operator, PPESolverFCCDMatrixFree)
     assert solver._ppe_solver.operator.boundary_face_space == "impermeable_face"
     assert isinstance(solver._ppe_solver.base_solver, PPESolverFDDirect)
+    assert solver._ppe_solver.base_solver.boundary_face_space == "impermeable_face"
     assert solver._ppe_solver.base_solver.coefficient_scheme == "phase_separated"
     assert solver._ppe_solver.base_solver.interface_coupling_scheme == "affine_jump"
     assert solver._div_op is solver._fccd_div_op
@@ -1398,12 +1399,16 @@ def test_ch14_rising_bubble_yaml_builds_solver():
     assert solver._preserve_projected_faces is True
     assert solver._boundary_hodge_mode == "off"
     assert solver._boundary_hodge_state_space == "constrained_face"
+    assert cfg.run.boundary_face_space == "constrained_face"
     assert solver._boundary_hodge_wall_retraction == "metric_projection"
     assert solver._boundary_hodge_pressure_pairing == "restricted_variational_adjoint"
     assert solver._boundary_hodge_gate == "diagnostic"
     assert isinstance(solver._ppe_solver, PPESolverDefectCorrection)
     assert isinstance(solver._ppe_solver.operator, PPESolverFCCDMatrixFree)
+    assert solver._ppe_solver.operator.boundary_face_space == "constrained_face"
     assert isinstance(solver._ppe_solver.base_solver, PPESolverFDDirect)
+    assert solver._ppe_solver.base_solver.boundary_face_space == "constrained_face"
+    assert solver._ppe_solver.base_solver.ppb.boundary_face_space == "constrained_face"
 
 
 def test_ch14_canonical_yamls_build_shared_common_flux_contract():
@@ -1435,6 +1440,7 @@ def test_ch14_canonical_yamls_build_shared_common_flux_contract():
         expected_state_space = "impermeable_face" if free_slip else "constrained_face"
         expected_pairing = "restricted_variational_adjoint"
         assert solver._boundary_hodge_state_space == expected_state_space, path.name
+        assert cfg.run.boundary_face_space == expected_state_space, path.name
         assert solver._boundary_hodge_pressure_pairing == expected_pairing, path.name
         if path.name in gravity_configs:
             assert solver._scheme_runtime.gravity_formulation == (
@@ -1773,6 +1779,7 @@ def test_ch14_capillary_yaml_uses_true_low_order_defect_base():
     assert isinstance(solver._ppe_solver.operator, PPESolverFCCDMatrixFree)
     assert solver._ppe_solver.operator.boundary_face_space == "impermeable_face"
     assert isinstance(solver._ppe_solver.base_solver, PPESolverFDDirect)
+    assert solver._ppe_solver.base_solver.boundary_face_space == "impermeable_face"
     assert solver._ppe_solver.base_solver.coefficient_scheme == "phase_separated"
     assert solver._ppe_solver.base_solver.interface_coupling_scheme == "affine_jump"
 

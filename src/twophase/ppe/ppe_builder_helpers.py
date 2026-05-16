@@ -75,7 +75,6 @@ def build_ppe_matrix_triplets(builder, rho) -> tuple:
             idx_L_xp=idx_L_xp,
             idx_R_xp=idx_R_xp,
         )
-
         if not builder.grid.uniform:
             d_f_xp, dv_L_xp, dv_R_xp = _get_nonuniform_face_cache(
                 builder,

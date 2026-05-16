@@ -25,6 +25,7 @@ from ..coupling.interface_stress_closure import (
     build_young_laplace_interface_stress_context,
 )
 from ..gpu_sparse_solve import _PreparedCuPySuperLUSolve
+from ..simulation.face_boundary import normalise_boundary_face_space
 from .interfaces import IPPESolver
 from .ppe_builder import PPEBuilder
 
@@ -59,6 +60,11 @@ class PPESolverFDDirect(IPPESolver):
                 "ppe_interface_coupling_scheme",
                 "none",
             ),
+            boundary_face_space=getattr(
+                solver_cfg,
+                "boundary_face_space",
+                "full_face",
+            ),
         )
 
     def __init__(
@@ -70,6 +76,7 @@ class PPESolverFDDirect(IPPESolver):
         *,
         coefficient_scheme: str = "phase_density",
         interface_coupling_scheme: str = "none",
+        boundary_face_space: str = "full_face",
     ):
         self.backend = backend
         self.xp = backend.xp
@@ -77,6 +84,7 @@ class PPESolverFDDirect(IPPESolver):
         self.bc_spec = bc_spec
         self.coefficient_scheme = str(coefficient_scheme).strip().lower()
         self.interface_coupling_scheme = str(interface_coupling_scheme).strip().lower()
+        self.boundary_face_space = normalise_boundary_face_space(boundary_face_space)
         self._interface_stress_context = None
         self.ppb = self._make_builder(grid)
         self._refresh_structure(grid)
@@ -93,6 +101,7 @@ class PPESolverFDDirect(IPPESolver):
             coefficient_scheme=self.coefficient_scheme,
             interface_coupling_scheme=self.interface_coupling_scheme,
             interface_stress_context=self._interface_stress_context,
+            boundary_face_space=self.boundary_face_space,
         )
 
     def set_static_operator_cache(self, enabled: bool) -> None:
@@ -107,6 +116,7 @@ class PPESolverFDDirect(IPPESolver):
             grid,
             self.bc_type,
             self.bc_spec,
+            boundary_face_space=self.boundary_face_space,
         )
         triplet, shape = structure_builder.build(dummy_rho)
         self._rows = triplet[1]

@@ -11,6 +11,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 import numpy as np
 
+from ..simulation.face_boundary import normalise_boundary_face_space
 from .interfaces import IPPESolver
 from .ppe_builder import PPEBuilder
 
@@ -57,7 +58,18 @@ class PPESolverFVMSpsolve(IPPESolver):
 
     @classmethod
     def _build(cls, name: str, ctx: "PPEBuildCtx") -> "PPESolverFVMSpsolve":
-        return cls(ctx.backend, ctx.grid, bc_type=ctx.bc_type, bc_spec=ctx.bc_spec)
+        solver_cfg = getattr(getattr(ctx, "config", None), "solver", None)
+        return cls(
+            ctx.backend,
+            ctx.grid,
+            bc_type=ctx.bc_type,
+            bc_spec=ctx.bc_spec,
+            boundary_face_space=getattr(
+                solver_cfg,
+                "boundary_face_space",
+                "full_face",
+            ),
+        )
 
     def __init__(
         self,
@@ -65,12 +77,20 @@ class PPESolverFVMSpsolve(IPPESolver):
         grid: "Grid",
         bc_type: str = "wall",
         bc_spec: "BoundarySpec | None" = None,
+        boundary_face_space: str = "full_face",
     ):
         self.backend = backend
         self.xp = backend.xp
         self.bc_type = bc_type
         self.bc_spec = bc_spec
-        self.ppb = PPEBuilder(backend, grid, bc_type, bc_spec)
+        self.boundary_face_space = normalise_boundary_face_space(boundary_face_space)
+        self.ppb = PPEBuilder(
+            backend,
+            grid,
+            bc_type,
+            bc_spec,
+            boundary_face_space=self.boundary_face_space,
+        )
         self._refresh_structure(grid)
 
     def _refresh_structure(self, grid: "Grid") -> None:
@@ -82,7 +102,13 @@ class PPESolverFVMSpsolve(IPPESolver):
         self._ppe_struct_cols = triplet[2]  # col indices
 
     def update_grid(self, grid: "Grid") -> None:
-        self.ppb = PPEBuilder(self.backend, grid, self.bc_type, self.bc_spec)
+        self.ppb = PPEBuilder(
+            self.backend,
+            grid,
+            self.bc_type,
+            self.bc_spec,
+            boundary_face_space=self.boundary_face_space,
+        )
         self._refresh_structure(grid)
 
     def invalidate_cache(self) -> None:

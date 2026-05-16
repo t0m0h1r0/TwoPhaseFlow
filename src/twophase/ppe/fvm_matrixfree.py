@@ -33,6 +33,7 @@ from .gmres_helpers import (
     solve_cg,
     solve_gmres,
 )
+from ..simulation.face_boundary import normalise_boundary_face_space
 
 if TYPE_CHECKING:
     from ..backend import Backend
@@ -77,6 +78,9 @@ class PPESolverFVMMatrixFree(IPPESolver):
         self.bc_type = bc_type
         self.bc_spec = bc_spec
         solver_cfg = getattr(config, "solver", config)
+        self.boundary_face_space = normalise_boundary_face_space(
+            getattr(solver_cfg, "boundary_face_space", "full_face")
+        )
         if self.bc_type != "wall":
             raise ValueError(
                 "PPESolverFVMMatrixFree supports bc_type='wall' only; "
