@@ -1,0 +1,423 @@
+\subsection{完全更新手順：離散形式}
+\label{sec:algo_flow}
+% ═════════════════════════════════════════════════════════════════════════════
+
+時刻 $t^n$ から $t^{n+1} = t^n + \Delta t$ への計算手順を，離散化された形式で以下にまとめる．
+二相標準経路は第1--4段で得た界面幾何を，
+第5--7段の分相 PPE/HFE/DC/IPC 閉包へそのまま渡す．
+一括 PPE は同じ手順の一流体対照分岐として記述するが，
+圧力ジャンプ型二相閉包の代替標準ではない．
+添字 $(i,j)$ は格子点，上付き文字 $n, *, n+1$ は時間ステップを表す．
+以下の式を読むときは，各段を「入力 $\to$ 所有者の更新 $\to$ 次段へ渡す出力」
+として追えばよい．
+たとえば第1段の主出力は新しい $\psi$ だけではなく，
+その $\psi$ がどの面速度で輸送されたかという面フラックス台帳である．
+同様に第6--7段の主出力は圧力増分そのものではなく，
+非圧縮性と毛管仕事を同じ面空間で回収した後の面速度である．
+
+\phantomsection
+\label{alg:full_timestep}
+\begin{tcolorbox}[algbox, title={1 タイムステップ $t^n \to t^{n+1}$ の完全更新手順}]
+
+% ── 第1段 ──────────────────────────────────────────────────────────────
+\paragraph{第1段：CLS 移流}
+保存形レベルセット変数 $\psi^n$ を，前ステップの投影で得た射影後の面速度 $\bu_f^n$ を用いて
+TVD-RK3~\cite{ShuOsher1988} で時間発展させる：
+\begin{align*}
+  \psi^{(1)}_{i,j} &= \psi^n_{i,j} - \Delta t \, \mathrm{Div}_h^{\psi}((P_f\psi^n)\bu_f^n)_{i,j} \\
+  \psi^{(2)}_{i,j} &= \tfrac{3}{4}\psi^n_{i,j} + \tfrac{1}{4}\psi^{(1)}_{i,j} - \tfrac{1}{4}\Delta t \, \mathrm{Div}_h^{\psi}((P_f\psi^{(1)})\bu_f^n)_{i,j} \\
+  \psi^*_{i,j} &= \tfrac{1}{3}\psi^n_{i,j} + \tfrac{2}{3}\psi^{(2)}_{i,j} - \tfrac{2}{3}\Delta t \, \mathrm{Div}_h^{\psi}((P_f\psi^{(2)})\bu_f^n)_{i,j}
+\end{align*}
+節点再構成速度から面フラックスを作り直す経路は，
+式~\eqref{eq:projection_native_psi_transport} の保存則とは別の離散作用素になるため，
+射影後の面速度を保存する経路では用いない．
+速度主変数経路では，各段階完了後に
+$\psi \leftarrow \max(0,\min(1,\psi))$ の値域制限を適用し，
+その影響は段階 B/F の質量閉鎖残差として記録する．
+保存形共通フラックス経路では，端点切り詰めは $m,\bm{p}_m$ へ同じ写像を与えないため用いない．
+必要な有界性は，段階フラックスを
+$F_q=F_{\mathrm{low}}+\alpha(F_{\mathrm{high}}-F_{\mathrm{low}})$
+へ置換する流束補正型制限で担い，制限後の $F_q$ から
+$F_m$ と $F_{\bm{p}}$ を構成する．
+この経路は低次供与フラックスが現在の時間刻みと境界条件で
+$0\le q\le1$ を保つことを受理条件とし，破れた場合はステップを棄却して受理しない．
+
+% ── 第2段 ──────────────────────────────────────────────────────────────
+\paragraph{第2段：Ridge--Eikonal 補助距離再構成と質量閉鎖}
+段階 A の保存形輸送で得た $\psi^*$ に対し，
+§~\ref{sec:cls_stages} の段階 B--F を適用する．
+再初期化の実行条件は各検証設定として明示し，
+その受理診断として界面帯品質
+$Q_\Gamma=\int\psi(1-\psi)\,\mathrm{d}V$ と
+鋭界面相体積残差
+$\Delta V_{\Gamma,h}=V_{\Gamma,h}-V_{\Gamma,\mathrm{target}}$，
+および拡散 CLS 質量残差
+$\Delta M_{\psi,h}=M_{\psi,h}-M_{\psi,\mathrm{target}}$ を監視する．
+$Q_\Gamma$ は体積そのものではなく界面太り度の指標であり，
+Ridge--Eikonal を実行した場合は必ず SDF 一様シフトで
+鋭界面相体積を閉じ，その後プロファイル幅補正で
+拡散 CLS 質量を閉じる：
+\[
+  \begin{aligned}
+  \phi_{\mathrm{RE}}
+    &= \mathcal{R}_{\mathrm{RE}}(\psi^*)+\lambda_\Gamma,\\
+  \psi_{\mathrm{RE}}
+    &= H_{\varepsilon_{\mathrm{eff}}}(-\phi_{\mathrm{RE}}),\\
+  \psi^{n+1}
+    &=
+  \begin{cases}
+    \psi_{\mathrm{RE}}, & \mathrm{reinit},\\
+    \psi^*_{\mathrm{closed}}, & \mathrm{transport}.
+  \end{cases}
+  \end{aligned}
+\]
+$\lambda_\Gamma$ は鋭界面相体積を閉じる SDF 一様シフトであり，
+$\varepsilon_{\mathrm{eff}}$ は拡散 CLS 質量を閉じるプロファイル幅である．
+また $\psi^*_{\mathrm{closed}}$ は再初期化を行わない場合の
+必要最小限の段階 B/F 質量閉鎖後の状態を表す．
+反復型 Godunov/WENO--HJ Eikonal 解法を比較経路として選ぶ場合だけ，
+仮想時間 $\tau$ の CFL と停止条件を §~\ref{sec:cls_compression} の比較経路条件に従って別管理する．
+保存形共通フラックス経路では，ここで $q$ が変わるなら
+$m$ と $\bm{p}_m$ も同時に保存的再写像されなければならない．
+現在の再初期化が $q$ 単独の幾何射影である設定では，
+この段階を採用経路として実行せず，更新を受理しない．
+標準経路の本質は反復回数や再初期化頻度の調整ではなく，
+物理輸送 $\delta\psi_T$，幾何射影 $\delta\psi_\Pi$，
+鋭界面体積 SDF シフト，および拡散質量プロファイル閉鎖を
+別々の離散恒等式として閉じる点にある．
+狭いスロットやトポロジー変化を含む検証では，
+局所角劣化を $Q_\Gamma$ だけで判定しないため，§~\ref{sec:xi_sdf_reinit} の
+適用範囲に従って再初期化の実行条件と比較経路を明示する．
+
+% ── 第3段 ──────────────────────────────────────────────────────────────
+\paragraph{第3段：界面幾何・物性更新}
+$\psi^{n+1}$ に基づき距離関数と物性値を再計算する
+（物性補間は $\psi$，幾何量は $\phi$；§~\ref{sec:notation}）：
+\begin{align*}
+  \phi^{n+1}_{i,j} &= \varepsilon\ln\!\left(\frac{1-\psi^{n+1}_{i,j}}{\psi^{n+1}_{i,j}}\right)
+                    \quad (\text{ロジット関数，§~\ref{sec:newton_inversion}}) \\
+  \rho^{n+1}_{i,j} &= \rho_g + (\rho_l-\rho_g)\,\psi^{n+1}_{i,j}, \qquad
+  \mu^{n+1}_{i,j}  = \mu_g + (\mu_l-\mu_g)\,\psi^{n+1}_{i,j}
+\end{align*}
+\textbf{注：}$\rho^{n+1}$，$\mu^{n+1}$ は第4--7段の現時刻係数として同一の値を使用する（中間更新なし）．
+予測段階の BDF2/EXT2 履歴項には，前タイムステップから保存された $\bu^{n-1}$，$\bu^n$，$\mu^n$ を用いる．
+
+% ── 第4段 ──────────────────────────────────────────────────────────────
+\paragraph{第4段：曲率計算}
+標準経路では $\psi^{n+1}$ の CCD 微分から
+液相$\to$気相向き曲率 $\kappa_{lg}^{n+1}$ を直接求める
+（式~\eqref{eq:curvature_psi_2d}）：
+\begin{align*}
+ (\psi_x, \psi_y) &= (D_x^{(1)}\psi^{n+1},\; D_y^{(1)}\psi^{n+1}), \quad
+ (\psi_{xx}, \psi_{yy}, \psi_{xy}) =
+ (D_x^{(2)}\psi^{n+1},\; D_y^{(2)}\psi^{n+1},\; D_{xy}^{(11)}\psi^{n+1})
+\end{align*}
+\begin{equation*}
+ \kappa_{lg,i,j}^{n+1} = -\frac{\psi_y^2 \psi_{xx}
+                              - 2\psi_x\psi_y\psi_{xy}
+                              + \psi_x^2 \psi_{yy}}
+                           {\left(\psi_x^2 + \psi_y^2
+                            + \varepsilon_{\text{grad}}^2\right)^{3/2}}
+\end{equation*}
+ここで $\varepsilon_{\text{grad}}$ は飽和域のゼロ除算を避ける数値的下限であり，
+曲率は $\psi_{\min}<\psi<1-\psi_{\min}$ の界面帯だけで使用し，
+遠方では $\kappa_{lg}=0$ とする（§~\ref{sec:curvature_direct_psi_cls}）．
+必要に応じて界面帯制限フィルタと曲率上限を適用し，
+未補正の $\phi$ 曲率式~\eqref{eq:curvature_2d} は比較用の幾何評価に留める．
+ただし，壁面に接する界面端点では式~\eqref{eq:wall_phase_topology_invariant} の
+壁面相トポロジ制約と同じ幾何閉包を用いなければならない．
+相内曲率式を非すべり壁の接触点へそのまま外挿すると，
+壁反力・接触角・接触根固定条件を含まない Young--Laplace 源を作るため，
+非一様格子では毛管エネルギーの離散勾配として解釈できない．
+したがって壁接触点近傍の曲率は，相内界面帯曲率とは別に，
+壁面トポロジと整合した界面・切断面幾何量として扱う必要がある．
+本稿の標準経路では式~\eqref{eq:wall_capillary_curvature_closure} に従い，
+壁法線方向の閉包層では $\kappa_{lg}$ を内部側極限で外挿し，
+PPE 圧力ジャンプと補正段階は式~\eqref{eq:cut_face_young_laplace_jump} の
+切断面補間値を同じ物理面上で用いる．
+
+% ── 第5段 ──────────────────────────────────────────────────────────────
+\paragraph{第5段：運動量予測（PPE 経路別）}
+運動量予測の時間骨格は両 PPE 経路で共通であり，
+NS 対流を EXT2 外挿，粘性を陰的 BDF2 の全応力 Helmholtz 系で扱う
+IMEX-BDF2 予測子~\cite{AscherRuuthSpiteri1997,AscherRuuthWetton1995,HairerWanner1996}を用いる．
+経路差は，表面張力と圧力ジャンプをどの段で閉じるかにのみ現れる．
+ただし保存形共通フラックス経路では，第1段で
+$\bm{p}_m$ が共通面フラックスにより移流済みであるため，
+この段の「NS 対流」はゼロとし，対流履歴も更新しない．
+この分岐でも BDF2 の速度履歴は保持するが，それは時間導関数の履歴であり，
+速度主変数対流の AB2/EXT2 履歴ではない．
+静水圧的な浮力勾配は圧力空間へ残し，
+式~\eqref{eq:buoyancy_gradient_residual_split} の残差だけを
+投影と同じ面演算子で予測段階に入れる．
+表面張力は二相標準経路では圧力ジャンプ形式の PPE 境界条件へ移す．
+単相・低密度比の一流体対照や BF 原理の対照では CSF 体積力として予測段階に含めるが，
+これは圧力ジャンプ型閉包の代替ではない
+（Balanced--Force 条件，式~\eqref{eq:balanced_pressure}，\eqref{eq:balanced_surface}；
+投影閉包は式~\eqref{eq:same_face_projection_closure}）．
+なお，第~\ref{sec:verification}章の二相時間精度診断で示す通り，二相標準系の実効時間次数は
+再初期化頻度や曲率の単純な時間遅れではなく，
+毛管圧力ジャンプ / FCCD 射影が $\psi\simeq0.5$ の界面帯で作る
+低正則性誤差に律速される．したがって本手順は IMEX-BDF2 単体の 2 次設計次数と，
+表面エネルギー仮想仕事に基づく圧力ジャンプ/毛管平衡閉包の結合系実効次数を分けて読む．
+
+\medskip
+\underline{予測段階のベクトル形式（$n \ge 1$）：}
+\begin{align*}
+  \mathcal{A}_{\bu}^{\mathrm{EXT2}}
+    &= 2\mathcal{A}_{\bu}(\bu^n)
+       - \mathcal{A}_{\bu}(\bu^{n-1}), \\
+  \frac{3\bu^* - 4\bu^n + \bu^{n-1}}{2\Delta t}
+    &= -\mathcal{A}_{\bu}^{\mathrm{EXT2}}
+       + \rho^{-1}\mathcal{D}_{\nu,H}(\mu^{n+1},\bu^*) \\
+    &\quad - \rho^{-1}\mathcal{G}_{\Gamma}p^n
+       + \bm{a}^{\,n+1}_{\mathrm{res}}
+       + \bm{a}^{\,n+1}_{\sigma,\mathrm{path}} .
+\end{align*}
+ここで $\bm{a}^{\,n+1}_{\mathrm{res}}$ は
+$\rho\bm{g}=-\bnabla(\rho\Phi_g)+\Phi_g\bnabla\rho$ の面残差形
+（§~\ref{sec:time_buoyancy}），
+$\bm{a}^{\,n+1}_{\sigma,\mathrm{path}}$ は二相標準経路では零
+（第6段の圧力ジャンプへ移す）である．
+CSF 体積力は一流体対照経路でのみここに現れる．
+初期 1 タイムステップ（$n=0$）は BDF1（後退 Euler）で評価し，$n=1$ 以降に BDF2 + EXT2 へ移行する
+（§~\ref{sec:time_level1}，注意~\ref{warn:bdf2_startup}）．
+
+\medskip
+\noindent\textbf{粘性 Helmholtz 系の反復構造（陰的 BDF2 + 欠陥補正）：}
+一括 PPE / 分相 PPE 経路の粘性陰的化は
+$A_H\bu^*=b_\nu^{n,n-1}$，
+$A_H=I-\gamma\Delta t\,\mathcal{L}_{\nu,H}$ の Helmholtz 系として扱う．
+$b_\nu^{n,n-1}$ は BDF2 時間離散化・陽的項・境界条件を集めた右辺である．
+$A_H$ は相内 CCD + 2 次界面帯の全応力演算子であるため，
+欠陥補正（DC）により高次残差と低次補正を分離する
+（形式定義と $A_L$ の構成は §\ref{sec:time_viscous}）：
+\begin{enumerate}[noitemsep,leftmargin=2em]
+  \item 高次残差 $r^{(m)} = b_\nu^{n,n-1} - A_H\bu^{(m)}$ を評価する．
+  \item 低次補正 $A_L\delta\bu = r^{(m)}$ を同じ物性値・境界位相・界面帯で閉じる．
+  \item $\bu^{(m+1)} = \bu^{(m)} + \omega\delta\bu$ と更新する．
+\end{enumerate}
+$A_L$ は $A_H$ と同じ $\mu,\rho$・境界制約・界面帯を共有し，
+低次演算子は収束経路だけを変え，固定点は高次系 $A_H\bu=b_\nu^{n,n-1}$ に保たれる．
+
+\noindent\textbf{注意（移動界面 $+$ 表面張力での発散）：}
+表面張力あり（$\sigma > 0$）の移動界面では，本段の $-\bnabla p^n$ 項が
+界面の圧力ジャンプ $j_{gl}=-\sigma\kappa_{lg}$ を横断して CCD ステンシル上で
+$\Ord{1}$ の打ち切り誤差を生じ，有限時間で不安定化し得る
+（§~\ref{sec:galilean_offset}，§~\ref{sec:interface_crossing}）．
+この場合は分相 PPE 解法（§~\ref{sec:interface_crossing}）と
+HFE による相内延長（§~\ref{sec:hfe}）に加え，
+式~\eqref{eq:affine_pressure_history_faces} の面加速度として
+履歴圧力を持ち越す必要がある．
+
+\paragraph{第5a段：HFE と圧力ジャンプ履歴面加速度（$\sigma > 0$ の場合）}
+上記の発散を回避するため，第5段の $-\bnabla p^n$ は
+未補正節点圧力の再微分として評価しない．
+HFE（§~\ref{sec:field_extension}）は，前ステップの圧力履歴から
+界面を跨がない片側 Hermite データを構成する再構成層であり，
+射影後の面速度を保存する圧力ジャンプ IPC では式~\eqref{eq:affine_pressure_history_faces} の
+履歴圧力面加速度を予測段階の面速度へ入れる．
+すなわち標準経路で保存・再利用する量は節点場
+$p^n_{\mathrm{ext}}$ そのものでも，前時刻の幾何毛管反力でもなく，
+式~\eqref{eq:ao_pressure_coordinate_split} の滑らかな圧力座標から
+現在の切断面・現在の面係数へ復元した履歴圧力面上加速度である．
+等密度・$\sigma=0$ 領域では HFE は恒等作用で安全に省略可能である．
+
+% ── 第6段 ──────────────────────────────────────────────────────────────
+\paragraph{第6段：圧力 Poisson 方程式の評価（IPC 増分法）}
+
+\noindent\textbf{PPE 主方程式の経路分岐：}
+\begin{itemize}[noitemsep,leftmargin=2em]
+  \item \textbf{二相標準の分相 PPE 経路：}
+        \textbf{分相 PPE 解法}（式~\eqref{eq:split_ppe_fccd_block}，
+        §\ref{sec:split_ppe_framework}）が主方程式．
+        解く未知量を $\chi_q$ と書くと，IPC 増分法では
+        $\chi_q=\delta p_q$，界面ジャンプは
+        $J_p^\chi=\delta j_{gl}=j_{gl}^{n+1}-j_{gl}^{n}$ である
+        （全圧力評価では $\chi_q=p_q^{n+1}$，$J_p^\chi=j_{gl}^{n+1}$）．
+        各相で定数密度 PPE
+        $-D_h^\FCCD(\rho_q^{-1}G_h^\FCCD \chi_q) = D_h^\FCCD\bu_q^*/\Delta t$
+        を独立に解き，界面ジャンプ条件 $J_p^\chi$ と
+        $[\partial_n \chi]_\Gamma=\bnabla_f\!\cdot(J_p^\chi\hat{\bm n}_{lg})$
+        （後者は \S\ref{sec:split_ppe_framework} の Laplace--Beltrami 法線分解
+        の 1 階成分；前提仮定 (H2) のフラックスジャンプ $[\rho^{-1}\partial_n p]_\Gamma=0$
+        とは別条件．\textbf{離散化上}は \S\ref{sec:split_ppe_framework}
+        の式~\eqref{eq:gfm_gradient_jump} で定義する密度重み付けゴーストジェット形式
+        $p_q^{*\prime}(x_f)=(\rho_q/\rho_{\bar q})p_{\bar q}'(x_f)$ で勾配境界条件を構成する）
+        を HFE（§\ref{sec:field_extension}）で課す．
+        補正段で使う圧力面加速度は，スカラー PPE の発散代表だけではなく，
+        式~\eqref{eq:pressure_reaction_green_identity} の変分随伴条件を満たす
+        $G_A$ とし，スカラー演算子も同じ組から
+        $L_A=D_fG_A$ として作る．
+        これは高次コンパクト勾配を捨てるための低次代替ではなく，
+        固定した面発散・面係数・圧力仕事計量に対して圧力反力を一意に決める
+        制約力の定式化である．
+        保存形共通フラックス経路では，第1段で使った輸送発散も
+        この $D_f$ と同じ向き付き面複体でなければならない．
+        そうでなければ，圧力射影が非圧縮と判定した面速度を使っても，
+        界面・密度・運動量輸送の側では圧縮仕事が残る．
+        表面張力を圧力ジャンプとして扱う場合，毛管補正量は
+        式~\eqref{eq:capillary_surface_energy_riesz_cochain} の
+        表面エネルギー仮想仕事から構成し，
+        同じ圧力仕事と随伴な面空間上の
+        式~\eqref{eq:capillary_component_saddle}--\eqref{eq:capillary_hodge_gate} で
+        静的平衡成分・非平衡駆動成分・離散不整合を判定する．
+        式~\eqref{eq:capillary_range_projection} の
+        $L_A/Z_A$ はこの診断用の圧力勾配代表であり，
+        PPE 右辺と第7段の補正へ渡す標準補正量は
+        成分補正済み補正量
+        $\widehat c_{\sigma,f}=s_f-B_h\mu$ である．
+        したがって非平衡界面の発散なし毛管成分を
+        標準補正前に消さない．
+        式~\eqref{eq:PPE_CCD_fullalgo} は使用しない．
+  \item \textbf{単相・低密度比一流体対照の一括 PPE 経路：}
+        変密度一括 PPE（式~\eqref{eq:PPE_CCD_fullalgo}，積の微分則展開）を解く．
+        これは単相・低密度比一流体対照および §9 の制約診断に用いる対照経路であり，
+        Young--Laplace 圧力ジャンプを標準二相閉包として保持する経路ではない．
+        DC 残差停滞は，一括 smoothed-Heaviside PPE が界面ジャンプを単一係数場で
+        吸収できていないことを示す診断となる．
+\end{itemize}
+
+\noindent\textbf{単相・低密度比一流体対照における一括 PPE 主方程式}：
+圧力増分 $\delta p \equiv p^{n+1} - p^n$ を欠陥補正法で求める：
+\begin{equation}
+\begin{aligned}
+  &\left[
+    \frac{D_x^{(2)}(\delta p)}{\rho^{n+1}}
+    - \frac{D_x^{(1)}\rho^{n+1}}{(\rho^{n+1})^2}
+      D_x^{(1)}(\delta p)
+  \right]_{i,j} \\
+  &\quad+
+  \left[
+    \frac{D_y^{(2)}(\delta p)}{\rho^{n+1}}
+    - \frac{D_y^{(1)}\rho^{n+1}}{(\rho^{n+1})^2}
+      D_y^{(1)}(\delta p)
+  \right]_{i,j}
+  =
+  \frac{1}{\Delta t}
+  \Bigl(D_x^{(1)}\tilde{u}^*_{i,j}
+        + D_y^{(1)}\tilde{v}^*_{i,j}\Bigr)
+\end{aligned}
+  \label{eq:PPE_CCD_fullalgo}
+\end{equation}
+右辺は圧力と同じ離散発散位置で評価した中間速度の
+発散から構成される．以下，この右辺ベクトルを $b_p$ と書く．
+圧力場および圧力勾配には DCCD 後置フィルタを適用しない．
+境界条件：$\partial(\delta p)/\partial n = 0$（ノイマン条件）．
+
+\noindent\textbf{DC 残差監視反復概要（第6.0--6.5小段；構造は両経路共通，
+オペレータ $L_H/L_L$ の中身が PPE 経路別に置換される）：}
+\begin{enumerate}[leftmargin=2em,noitemsep]
+  \item 第6.0小段：初期化 $\delta p^{(0)} = 0$．
+  \item 第6.1小段：$k=1,\ldots,k_{\max}$ で欠陥 $d^{(k)} = b_p - L_H\,\delta p^{(k-1)}$ を CCD/FCCD で評価．
+  \item 第6.2小段：補正方程式 $L_L\,\eta^{(k)} = d^{(k)}$ を低次補正問題として解く（§~\ref{sec:dc_sweep}）．
+  \item 第6.3小段：式~\eqref{eq:ppe_dc_residual_minimizing_alpha} の
+        残差最小化係数を第一候補にし，
+        必要なら固定緩和候補の後退探索を行って
+        $\delta p^{(k)} = \delta p^{(k-1)} + \alpha_k\,\eta^{(k)}$ と更新する．
+        残差を下げない候補は受理しない．
+  \item 第6.4小段：収束判定は式~\eqref{eq:ppe_dc_residual_contract} の
+        $\eta_{\mathrm{DC}}^{(k)}\le\varepsilon_{\mathrm{PPE}}$ とし，満たした時点で受理する．
+  \item 第6.5小段：最終値 $\delta p \leftarrow \delta p^{(k_\mathrm{acc})}$．ここで
+        $k_\mathrm{acc}$ は受理された反復であり，$k_{\max}$ 到達時にも
+        $L_H$ 残差が下がらない場合は経路選択上または閉包上の診断対象とする．
+\end{enumerate}
+
+\noindent\textbf{PPE 経路別の $L_H, L_L$ 定義：}
+\begin{center}
+\renewcommand{\arraystretch}{\PaperTableArrayStretch}
+\begin{tabular}{@{}lll@{}}
+\hline
+経路 & $L_H$（高次：欠陥評価） & $L_L$（低次：補正問題） \\
+\hline
+一括 PPE & 一括 PPE 演算子 & 5 点ラプラシアン \\
+ & 式~\eqref{eq:PPE_CCD_fullalgo} & $\Delta_h$（変密度・積の微分則型 2 次） \\
+分相 PPE & 各相内 \textbf{定数密度 Poisson} & 各相内 5 点ラプラシアン \\
+ & $-D_h^\FCCD\rho_q^{-1}G_h^\FCCD\chi_q$（相 $q$ 独立） & $\Delta_h$（相内一様） \\
+\hline
+\end{tabular}
+\end{center}
+分相 PPE 経路では DC を相ごとに独立適用し，界面ジャンプ境界条件は HFE
+（§\ref{sec:field_extension}）経由で各 DC 小段に供給される．
+詳細導出は付録~\ref{app:dc_ppe_detail}，§~\ref{sec:defect_correction_ppe} 参照．
+
+\noindent\textbf{精度に関する補足：}
+§~\ref{sec:split_ppe_recovery} では，DC 残差受理条件を満たした分相 PPE が
+液相内部 Dirichlet 評価で $\rho_l/\rho_g = 1$--$1000$ に対し
+密度比に依存しない $\Ord{h^7}$ 超収束を示すことを実証した．
+これは相内 Poisson の成分証明であり，本計算の受理は
+式~\eqref{eq:ppe_dc_residual_contract} の高次残差受理条件で行う．
+Neumann 境界では §~\ref{sec:verify_ppe_neumann} の境界精度により
+$\Ord{h^5}$ が上界であり，界面近傍の精度は HFE とジャンプ条件閉包に依存する．
+
+% ── 第6a段 ─────────────────────────────────────────────────────────────
+\paragraph{第6a段：HFE による $\delta p$ 延長（$\sigma>0$ の補正直前）}
+第6段で得た圧力増分 $\delta p$ に，その未知量に対応する
+$J_p^\chi$（IPC では $\delta j_{gl}$）を用いた HFE（§\ref{sec:field_extension}）を適用し
+$\delta p_{\mathrm{ext}}$ を定義する．
+界面を跨ぐ $-(\Delta t/\rho)\bnabla(\delta p)$ 評価で
+$1/\rho$ ジャンプによる打ち切り誤差を回避するため，
+第7段の速度補正項では $\delta p_{\mathrm{ext}}$ を用いる．
+$\sigma=0$ では本段を省略する．
+
+% ── 第7段 ──────────────────────────────────────────────────────────────
+\paragraph{第7段：速度・圧力補正（IPC）}
+\label{box:fvm_ccd_metric}
+圧力増分 $\delta p$ を用いて速度と圧力を同時に更新する：
+\begin{align*}
+u^{n+1}_{i,j} &= u^*_{i,j}
+  - \frac{\Delta t}{\rho^{n+1}_{i,j}}\,\bigl(\mathcal{G}_{\Gamma,x}\,\delta p\bigr)_{i,j}, \quad
+v^{n+1}_{i,j} = v^*_{i,j}
+  - \frac{\Delta t}{\rho^{n+1}_{i,j}}\,\bigl(\mathcal{G}_{\Gamma,y}\,\delta p\bigr)_{i,j} \\
+p^{n+1}_{i,j} &= p^n_{i,j} + \delta p_{i,j}
+\end{align*}
+ここで $\mathcal{G}_\Gamma$ は非ジャンプ経路では通常の勾配 $\mathcal{G}$，
+ジャンプ補正付き面勾配の経路では
+$\mathcal{G}_\Gamma\delta p=\mathcal{G}\delta p_{\mathrm{ext}}-B(J_p^\chi)$
+を表す．変分毛管経路では，この記法の
+$B(J_p^\chi)$ は未補正ジャンプを物理力とみなすものではなく，
+式~\eqref{eq:capillary_surface_energy_riesz_cochain} の
+表面エネルギー補正量と同じ面補正枠に置かれる切断面代表である．
+診断用の圧力勾配代表だけは
+\begin{equation}
+  L_A(s_f)
+  =
+  G_Ap_c,\qquad
+  D_fG_Ap_c=D_fs_f
+  \label{eq:algorithm_range_projected_jump}
+\end{equation}
+を満たす．この代表は毛管平衡判定と圧力代表表示に用い，
+補正段階で差し引く標準補正量は
+同一界面面データ・同一の圧力仕事と随伴な面重みから定めた
+$\widehat c_{\sigma,f}=s_f-B_h\mu$ である．
+勾配演算子は格子・境界条件により選択する：
+\begin{itemize}[noitemsep]
+  \item \textbf{均一格子，または周期境界条件：}
+        非ジャンプ経路では $\mathcal{G}_{\Gamma,x}=D_x^{(1)}$（CCD $\Ord{h^6}$）．
+        ジャンプ補正付き面勾配の経路では同じ面ジャンプ
+        または表面エネルギー毛管補正量を差し引く
+        FCCD/CCD 面勾配を用いる．
+        CCD/FCCD 発散の意味で非圧縮条件を満たす：
+        $D_x^{(1)} u^{n+1} + D_y^{(1)} v^{n+1} \approx 0$
+        （$2\Delta x$ デカップリングは圧力場の平滑化ではなく，
+        同一面評価範囲の補正段階で抑制する）．
+  \item \textbf{非一様格子（$\alpha>1$）+ 壁面境界条件：}
+        非ジャンプ経路では $\mathcal{G}_{\Gamma,x} = \mathcal{G}_x^\text{adj}$（面平均勾配，$\Ord{h^2}$，§~\ref{sec:fvm_ccd_corrector}）．
+        $\mathcal{D}_\text{FV}(\mathcal{G}^\text{adj}) = \mathcal{L}_\text{FV}$ が成立するため，
+        有限体積法発散の意味で非圧縮条件を満たす：
+        $\mathcal{D}_{\text{FV},x}\, u^{n+1} + \mathcal{D}_{\text{FV},y}\, v^{n+1} \approx 0$．
+        CCD 勾配（$J_n \neq J_f$）を使うと時間発展に伴って残差発散が蓄積し，
+        非一様格子上の投影整合性を失う．
+        ジャンプ補正付き面勾配では
+        $\mathcal{G}_\Gamma^\text{adj}=\mathcal{G}^\text{adj}-\widehat c_{\sigma,f}$ を使い，
+        PPE 右辺に入れた $D^{\mathrm{nu}}\widehat c_f$ と同じ界面面データを補正側でも参照する．
+\end{itemize}
+非一様格子 + 壁面境界条件では，PPE 側の発散，補正段階側の勾配，
+ジャンプ補正面項，HFE 延長点，浮力・表面張力の面評価を
+同じ界面面幾何データ上で定義することを演算子整合条件とする．
+このうち一つだけを CCD 節点計量へ戻す混在は Balanced--Force の面釣合いを破る．
+さらに壁付き保存形経路では，補正後の face state が
+式~\eqref{eq:wall_constrained_face_space} の $F_w$ に属することを
+次ステップへ渡す前の状態契約とする．
+\end{tcolorbox}
+
