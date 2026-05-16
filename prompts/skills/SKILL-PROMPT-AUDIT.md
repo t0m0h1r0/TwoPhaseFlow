@@ -1,27 +1,27 @@
 # SKILL-PROMPT-AUDIT
 
 id: SKILL-PROMPT-AUDIT
-purpose: Audit generated prompt-system artifacts for Q3 compliance, local generation boundary, rule bloat, JIT discipline, and token ROI.
+purpose: Audit generated prompts, skill capsules, wiki-packet injection, token telemetry, and project-local generation boundaries.
 trigger:
-- PromptAuditor receives generated prompt artifacts
-- EnvMetaBootstrapper Stage 4
-- AP-13 suspicion
-minimal_instruction: Verify Stage 4 deployment checks plus Q3-AUDIT items Q3-01..Q3-13, reject copied upstream generated artifacts, reject duplicated operation bodies and broad preloading, and require SkillID/RULE_MANIFEST references where full text has weak ROI.
+- generated agent prompt changed
+- Skill Capsule manifest changed
+- EnvMetaBootstrapper Stage 4 validation
+- prompt bloat, stale wiki policy, or copied upstream artifact concern
+minimal_instruction: Verify Stage 4 deployment checks plus Q3-AUDIT items Q3-01..Q3-15, reject copied upstream generated artifacts, reject duplicated operation bodies and broad preloading, require SkillID/RULE_MANIFEST/wiki-packet references where full text has weak ROI, and fail AP-17 for stale or prose-heavy wiki injection.
 full_ref: prompts/meta/kernel-deploy.md §Stage 4
 input_contract:
 - generated agent prompt paths
-- prompts/skills paths
-- git diff proving upstream copied kernel only
-- token_telemetry_report.json
+- changed skill capsule paths
+- token_telemetry_report.json or waiver
+- wiki_knowledge_injection_report.json or waiver when docs/wiki exists
 forbidden_context:
-- PromptArchitect reasoning
-- previous generated prompt transcripts
-- unlisted draft prompts
+- generated prompts copied from upstream
+- full operation bodies duplicated in role prompts
+- broad skill-body preloading
+- wiki prose copied into static prompts without source refs and packet status
 success_metric:
-- Stage 4 deployment verdict
-- Q3-AUDIT 13-item verdict
-- duplicate-rule scan recorded
-- upstream-boundary verdict recorded
-- prompt-load ROI verdict recorded
-- token telemetry gate result recorded
-token_target: 160
+- Q3-AUDIT 15-item verdict
+- AP-13/AP-17 verdict
+- token telemetry PASS/WARN/FAIL
+- wiki packet PASS/WARN/FAIL
+token_target: 180
