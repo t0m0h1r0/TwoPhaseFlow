@@ -18,7 +18,7 @@ ROOT = Path(__file__).resolve().parents[1]
 META = ROOT / "prompts" / "meta"
 AGENT_DIR = ROOT / "prompts" / "agents-codex"
 SKILL_DIR = ROOT / "prompts" / "skills"
-REPORT_DIR = ROOT / "artifacts" / "P" / "codex_overwrite_deploy_CHK-RA-AGENT-WIKI-PROMPT-004"
+REPORT_DIR = ROOT / "artifacts" / "P" / "codex_overwrite_deploy_CHK-RA-PRES-AGT-001"
 VERSION = "8.2.0-candidate"
 
 DOMAIN_RULES = {
