@@ -1,4 +1,4 @@
-# Wiki Index — 394 entries
+# Wiki Index — 396 entries
 
 ## Active Retrieval Gate
 
@@ -65,7 +65,10 @@ sections, use [WIKI-P-022](paper/WIKI-P-022.md) so equations are introduced
 through ownership, update, output, and diagnostic ledgers rather than as
 standalone symbol sequences. For paper placement-review passes, use
 [WIKI-P-023](paper/WIKI-P-023.md) so correct details are checked against their
-chapter/front-matter responsibility before they are kept in place. For paper citation-survey passes, use
+chapter/front-matter responsibility before they are kept in place. For
+presentation deck creation or review, use [WIKI-P-024](paper/WIKI-P-024.md)
+so every slide is checked as a source-grounded claim-proof unit with visible
+reading order, evidence boundaries, and rendered convergence. For paper citation-survey passes, use
 [WIKI-P-020](paper/WIKI-P-020.md) so references are added only after
 claim-level source verification and are placed at the manuscript claim they
 support.
@@ -376,7 +379,7 @@ support.
 | [WIKI-E-062](experiment/WIKI-E-062.md) | Static Droplet Pressure Images Must Use Hodge Representatives |
 | [WIKI-E-063](experiment/WIKI-E-063.md) | U12/V11 AO-Fast Capillary Split Gates |
 
-## Paper (23)
+## Paper (24)
 
 | REF-ID | Title |
 |--------|-------|
@@ -403,6 +406,7 @@ support.
 | [WIKI-P-021](paper/WIKI-P-021.md) | Whole-Scope Paper Review Reuses Local Review Gates |
 | [WIKI-P-022](paper/WIKI-P-022.md) | Formula-Heavy Paper Sections Need Ownership-Ledger Prose |
 | [WIKI-P-023](paper/WIKI-P-023.md) | Paper Placement Review Keeps Front Matter and Chapters Responsible |
+| [WIKI-P-024](paper/WIKI-P-024.md) | Research Presentation Decks Need Claim-Proof Slides and Rendered Convergence |
 
 ## Meta (35)
 
