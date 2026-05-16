@@ -1,0 +1,9 @@
+{
+  "branch": "codex/ra-ch1-14-intuitive-review-20260516",
+  "worktree": ".claude/worktrees/codex-ra-ch1-14-intuitive-review-20260516",
+  "task": "Review and revise paper Chapters 1-14 for intuitive explanations of equation-heavy content.",
+  "id_prefix": "RA-CH1-14-INT",
+  "session_id": "4DBB9C60-FEEF-4600-94B8-D5F0EAF52AEC",
+  "created_at": "2026-05-16",
+  "status": "active"
+}
