@@ -192,13 +192,13 @@ $\Delta t_{\mathrm{est}} = 0.25\,h_{\min}/\max|\bu|$ からステップ数を決
 \textbf{Olsson--Kreiss 型保存形 CLS 質量補正}~\cite{OlssonKreiss2005}
 を 10 step ごとに適用する（Type-B 整列：10-step 質量修正間隔を
 §13 検証経路に反映；質量だけの補正であり
-界面位置や曲率を丸めないため，sharp-corner advection の独立診断としての性格は維持される）．
+界面位置や曲率を丸めないため，鋭角スロット移流の独立診断としての性格は維持される）．
 
 \paragraph{結果．}
 \begin{table}[!htbp]
 \caption{V10-a：FCCD/TVD-RK3 による Zalesak CLS 移流 1 周期（Olsson--Kreiss 質量修正 10 step ごと適用後）}
 \label{tab:V10_zalesak}
-\PaperCaptionNote{$\alpha=1$ の一様格子上で sharp-slot 形状保持と保存形 CLS 質量ドリフトを測る．質量ドリフトは Olsson--Kreiss 質量修正（10 step ごと）後の終端値で，両 $N$ で合格基準 $0.5\%$ を 3 桁余裕．shape $L^1$ は slot 角部 ($C^0$ コーナー) と $\varepsilon$ 平滑化の解像不足を受け，$N=128$ でも slot/h $=6.4$．重心収束率は $N=64\!\to\!128$ の局所値（$\log_2 (\text{centroid err}_{64}/\text{centroid err}_{128})$）であり，固定格子 FCCD 回転の位相誤差としきい値化幾何の寄与も含む．}
+\PaperCaptionNote{$\alpha=1$ の一様格子上で鋭いスロット形状保持と保存形 CLS 質量ドリフトを測る．質量ドリフトは Olsson--Kreiss 質量修正（10 step ごと）後の終端値で，両 $N$ で合格基準 $0.5\%$ を 3 桁余裕．形状 $L^1$ は slot 角部 ($C^0$ コーナー) と $\varepsilon$ 平滑化の解像不足を受け，$N=128$ でも slot/h $=6.4$．重心収束率は $N=64\!\to\!128$ の局所値（$\log_2 (\text{centroid err}_{64}/\text{centroid err}_{128})$）であり，固定格子 FCCD 回転の位相誤差としきい値化幾何の寄与も含む．}
 \centering\small
 \begin{tabular}{r r r r r r r}
 \toprule
@@ -281,7 +281,7 @@ LeVeque 型単一渦 deformation 問題~\cite{LeVeque1996,RiderKothe1998} を
 LeVeque 単一渦速度場 $\bu(\bx, t) = (-\sin^2(\pi x)\sin(2\pi y),\,
 \sin(2\pi x)\sin^2(\pi y)) \cos(\pi t/T)$．
 $N=128$, $\alpha=1$，$T=8$（Rider--Kothe 1998 標準 $T=2$~\cite{RiderKothe1998,LeVeque1996}
-の \emph{4 倍} のストレス領域で意図的に実施し，folded filament が $O(h)$ まで
+の \emph{4 倍} のストレス領域で意図的に実施し，折り畳まれた細線構造が $O(h)$ まで
 薄くなる固定 Eulerian 格子の限界を試す）．Ridge--Eikonal 再初期化と
 Olsson--Kreiss 質量修正は 10 step ごとに適用．図示は初期円盤，最大変形時 ($t=T/2$)，
 反転後最終場 ($t=T$) の 3 点スナップショットに限定する．
@@ -320,10 +320,10 @@ V10-a と同じく二軸分離評価を行う（§\ref{sec:verification}
         $2.248\times10^{-2}$ には正式判定基準が存在しない．
         $T=8$ は Rider--Kothe 1998 標準 $T=2$~\cite{RiderKothe1998,LeVeque1996}
         の \emph{4 倍のストレス} 領域で実施しており，最大変形時 ($t=T/2$) には
-        folded filament が格子幅まで薄くなる．
+        折り畳まれた細線構造が格子幅まで薄くなる．
         $T$ 掃引，再初期化間隔，質量補正，CFL の分離診断はいずれも，
-        形状復元誤差が時間刻みや補正頻度ではなく filament 幅の格子幅化に連動することを示す．
-        これは格子幅 filament 追跡の理論的下限であり，
+        形状復元誤差が時間刻みや補正頻度ではなく細線幅の格子幅化に連動することを示す．
+        これは格子幅細線追跡の理論的下限であり，
         Eulerian-only 固定格子では PLS / AMR / moving mesh
         ~\cite{EnrightFedkiwFerzigerMitchell2002} 級の物理モデル拡張なしには
         改善できない．本稿はこれを Type-D（理論的下限；

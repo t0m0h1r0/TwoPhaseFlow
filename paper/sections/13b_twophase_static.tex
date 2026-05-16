@@ -91,8 +91,9 @@ CSF 体積力ではなく §~\ref{sec:split_ppe_pressure_jump_formulation} の
 第~\ref{sec:validation}章では静止円形液滴を重複させず，毛管波，振動液滴，
 気泡上昇，Rayleigh--Taylor のように有限界面運動を伴う物理応答だけを扱う．
 
-本判定は第14章の静止液滴設定と同じ
-標準構成を，V3 の圧力ジャンプ側補助診断として取り込むものである．
+本判定は，第14章で静止液滴を重複させないために，
+移動界面ベンチマークと同じ標準構成を
+静止平衡の圧力ジャンプ側補助診断として先に取り込むものである．
 構成は周期境界，界面適合非一様格子 $\alpha=2$，FCCD/TVD--RK3 界面輸送，
 UCCD6/IMEX--BDF2 運動量更新，圧力ジャンプ付きアフィン PPE，
 閉界面 Riesz 毛管源，圧力補正と随伴な残差受理条件，
@@ -109,7 +110,7 @@ UCCD6/IMEX--BDF2 運動量更新，圧力ジャンプ付きアフィン PPE，
 \centering\small
 \begin{tabular}{l r r r r r}
 \toprule
-\multicolumn{1}{c}{run} & $K(T)$ & $K_{\max}$ & $\max|\Delta V|/V_0$ & $D(T)$ & $\|u(T)\|_\infty$ \\
+\multicolumn{1}{c}{構成} & $K(T)$ & $K_{\max}$ & $\max|\Delta V|/V_0$ & $D(T)$ & $\|u(T)\|_\infty$ \\
 \midrule
 $N=32,T=1$  & $2.353\times10^{-7}$ & $2.625\times10^{-7}$ & $1.396\times10^{-15}$ & $0$ & $1.575\times10^{-4}$ \\
 $N=32,T=10$ & $3.871\times10^{-7}$ & $1.718\times10^{-6}$ & $2.919\times10^{-15}$ & $0$ & $1.686\times10^{-4}$ \\
