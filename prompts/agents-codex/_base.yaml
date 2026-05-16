@@ -50,6 +50,7 @@ on_demand_common:
   ID-NAMESPACE-DERIVE: "kernel-ops.md §ID-NAMESPACE-DERIVE"
   METRIC-01: "kernel-ops.md §METRIC-01"
   TOOL-TRUST-01: "kernel-ops.md §TOOL-TRUST-01"
+  PROJECT_KERNEL: "prompts/meta/kernel-project.md"
   HAND_SCHEMA: "kernel-roles.md §SCHEMA-IN-CODE"
   AGENT_EFFORT_POLICY: "kernel-roles.md §AGENT_EFFORT_POLICY"
   WIKI-M-032: "docs/wiki/meta/WIKI-M-032.md"

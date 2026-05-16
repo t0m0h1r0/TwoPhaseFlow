@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-"""Generate Codex agent prompts from prompts/meta.
+"""Generate Codex agent prompts and support artifacts from prompts/meta.
 
 This is a local EnvMetaBootstrapper slice for the Codex environment. It reads
-the metaprompt kernel, overwrites prompts/agents-codex/, refreshes the prompt
-audit skill capsule, and emits deployment reports under artifacts/P/.
+the metaprompt kernel, overwrites prompts/agents-codex/, regenerates local
+skill capsules, and emits deployment reports under artifacts/P/.
 """
 
 from __future__ import annotations
@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 META = ROOT / "prompts" / "meta"
 AGENT_DIR = ROOT / "prompts" / "agents-codex"
 SKILL_DIR = ROOT / "prompts" / "skills"
+PROJECT_KERNEL = META / "kernel-project.md"
 VERSION = "8.2.0-candidate"
 
 DOMAIN_RULES = {
@@ -403,6 +404,7 @@ on_demand_common:
   ID-NAMESPACE-DERIVE: "kernel-ops.md §ID-NAMESPACE-DERIVE"
   METRIC-01: "kernel-ops.md §METRIC-01"
   TOOL-TRUST-01: "kernel-ops.md §TOOL-TRUST-01"
+  PROJECT_KERNEL: "{PROJECT_KERNEL.relative_to(ROOT)}"
   HAND_SCHEMA: "kernel-roles.md §SCHEMA-IN-CODE"
   AGENT_EFFORT_POLICY: "kernel-roles.md §AGENT_EFFORT_POLICY"
   WIKI-M-032: "docs/wiki/meta/WIKI-M-032.md"
@@ -604,14 +606,16 @@ def main() -> int:
         META / "kernel-domains.md",
         META / "kernel-workflow.md",
         META / "kernel-antipatterns.md",
-        META / "kernel-project.md",
         META / "kernel-deploy.md",
+        PROJECT_KERNEL,
     ]
     schema_report = meta_section_report(kernel_files)
     schema_report["agent_count"] = len(profiles)
     schema_report["codex_files_excluding_base"] = len(list(AGENT_DIR.glob("*.md")))
     schema_report["skill_capsules_generated"] = len(skill_specs)
     schema_report["skill_capsule_source"] = "prompts/meta/kernel-deploy.md <skill_capsule_specs>"
+    schema_report["project_kernel_source"] = str(PROJECT_KERNEL.relative_to(ROOT))
+    schema_report["project_kernel_ownership"] = "user-owned project overlay inside prompts/meta; sync helper preserves this file"
     write(report_dir / "schema_resolution_report.json", json.dumps(schema_report, indent=2, sort_keys=True) + "\n")
 
     q3_lines = [

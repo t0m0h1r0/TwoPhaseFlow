@@ -55,6 +55,21 @@ See [src/README.md](src/README.md) for full module structure, algorithm table, a
 cd src && pytest -v   # 28 tests passing
 ```
 
+## Research-Agent Prompt System
+
+The shared metaprompt kernel is managed as a Git submodule at
+`prompts/meta/`. This project keeps its project-specific profile in
+`prompts/meta/kernel-project.md`; the user edits that file to define project
+identity, PR-1..PR-6 rules, path conventions, validation commands,
+remote/local execution policy, forbidden shortcuts, and portability notes.
+
+Use `make sync-research-agent` or `python scripts/sync_research_agent.py` to
+sync the submodule. The helper preserves `prompts/meta/kernel-project.md`
+across the submodule update before redeploying generated prompts, skills, and
+reports. See [prompts/README.md](prompts/README.md) and
+[prompts/meta/README.md](prompts/meta/README.md) for the full deployment
+contract.
+
 ## Paper
 
 The `paper/` directory is a self-contained XeLaTeX document. Build with:
