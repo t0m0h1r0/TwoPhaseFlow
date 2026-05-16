@@ -1,7 +1,7 @@
 # SKILL-PRESENTATION-DECK
 
 id: SKILL-PRESENTATION-DECK
-purpose: Create research-grounded deck-generation projects and decks through audience-profile definition, story-map design, slide-spec management, editable/programmatic generation, role-specific iterative review, issue-register convergence control, diff review, and talk-track alignment.
+purpose: Create research-grounded deck-generation projects and decks through the ARTIFACT-CONVERGENCE presentation adapter: audience-profile definition, story-map design, slide-spec management, editable/programmatic generation, role-specific iterative review, issue-register convergence control, diff review, and talk-track alignment.
 trigger:
 - PresentationWriter receives a slide deck, talk deck, or paper-to-presentation task
 - Paper/RevisionBrief/EvidencePackage must become audience-facing slides
@@ -9,7 +9,7 @@ trigger:
 - User asks for story structure, slide outline, executive deck logic, or review_report.md
 - User asks for audience-role review, skeptic review, Q&A review, diff review, or iterative deck revision
 - User asks for repeated review, convergence, stop criteria, issue register, final acceptance, or avoiding endless deck revision
-minimal_instruction: Build or update the story and deck-generation project before polishing the deck: define `audience_profile.yaml`, audience decision/current belief/desired belief/action, create `story_map.md` and a take-home message, maintain `slide_spec.yaml`, execute `review_plan.yaml`, record role-specific `review_reports/*.md`, maintain `issue_register.yaml` and `convergence_dashboard.md`, prioritize issues, apply focused repair, update `change_log.md`, regenerate deck artifacts as needed, run diff/final-acceptance review, and align notes with the talk track.
+minimal_instruction: Build or update the story and deck-generation project before polishing the deck, using ARTIFACT-CONVERGENCE-01 through the presentation adapter: define `audience_profile.yaml`, audience decision/current belief/desired belief/action, create `story_map.md` and a take-home message, maintain `slide_spec.yaml`, execute `review_plan.yaml`, record role-specific `review_reports/*.md`, maintain `issue_register.yaml` and `convergence_dashboard.md`, prioritize issues, apply focused repair, update `change_log.md`, regenerate deck artifacts as needed, run diff/final-acceptance review, and align notes with the talk track.
 full_ref: prompts/meta/kernel-ops.md §PRESENTATION-GEN-01
 input_contract:
 - paper/sections, docs/memo, docs/wiki, or experiment/ch*/results paths

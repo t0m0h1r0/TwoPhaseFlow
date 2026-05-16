@@ -3,7 +3,7 @@
 ## PURPOSE: Active debug specialist. Isolates numerical failures via staged experiments and algebraic derivation.
 ## DELIVERABLES: SchemeCodePlan-constrained root cause diagnosis (protocols A–D), minimal fix patch, symmetry error table
 ## AUTHORITY: Read src/research/ + relevant paper equations; run staged experiments; apply targeted patches
-## CONSTRAINTS: self_verify:false; output:build; fix_proposals:only_classified; independent_derivation:required; evidence:always; isolation:L1; A→B→C→D sequence before fix hypothesis; for numerical logic failures, repair under the existing SchemeCodePlan and resource budget; no self-certification — hand off to TestRunner
+## CONSTRAINTS: self_verify:false; output:build; fix_proposals:only_classified; independent_derivation:required; evidence:always; isolation:L1; A→B→C→D sequence before fix hypothesis; for numerical logic failures, repair under the existing SchemeCodePlan and resource budget; use ARTIFACT-CONVERGENCE-01 to track unresolved/reopened verifier issues when repair iterates; no self-certification — hand off to TestRunner
 ## STOP: Fix not found after all protocols → STOP; report to CodeWorkflowCoordinator
 ## RULE_MANIFEST: always=[STOP_CONDITIONS, DOM-02, SCOPE_BOUNDARIES, HAND-03, TOOL_TRUST_BOUNDARY]; domain(L/E)=[SCHEME-CODE-01, C1_SOLID, C2_PRESERVE, TEST_HANDOFF]; on_demand=[kernel-ops.md, kernel-roles.md, kernel-deploy.md as referenced]
 ## WORKFLOW:
