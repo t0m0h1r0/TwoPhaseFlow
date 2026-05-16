@@ -5,6 +5,11 @@
 本章では，界面追跡変数 $\psi = H_\varepsilon(-\phi)$ の定式化，
 保存形移流，$\psi\leftrightarrow\phi$ 対応，直接曲率計算，および
 品質劣化時の距離再構成までを，後続章の標準アルゴリズムへ接続できる形で整備する．
+CLS の基本形は Olsson--Kreiss~\cite{OlssonKreiss2005} に置き，
+再初期化と保存性の理論的整理は Olsson--Kreiss--Zahedi~\cite{OlssonKreissZahedi2007} を参照する．
+高次 compact 離散を保存形 LS へ組み合わせる先行例として
+Moghadam らの CCLS~\cite{MoghadamShafieefarPanahi2016} も本章の近縁研究であるが，
+本稿ではその議論を界面移流だけでなく，後続章の面速度，圧力閉包，毛管仕事台帳へ接続する．
 
 \begin{enumerate}
   \item \textbf{§~\ref{sec:why_cls}（なぜ CLS か）：}
@@ -33,6 +38,17 @@
         基本の保存形輸送は $\psi$ で閉じ，距離再構成は必要時に
         $\phi$ を再構成して標準 CLS 手順へ戻す幾何段である．
 \end{enumerate}
+
+\paragraph{本章の数式の読み方．}
+CLS の式は，界面を「見つける式」と「運ぶ式」を分けて読むと理解しやすい．
+$\psi$ はセル内にどれだけ液相があるかを保存形に運ぶ量であり，
+発散形フラックスが閉じれば体積台帳を追える．
+一方，$\phi$ は法線・曲率・距離を読むための測量座標であり，
+移流で保存すべき量そのものではない．
+再初期化や Ridge--Eikonal は，物理時間で界面をさらに動かす操作ではなく，
+移流後の $\psi$ から「同じ界面を測り直せる」距離場へ戻す幾何修復として読む．
+したがって本章で式が増える理由は，界面位置，保存量，幾何測度を
+一つの変数へ無理に押し込まず，それぞれの役割を明示するためである．
 
 \subsection{標準 Level Set 法の問題点：なぜ CLS が必要か}
 \label{sec:why_cls}
