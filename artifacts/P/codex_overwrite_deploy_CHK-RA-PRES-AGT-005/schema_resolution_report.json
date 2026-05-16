@@ -1,0 +1,20 @@
+{
+  "agent_count": 25,
+  "codex_files_excluding_base": 25,
+  "duplicate_meta_section_ids": [],
+  "kernel_files": [
+    "prompts/meta/kernel-constitution.md",
+    "prompts/meta/kernel-roles.md",
+    "prompts/meta/kernel-ops.md",
+    "prompts/meta/kernel-domains.md",
+    "prompts/meta/kernel-workflow.md",
+    "prompts/meta/kernel-antipatterns.md",
+    "prompts/meta/kernel-project.md",
+    "prompts/meta/kernel-deploy.md"
+  ],
+  "meta_section_count": 17,
+  "missing": [],
+  "skill_capsule_source": "prompts/meta/kernel-deploy.md <skill_capsule_specs>",
+  "skill_capsules_generated": 9,
+  "status": "PASS"
+}
