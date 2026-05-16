@@ -1,14 +1,17 @@
-# Wiki Index — 386 entries
+# Wiki Index — 387 entries
 
 ## Active Retrieval Gate
 
 Start with [WIKI-X-041](cross-domain/WIKI-X-041.md) for the curated active
 contract map, [WIKI-P-018](paper/WIKI-P-018.md) for the recent Chapters 1-13
-paper-theory contract digest, then [WIKI-X-040](cross-domain/WIKI-X-040.md) for
-recent research findings.  For AO-Fast capillary admission and Chapter 14 YAML
-state-space boundaries, use [WIKI-X-049](cross-domain/WIKI-X-049.md),
-[WIKI-T-169](theory/WIKI-T-169.md), and
-[WIKI-E-063](experiment/WIKI-E-063.md).  When a problem occurs, first use
+paper-theory contract digest, [WIKI-P-019](paper/WIKI-P-019.md) for the
+Chapter 14 active-geometry capillary benchmark contract, then
+[WIKI-X-040](cross-domain/WIKI-X-040.md) for recent research findings.  For
+active-geometry capillary admission and Chapter 14 YAML state-space boundaries,
+use [WIKI-X-054](cross-domain/WIKI-X-054.md),
+[WIKI-E-063](experiment/WIKI-E-063.md),
+[WIKI-X-049](cross-domain/WIKI-X-049.md), and
+[WIKI-T-169](theory/WIKI-T-169.md).  When a problem occurs, first use
 [WIKI-X-051](cross-domain/WIKI-X-051.md) as the mandatory incident-recall
 protocol for zero-base, theory-first RCA and countermeasure design; use
 [WIKI-X-055](cross-domain/WIKI-X-055.md) for the deliberation best practices
@@ -351,7 +354,7 @@ their curation notes.
 | [WIKI-E-062](experiment/WIKI-E-062.md) | Static Droplet Pressure Images Must Use Hodge Representatives |
 | [WIKI-E-063](experiment/WIKI-E-063.md) | U12/V11 AO-Fast Capillary Split Gates |
 
-## Paper (18)
+## Paper (19)
 
 | REF-ID | Title |
 |--------|-------|
@@ -373,6 +376,7 @@ their curation notes.
 | [WIKI-P-016](paper/WIKI-P-016.md) | Appendices Are Proof Layers for Main-Text Contracts |
 | [WIKI-P-017](paper/WIKI-P-017.md) | Paper Build Hygiene: Zero-Warning Float Placement |
 | [WIKI-P-018](paper/WIKI-P-018.md) | Chapters 1-13 Recent Paper-Theory Contract Digest |
+| [WIKI-P-019](paper/WIKI-P-019.md) | Chapter 14 Active-Geometry Capillary Benchmark Paper Contract |
 
 ## Meta (31)
 
@@ -422,8 +426,8 @@ their curation notes.
 | [WIKI-L-006](code/WIKI-L-006.md) | Time Integration Verification Scripts (Exp 11-14, 11-15) |
 | [WIKI-L-007](code/WIKI-L-007.md) | Rhie-Chow & Young-Laplace Pipeline Scripts (Exp 11-5, 11-16) |
 | [WIKI-L-008](code/WIKI-L-008.md) | [REFERENCE] Library Architecture: Module Hierarchy, Design Patterns, and Dependency Flow |
-| [WIKI-L-009](code/WIKI-L-009.md) | Interface Contracts: 6 Abstractions Enabling DIP Throughout the Library |
-| [WIKI-L-010](code/WIKI-L-010.md) | PPE Solver Architecture: Factory Registry, Template Method, and Legacy Management |
+| [WIKI-L-009](code/WIKI-L-009.md) | Interface Contracts: Runtime Scheme Interfaces and PPE Solver Boundary |
+| [WIKI-L-010](code/WIKI-L-010.md) | PPE Solver Architecture: FCCD Operator, DC Wrapper, and Explicit FVM/FD Routes |
 | [WIKI-L-011](code/WIKI-L-011.md) | CCD Solver Module: Block-Tridiagonal LU, Multi-Axis Design, and Backend Abstraction |
 | [WIKI-L-012](code/WIKI-L-012.md) | Reinitialization Strategy Pattern: Facade, 4 Strategies, and Shared Operations |
 | [WIKI-L-013](code/WIKI-L-013.md) | [REFERENCE] SOLID Compliance Audit: Scores, Remaining Violations, and Deferred Items (2026-04-10) |

@@ -4,7 +4,7 @@
 
 [WIKI-E-030](../experiment/WIKI-E-030.md) confirmed **H-01** as the unique primary cause of the late-time blow-up on non-uniform grids: the pressure-gradient operator $\mathcal{G}^{\text{adj}}$ (introduced in [WIKI-T-044](../theory/WIKI-T-044.md)) lives on the FVM face metric, while $\sigma\kappa\nabla\psi$ remains on the node-centred CCD metric. The Balanced-Force residual $|\text{BF}_\text{res}|$ is then $\mathcal{O}(\Delta x^2)\cdot|d(\log J)/dx|$, measured at ≈ 884 on Exp-1 step 1.
 
-[ACTIVE_LEDGER](../02_ACTIVE_LEDGER.md) CHK-152 records the open action item: *"G^adj と σκ∇ψ を同一メトリクス空間に統一 (将来タスク)"*. This cross-domain entry maps the action item to concrete candidate remediations.
+[ACTIVE_LEDGER](../../02_ACTIVE_LEDGER.md) CHK-152 records the open action item: *"G^adj と σκ∇ψ を同一メトリクス空間に統一 (将来タスク)"*. This cross-domain entry maps the action item to concrete candidate remediations.
 
 ## Remediation options
 

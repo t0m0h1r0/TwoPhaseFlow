@@ -1,100 +1,68 @@
 ---
 id: WIKI-L-009
-title: "Interface Contracts: 6 Abstractions Enabling DIP Throughout the Library"
+title: "Interface Contracts: Runtime Scheme Interfaces and PPE Solver Boundary"
 status: ACTIVE
 created: 2026-04-10
-depends_on: [WIKI-L-008, WIKI-X-002]
+updated: 2026-05-16
+depends_on: [WIKI-L-010, WIKI-L-046, WIKI-X-054]
 ---
 
 # Interface Contracts Reference
 
-Interfaces live in the owning subpackages, including `src/twophase/ppe/interfaces.py`,
-`src/twophase/levelset/interfaces.py`, `src/twophase/field_extension/interfaces.py`,
-and `src/twophase/ns_terms/interfaces.py`. They enable Dependency Inversion:
-simulation components depend on abstractions, not on concrete implementations.
+This card records the current code-facing abstraction map.  Older April
+readings that list CCD-LU/IIM/iterative PPE solvers as the public production
+set are historical; the active runtime path is selected through scheme
+registration and the `SolverPPEOptions` stack.
 
-## 1. IPPESolver (`src/twophase/ppe/interfaces.py`)
+## Core Interfaces
 
-```python
-class IPPESolver(ABC):
-    @abstractmethod
-    def solve(self, rhs, rho, dt: float, p_init=None) -> "array":
-```
+| Interface | File | Current role |
+|---|---|---|
+| `IPPESolver` | `src/twophase/ppe/interfaces.py` | Common PPE solve/update/cache/context interface. Matrix-free solvers are valid implementations and raise `MatrixAssemblyUnavailable` when a sparse matrix is intentionally unavailable. |
+| `ILevelSetAdvection` | `src/twophase/levelset/interfaces.py` | Self-registering CLS transport schemes. Current production routes include `fccd_flux` / `fccd_nodal`; WENO5 remains reference-only. |
+| `IReinitializer` | `src/twophase/levelset/interfaces.py` | Reinitialization interface with `update_grid()` for grid-aware implementations. |
+| `ICurvatureCalculator` | `src/twophase/levelset/interfaces.py` | Curvature computation interface; psi-direct curvature is the active route, phi inversion is retained as legacy/reference. |
+| `IFieldExtension` | `src/twophase/hfe/interfaces.py` | HFE/field-extension contract for smooth one-sided pressure or scalar extension across an interface. |
+| `INSTerm` | `src/twophase/ns_terms/interfaces.py` | Navier--Stokes term interface with `compute(ctx)` for RHS contributions. |
+| `IConvectionTerm` | `src/twophase/ns_terms/interfaces.py` | Self-registering momentum-convection scheme interface, including `uccd6` and `fccd_flux`/`fccd_nodal`. |
 
-| Param | Shape | Description |
-|-------|-------|-------------|
-| rhs | grid.shape | (1/dt) div(u*_RC) |
-| rho | grid.shape | density field rho_tilde^{n+1} |
-| dt | float | time step |
-| p_init | grid.shape or None | warm-start (IPC: p^n) |
+## PPE Runtime Boundary
 
-**Implementations (active)**: PPESolverCCDLU, PPESolverIIM, PPESolverIterative
-**Implementations (legacy)**: PPESolverPseudoTime, PPESolverSweep, PPESolverDCOmega, PPESolver, PPESolverLU
+The current pressure route has two layers:
 
-## 2. ILevelSetAdvection (`src/twophase/levelset/interfaces.py`)
+| Layer | Active objects | Contract |
+|---|---|---|
+| High-order operator | `PPESolverFCCDMatrixFree` (`fccd_iterative`, aliases `fccd_matrixfree`, `fccd`) | Applies the phase-separated FCCD face operator, affine jump closure, direct boundary face space, and current interface-stress context. |
+| Defect correction wrapper | `PPESolverDefectCorrection` | Iterates on high-order residuals; acceptance is residual convergence, not a fixed correction count. |
+| Low-order bases | `PPESolverFDDirect`, `PPESolverFDMatrixFree` | Supply `L_L` for DC and must approximate the same physical PPE as the high-order route, including affine cut-face coefficients and boundary face space. |
+| FVM public routes | `PPESolverFVMMatrixFree`, `PPESolverFVMSpsolve` | Explicit FVM projection routes for non-FCCD configurations and references; not a hidden fallback for failed active-geometry capillary runs. |
 
-```python
-class ILevelSetAdvection(ABC):
-    @abstractmethod
-    def advance(self, psi, velocity_components: List, dt: float) -> "array":
-```
+The YAML/front-door defaults now pass through
+`src/twophase/simulation/ns_solver_builder.py` and
+`src/twophase/simulation/ns_runtime_factories.py`, where
+`ppe_solver=fccd_iterative`, `pressure_scheme=fccd_matrixfree`,
+`ppe_dc_base_solver=fd_direct`, `ppe_coefficient_scheme=phase_separated`,
+`ppe_interface_coupling_scheme=affine_jump`, and `boundary_face_space` are
+assembled into the solver stack.  The older `src/twophase/ppe/factory.py`
+registry remains the public factory for FVM/FD keyed solvers.
 
-**Implementations**: FCCDLevelSetAdvection (paper-current), DissipativeCCDAdvection (legacy/reference), LevelSetAdvection (WENO5 reference)
+## Implementation Review Rule
 
-## 3. IReinitializer (`src/twophase/levelset/interfaces.py`)
+For established theory changes, do not review only the concrete class that was
+edited.  Follow [[WIKI-L-046]]:
 
-```python
-class IReinitializer(ABC):
-    @abstractmethod
-    def reinitialize(self, psi) -> "array":
-```
+- identify the exact discrete object and its owner;
+- list every producer and consumer across YAML, builder, high-order operator,
+  low-order base, RHS transform, corrector, diagnostics, and runner;
+- check nonuniform, periodic, wall, cut-face, and rebuild paths;
+- require fail-closed behavior when affine or boundary context is absent;
+- add a regression that would fail for the wrong producer/consumer contract.
 
-**Implementations**: Reinitializer (facade), SplitReinitializer, UnifiedDCCDReinitializer, DGRReinitializer, HybridReinitializer, ReinitializerWENO5 (legacy)
+## Negative Knowledge
 
-## 4. ICurvatureCalculator (`src/twophase/levelset/interfaces.py`)
-
-```python
-class ICurvatureCalculator(ABC):
-    @abstractmethod
-    def compute(self, psi) -> "array":
-```
-
-**Implementations**: CurvatureCalculatorPsi (active, psi-direct), CurvatureCalculator (legacy, phi-inversion)
-
-## 5. IFieldExtension (`src/twophase/field_extension/interfaces.py`)
-
-```python
-class IFieldExtension(ABC):
-    @abstractmethod
-    def extend(self, field_data, phi, n_hat=None) -> "array":
-```
-
-| Param | Description |
-|-------|-------------|
-| field_data | scalar field to extend (e.g. pressure) |
-| phi | signed-distance function |
-| n_hat | pre-computed normals or None (compute internally) |
-
-**Implementations**: FieldExtender (upwind FD), ClosestPointExtender (Hermite), HermiteFieldExtension (HFE), NullFieldExtender (no-op)
-
-## 6. INSTerm (`src/twophase/ns_terms/interfaces.py`) — Marker Interface
-
-```python
-class INSTerm(ABC):
-    pass  # no enforced methods
-```
-
-**Design rationale**: NS terms have domain-specific signatures (ConvectionTerm needs velocity+CCD, GravityTerm needs rho+shape, etc.). A unified `compute()` would force unnecessary parameters on each term. The marker enables type-safe injection without signature coupling.
-
-**Implementations**: ConvectionTerm, ViscousTerm, GravityTerm, SurfaceTensionTerm
-
-## Implementation Count by Interface
-
-| Interface | Active | Legacy | Total |
-|-----------|--------|--------|-------|
-| IPPESolver | 3 | 5 | 8 |
-| ILevelSetAdvection | 2 | 0 | 2 |
-| IReinitializer | 5 | 2 | 7 |
-| ICurvatureCalculator | 1 | 1 | 2 |
-| IFieldExtension | 3+1 null | 0 | 4 |
-| INSTerm | 4 | 0 | 4 |
+- Do not select CCD-LU, IIM, old iterative CCD, or legacy FVM paths as silent
+  production fallbacks when the active phase-separated FCCD/HFE/DC route fails.
+- Do not loosen DC tolerances or increase correction caps when `L_L` and `L_H`
+  are different physical operators.
+- Do not treat diagnostics that construct a different mathematical problem as
+  evidence that the production route is correct.

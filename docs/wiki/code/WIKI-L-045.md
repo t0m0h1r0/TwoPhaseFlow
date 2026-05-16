@@ -192,7 +192,7 @@ Known remaining scalar synchronization points:
 
 - defect-correction convergence summaries in `src/twophase/ppe/defect_correction.py`;
 - reprojector diagnostic statistics in
-  `src/twophase/projection/velocity_reprojector_basic.py`;
+  `src/twophase/simulation/velocity_reprojector_basic.py`;
 - capacity timestep scalar packets in
   `src/twophase/geometry/geometric_phase_runtime_gpu.py`.
 

@@ -23,6 +23,10 @@ sources:
     description: "Finite-stratum fusion and explicit reuse flow for post-transfer GPU acceleration"
   - path: docs/wiki/code/WIKI-L-046.md
     description: "Theory-established implementation review gate"
+  - path: docs/wiki/experiment/WIKI-E-063.md
+    description: "Current U12/V11 active-geometry capillary split gates"
+  - path: docs/wiki/paper/WIKI-P-019.md
+    description: "Chapter 14 active-geometry capillary benchmark paper contract"
   - path: experiment/ch12/exp_U12_ao_capillary_split_gate.py
     description: "Updated U12 graph-HFE/grid contract gate"
   - path: experiment/ch13/exp_V11_ao_capillary_split_gate.py
@@ -42,6 +46,8 @@ depends_on:
   - "[[WIKI-L-043]]"
   - "[[WIKI-L-044]]"
   - "[[WIKI-L-046]]"
+  - "[[WIKI-E-063]]"
+  - "[[WIKI-P-019]]"
 consumers:
   - domain: code
     usage: "Start here before changing active-geometry capillary, graph HFE, PPE/DC, grid rebuild, or GPU paths"
@@ -207,4 +213,3 @@ The session explicitly rejected these shortcuts:
   active-geometry capillary result;
 - letting YAML expose internal implementation stacks instead of user-owned
   scheme, solver policy, tolerances, and initial/boundary conditions.
-

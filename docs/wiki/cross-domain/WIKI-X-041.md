@@ -40,6 +40,8 @@ sources:
     description: "Ch14 capillary Hodge trial ledger for knowledge, failures, and falsified routes"
   - path: docs/wiki/paper/WIKI-P-018.md
     description: "Recent Chapters 1-13 paper-theory contract digest"
+  - path: docs/wiki/paper/WIKI-P-019.md
+    description: "Chapter 14 active-geometry capillary benchmark paper contract"
   - path: docs/wiki/theory/WIKI-T-169.md
     description: "Geometric cell-fraction / AO-Fast theory and YAML state-space contract"
   - path: docs/wiki/experiment/WIKI-E-063.md
@@ -60,6 +62,8 @@ sources:
     description: "AO-Fast moving-grid face-cochain and pressure-history contract"
   - path: docs/wiki/code/WIKI-L-045.md
     description: "AO-Fast GPU efficiency bottleneck after finite-stratum fusion"
+  - path: docs/wiki/code/WIKI-L-010.md
+    description: "Current PPE solver architecture and explicit FVM/FD routes"
 depends_on:
   - "[[WIKI-X-037]]"
   - "[[WIKI-X-040]]"
@@ -84,6 +88,7 @@ depends_on:
   - "[[WIKI-T-169]]"
   - "[[WIKI-X-048]]"
   - "[[WIKI-P-018]]"
+  - "[[WIKI-P-019]]"
   - "[[WIKI-T-156]]"
   - "[[WIKI-T-157]]"
   - "[[WIKI-E-062]]"
@@ -99,6 +104,7 @@ depends_on:
   - "[[WIKI-T-171]]"
   - "[[WIKI-T-172]]"
   - "[[WIKI-L-045]]"
+  - "[[WIKI-L-010]]"
 consumers:
   - domain: theory
     usage: "Start here before using older theory cards for derivations"
@@ -132,8 +138,8 @@ algorithm policy.
 | Pressure representative | [[WIKI-T-154]], [[WIKI-T-158]], [[WIKI-E-060]], [[WIKI-E-062]] | Raw interface-band pressure is diagnostic; read Hodge representatives and face cochains, never masked-band substitutes. |
 | Reinit-aware capillary Hodge | [[WIKI-T-162]], [[WIKI-X-048]], [[WIKI-T-159]], [[WIKI-T-160]], [[WIKI-T-155]], [[WIKI-T-157]], [[WIKI-T-161]], [[WIKI-T-163]] | Build capillary work from the labelled physical transport endpoint; for the current solver use [[WIKI-T-162]] first because it fixes the risk-closed conservative theorem: endpoint-closed `q_c=q_T`, pressure-adjoint active `G_A=pressure_fluxes` range, component-constrained saddle projection `h=s-G_Ap-Bmu`, GPU-native P1 geometry, reinit endpoint ledger, CCD/FCCD/UCCD coupling contract, and fail-close gates.  Read [[WIKI-X-048]] before proposing a new fix because it records the zero-drive theorem, `none`/component-Hodge limits, reinit contamination, pressure-representative RCA, trace-Riesz endpoint mismatch, static-critical residual, and falsified shortcut routes.  Treat endpoint/material time-level mismatch, corrector cochain loss, host-loop geometry, and trace aliasing as implementation blockers.  Treat trace-vertex `C_K` as future trace-primary redesign work only; read [[WIKI-T-163]] for reinit-free/profile-control candidate routes and [[WIKI-T-161]] only as the retired fixed-stratum candidate, not as a current route. |
 | ALE/remap energy | [[WIKI-T-162]], [[WIKI-T-160]], [[WIKI-T-155]], [[WIKI-T-157]], [[WIKI-T-159]], [[WIKI-T-161]], [[WIKI-T-163]] | Variational curvature work needs shared pressure-work pairing, labelled transport/reinit endpoints, named reinit residuals/defects, and step-local energy accounting; [[WIKI-T-162]] is the current closed-interface discretization policy, [[WIKI-T-163]] is the current reinit-free survey, and [[WIKI-T-161]] is negative knowledge about an abandoned retraction surface. |
-| Chapters 1-13 paper contract | [[WIKI-P-018]], [[WIKI-P-015]], [[WIKI-P-014]] | Current paper edits should preserve the failure-mode to contract to discretization to algorithm to V-series trace.  The standard route is per-variable: FCCD face-flux CLS transport, UCCD6 interior momentum, pressure-jump PPE/HFE/DC, capillary virtual-work face cochain, pressure-adjoint representative, and integrated V6/V7/V9 evidence. |
-| AO-Fast capillary admission | [[WIKI-X-054]], [[WIKI-X-052]], [[WIKI-T-172]], [[WIKI-X-049]], [[WIKI-T-169]], [[WIKI-E-063]] | Treat active-geometry capillary as the current user-facing route and old AO-Fast/geometric-cell-fraction names as provenance.  Full pressure-image splitting can cancel non-static capillary drive exactly; U12/V11 therefore require graph-HFE, pressure-history separation, HFE admission, regular-stratum, and split-pending gates before Chapter 14 claims.  For moving-grid capillary runs, transport the projected face cochain across rebuild and keep pressure history in the smooth coordinate; do not infer correctness from static/no-rebuild survival. |
+| Chapters 1-14 paper contract | [[WIKI-P-018]], [[WIKI-P-019]], [[WIKI-P-015]], [[WIKI-P-014]] | Chapters 1--13 preserve the failure-mode to contract to discretization to algorithm to V-series trace.  Chapter 14 capillary claims must be read downstream of U12/V11: finite-depth dispersion is a phase clock, and the benchmark claim is restoring/bounded/roundoff-conservative one-period active-geometry capillary behavior, not exact N32 continuum waveform return. |
+| AO-Fast capillary admission | [[WIKI-X-054]], [[WIKI-E-063]], [[WIKI-X-052]], [[WIKI-T-172]], [[WIKI-X-049]], [[WIKI-T-169]], [[WIKI-P-019]] | Treat active-geometry capillary as the current user-facing route and old AO-Fast/geometric-cell-fraction names as provenance.  Full pressure-image splitting can cancel non-static capillary drive exactly; U12/V11 therefore require graph-HFE, pressure-history separation, HFE admission, Hodge-divided face bridge, moving face-cochain transport, regular-stratum, and DC convergence gates before Chapter 14 claims.  For moving-grid capillary runs, transport the projected face cochain across rebuild and keep pressure history in the smooth coordinate; do not infer correctness from static/no-rebuild survival. |
 | Theory-first implementation debug | [[WIKI-X-054]], [[WIKI-X-051]], [[WIKI-X-052]], [[WIKI-X-053]], [[WIKI-X-050]], [[WIKI-T-094]], [[WIKI-T-096]], [[WIKI-T-135]], [[WIKI-T-171]], [[WIKI-T-172]] | When an implementation test violates a proven theory, first suspect nonuniform metric contracts, interface-tracking grid rebuild contracts, pressure-history coordinates, graph endpoint ownership, face-cochain transport, HFE affine context, and boundary face-state spaces. For Chapter 14 capillary runs, preserve phase-separated PPE + HFE/DC as the base route; do not replace it with GMRES, monolithic FD, or non-HFE pressure handling as a production fix. Use uniform-grid, static-grid/no-rebuild, first-rebuild, `L != 1` metric, pre/post-remap conservation, face-Hodge, and cache-invalidation controls before tuning CFL, damping, tolerances, or solver iterations. |
 | Deliberation method | [[WIKI-X-055]], [[WIKI-X-051]], [[WIKI-L-046]] | Before editing after a failure, convert the symptom into a contract question, name the discrete object, build a hypothesis matrix, choose discriminating probes, record negative knowledge, separate diagnosis/remedy/implementation/paper claims, and set explicit exit criteria. |
 | GPU optimization | [[WIKI-L-043]], [[WIKI-L-044]], [[WIKI-L-045]], [[WIKI-T-171]] | First eliminate hidden D2H/H2D transfer boundaries; after finite-stratum fusion and explicit sparse solve-plan reuse, remaining low utilization on the AO-Fast capillary route points to fixed-loop geometry compatibility and small-launch orchestration. Optimize by chunked fail-close convergence, exact fused finite-stratum kernels, explicit scratch/prepared flows, and batched scalar packets. Do not disable nonuniform grids, rebuilds, active geometry, or convergence gates to improve utilization. |
@@ -141,7 +147,7 @@ algorithm policy.
 | Negative shortcuts | [[WIKI-X-045]] | Damping/CFL/smoothing/caps/hyperviscosity are retained as rejected detours, not paper success claims. |
 | Verification reading | [[WIKI-E-040]], [[WIKI-X-040]] | V-series labels encode what was certified; stale FFT/CCD-LU/CN readings are historical only. |
 | Density-ratio evidence | [[WIKI-E-053]], [[WIKI-X-040]], paper §13 | Current §14 stack evidence reaches density ratio 833 in V6; older nonuniform-grid gates are not global limits. |
-| Code interfaces | [[WIKI-L-009]], [[WIKI-L-035]], [[WIKI-L-036]] | Interface paths live in concrete subpackages; capillary coupling is projection-native and GPU-aware. |
+| Code interfaces | [[WIKI-L-009]], [[WIKI-L-010]], [[WIKI-L-035]], [[WIKI-L-036]] | Interface paths live in concrete subpackages; capillary coupling is projection-native and GPU-aware.  Current PPE production reading is FCCD matrix-free + DC wrapper + explicit FD/FVM routes, not the old CCD-LU/IIM/iterative factory stack. |
 
 ## Retired From Active Retrieval
 

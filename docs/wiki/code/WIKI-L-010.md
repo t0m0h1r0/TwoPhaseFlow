@@ -1,72 +1,88 @@
 ---
 id: WIKI-L-010
-title: "PPE Solver Architecture: Factory Registry, Template Method, and Legacy Management"
+title: "PPE Solver Architecture: FCCD Operator, DC Wrapper, and Explicit FVM/FD Routes"
 status: ACTIVE
 created: 2026-04-10
-depends_on: [WIKI-L-009, WIKI-T-005, WIKI-T-012, WIKI-T-024]
+updated: 2026-05-16
+depends_on: [WIKI-L-009, WIKI-L-046, WIKI-X-053, WIKI-X-054]
 ---
 
 # PPE Solver Architecture
 
-## Active Solvers (production)
+## Current Production Reading
 
-| Solver | Key | Method | Accuracy | Use Case |
-|--------|-----|--------|----------|----------|
-| PPESolverCCDLU | `ccd_lu` | CCD Kronecker + sparse LU (spsolve) | O(h^6) | Production default (PR-6 compliant) |
-| PPESolverIIM | `iim` | CCD Kronecker + IIM interface correction | O(h^6) | Interface-capturing (experimental) |
-| PPESolverIterative | `iterative` | Configurable {ccd,3pt} x {explicit,gs,adi} | varies | Research toolkit |
+The current production pressure architecture is no longer the April
+CCD-LU/IIM/iterative factory stack.  Chapter 14 active-geometry capillary runs
+use a phase-separated FCCD matrix-free pressure operator, wrapped by defect
+correction, with a low-order base that must represent the same boundary and
+affine interface physics.
 
-## Legacy Solvers (C2 retained, in `pressure/legacy/`)
-
-| Solver | Key | Violation | Reason Kept |
-|--------|-----|-----------|-------------|
-| PPESolver | — | PR-1 (FVM O(h^2)) | BiCGSTAB reference |
-| PPESolverLU | — | PR-1 (FVM O(h^2)) | Direct LU reference |
-| PPESolverPseudoTime | `pseudotime` | PR-6 (LGMRES) | CCD+LGMRES baseline |
-| PPESolverSweep | `sweep` | ADI O(h^4)/iter | Matrix-free reference |
-| PPESolverDCOmega | `dc_omega` | ADI limitation | Under-relaxed ADI reference |
-
-All legacy solvers emit `DeprecationWarning` when instantiated via factory.
-
-## Factory Registry Pattern (`ppe_solver_factory.py`)
-
-```python
-_SOLVER_REGISTRY: Dict[str, Callable] = {}
-
-def register_ppe_solver(name: str, factory_fn: Callable) -> None:
-    _SOLVER_REGISTRY[name] = factory_fn
-
-def create_ppe_solver(config, backend, grid, ccd=None, bc_spec=None) -> IPPESolver:
-    factory_fn = _SOLVER_REGISTRY[config.solver.ppe_solver_type]
-    return factory_fn(config, backend, grid, ccd, bc_spec)
+```text
+YAML / RunCfg
+  -> SolverPPEOptions
+  -> PPESolverFCCDMatrixFree         (L_H)
+  -> PPESolverDefectCorrection
+       base: PPESolverFDDirect or PPESolverFDMatrixFree  (L_L)
 ```
 
-**OCP compliance**: Adding a new solver requires only `register_ppe_solver("name", fn)` — no modification to factory code.
+`src/twophase/ppe/factory.py` still exposes explicit keyed FVM/FD routes:
 
-## Template Method: _CCDPPEBase
+| Key | Solver | Role |
+|---|---|---|
+| `fvm_iterative`, `fvm_matrixfree`, `matrixfree` | `PPESolverFVMMatrixFree` | Matrix-free FVM PPE with backend Krylov solve and fail-closed preconditioner selection. |
+| `fvm_direct`, `fvm_spsolve`, `spsolve` | `PPESolverFVMSpsolve` | Sparse FVM direct reference route. |
+| `fd_direct`, `fd_spsolve` | `PPESolverFDDirect` | Factorized low-order FD base for DC and explicit FD direct solves. |
+| `fd_iterative`, `fd_matrixfree` | `PPESolverFDMatrixFree` | Matrix-free FD low-order base route. |
 
-```
-_CCDPPEBase(IPPESolver)
-├── _build_1d_ccd_matrices()    # pre-computed once in __init__
-├── _build_sparse_operator()    # Kronecker product L_CCD^rho
-├── _assemble_pinned_system()   # operator + pin + RHS
-├── solve()                     # template: assemble -> _solve_linear_system
-├── compute_residual()          # diagnostic
-└── _solve_linear_system()      # ABSTRACT — subclasses provide strategy
-    ├── PPESolverCCDLU:         spsolve (direct LU)
-    └── PPESolverPseudoTime:    LGMRES (legacy)
-```
+`PPESolverFCCDMatrixFree` is scheme-registered as `fccd_iterative` with
+aliases `fccd_matrixfree` and `fccd`; it is built through the scheme build
+context because it requires the shared `FCCDSolver`.
 
-**Kronecker product assembly** (app:ccd_kronecker):
-The 2D operator is built as `L = kron(I_y, Dx2) + kron(Dy2, I_x)` with variable-density product-rule terms. Pre-computed once; reused across time steps when density changes.
+## Active Contract Details
 
-## Auxiliary Components
+- `PPESolverFCCDMatrixFree` applies `D_f A_f G_f p` with phase-separated
+  coefficients, affine Young--Laplace jump closure, pressure-history face
+  coordinates, and `boundary_face_space` via `apply_direct_face_boundary_space`.
+- The affine RHS and the operator must be projected through the same direct
+  face space.  Applying the boundary face space to `A_f G_f p` but not to
+  `A_f B_HFE(j)` is a mixed-complex bug.
+- `PPESolverDefectCorrection` accepts by residual convergence.  Correction
+  count is only a cap.
+- `PPESolverFDDirect`/`PPEBuilder` must receive the same affine interface
+  context and boundary face space as the high-order operator.  The cut-face
+  coefficient for `affine_jump` is the phase-separated resistance
+  `1/(theta rho_L + (1-theta) rho_H)`, not the smooth harmonic coefficient.
+- Low-order FVM/FD sparse bases must not implement direct face-space
+  restrictions by deleting sparse adjacency coefficients.  Low-order FVM wall
+  Neumann rows are not high-order direct face components; over-masking can
+  isolate pressure rows and make the factorization singular.
 
-| Component | File | Role |
-|-----------|------|------|
-| PPEBuilder | `ppe_builder.py` | FVM matrix assembly (legacy solvers only) |
-| RhieChowInterpolator | `rhie_chow.py` | Face velocity u*_RC = u* - (dt/rho) grad(p) + balanced-force |
-| VelocityCorrector | `velocity_corrector.py` | u^{n+1} = u* - (dt/rho) grad(delta_p) via CCD |
-| PPERHSBuilderGFM | `ppe_rhs_gfm.py` | GFM-corrected PPE RHS (alternative to Rhie-Chow) |
-| GFMCorrector | `gfm.py` | Ghost Fluid Method pressure jump correction |
-| DCCDPPEFilter | `dccd_ppe_filter.py` | DCCD-filtered divergence for GFM RHS |
+## Grid and Cache Epochs
+
+All PPE implementations must refresh or invalidate metric-dependent state
+after grid rebuilds.  This includes FCCD geometry caches, FVM line
+preconditioner coefficients, sparse factors, phase gauges, affine interface
+contexts, and pressure-history decode contexts.  Reusing a prepared solve plan
+across a changed grid, density, phase, boundary, or affine-context epoch is a
+different algebraic problem.
+
+## Legacy and Reference Reading
+
+Older CCD-LU, IIM, pseudotime, ADI/sweep, Rhie--Chow, and GFM-corrector cards
+remain useful for historical comparisons and isolated references.  They must
+not be read as current production defaults or as fallback remedies for
+phase-separated FCCD/HFE/DC failures.
+
+## Review Checklist
+
+Before changing PPE code, prove:
+
+1. high-order `L_H` and low-order `L_L` encode the same physical operator;
+2. affine RHS, corrector subtraction, and pressure history use the same sign,
+   gauge, coefficient, and time level;
+3. `full_face`, `impermeable_face`, and `constrained_face` all factorize or
+   fail closed in the intended solver family;
+4. nonuniform, periodic, wall, cut-face, and rebuild paths share the same
+   metric epoch;
+5. absent required context raises instead of silently selecting a smooth or old
+   pressure law.
