@@ -1,4 +1,4 @@
-# Wiki Index — 384 entries
+# Wiki Index — 385 entries
 
 ## Active Retrieval Gate
 
@@ -31,7 +31,9 @@ zero-base capillary boundary-state RCA, use
 [WIKI-X-053](cross-domain/WIKI-X-053.md), which records that Chapter 14
 capillary fixes must preserve phase-separated PPE + HFE/DC rather than
 switching to GMRES, monolithic FD, or non-HFE pressure handling; for the
-remaining AO-Fast GPU
+session-level synthesis of the final active-geometry capillary contracts,
+RCA order, U12/V11 additions, and GPU lessons, use
+[WIKI-X-054](cross-domain/WIKI-X-054.md); for the remaining AO-Fast GPU
 efficiency bottleneck, use
 [WIKI-L-045](code/WIKI-L-045.md). Before implementing or reviewing an
 established-theory change, use [WIKI-L-046](code/WIKI-L-046.md) as the
@@ -218,7 +220,7 @@ their curation notes.
 | [WIKI-T-172](theory/WIKI-T-172.md) | AO-Fast Moving-Grid Face-Cochain and Pressure-History Contract |
 | [WIKI-T-173](theory/WIKI-T-173.md) | Capillary-Wave Surface-Tension Literature Survey and AO-Fast Route |
 
-## Cross-Domain (53)
+## Cross-Domain (54)
 
 | REF-ID | Title |
 |--------|-------|
@@ -275,6 +277,7 @@ their curation notes.
 | [WIKI-X-051](cross-domain/WIKI-X-051.md) | Theory-First Problem RCA and Countermeasure Protocol |
 | [WIKI-X-052](cross-domain/WIKI-X-052.md) | Ch14 AO-Fast Capillary RCA Trial Ledger |
 | [WIKI-X-053](cross-domain/WIKI-X-053.md) | Ch14 Capillary Zero-Base RCA: Boundary-Constrained Face State |
+| [WIKI-X-054](cross-domain/WIKI-X-054.md) | Ch14 Active-Geometry Capillary Session Synthesis |
 
 ## Experiment (63)
 
