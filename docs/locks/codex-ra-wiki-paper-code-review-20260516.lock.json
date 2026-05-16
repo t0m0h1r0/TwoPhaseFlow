@@ -1,0 +1,11 @@
+{
+  "branch": "codex/ra-wiki-paper-code-review-20260516",
+  "branch_slug": "codex-ra-wiki-paper-code-review-20260516",
+  "session_id": "d2094a5f-8854-4120-95a6-c931ab611022",
+  "worktree_path": ".claude/worktrees/codex-ra-wiki-paper-code-review-20260516",
+  "holder_agent": "ResearchArchitect",
+  "acquired_at": "2026-05-16T16:16:37+09:00",
+  "expires_at": "2026-05-17T16:16:37+09:00",
+  "meta_version": "5.1.0",
+  "scope": "wiki full review against paper and code; update wiki/artifacts/ledger only unless review demands otherwise"
+}
