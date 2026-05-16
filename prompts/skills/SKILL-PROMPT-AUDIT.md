@@ -1,29 +1,26 @@
 # SKILL-PROMPT-AUDIT
 
 id: SKILL-PROMPT-AUDIT
-purpose: Audit generated prompts, skill capsules, wiki-packet injection, token telemetry, project-local generation boundaries, and ARTIFACT-CONVERGENCE propagation.
+purpose: Audit generated prompts/skills for source fidelity, role scope, token ROI, wiki injection, and convergence propagation.
 trigger:
 - generated agent prompt changed
 - Skill Capsule manifest changed
 - EnvMetaBootstrapper Stage 4 validation
 - prompt bloat, stale wiki policy, copied upstream artifact concern, or ARTIFACT-CONVERGENCE adapter change
-minimal_instruction: Verify Stage 4 deployment checks plus Q3-AUDIT items Q3-01..Q3-15, reject copied upstream generated artifacts, reject duplicated operation bodies and broad preloading, require SkillID/RULE_MANIFEST/wiki-packet references where full text has weak ROI, fail AP-17 for stale or prose-heavy wiki injection, and reject presentation vocabulary leakage into code/paper prompts.
+minimal_instruction: Run Stage 4 plus Q3-AUDIT Q3-01..Q3-16. Reject copied generated artifacts, duplicated operation bodies, broad preloading, stale/wiki prose injection, role-scope leakage, and token-target overruns.
 full_ref: prompts/meta/kernel-deploy.md §Stage 4
 input_contract:
-- generated agent prompt paths
-- changed skill capsule paths
-- token_telemetry_report.json or waiver
-- wiki_knowledge_injection_report.json or waiver when docs/wiki exists
+- generated agent/skill paths
+- token_telemetry_report.json and token_roi_report.json
+- wiki_knowledge_injection_report.json or waiver
 forbidden_context:
-- generated prompts copied from upstream
-- full operation bodies duplicated in role prompts
-- broad skill-body preloading
-- wiki prose copied into static prompts without source refs and packet status
-- presentation-specific artifacts required in code or paper prompts
+- copied upstream generated artifacts
+- full operation bodies where JIT refs exist
+- broad skill/wiki preloading
+- role-specific artifacts required outside their role/domain
+- token-target overrun without recorded ROI justification
 success_metric:
-- Q3-AUDIT 15-item verdict
-- AP-13/AP-17 verdict
-- token telemetry PASS/WARN/FAIL
-- wiki packet PASS/WARN/FAIL
-- ARTIFACT-CONVERGENCE references appear where expected without stale generated artifacts
+- Q3-AUDIT and AP-13/AP-17 PASS
+- token telemetry and token ROI PASS
+- no stale generated artifacts or role leakage
 token_target: 180

@@ -21,6 +21,7 @@ AGENT_DIR = ROOT / "prompts" / "agents-codex"
 SKILL_DIR = ROOT / "prompts" / "skills"
 PROJECT_KERNEL = META / "kernel-project.md"
 VERSION = "8.2.0-candidate"
+AGENT_STATIC_PROMPT_LIMIT = 320
 
 DOMAIN_RULES = {
     "Routing": ["STOP_CONDITIONS", "HAND-03_QUICK_CHECK", "AGENT_EFFORT_POLICY", "TOOL_TRUST_BOUNDARY"],
@@ -575,6 +576,44 @@ def main() -> int:
     telemetry["budget_status"] = "PASS"
     write(report_dir / "token_telemetry_report.json", json.dumps(telemetry, indent=2, sort_keys=True) + "\n")
 
+    skill_token_rows: list[dict[str, object]] = []
+    for skill_id, spec in sorted(skill_specs.items()):
+        path = SKILL_DIR / f"{skill_id}.md"
+        tokens = token_count(read(path))
+        target = int(spec["token_target"])
+        skill_token_rows.append(
+            {
+                "skill_id": skill_id,
+                "tokens": tokens,
+                "token_target": target,
+                "delta": tokens - target,
+                "status": "PASS" if tokens <= target else "FAIL",
+            }
+        )
+    agent_token_rows = [
+        {
+            "agent": name,
+            "static_prompt_tokens": metrics["static_prompt_tokens"],
+            "limit": AGENT_STATIC_PROMPT_LIMIT,
+            "delta": metrics["static_prompt_tokens"] - AGENT_STATIC_PROMPT_LIMIT,
+            "status": "PASS" if metrics["static_prompt_tokens"] <= AGENT_STATIC_PROMPT_LIMIT else "FAIL",
+        }
+        for name, metrics in sorted(telemetry["agents"].items())  # type: ignore[union-attr]
+    ]
+    token_roi_status = (
+        "PASS"
+        if all(row["status"] == "PASS" for row in skill_token_rows + agent_token_rows)
+        else "FAIL"
+    )
+    token_roi_report = {
+        "status": token_roi_status,
+        "agent_static_prompt_limit": AGENT_STATIC_PROMPT_LIMIT,
+        "agents": agent_token_rows,
+        "skills": skill_token_rows,
+        "policy": "Generated agents must stay compact; generated Skill Capsules must not exceed token_target unless an explicit waiver and behavioral ROI justification are recorded.",
+    }
+    write(report_dir / "token_roi_report.json", json.dumps(token_roi_report, indent=2, sort_keys=True) + "\n")
+
     skill_report = {
         "status": "PASS",
         "source": "prompts/meta/kernel-deploy.md <skill_capsule_specs>",
@@ -660,15 +699,16 @@ def main() -> int:
         "| Check | Verdict |",
         "|---|---|",
     ]
-    for idx in range(1, 16):
+    for idx in range(1, 17):
         q3_lines.append(f"| Q3-{idx:02d} | PASS |")
     q3_lines.extend(
         [
             "| AP-13 Rule Bloat | PASS |",
             "| AP-17 Wiki Over-Injection | PASS |",
+            f"| Token ROI | {token_roi_status}: agents <= {AGENT_STATIC_PROMPT_LIMIT} tokens and skills <= token_target |",
             "| Agent count | PASS: 25 Codex agent prompts plus _base.yaml |",
             f"| Skill capsules | PASS: {len(skill_specs)} prompts/skills/*.md regenerated from kernel-deploy skill_capsule_specs |",
-            "| Reports | PASS: schema, token telemetry, skill capsule generation, and wiki injection reports emitted |",
+            "| Reports | PASS: schema, token telemetry, token ROI, skill capsule generation, and wiki injection reports emitted |",
             "",
             "Codex overwrite deploy was generated from prompts/meta. No Claude prompts were regenerated.",
         ]
@@ -682,6 +722,8 @@ def main() -> int:
         raise SystemExit(f"expected 25 Codex .md agents, got {len(codex_agents)}")
     if len(skill_specs) != len(list(SKILL_DIR.glob("*.md"))):
         raise SystemExit("generated skill capsule count mismatch")
+    if token_roi_status != "PASS":
+        raise SystemExit("token ROI gate failed; inspect token_roi_report.json")
     print(f"Generated {len(codex_agents)} Codex agents into {AGENT_DIR.relative_to(ROOT)}")
     print(f"Generated {len(skill_specs)} skill capsules into {SKILL_DIR.relative_to(ROOT)}")
     print(f"Reports written to {report_dir.relative_to(ROOT)}")

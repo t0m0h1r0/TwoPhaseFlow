@@ -1,60 +1,45 @@
 # SKILL-PRESENTATION-DECK
 
 id: SKILL-PRESENTATION-DECK
-purpose: Create research-grounded deck-generation projects and decks through the ARTIFACT-CONVERGENCE presentation adapter: audience-profile definition, story-map design, slide-spec management, editable/programmatic generation, role-specific iterative review, issue-register convergence control, diff review, and talk-track alignment.
+purpose: Create source-grounded deck projects/decks via PRESENTATION-GEN-01: audience/story/spec, editable generation, role review, convergence, and final acceptance.
 trigger:
-- PresentationWriter receives a slide deck, talk deck, or paper-to-presentation task
-- Paper/RevisionBrief/EvidencePackage must become audience-facing slides
-- User asks to create, export, improve, or review a PPTX/PDF/HTML/SVG slide pipeline
-- User asks for story structure, slide outline, executive deck logic, or review_report.md
-- User asks for audience-role review, skeptic review, Q&A review, diff review, or iterative deck revision
-- User asks for repeated review, convergence, stop criteria, issue register, final acceptance, or avoiding endless deck revision
-minimal_instruction: Build or update the story and deck-generation project before polishing the deck, using ARTIFACT-CONVERGENCE-01 through the presentation adapter: define `audience_profile.yaml`, audience decision/current belief/desired belief/action, create `story_map.md` and a take-home message, maintain `slide_spec.yaml`, execute `review_plan.yaml`, record role-specific `review_reports/*.md`, maintain `issue_register.yaml` and `convergence_dashboard.md`, prioritize issues, apply focused repair, update `change_log.md`, regenerate deck artifacts as needed, run diff/final-acceptance review, and align notes with the talk track.
+- PresentationWriter receives a deck/talk/paper-to-slides task
+- paper/evidence must become audience-facing slides
+- user asks to create/export/review PPTX/PDF/HTML/SVG slides
+- user asks for story, audience/skeptic/Q&A/diff review, convergence, or final acceptance
+minimal_instruction: Use PRESENTATION-GEN-01. Before polishing, define audience decision/beliefs/action, story_map, and slide_spec; maintain review_plan, review_reports, issue_register, convergence_dashboard, and change_log; regenerate artifacts; run delta/final review.
 full_ref: prompts/meta/kernel-ops.md §PRESENTATION-GEN-01
 input_contract:
-- paper sections, docs/memo, docs/wiki, project evidence/result paths, or other source paths
-- signed RevisionBrief or EvidencePackage when claims go beyond source summary
-- audience, venue/language, and slide/time budget when known
-- existing deck template, `brief.md`, `audience_profile.yaml`, `story_map.md`, `slide_spec.yaml`, `review_plan.yaml`, `issue_register.yaml`, `convergence_dashboard.md`, `review_reports/`, `change_log.md`, `data/`, or `assets/` when available
+- source/evidence paths plus signed brief/evidence when claims exceed summary
+- audience, venue/language, slide/time budget, template when known
+- existing deck project artifacts or data/assets when available
 output_contract:
-- deck project/source under `paper/presentations/{deck_id}/`
-- `brief.md`, `audience_profile.yaml`, `story_map.md`, `slide_spec.yaml`, `review_plan.yaml`, `issue_register.yaml`, `convergence_dashboard.md`, `review_reports/*.md`, `change_log.md`, and `review_report.md` when no equivalent artifacts exist
-- narrative spine: audience current belief -> tension/problem -> take-home message -> evidence -> decision/action
-- slide source map, role-in-story list, lead list, visual/data/export plan, issue-priority table, message budget, rendered artifacts, and review notes
+- deck source plus PPTX/PDF/previews when generation is requested
+- brief/audience/story/spec/review/issue/dashboard/changelog artifacts when full workflow is requested
+- source map, role-in-story, visual/export plan, prioritized issues, and review notes
 best_practices:
-- Treat the deck workflow as the presentation adapter of ARTIFACT-CONVERGENCE-01 while keeping deck artifacts explicit.
-- Prefer the pipeline brief.md -> audience_profile.yaml -> story_map.md -> slide_spec.yaml -> review_plan.yaml -> deck exports -> review_reports -> issue_register.yaml -> focused repair -> validation -> convergence_dashboard.md -> diff/final acceptance -> change_log.md.
-- Define audience, decision/action, current belief, desired belief, constraints, and one take-home message before slide generation.
-- Use one supported claim per slide with claim-style titles; for executive decision decks, make the recommendation or decision ask visible by slide 2 unless exploratory.
-- Keep claims source-grounded; generate charts from source data; mark unknown numbers as TODO/placeholders rather than inventing values.
-- Choose visuals by message: tables for decisions/comparisons, charts for numeric evidence, diagrams for structures/processes, illustrations sparingly for covers or concepts.
-- Keep titles, body text, simple tables, and source notes editable; use SVG/HTML/raster assets only where they materially improve quality.
-- Review in order: story, slide structure, one-slide-one-message, visual clarity, evidence/data integrity, accessibility/delivery.
-- Run role-specific reviews and store issue-shaped findings under review_reports/ with severity, audience impact, proposed fix, and status.
-- Classify findings as Must/Should/Could/Do-not-fix; update issue_register.yaml, convergence_dashboard.md, and change_log.md after each revision.
-- After iteration 2, use delta review and stop criteria instead of zero-base review; apply Story/Evidence/Visual/Final freezes.
-- Use focused repair; avoid slide growth unless required by a Must-fix decision issue; escalate to Human review when remaining delta does not shrink or missing context/politics decides the answer.
-- Parallelize by role or artifact boundary, not by simultaneous edits to the same deck file.
+- Keep the skill as the presentation adapter; load full_ref for detailed rules.
+- Pipeline: brief -> audience_profile -> story_map -> slide_spec -> review_plan -> exports -> reviews -> issue register -> focused repair -> dashboard -> final acceptance.
+- One supported claim per slide; executive decks show recommendation/decision ask by slide 2 unless exploratory.
+- Use editable text/tables/notes; use SVG/HTML/raster only where quality justifies editability loss.
+- Choose visuals by message; never invent numbers; mark unknown data TODO.
+- After iteration 2, use delta review, freeze gates, and stop criteria instead of zero-base review.
+- Avoid slide growth unless needed for a Must-fix decision issue; escalate when remaining delta stops shrinking.
 review_criteria:
-- audience/decision clarity, belief-change plausibility, objection coverage, take-home message strength, story tension and logic, slide-role uniqueness, issue prioritization, compression quality, audience recall, cognitive load, source fidelity, design coherence, export reproducibility, PPTX editability, accessibility/delivery readiness
+- audience/decision clarity, objection coverage, story logic, slide-role uniqueness, source fidelity, visual clarity, export reproducibility, editability, delivery readiness
 forbidden_context:
-- claims remembered from conversation but not present in artifacts
-- unverified SOTA, novelty, benchmark, or numerical claims
-- whole-slide rasterization as the default route for an editable deck
-- images with material slide text embedded unless explicitly required
-- final-deck generation before story_map.md or equivalent story map exists
-- review that skips story and evidence checks because visuals look polished
-- unprioritized review dumping where all comments are treated as equally actionable
-- slide growth that is not justified by audience decision need
-- zero-base re-review after the stabilization point without a High/Must-fix reason
-- endless improvement loops without stop criteria, remaining-delta tracking, or Human-review escalation
-- adding new slides during Polish/Lock unless required to close a Must-fix decision issue
+- unsupported remembered or unverified claims
+- whole-slide rasterization as default editable-deck route
+- material text embedded in images unless required
+- final deck before story_map or equivalent exists
+- visual-only review that skips story/evidence
+- unprioritized review dumping or accepting every comment
+- slide growth without audience decision need
+- zero-base re-review after stabilization without High/Must-fix reason
+- endless improvement without stop criteria or Human-review escalation
 success_metric:
-- each slide has lead, visual, source refs, one message, and a role in the spine
-- `audience_profile.yaml`, `story_map.md`, `slide_spec.yaml`, `review_plan.yaml`, `issue_register.yaml`, `convergence_dashboard.md`, `review_reports/*.md`, `change_log.md`, and `review_report.md` exist when a full deck workflow is requested
-- `deck.pptx`, `deck.pdf`, and preview images exist when deck generation is requested
-- render review has no unresolved MAJOR+ findings or records explicit residual risk
-- review_report.md includes total score out of 50, top issues, slide-level findings, data/evidence findings, delivery risks, and action items
-- no High/Must-fix issue remains unaddressed or explicitly justified as Do-not-fix
-- convergence_dashboard.md shows zero High issues, no new High issues across required stable iterations, small latest change set, and Stop/Conditional Pass/Human-review rationale
+- one supported message and story role per slide
+- full workflow artifacts exist when requested; deck exports/previews exist when generation is requested
+- no unresolved High/Must-fix issue or explicit Do-not-fix rationale
+- dashboard shows stable convergence or Stop/Conditional/Human-review rationale
 token_target: 460
