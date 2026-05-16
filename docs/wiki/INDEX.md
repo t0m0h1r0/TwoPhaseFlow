@@ -1,4 +1,4 @@
-# Wiki Index — 390 entries
+# Wiki Index — 391 entries
 
 ## Active Retrieval Gate
 
@@ -54,7 +54,10 @@ distilled into source-traced behavior packets, JIT references, and prompt audit
 gates instead of copied into generated prompts. For paper review and revision
 passes, use [WIKI-M-034](meta/WIKI-M-034.md) so readability work is judged by
 cognitive load, box necessity, section responsibility, naming consistency, and
-validation rather than decoration.
+validation rather than decoration. For paper citation-survey passes, use
+[WIKI-P-020](paper/WIKI-P-020.md) so references are added only after
+claim-level source verification and are placed at the manuscript claim they
+support.
 
 ## Theory (173)
 
@@ -362,7 +365,7 @@ validation rather than decoration.
 | [WIKI-E-062](experiment/WIKI-E-062.md) | Static Droplet Pressure Images Must Use Hodge Representatives |
 | [WIKI-E-063](experiment/WIKI-E-063.md) | U12/V11 AO-Fast Capillary Split Gates |
 
-## Paper (19)
+## Paper (20)
 
 | REF-ID | Title |
 |--------|-------|
@@ -385,6 +388,7 @@ validation rather than decoration.
 | [WIKI-P-017](paper/WIKI-P-017.md) | Paper Build Hygiene: Zero-Warning Float Placement |
 | [WIKI-P-018](paper/WIKI-P-018.md) | Chapters 1-13 Recent Paper-Theory Contract Digest |
 | [WIKI-P-019](paper/WIKI-P-019.md) | Chapter 14 Active-Geometry Capillary Benchmark Paper Contract |
+| [WIKI-P-020](paper/WIKI-P-020.md) | Paper Citation Additions Need Claim-Level Source Verification |
 
 ## Meta (34)
 
