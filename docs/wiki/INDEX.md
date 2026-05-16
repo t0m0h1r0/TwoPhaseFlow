@@ -1,4 +1,4 @@
-# Wiki Index — 385 entries
+# Wiki Index — 386 entries
 
 ## Active Retrieval Gate
 
@@ -10,7 +10,10 @@ state-space boundaries, use [WIKI-X-049](cross-domain/WIKI-X-049.md),
 [WIKI-T-169](theory/WIKI-T-169.md), and
 [WIKI-E-063](experiment/WIKI-E-063.md).  When a problem occurs, first use
 [WIKI-X-051](cross-domain/WIKI-X-051.md) as the mandatory incident-recall
-protocol for zero-base, theory-first RCA and countermeasure design.  When
+protocol for zero-base, theory-first RCA and countermeasure design; use
+[WIKI-X-055](cross-domain/WIKI-X-055.md) for the deliberation best practices
+that turn symptoms into hypothesis matrices, discriminating probes, and
+verified implementation/paper gates.  When
 implementation tests violate theory, then use
 [WIKI-X-050](cross-domain/WIKI-X-050.md) to check nonuniform
 metrics and interface-tracking grid rebuild contracts before tuning.  Use the
@@ -220,7 +223,7 @@ their curation notes.
 | [WIKI-T-172](theory/WIKI-T-172.md) | AO-Fast Moving-Grid Face-Cochain and Pressure-History Contract |
 | [WIKI-T-173](theory/WIKI-T-173.md) | Capillary-Wave Surface-Tension Literature Survey and AO-Fast Route |
 
-## Cross-Domain (54)
+## Cross-Domain (55)
 
 | REF-ID | Title |
 |--------|-------|
@@ -278,6 +281,7 @@ their curation notes.
 | [WIKI-X-052](cross-domain/WIKI-X-052.md) | Ch14 AO-Fast Capillary RCA Trial Ledger |
 | [WIKI-X-053](cross-domain/WIKI-X-053.md) | Ch14 Capillary Zero-Base RCA: Boundary-Constrained Face State |
 | [WIKI-X-054](cross-domain/WIKI-X-054.md) | Ch14 Active-Geometry Capillary Session Synthesis |
+| [WIKI-X-055](cross-domain/WIKI-X-055.md) | Theory-First Deliberation Best Practices |
 
 ## Experiment (63)
 

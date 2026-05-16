@@ -54,6 +54,8 @@ sources:
     description: "Ch14 AO-Fast capillary RCA trial ledger"
   - path: docs/wiki/cross-domain/WIKI-X-054.md
     description: "Session synthesis of final active-geometry capillary contracts and verification gates"
+  - path: docs/wiki/cross-domain/WIKI-X-055.md
+    description: "Theory-first deliberation best practices for hypothesis and probe design"
   - path: docs/wiki/theory/WIKI-T-172.md
     description: "AO-Fast moving-grid face-cochain and pressure-history contract"
   - path: docs/wiki/code/WIKI-L-045.md
@@ -93,6 +95,7 @@ depends_on:
   - "[[WIKI-X-051]]"
   - "[[WIKI-X-052]]"
   - "[[WIKI-X-054]]"
+  - "[[WIKI-X-055]]"
   - "[[WIKI-T-171]]"
   - "[[WIKI-T-172]]"
   - "[[WIKI-L-045]]"
@@ -132,6 +135,7 @@ algorithm policy.
 | Chapters 1-13 paper contract | [[WIKI-P-018]], [[WIKI-P-015]], [[WIKI-P-014]] | Current paper edits should preserve the failure-mode to contract to discretization to algorithm to V-series trace.  The standard route is per-variable: FCCD face-flux CLS transport, UCCD6 interior momentum, pressure-jump PPE/HFE/DC, capillary virtual-work face cochain, pressure-adjoint representative, and integrated V6/V7/V9 evidence. |
 | AO-Fast capillary admission | [[WIKI-X-054]], [[WIKI-X-052]], [[WIKI-T-172]], [[WIKI-X-049]], [[WIKI-T-169]], [[WIKI-E-063]] | Treat active-geometry capillary as the current user-facing route and old AO-Fast/geometric-cell-fraction names as provenance.  Full pressure-image splitting can cancel non-static capillary drive exactly; U12/V11 therefore require graph-HFE, pressure-history separation, HFE admission, regular-stratum, and split-pending gates before Chapter 14 claims.  For moving-grid capillary runs, transport the projected face cochain across rebuild and keep pressure history in the smooth coordinate; do not infer correctness from static/no-rebuild survival. |
 | Theory-first implementation debug | [[WIKI-X-054]], [[WIKI-X-051]], [[WIKI-X-052]], [[WIKI-X-053]], [[WIKI-X-050]], [[WIKI-T-094]], [[WIKI-T-096]], [[WIKI-T-135]], [[WIKI-T-171]], [[WIKI-T-172]] | When an implementation test violates a proven theory, first suspect nonuniform metric contracts, interface-tracking grid rebuild contracts, pressure-history coordinates, graph endpoint ownership, face-cochain transport, HFE affine context, and boundary face-state spaces. For Chapter 14 capillary runs, preserve phase-separated PPE + HFE/DC as the base route; do not replace it with GMRES, monolithic FD, or non-HFE pressure handling as a production fix. Use uniform-grid, static-grid/no-rebuild, first-rebuild, `L != 1` metric, pre/post-remap conservation, face-Hodge, and cache-invalidation controls before tuning CFL, damping, tolerances, or solver iterations. |
+| Deliberation method | [[WIKI-X-055]], [[WIKI-X-051]], [[WIKI-L-046]] | Before editing after a failure, convert the symptom into a contract question, name the discrete object, build a hypothesis matrix, choose discriminating probes, record negative knowledge, separate diagnosis/remedy/implementation/paper claims, and set explicit exit criteria. |
 | GPU optimization | [[WIKI-L-043]], [[WIKI-L-044]], [[WIKI-L-045]], [[WIKI-T-171]] | First eliminate hidden D2H/H2D transfer boundaries; after finite-stratum fusion and explicit sparse solve-plan reuse, remaining low utilization on the AO-Fast capillary route points to fixed-loop geometry compatibility and small-launch orchestration. Optimize by chunked fail-close convergence, exact fused finite-stratum kernels, explicit scratch/prepared flows, and batched scalar packets. Do not disable nonuniform grids, rebuilds, active geometry, or convergence gates to improve utilization. |
 | Paper/wiki split | [[WIKI-X-046]], [[WIKI-X-048]], [[WIKI-E-061]] | Put successful contracts in the paper; preserve failed controls, falsified hypotheses, and trial variants in the wiki. |
 | Negative shortcuts | [[WIKI-X-045]] | Damping/CFL/smoothing/caps/hyperviscosity are retained as rejected detours, not paper success claims. |
