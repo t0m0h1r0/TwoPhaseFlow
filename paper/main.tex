@@ -56,7 +56,10 @@
 \clearpage
 
 %% §7: 時間積分 — TVD-RK3 / IMEX-BDF2 / common DC / viscous Helmholtz DC
-\input{sections/07_time_integration}  %% §7（時間積分：TVD-RK3 / IMEX-BDF2 / DC共通原理 / 粘性Helmholtz DC / velocity-PPE ordering / pseudo-time CFL）
+\input{sections/07_time_integration}  %% §7.0--§7.3 時間積分分類・剛性マップ・移流
+\input{sections/07b_defect_viscous}   %% §7続き 欠陥補正共通原理・粘性 Helmholtz DC
+\input{sections/07c_capillary_projection_buoyancy} %% §7続き 毛管閉包・圧力投影・浮力
+\input{sections/07d_order_timestep}   %% §7続き 設計/実効次数・時間刻み制御
 \clearpage
 
 %% §8: 圧力・速度連成：Balanced-Force CCD 理論

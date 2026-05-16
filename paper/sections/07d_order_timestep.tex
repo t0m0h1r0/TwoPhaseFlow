@@ -1,0 +1,182 @@
+\subsection{設計次数と検証上の実効次数}
+\label{sec:time_accuracy_table}
+% -------------------------------------------------------------------------------
+
+本稿の各項の時間積分法と時間次数の所属を
+表~\ref{tab:time_accuracy_prod} にまとめる．ここでいう次数は，
+時間離散が滑らかな半離散問題に対して持つ\textbf{設計次数}と，
+圧力ジャンプと成分体積制約付き射影を含む二相結合系で観測される
+\textbf{実効次数}を分けて読む．
+
+\begin{center}
+\renewcommand{\arraystretch}{\PaperTableArrayStretch}
+\begin{tabular}{@{}p{0.27\linewidth}p{0.39\linewidth}p{0.25\linewidth}@{}}
+\hline
+方程式・項 & 本稿の採用構成 & 時間次数の所属 \\
+\hline
+CLS 移流 & TVD-RK3 & $\Ord{\Delta t^3}$ \\
+NS 対流（予測子）& IMEX-BDF2（EXT2）& $\Ord{\Delta t^2}$ \\
+NS 粘性（全応力） & implicit-BDF2 + 欠陥補正（DC）& $\Ord{\Delta t^2}$ \\
+表面張力 & 表面エネルギー仮想仕事に基づく毛管閉包 + 成分体積制約付き鞍点系 & 設計上は同時刻結合；界面帯で実効律速あり \\
+浮力 & Balanced--Force 浮力分解（陽的残差）& $\Ord{\Delta t^2}$ \\
+圧力投影 & IPC + FCCD PPE & $\Ord{\Delta t^2}$ \\
+\hline
+\textbf{均質・滑らか域}& IMEX-BDF2 + IPC + implicit-BDF2 & $\boldsymbol{\Ord{\Delta t^2}}$ \\
+\textbf{二相毛管結合域}& 圧力ジャンプ + 成分体積制約付き鞍点系 & §\ref{sec:imex_bdf2_twophase_time} で診断 \\
+\hline
+\end{tabular}\\
+\refstepcounter{table}\label{tab:time_accuracy_prod}\textbf{表~\thetable}: 時間次数の所属．
+\end{center}
+
+本章の時間精度評価は，時間依存格子再生成による幾何学的誤差
+（§\ref{sec:grid_ale}）とは分けて扱う．均質・滑らかな流域では
+implicit-BDF2 粘性ブロック（§\ref{sec:time_viscous}）と
+密度ジャンプを同じ面演算子で扱う圧力投影（§\ref{sec:ipc_derivation}）の組み合わせにより，
+時間積分由来の主要な律速は表~\ref{tab:time_accuracy_prod} の
+2 次項へ整理される．一方，水--空気級の毛管問題では
+Young--Laplace ジャンプを面上の補正量として扱うため，
+界面帯の低正則性と圧力補正の到達範囲が結合系の実効次数を律速する．
+§\ref{sec:imex_bdf2_twophase_time} の二相時間精度診断では，
+この結合構成を「BDF2 単体の次数検証」ではなく
+毛管結合系診断として測る．
+
+\noindent\textbf{CLS が $\Ord{\Delta t^3}$ で均質流域が $\Ord{\Delta t^2}$ な理由}：
+界面と流体運動は\textbf{疎結合（演算子分割）}として扱われ，CLS 移流
+（TVD-RK3）は密度 $\rho^{n+1}$ と曲率 $\kappa_{lg}^{n+1}$ を決定する先行更新である．
+その時間精度が $\Ord{\Delta t^2}$ 以上であれば均質流域の全体精度は流体運動方程式側で律速し，
+$\min(\Ord{\Delta t^3}_{\mathrm{CLS}},\Ord{\Delta t^2}_{\mathrm{NS}}) = \Ord{\Delta t^2}$
+となる．
+CLS の $\Ord{\Delta t^3}$ 高精度化は全体精度向上ではなく，
+（i）$\kappa_{lg}$ 数値精度向上による寄生流抑制，
+（ii）再初期化頻度低減による質量保存誤差軽減，の数値上の利点を狙う．
+
+\noindent\textbf{IPC + 圧力ジャンプ補正量が閉じる対象}：
+IPC 法（§\ref{sec:ipc_derivation}）は予測ステップに $p^n$ を組み込み，
+圧力投影の分離誤差を BDF2 の時間幅と整合させる．さらに
+圧力ジャンプ補正量（§\ref{sec:time_csf}）が表面張力ジャンプを
+同じ PPE 内で圧力増分と同時刻結合するため，圧力--速度--界面張力の
+3 者が同じ $\psi^{n+1}$ を参照する．この閉包が保証するのは，
+予測子--投影--表面張力の時間レベル不一致を導入しないことである．
+滑らかな圧力ジャンプ極限では流体運動方程式側の 2 次設計と整合するが，
+離散界面帯を含む結合実験では §\ref{sec:imex_bdf2_twophase_time} の
+実効次数を採用する．
+
+\paragraph{設計次数の閉包と実効次数の読み分け．}
+本稿は，移流（IMEX-BDF2 + EXT2）・粘性（implicit-BDF2 + 欠陥補正）・
+圧力投影（IPC）・表面張力（圧力ジャンプ補正量）の各段で
+$\Ord{\Delta t^2}$ を目標とする設計である．均質流域ではこの 2 次精度が閉じ，
+変粘性界面のクロス微分項も粘性 Helmholtz DC の高次残差内で同時刻評価する．
+したがって本章の結論は「各項を同じ時間次数へ無理に揃える」ことではなく，
+律速項を明示し，それ以外の項が時間レベル不一致を持ち込まないよう
+同時刻情報流へ接続することである．二相毛管結合域では，
+表面張力ジャンプ・成分体積制約付き鞍点系・FCCD 投影が作る界面帯誤差を
+別の実効次数として第~\ref{sec:verification}章の二相時間精度診断で扱い，本章ではその制約を
+全体 2 次主張で覆い隠さない．
+
+% -------------------------------------------------------------------------------
+\subsection{時間刻み制御：項別律速制約の合成}
+\label{sec:time_guide}
+\phantomsection\label{sec:dt_synthesis}
+\phantomsection\label{sec:stability}
+% -------------------------------------------------------------------------------
+
+本稿の合成 $\Delta t$ は，物理項ごとの時間スケールを
+最小化したものとして閉じる：
+\begin{equation}
+  \Delta t_{\mathrm{syn}}
+  \;=\; \min\!\bigl(\Delta t_{\mathrm{adv}},\;
+                    \Delta t_\sigma,\;
+                    \Delta t_{\mathrm{buoy}},\;
+                    \Delta t_{\mathrm{disc}}\bigr).
+  \label{eq:dt_per_term}
+\end{equation}
+各項の意味：
+\begin{itemize}[leftmargin=2em]
+  \item \textbf{対流 CFL}：
+        \begin{equation}
+          \Delta t_{\mathrm{adv}}
+          = \mathrm{CFL}_{\mathrm{adv}}\cdot
+            \frac{1}{\max\!\left(\dfrac{|u|_{\max}}{\Delta x}+\dfrac{|v|_{\max}}{\Delta y}\right)}
+          \label{eq:dt_adv}
+        \end{equation}
+        EXT2 外挿の対流制約は，純虚軸上の AB2 安定性ではなく
+        UCCD6/FCCD を含む離散対流演算子のスペクトルに対して決める
+        安定係数 $C_{\mathrm{adv}}$ である（\S\ref{sec:time_level1}）．
+  \item \textbf{界面張力 CFL（2D）}：
+        \begin{equation}
+          \Delta t_\sigma
+          = \sqrt{\frac{(\rho_l + \rho_g)h_{\min}^3}{2\pi\sigma}},
+          \qquad h_{\min}=\min(\Delta x,\Delta y)
+          \label{eq:dt_sigma}
+        \end{equation}
+        界面上の微小振幅波の分散関係 $\omega^2 = \sigma k^3/(\rho_l+\rho_g)$ に
+        $h_{\min}=\min(\Delta x,\Delta y)$ に対応する
+        ナイキスト波数 $k_{\max}=\pi/h_{\min}$ を代入し，群速度 CFL 条件
+        $c_g\,\Delta t \le h_{\min}$ を適用して得られる
+        （導出は付録~\ref{app:capillary_cfl}；数値検証は \S~\ref{sec:val_capillary}）．
+  \item $\Delta t_{\mathrm{buoy}} \lesssim N_{\mathrm{BV}}^{-1}$ — 浮力波制約
+        （式~\eqref{eq:brunt_vaisala}）；上昇気泡で副次的，無重力系では無効．
+  \item $\Delta t_{\mathrm{disc}}$ — 非一様格子上の陽的・外挿項に対する離散スペクトル制約．
+\end{itemize}
+ここで $\Delta t_{\mathrm{disc}}$ は投影 PPE や粘性陰解法そのものの CFL ではない．
+それらは前節までの射影性・A-stability により新たな陽的成長因子を持たない．
+$\Delta t_{\mathrm{disc}}$ は，非一様格子の計量項や係数外挿が
+対流・界面張力・浮力の代表時間スケールだけでは覆いきれない
+陽的残差スペクトルを生む場合の補助上限であり，該当する追加固有値評価が
+無い場合は $\Delta t_{\mathrm{disc}}=\infty$ とみなす．
+
+\textbf{粘性 CFL $\Delta t_\nu$ の消滅}：
+implicit-BDF2 + DC（§\ref{sec:time_viscous}）は A-stable で
+粘性 CFL を課さない．
+
+\textbf{CLS 再初期化仮想時間 $\Delta\tau$ の扱い}：
+本稿の Ridge--Eikonal 補助経路（\S~\ref{sec:xi_sdf_reinit}）は
+仮想時間発展を用いない幾何再構成であるため，物理 $\Delta t$ には乗らない．
+再初期化方程式を仮想時間で陽的に積分する場合の補助安定条件は
+\S~\ref{warn:cls_dtau_stability_v7} に集約する．
+
+\textbf{保守的 CFL 設定}：
+本稿の検証構成では物理項ごとの CFL を保守側に取り，律速項の
+時間スケールを十分余裕をもって解像する．具体的な係数値および
+検証ケース別の合成結果は検証章（§\ref{sec:val_summary}）に委ねる．
+
+% -------------------------------------------------------------------------------
+\subsubsection{CLS 再初期化の仮想時間 \texorpdfstring{$\Delta\tau$}{Δτ} 安定性}
+\label{warn:cls_dtau_stability_v7}
+\phantomsection\label{warn:cls_dtau_stability}
+% -------------------------------------------------------------------------------
+以下は，圧縮項と拡散項をともに陽的に扱う場合の補助安定条件である．
+本稿は \S~\ref{sec:xi_sdf_reinit} の Ridge--Eikonal 補助経路では
+仮想時間発展を伴わないため，本節の陽的 CFL 制約は直接の物理時間刻み拘束ではなく，
+陽的再初期化方程式を用いる場合の基準として記す．
+再初期化方程式を TVD-RK3 で仮想時間積分する場合，
+$\Delta\tau$ には以下の安定性制約が存在する．
+再初期化方程式は双曲型（圧縮項）と放物型（拡散項）の混合型であり，
+それぞれの安定条件は以下の通りである．
+双曲型成分（CFL 条件）では，フラックスヤコビアン $|F'(\psi)| = |1-2\psi|$ の最大値は
+$\psi \in [0,1]$（値域制限により保証）の両端で達成され $\max = 1$ であるから
+$\Delta\tau_{\mathrm{hyp}} \le \Delta s$（$\Delta s = \min(h_x, h_y)$）．
+放物型成分（拡散安定条件）では，2 次元で
+$\Delta\tau_{\mathrm{par}} \le (\Delta s)^2/(4\varepsilon)$．
+実用的な安定条件はこれらの最小値：
+\[
+  \Delta\tau \le \min\!\left(\Delta s,\; \frac{(\Delta s)^2}{4\varepsilon}\right).
+\]
+典型的なパラメータ $\varepsilon \sim \Delta s$ オーダーでは
+$(\Delta s)^2/(4\varepsilon) \sim \Delta s$ オーダーとなり，
+拡散型成分の制約が支配的である．
+\textbf{仮想時間刻みの選び方：}拡散安定限界に対して
+保守的な安全余裕を確保した $\Delta\tau$ を選ぶ．
+
+\textbf{備考（圧縮項の離散化選択）：}
+CLS 再初期化圧縮項は非線形フラックス $\bnabla\cdot(\psi(1-\psi)\hat{\bm n}_c)$ を含む（CLS 圧縮法線；§\ref{sec:reinit}）．
+UCCD6（\S~\ref{sec:uccd6_def}）は線形スカラー移流 $\bu\cdot\bnabla\phi$ を想定した
+特性方向組み替えを用いるため，非線形フラックスにそのまま適用すると
+風上性の保証が崩れる．本稿では流体運動方程式側のスカラー移流にのみ UCCD6 を適用し，
+界面再初期化は Ridge--Eikonal による仮想時間発展を用いない幾何再構成で扱う．
+したがって再初期化の仮想時間安定条件は，採用する物理時間刻み
+$\Delta t_{\mathrm{syn}}$ の構成要素には含めない．
+
+以上で本章の項別時間積分設計が閉じた．
+本稿の合成時間刻みは，採用した物理項処理だけを
+式~\eqref{eq:dt_per_term} に集約して決定する．
