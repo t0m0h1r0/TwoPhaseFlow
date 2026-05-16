@@ -1,0 +1,328 @@
+\subsubsection{分相 FCCD PPE：面ジェット随伴ペア}
+\label{sec:per_phase_fccd_adjoint}
+% ─────────────────────────────────────────────────────────────────────────────
+
+各相 $q\in\{L,G\}$ で\textbf{FCCD 面ジェット}
+$\mathcal{J}_f(p_q)=(p_{q,f},p'_{q,f},p''_{q,f})$ を基本量とする．
+面随伴ペア
+\begin{equation}
+  G_h^\FCCD: \{p_{q,i}\}_\text{節点} \to \{p'_{q,f}\}_\text{面},
+  \qquad
+  D_h^\FCCD = -(G_h^\FCCD)^\ast
+  \label{eq:split_ppe_adjoint_pair}
+\end{equation}
+により相 $q$ の PPE ブロックを SPD 符号規約
+$A_h^q\equiv -D_h^\FCCD(\rho_q^{-1}G_h^\FCCD)$ で
+\begin{equation}
+  A_h^q p_q
+    \equiv -D_h^\FCCD\Bigl(\rho_q^{-1}\,G_h^\FCCD\,p_q\Bigr)
+    = -\frac{1}{\Delta t}\,D_h^\FCCD\,\mathbf{u}_q^*
+  \qquad\text{in }\Omega_q
+  \label{eq:split_ppe_fccd_block}
+\end{equation}
+として組み立てる．$\rho_q$ が各相で\textbf{定数}であるため
+$-D_h^\FCCD\rho_q^{-1} G_h^\FCCD$ は
+純 Poisson 演算子の FCCD 版となり，
+§\ref{sec:ccd_poisson_matrix} の行列構造がそのまま適用される．
+
+\noindent\textbf{eq:split\_ppe との同値性記法}：
+本式~\eqref{eq:split_ppe_fccd_block} は~\eqref{eq:split_ppe} の
+$\nabla^2 p_q = \rho_q\,q$ と等価：
+\textbf{前提}（明示）— $\rho_q$ は相 $q$ 全体で\textbf{格子点に依存しない定数}
+（液相・気相それぞれ単一値）；位相マスク境界 $\partial\Omega_q$ は
+GFM ゴーストジェット（\S\ref{sec:gfm_ghost_jet_connection}）で扱い，
+ステンシル内に $\rho$ ジャンプは現れない．
+従って積の微分第 2 項
+$(\bnabla\rho_q^{-1})\!\cdot G_h p_q$ は消滅し，
+$D_h(\rho_q^{-1}G_h p_q) = \rho_q^{-1}D_h G_h p_q = \rho_q^{-1}\nabla_h^2 p_q$
+で書き換えると，SPD 形 $-\nabla_h^2 p_q=-\rho_q\,q$ となる．
+これは式~\eqref{eq:split_ppe} の Poisson 形 $\nabla^2p_q=\rho_q q$ と同値であり，
+符号差は解く線形系を SPD にするための左辺・右辺同時反転にすぎない．
+
+\noindent\textbf{離散随伴性と SPD}：
+P-2（§\ref{sec:bf_p2_adjoint}）により
+\begin{equation}
+  \langle p_q,\,A_h^q p_q\rangle_h
+    = \rho_q^{-1}\langle G_h^\FCCD p_q,\,G_h^\FCCD p_q\rangle_h \ge 0,
+  \label{eq:split_ppe_spd}
+\end{equation}
+等号は $G_h^\FCCD p_q \equiv 0$ のみ（相 $q$ 内で一定）．
+各相ブロックは定数差モード除去後に半正定値性を持ち，
+定数モードを固定すると正定値な相内 PPE ブロックとして扱える．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{同一面係数による投影閉包と浮力残差}
+\label{sec:per_phase_projection_closure}
+% ─────────────────────────────────────────────────────────────────────────────
+
+分相 PPE の安定性は，PPE 行列だけでなく，予測速度の残差と速度補正が
+同じ面係数を用いることに依存する．これは射影法の
+``PPE と速度補正が同じ離散作用素の随伴対でなければならない''
+という条件の変密度・界面版である~\cite{Chorin1968,Guermond2006}．
+面上の係数を
+\[
+  A_f =
+  \begin{cases}
+    \rho_q^{-1}, & f\subset\Omega_q\ \text{かつ同相面},\\
+    0, & f\ \text{が相を横切る切断面},
+  \end{cases}
+\]
+と書くと，投影恒等式は
+\begin{equation}
+  L_h^\mathrm{proj} = D_f A_f G_f,\qquad
+  A_h^\mathrm{PPE}=-L_h^\mathrm{proj},\qquad
+  \bu_f^{n+1} = \bu_f^* - \Delta t\,A_fG_f(\delta p),\qquad
+  D_f\bu_f^{n+1}=0
+  \label{eq:same_face_projection_closure}
+\end{equation}
+である．ここで重要なのは，$A_f$，$G_f$，$D_f$ が
+\textbf{PPE・速度補正・浮力残差の三者で同一}であることである．
+式~\eqref{eq:buoyancy_gradient_residual_split} の
+$\Phi_g\bnabla\rho'$ を面残差として評価する場合も，
+節点で作った残差を事後的に面補間してはならない．
+必ず同じ $G_f$ で hydrostatic ポテンシャルを差分し，同じ $A_f$ で圧力フラックス側へ戻す．
+相を横切る面で $A_f=0$ とする分相係数を PPE だけに使い，
+速度補正や浮力残差で混合密度係数を使うと，
+投影形 $D_fA_fG_f$ で打ち消されるべき界面支持の発散が残る．
+したがって「同じ計量」だけでは不十分であり，
+\textbf{同じ面係数・同じ面勾配・同じ面発散}まで含めて投影閉包と呼ぶ．
+
+同じ理由により，射影後の界面移流も節点速度に戻してから再度面フラックスを
+作ってはならない．式~\eqref{eq:same_face_projection_closure} で得た
+発散零の射影後の面速度 $\bu_f^{n+1}$ を，CLS の保存形更新に直接渡す：
+\begin{equation}
+  \psi^{n+1}
+  = \mathrm{RK3}\!\left[
+      \psi^n;\,
+      -D_f\!\left((P_f\psi)\,\bu_f^{n+1}\right)
+    \right].
+  \label{eq:projection_native_psi_transport}
+\end{equation}
+ここで $P_f$ は FCCD 面値演算子であり，
+$D_f$ は PPE/射影と同じ面発散である．
+節点再構成 $\bu_i=\mathcal{R}(\bu_f)$ は可視化や節点場の物性評価には用いてよいが，
+界面保存則のフラックス源ではない．この区別を失うと，
+$D_f\bu_f^{n+1}=0$ を満たす速度場から，離散的に非同一な
+$D_f(P_f\psi\,P_f\mathcal{R}\bu_f)$ を再生成することになり，
+静止 Young--Laplace 界面に人工的な $\psi$ 摂動を注入する．
+
+\paragraph{面空間閉包から導かれる観測量．}
+以上の面空間閉包では，圧力の物理的仕事は節点スカラーではなく
+\begin{equation}
+  \mathbf{a}_{p,f}
+  =
+  A_f\bigl(G_fp-B_f(j)\bigr)
+  \label{eq:pressure_work_face_cochain}
+\end{equation}
+という面上加速度で定義される．
+したがって，拡散界面帯内の未補正節点圧力を
+相内スカラー圧力そのものとして読むことはできない．
+相内で可視化・診断に用いるスカラー代表 $p_H$ は，
+界面を横切らない同相面集合 $\mathcal F_{\mathrm{same}}$ 上で
+\begin{equation}
+  p_H
+  =
+  \arg\min_{q,\ \mathcal G_q(q)=0}
+  \sum_{f\in\mathcal F_{\mathrm{same}}}
+  w_f
+  \left(
+    G_fq-A_f^{-1}\mathbf{a}_{p,f}
+  \right)^2
+  \label{eq:phase_hodge_pressure_representative}
+\end{equation}
+として定義する．
+ここで $\mathcal G_q(q)=0$ は相ごとの体積平均ゲージであり，
+$A_f^{-1}\mathbf{a}_{p,f}$ は同相面での圧力勾配代表である．
+界面を横切る面のジャンプは $B_f(j)$ として
+式~\eqref{eq:pressure_work_face_cochain} の面上加速度側に保持され，
+単一節点値へ押し込まない．
+同じ理由で，非一様 fitted grid 上の相平均圧力は
+\begin{equation}
+  \langle p\rangle_{\Omega_q}
+  =
+  \frac{\sum_{i\in\Omega_q}p_i\,\Delta V_i}
+       {\sum_{i\in\Omega_q}\Delta V_i}
+  \label{eq:phase_volume_weighted_pressure_mean}
+\end{equation}
+で読む．算術平均はセル体積が同一である場合にのみこの式へ退化する．
+本節の圧力代表は出力・診断の定義であり，
+運動量更新そのものは常に式~\eqref{eq:pressure_work_face_cochain} の
+面上加速度を通して行う．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{GFM ゴーストジェットによる相間接続}
+\label{sec:gfm_ghost_jet_connection}
+% ─────────────────────────────────────────────────────────────────────────────
+
+界面 $\Gamma$ を跨ぐコンパクトステンシルを\textbf{単相化}するため，
+GFM 閉包では
+ジャンプ条件 $[p]_\Gamma=J_p^\chi$，
+$[\rho^{-1}\partial_n p]_\Gamma=0$
+から\textbf{ゴースト面ジェット}
+\begin{equation}
+  \bigl(p_q^\ast,\,p_q'^\ast,\,p_q''^\ast\bigr)
+    = \mathcal{E}_{\bar q\to q}^{\mathrm{GFM}}
+      \bigl[p_{\bar q};J_p^\chi\bigr](x_f)
+  \label{eq:gfm_ghost_jet}
+\end{equation}
+を構築する（$\bar q$ は対相）．面 $f\subset\Gamma$ 付近のステンシルは
+対相の値を\textbf{ゴーストジェットで置換}した上で FCCD を適用：
+\begin{equation}
+  (G_h^\FCCD p)_f^\mathrm{conn}
+    = G_h^\FCCD\bigl(\,\{p_{q,i}\}_{i\in\Omega_q}
+      \cup \{p_q^\ast(x_i)\}_{i\in\Omega_{\bar q}}\bigr).
+  \label{eq:fccd_connection_face}
+\end{equation}
+これにより\textbf{代数的な単相ステンシル}を各相で保ちつつ，
+物理的不連続をジャンプ閉包として反映する．
+
+\noindent\textbf{ジャンプジェット構成}：
+$\phi$（符号付距離，\S\ref{sec:ridge_eikonal}）と面位置 $x_f$ から
+\begin{align}
+  p_q^\ast(x_f)
+    &= p_{\bar q}(x_f) - J_p^\chi\,\mathrm{sign}(\phi_f),
+      \label{eq:gfm_value_jump}\\
+  p_q'^\ast(x_f)
+    &= \frac{\rho_q}{\rho_{\bar q}}\,p'_{\bar q}(x_f),
+      \label{eq:gfm_gradient_jump}\\
+  p_q''^\ast(x_f)
+    &= p''_{\bar q}(x_f)
+       - \bnabla_f\!\cdot(J_p^\chi\,\hat{\bm n}_{lg})\,\mathrm{sign}(\phi_f).
+      \label{eq:gfm_curvature_jump}
+\end{align}
+これらのゴーストジェットは FCCD ステンシルを単相化するための片側延長であり，
+ジャンプ補正付き面勾配の既知面ソースを別経路で二重に加えるものではない．
+離散化上は $j_{gl}/H_f$ 型の GFM 補正を
+\S\ref{sec:split_ppe_pressure_jump_formulation} の $B_f(J_p^\chi)$ と同じ
+面法則として扱い，PPE 右辺と速度補正が共有する唯一のジャンプ寄与にする．
+式~\eqref{eq:gfm_gradient_jump} は $J_n=0$ の基本形である．
+一般の $J_n\ne0$ を許すなら，
+$p_q'^\ast=(\rho_q/\rho_{\bar q})p'_{\bar q}+\rho_q J_n^{q\leftarrow\bar q}$
+のように，向き付きフラックスジャンプをゴースト導関数にも入れる必要がある．
+本稿では非相変化・保存的な予測速度を前提に $J_n=0$ へ固定する．
+2 次値ジャンプの主要項は Laplace--Beltrami 分解により
+$J_{ss}=\partial_s^2 J_p^\chi$ に縮退する．
+
+\noindent\textbf{接線二階ジャンプ $J_{ss}$ の導出（界面座標 1 段階展開）：}
+\textbf{前提仮定}（明示化）：
+(H1) 滑らか延長 — 各相右辺 $\rho_q q$ は HFE（\S\ref{sec:hfe}）により
+界面近傍で $C^2$ 級に延長されている；
+(H2) フラックスジャンプ消失 — $J_n\equiv[\rho^{-1}\partial_n p]_\Gamma=0$
+（\S\ref{sec:gfm_ghost_jet_connection}）；
+(H3) 単位法線整合 — $|\bnabla\phi|=1$（リッジ Eikonal SDF 上）．
+界面 $\Gamma$ 上で局所直交座標 $(s,n)$ を取る（$s$：接線弧長，
+$n$：法線距離 $\phi$ と整合）．
+中間補題：(H2) と運動量方程式表面張力ゼロ（\S\ref{sec:split_ppe_pressure_jump_formulation}）から
+界面圧力ジャンプ $[p]_\Gamma=J_p^\chi$ を Heaviside 越しに
+\textbf{1 階}展開した結果が式~\eqref{eq:gfm_curvature_jump} 第 1 式の
+$[p_n]_\Gamma=\bnabla_f\!\cdot(J_p^\chi\hat{\bm n}_{lg})$%
+\footnote{前提仮定 (H2) $[\rho^{-1}\partial_n p]_\Gamma=0$ はフラックスジャンプの連続性（GFM 求解条件），$[p_n]_\Gamma=\bnabla_f\!\cdot(J_p^\chi\hat{\bm n}_{lg})$ は表面張力下の曲率駆動圧力ジャンプ（界面ソース項）であり，両者は独立に扱う；詳細は \S\ref{sec:split_ppe_pressure_jump_formulation}．}．
+さらに $n$ 方向のラプラシアンを分解すると：
+\begin{equation}
+  \nabla^2 p = \partial_n^2 p + \kappa_{lg}\,\partial_n p + \nabla_s^2 p,
+  \label{eq:laplace_beltrami_normal_decomp}
+\end{equation}
+ここで $\nabla_s^2$ は界面 Laplace--Beltrami 演算子．
+界面で $\partial_n p$ がジャンプを持つため，
+$[\nabla^2 p]_\Gamma = [\partial_n^2 p]_\Gamma + \kappa_{lg}\,[\partial_n p]_\Gamma + [\nabla_s^2 p]_\Gamma$．
+仮定 (H1) より両相 PDE $\nabla^2 p = \rho q$（$q\equiv\bnabla\!\cdot\bu^*/\Delta t$ の各相延長）
+が界面まで滑らかに到達し，
+$[\nabla^2 p]_\Gamma = [\rho q]_\Gamma$ は与えられた量．
+$[\nabla_s^2 p]_\Gamma=\partial_s^2[p]_\Gamma=\partial_s^2 J_p^\chi$
+から接線 2 階差分を取り，
+1 階差分 $\kappa_{lg}[\partial_n p]_\Gamma=\kappa_{lg}\bnabla_f\!\cdot(J_p^\chi\hat{\bm n}_{lg})$ を
+代入して整理すると，
+\begin{equation}
+  [\partial_n^2 p]_\Gamma
+  = [\rho q]_\Gamma
+    - \kappa_{lg}\,\bnabla_f\!\cdot(J_p^\chi\hat{\bm n}_{lg})
+    - \partial_s^2 J_p^\chi.
+  \label{eq:kappa_s_derivation}
+\end{equation}
+分相 PPE の片側で $[\rho q]_\Gamma$ を吸収する右辺整合化と
+仮定 (H3) $|\bnabla\phi|=1$ を用いれば，
+2 階ジャンプ成分の主要項は接線 2 階微分
+\begin{equation}
+  J_{ss} \equiv \partial_s^2 J_p^\chi
+  \label{eq:kappa_s_def}
+\end{equation}
+に縮退する（高次項 $\Ord{(h\kappa_{lg})^2}$ を含む詳細は
+Liu--Fedkiw--Kang~\cite{Fedkiw1999} Appendix A の Laplace--Beltrami 分解と整合）．
+本稿はこの $J_{ss}$ を分相 PPE の界面境界条件補正項として用いる．
+
+% ─────────────────────────────────────────────────────────────────────────────
+\subsubsection{PPE 整合性条件と大域ゲージ}
+\label{sec:ppe_phase_gauge_pin}
+% ─────────────────────────────────────────────────────────────────────────────
+
+相ごとに完全に切断された Neumann ブロック
+$L_qp_q=S_q$ を解く比較用 formulation では，
+各相で\textbf{可解条件}
+\begin{equation}
+  \sum_{i\in\Omega_q}\,S_{q,i}\,\Delta V_i = 0,
+  \qquad S_{q,i} = \frac{1}{\Delta t}\,(D_h^\FCCD \mathbf{u}^*)_i
+  \label{eq:split_ppe_compatibility}
+\end{equation}
+を満たす必要がある．しかし本稿が採用する
+ジャンプ補正付き面勾配は，この「完全切断された二つの楕円問題」ではない．
+界面を横切る面 $f$ に対して，既知ジャンプを含む面フラックスを
+\begin{equation}
+  F_{\Gamma,f}(p;j_{gl})
+  =
+  \alpha_f\{G_f(p)-B_f(j_{gl})\}
+  \label{eq:split_ppe_affine_face_flux}
+\end{equation}
+として定義する界面切断面接続型の面演算子である．
+ここで $B_f(j_{gl})=s_fj_{gl,f}/H_f$ は式~\eqref{eq:split_ppe_pressure_composition}
+と同じ既知ジャンプ勾配であり，$H_f$ は面を挟む 2 点間の物理距離である．
+この定義の核心は局所不変条件
+\[
+  p_\mathrm{high}-p_\mathrm{low}=s_f j_{gl,f}
+  \quad\Longrightarrow\quad
+  F_{\Gamma,f}(p;j_{gl})=0
+\]
+である．すなわち，すでに Young--Laplace ジャンプを満たす圧力場には
+界面面から人工フラックスを発生させない．
+
+\noindent\textbf{なぜ相別平均ゲージを課さないか：}
+相別平均ゲージは，相間面の圧力係数をゼロにした
+切断ブロックに対して，各相の定数零モードを除去するための射影である．
+これをジャンプ補正付き面法則にそのまま重ねると，式~\eqref{eq:split_ppe_affine_face_flux}
+の同一係数性が壊れる．一般に
+\[
+  F^{\mathrm{split}}_{\Gamma,f}
+  =
+  \alpha^p_fG_f(p)-\alpha^J_fB_f(j_{gl})
+\]
+と滑らかな圧力側と既知ジャンプ側で係数を分けると，
+切断ブロックでは $\alpha^p_f=0$ である．
+$\alpha^J_f>0$ を残せば，ジャンプを満たす圧力でも
+$F^{\mathrm{split}}_{\Gamma,f}=-\alpha^J_fB_f(j_{gl})\neq0$ となり，
+局所不変条件が破れる．一方 $\alpha^J_f=0$ まで落とせば，
+界面ジャンプ駆動そのものが PPE から消え，
+毛管駆動が圧力自由度に吸収される．したがって
+ジャンプ補正付き面演算子では，界面切断面を
+$G_f(p)$ と $B_f(j_{gl})$ の\textbf{同じ非零面係数}で扱い，
+その連結グラフ上の零モードは全体定数 1 個だけになる．
+
+\noindent\textbf{ゲージ条件：}
+圧力ジャンプは圧力の絶対値ではなく面勾配条件であり，
+$p\mapsto p+C$ に対して $G_f(p)$ も $B_f(j_{gl})$ も変化しない．
+したがってこの閉包で取り除くべき零空間は
+全体定数モードのみであり，大域ゲージで固定する．
+相ごとの平均零拘束を追加すると，零空間でない
+液相--気相間の相対定数差まで拘束してしまい，
+Young--Laplace ジャンプとして保持すべき自由度を
+数値ゲージで上書きすることになる．
+
+\noindent\textbf{注意}：
+圧力ジャンプ形式（\S\ref{sec:split_ppe_pressure_jump_formulation}）
+で未知量が $\tilde p$（滑らか部分）となる場合，
+反復解法の初期推定も $\tilde p$ の空間に属していなければならない．
+既知ジャンプを滑らかな補助場として合成した全圧力を初期推定に用いると，
+不連続成分が次段 PPE の自由圧力へ吸収され，
+物理的な界面駆動が消える．
+したがって初期推定，右辺，速度補正はいずれも
+$G_\Gamma(p;j)=G(p)-B(j)$ と同じ未知量の分解に従う．
+
+% ─────────────────────────────────────────────────────────────────────────────

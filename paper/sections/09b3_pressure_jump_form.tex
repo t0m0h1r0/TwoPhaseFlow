@@ -1,0 +1,102 @@
+\subsubsection{圧力ジャンプ形式：CSF 体積力を回避するクリーン分離}
+\label{sec:split_ppe_pressure_jump_formulation}
+% ─────────────────────────────────────────────────────────────────────────────
+
+本形式では CSF 体積力を使用せず，向き付き Young--Laplace
+ジャンプ
+\begin{equation}
+  j_{gl} \equiv p_g-p_l = -\sigma\kappa_{lg}
+  \label{eq:split_ppe_oriented_jump}
+\end{equation}
+を PPE と速度補正が共有する面勾配条件として課す．
+運動量方程式の表面張力項は\textbf{ゼロ}：
+\begin{equation}
+  \rho\frac{D\bu}{Dt}
+    = -\bnabla p + \bnabla\cdot(2\mu\mathbf{D}) + \rho\bm{g},
+  \qquad p_g-p_l = j_{gl}.
+  \label{eq:split_ppe_momentum_no_csf}
+\end{equation}
+ここで $\psi=1$ が液相，$\psi=0$ が気相であり，
+$\kappa_{lg}=\bnabla_\Gamma\!\cdot\hat{\bm n}_{lg}$ は液相から気相へ向く曲率である．
+液滴では $\kappa_{lg}>0$ なので $j_{gl}<0$（液相圧が高い）となり，
+気泡では $\kappa_{lg}<0$ なので $j_{gl}>0$（気相圧が高い）となる．
+
+以下では全圧力を解く表記で $J_p^\chi=j_{gl}$ と書く．
+圧力増分を解く場合は，式~\eqref{eq:split_ppe_unknown_jump_contract} に従い
+同じ場所を $\delta j_{gl}$ に置き換える．
+未知量は滑らかな圧力 $\tilde p$ だけではなく，
+面勾配演算子そのものに既知ジャンプを含める：
+\begin{align}
+  s_f &= I_g(\mathrm{high})-I_g(\mathrm{low}),\qquad
+        I_g=\mathbf{1}_{\psi<1/2}, \\
+  H_f &= |\bx_{\mathrm{high}(f)}-\bx_{\mathrm{low}(f)}|, \\
+  B_f^{\mathrm{nu}}(J_p^\chi) &= \frac{s_f\,J_{p,f}^\chi}{H_f}, \\
+  G_{\Gamma,f}^{\mathrm{nu}}(p;J_p^\chi)
+    &= G_f^{\mathrm{nu}}(p)-B_f^{\mathrm{nu}}(J_p^\chi).
+  \label{eq:split_ppe_pressure_composition}
+\end{align}
+一様格子では $H_f=h$ となる．非一様格子では
+第~\ref{sec:grid}章の座標変換係数が $G_f^{\mathrm{nu}}p$ を正しく評価するが，
+界面を跨ぐ既知不連続 $B_f$ は滑らかな圧力場の微分ではない．
+したがって新しい未知量を導入する必要はないが，
+面ごとの $H_f$，符号 $s_f$，同じ面係数を持つ
+ジャンプ補正付き面演算子として接続する必要がある．
+したがって PPE の界面項は
+\begin{equation}
+  D_f^{\mathrm{nu}}\alpha_fG_{\Gamma,f}^{\mathrm{nu}}(p;J_p^\chi)
+  =D_f^{\mathrm{nu}}\alpha_fG_f^{\mathrm{nu}}(p)
+   -D_f^{\mathrm{nu}}\alpha_fB_f^{\mathrm{nu}}(J_p^\chi)
+  \label{eq:split_ppe_affine_rhs}
+\end{equation}
+であるから，投影式を
+$D_f^{\mathrm{nu}}\alpha_fG_{\Gamma,f}^{\mathrm{nu}}=q$ と書けば
+\[
+  D_f^{\mathrm{nu}}\alpha_fG_f^{\mathrm{nu}}(p)
+  =
+  q+D_f^{\mathrm{nu}}\!\left(\alpha_fB_f^{\mathrm{nu}}(J_p^\chi)\right)
+\]
+となり，右辺にだけ既知量を注入する．速度補正では同じ面データを用いて
+\begin{equation}
+  u_f^{n+1}
+  =
+  u_f^\ast
+  -\Delta t\,\alpha_f
+  \left(G_f^{\mathrm{nu}}\chi-B_f^{\mathrm{nu}}(J_p^\chi)\right)
+  \label{eq:split_ppe_affine_corrector}
+\end{equation}
+を適用する．この符号は，液相 low / 気相 high の
+二セル界面で $p_\mathrm{high}-p_\mathrm{low}=J_p^\chi$ なら
+$G_{\Gamma,f}=0$ となる局所不変条件で固定される．
+非一様格子 + 壁面境界条件で速度補正が
+$\mathcal{G}^\text{adj}$ へ切り替わる場合も同じ原則を保ち，
+\begin{equation}
+  G_{\Gamma,f}^{\mathrm{adj}}
+  =
+  G_f^{\mathrm{adj}}-B_f^{\mathrm{adj}},
+  \qquad
+  B_f^{\mathrm{adj}}\ \text{は}\ G_f^{\mathrm{adj}}\ \text{と同じ面平均・同じ}\ H_f\ \text{で構成する}.
+  \label{eq:split_ppe_affine_adj}
+\end{equation}
+PPE で使う $D_f^{\mathrm{nu}}(\alpha_fB_f)$ と速度補正で差し引く
+$B_f$ が面・係数・距離を共有しない場合，Balanced--Force 条件は構造的に失われる．
+このジャンプ補正付き面勾配形式は，既知ジャンプを滑らかな補助場
+\begin{equation}
+  p_\mathrm{comp}=\tilde p + J_\psi,
+  \qquad
+  J_\psi \equiv j_{gl}(1-\psi)
+  \label{eq:split_ppe_smooth_lift_composition}
+\end{equation}
+として合成する分解とは異なり，楕円求解が $J_\psi$ を
+自由圧力として吸収できない．したがって本形式が解く課題は，
+CSF 体積力の評価位置ずれだけではなく，鋭い Young--Laplace
+ジャンプを滑らかな圧力自由度として相殺してしまう代数的欠陥である．
+ただし，式~\eqref{eq:split_ppe_affine_rhs} が保証するのは
+面上補正量の\textbf{発散}整合であり，速度補正で差し引く
+毛管補正量そのものが圧力勾配空間に属することまでは保証しない．
+この残りの条件を次項の表面エネルギー仮想仕事に基づく毛管平衡判定として定式化する．
+PPE が保持すべき界面応力情報は向き付き圧力差
+$j_{gl}=p_g-p_l$ であり，符号を持たない $\sigma\kappa_{lg}$ 場ではない．
+この条件は毛管波専用ではなく，静止液滴・上昇気泡・
+平坦 Rayleigh--Taylor 界面の全てに同じ式を用いる．
+
+% ─────────────────────────────────────────────────────────────────────────────
