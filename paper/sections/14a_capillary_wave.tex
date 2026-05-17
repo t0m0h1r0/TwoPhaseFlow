@@ -76,12 +76,16 @@ $Q_h$ 測度残差，体積ドリフト，GPU hot path，および
   \item 正規入口：\texttt{experiment/ch14/config/ch14\_capillary.yaml}
   \item 実行：\texttt{experiment/ch14/diagnose\_phase\_region\_capillary\_graph\_steps.py}
   \item グリッド：$[0,0.02]^2\,\mathrm{m}^2$，$32^2$，
-        $x$ 周期，$y$ 壁面，legacy runtime YAML から読み込む診断格子
+        $x$ 周期，$y$ 壁面，正規 YAML が所有する非一様診断格子
+  \item interface/numerics：
+        正規 YAML が \texttt{active\_geometry\_capillary}，
+        \texttt{q} transport，\texttt{column\_height\_graph} gauge，
+        \texttt{face\_hodge}/FCCD pressure stack を明示する
   \item PhaseRegion owner：\texttt{gas\_above}
   \item PhaseRegion chart：\texttt{graph\_periodic}
   \item PhaseRegion measurement：
         \texttt{exact\_graph\_column\_integral}
-\item 時間：$T=T_\sigma=0.046742983863\,\mathrm{s}$，
+  \item 時間：$T=T_\sigma=0.046742983863\,\mathrm{s}$，
         \texttt{run.time.cfl=1.0} から毛管 CFL を評価し，
         $3103$ step，$\Delta t=1.506380401644\times10^{-5}\,\mathrm{s}$
   \item GPU：\texttt{backend.use\_gpu=true}，
