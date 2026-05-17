@@ -1,4 +1,4 @@
-# Wiki Index — 418 entries
+# Wiki Index — 419 entries
 
 ## Active Retrieval Gate
 
@@ -100,6 +100,10 @@ cell-average low-mode solve and validates a real x-nonuniform oracle.
 Use [WIKI-L-056](code/WIKI-L-056.md) before extending F1 to other charts or
 atlas components because it records the low-moment graph F1 KKT connection and
 the rejected all-cell KKT failure mode.
+Use [WIKI-E-071](experiment/WIKI-E-071.md) before implementing a PhaseRegion
+runtime dry-run adapter because it records that existing runtime
+`GeometricPhaseState.q` is liquid volume while the current PhaseRegion theory
+names `Omega_g`, so the phase-owner map must be explicit first.
 Before implementing or reviewing an
 established-theory change, use [WIKI-L-046](code/WIKI-L-046.md) as the
 equation-to-code contract gate. Older cards remain listed for
@@ -375,7 +379,7 @@ support.
 | [WIKI-X-055](cross-domain/WIKI-X-055.md) | Theory-First Deliberation Best Practices |
 | [WIKI-X-056](cross-domain/WIKI-X-056.md) | Ch14 Capillary Origin-Reset Handoff Protocol |
 
-## Experiment (70)
+## Experiment (71)
 
 | REF-ID | Title |
 |--------|-------|
@@ -449,6 +453,7 @@ support.
 | [WIKI-E-068](experiment/WIKI-E-068.md) | Ch14 q-Manifold Runtime Admission Snapshot Probe PASS |
 | [WIKI-E-069](experiment/WIKI-E-069.md) | Ch14 PhaseRegion Atlas Smoke Oracle PASS |
 | [WIKI-E-070](experiment/WIKI-E-070.md) | Ch14 PhaseRegion Experiment Readiness Gate |
+| [WIKI-E-071](experiment/WIKI-E-071.md) | Ch14 Runtime Phase-Owner Gate |
 
 ## Paper (24)
 
