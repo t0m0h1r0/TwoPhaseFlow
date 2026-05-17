@@ -39,6 +39,7 @@ from twophase.config import GridConfig  # noqa: E402
 from twophase.core.grid import Grid  # noqa: E402
 from twophase.coupling.phase_region_force_admission import (  # noqa: E402
     attach_phase_region_force_diagnostics,
+    build_phase_region_force_adapter_decision,
     build_phase_region_force_admission_candidate,
     build_phase_region_force_admission_report,
 )
@@ -245,6 +246,13 @@ def _compute(
     )
     if not report.valid:
         raise AssertionError(f"runtime force admission report failed: {report.reason}")
+    decision = build_phase_region_force_adapter_decision(
+        admission=admission,
+        report=report,
+        required_metric_keys=REPORT_REQUIRED_METRICS,
+    )
+    if not decision.valid:
+        raise AssertionError(f"runtime force adapter decision failed: {decision.reason}")
     check_self = diagnostics.self_work
     check_probe = diagnostics.probe_work
     decomposition = diagnostics.hodge
@@ -252,7 +260,7 @@ def _compute(
 
     x_edges = np.asarray(grid.coords[0], dtype=float)
     y_edges = np.asarray(grid.coords[1], dtype=float)
-    metrics = dict(report.metrics)
+    metrics = dict(decision.metrics)
     metrics.update(
         {
         "runtime_steps": 0.0,

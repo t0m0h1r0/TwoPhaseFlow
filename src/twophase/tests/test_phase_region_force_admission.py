@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
+
 import numpy as np
 import pytest
 
@@ -16,6 +18,7 @@ from twophase.coupling.closed_interface_riesz import (
 )
 from twophase.coupling.phase_region_force_admission import (
     attach_phase_region_force_diagnostics,
+    build_phase_region_force_adapter_decision,
     build_phase_region_force_admission_candidate,
     build_phase_region_force_admission_report,
     phase_region_face_mass_metric,
@@ -57,6 +60,49 @@ def _cell_area(grid: Grid) -> np.ndarray:
     dx = np.diff(np.asarray(grid.coords[0], dtype=float))
     dy = np.diff(np.asarray(grid.coords[1], dtype=float))
     return dx[:, None] * dy[None, :]
+
+
+def _valid_admission_and_report():
+    grid, backend, fccd = _setup(12, 12)
+    cell_area = _cell_area(grid)
+    admission = build_phase_region_force_admission_candidate(
+        xp=backend.xp,
+        grid=grid,
+        fccd=fccd,
+        psi=_ellipse_psi(grid),
+        q_source=0.25 * cell_area,
+        cell_area=cell_area,
+        source_phase=CellMeasurePhase.LIQUID,
+        owner_phase=CellMeasurePhase.GAS,
+        rho_l=10.0,
+        rho_g=2.0,
+        sigma=0.072,
+    )
+    admission = attach_phase_region_force_diagnostics(
+        xp=backend.xp,
+        grid=grid,
+        fccd=fccd,
+        div_op=FCCDDivergenceOperator(fccd),
+        admission=admission,
+        probe_face_velocity_components=admission.cochain.surface_acceleration,
+    )
+    report = build_phase_region_force_admission_report(
+        admission=admission,
+        grid=grid,
+        compatibility_residual_linf=0.0,
+        required_metric_keys=(
+            "source_volume",
+            "owner_volume",
+            "diagnostics_valid",
+            "self_fd_power_residual",
+            "hodge_divergence_linf",
+            "compat_linf",
+            "grid_alpha",
+            "min_dx",
+        ),
+    )
+    assert report.valid, report.reason
+    return grid, backend, fccd, admission, report
 
 
 def test_two_phase_nodal_density_matches_runtime_indicator_formula():
@@ -418,6 +464,73 @@ def test_build_force_admission_report_records_wall_nonuniform_grid_metadata():
     assert report.max_dx == pytest.approx(0.55)
     assert report.face_component_shapes == ()
     assert report.complement_used is None
+
+
+def test_build_force_adapter_decision_validates_report_but_withholds_force():
+    _grid, _backend, _fccd, admission, report = _valid_admission_and_report()
+
+    decision = build_phase_region_force_adapter_decision(
+        admission=admission,
+        report=report,
+        required_metric_keys=("self_fd_power_residual", "compat_linf"),
+    )
+
+    assert decision.valid, decision.reason
+    assert decision.reason == "ok"
+    assert decision.force_admissible is False
+    assert decision.force_components is None
+    assert decision.withheld_force_reason == "pressure_velocity_work_gate_missing"
+    assert decision.report is report
+    assert "self_fd_power_residual" in decision.candidate_metric_keys
+    assert decision.metrics["adapter_decision_valid"] == 1.0
+    assert decision.metrics["force_admissible"] == 0.0
+    assert decision.metrics["force_withheld"] == 1.0
+
+
+def test_build_force_adapter_decision_fails_closed_on_invalid_report():
+    _grid, _backend, _fccd, admission, report = _valid_admission_and_report()
+    invalid_report = replace(report, valid=False, reason="diagnostics_missing")
+
+    decision = build_phase_region_force_adapter_decision(
+        admission=admission,
+        report=invalid_report,
+    )
+
+    assert not decision.valid
+    assert decision.reason == "report:diagnostics_missing"
+    assert decision.force_admissible is False
+    assert decision.force_components is None
+
+
+def test_build_force_adapter_decision_fails_closed_on_face_shape_mismatch():
+    _grid, _backend, _fccd, admission, report = _valid_admission_and_report()
+    mismatched_report = replace(report, face_component_shapes=((1, 2), (3, 4)))
+
+    decision = build_phase_region_force_adapter_decision(
+        admission=admission,
+        report=mismatched_report,
+    )
+
+    assert not decision.valid
+    assert decision.reason == "face_component_shape_mismatch"
+    assert decision.force_admissible is False
+    assert decision.force_components is None
+
+
+def test_build_force_adapter_decision_fails_closed_on_missing_required_metric():
+    _grid, _backend, _fccd, admission, report = _valid_admission_and_report()
+
+    decision = build_phase_region_force_adapter_decision(
+        admission=admission,
+        report=report,
+        required_metric_keys=("not_a_metric",),
+    )
+
+    assert not decision.valid
+    assert decision.reason == "missing_metrics:not_a_metric"
+    assert decision.force_admissible is False
+    assert decision.force_components is None
+    assert decision.metrics["adapter_missing_metric_count"] == 1.0
 
 
 def test_phase_region_face_metric_rejects_cell_density_shape():

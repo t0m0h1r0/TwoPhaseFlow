@@ -1,4 +1,4 @@
-# Wiki Index — 432 entries
+# Wiki Index — 433 entries
 
 ## Active Retrieval Gate
 
@@ -136,6 +136,9 @@ Use [WIKI-L-065](code/WIKI-L-065.md) before implementing any PhaseRegion force
 adapter consumer because it defines the blocked read gate: a valid report may
 produce only a diagnostic decision with `force_components=None` and
 `force_admissible=false` until a later pressure/velocity work gate exists.
+Use [WIKI-L-066](code/WIKI-L-066.md) before designing pressure/velocity work
+gates because it implements the blocked adapter decision and keeps valid
+diagnostic force candidates from exposing face-cochain force arrays.
 Use [WIKI-E-071](experiment/WIKI-E-071.md) before implementing a PhaseRegion
 runtime dry-run adapter because it records that existing runtime
 `GeometricPhaseState.q` is liquid volume while the current PhaseRegion theory
@@ -582,7 +585,7 @@ support.
 | [WIKI-M-034](meta/WIKI-M-034.md) | Paper Review Revisions Should Reduce Cognitive Load, Not Add Decoration |
 | [WIKI-M-035](meta/WIKI-M-035.md) | Meta-Prompt Deployment Needs Project Boundaries, Native Adapters, and Token ROI Gates |
 
-## Code (65)
+## Code (66)
 
 | REF-ID | Title |
 |--------|-------|
@@ -651,3 +654,4 @@ support.
 | [WIKI-L-063](code/WIKI-L-063.md) | Ch14 PhaseRegion Force Diagnostics Payload PASS |
 | [WIKI-L-064](code/WIKI-L-064.md) | Ch14 PhaseRegion Force Admission Report PASS |
 | [WIKI-L-065](code/WIKI-L-065.md) | Ch14 PhaseRegion Force Adapter Consumer Design |
+| [WIKI-L-066](code/WIKI-L-066.md) | Ch14 PhaseRegion Force Adapter Decision PASS |

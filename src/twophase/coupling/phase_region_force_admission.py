@@ -103,6 +103,20 @@ class PhaseRegionForceAdmissionReport:
     metrics: dict[str, float]
 
 
+@dataclass(frozen=True)
+class PhaseRegionForceAdapterDecision:
+    """Blocked zero-step consumer decision for a force candidate report."""
+
+    valid: bool
+    reason: str
+    force_admissible: bool
+    report: PhaseRegionForceAdmissionReport
+    candidate_metric_keys: tuple[str, ...]
+    withheld_force_reason: str
+    force_components: object | None
+    metrics: dict[str, float]
+
+
 def two_phase_nodal_density(
     *,
     xp,
@@ -194,6 +208,45 @@ def build_phase_region_force_admission_candidate(
         owner_map=owner_map,
         face_metric=face_metric,
         cochain=cochain,
+        metrics=metrics,
+    )
+
+
+def build_phase_region_force_adapter_decision(
+    *,
+    admission: PhaseRegionForceAdmission,
+    report: PhaseRegionForceAdmissionReport,
+    required_metric_keys: tuple[str, ...] = (),
+) -> PhaseRegionForceAdapterDecision:
+    """Build a blocked zero-step adapter decision without exposing force."""
+    required = tuple(str(key) for key in required_metric_keys)
+    candidate_metric_keys = tuple(sorted(str(key) for key in admission.metrics))
+    missing = tuple(key for key in required if key not in report.metrics)
+    candidate_face_shapes = _face_component_shapes(admission)
+    valid, reason = _adapter_decision_validity(
+        admission=admission,
+        report=report,
+        candidate_face_shapes=candidate_face_shapes,
+        missing_metric_keys=missing,
+    )
+    metrics = dict(report.metrics)
+    metrics.update(
+        {
+            "adapter_decision_valid": float(valid),
+            "force_admissible": 0.0,
+            "force_withheld": 1.0,
+        }
+    )
+    if missing:
+        metrics["adapter_missing_metric_count"] = float(len(missing))
+    return PhaseRegionForceAdapterDecision(
+        valid=bool(valid),
+        reason=reason,
+        force_admissible=False,
+        report=report,
+        candidate_metric_keys=candidate_metric_keys,
+        withheld_force_reason="pressure_velocity_work_gate_missing",
+        force_components=None,
         metrics=metrics,
     )
 
@@ -656,6 +709,28 @@ def _report_validity(
     if min_dx is not None:
         if not np.isfinite(min_dx) or not np.isfinite(max_dx) or min_dx <= 0.0:
             return False, "grid_spacing_invalid"
+    if missing_metric_keys:
+        return False, "missing_metrics:" + ",".join(missing_metric_keys)
+    return True, "ok"
+
+
+def _adapter_decision_validity(
+    *,
+    admission: PhaseRegionForceAdmission,
+    report: PhaseRegionForceAdmissionReport,
+    candidate_face_shapes: tuple[tuple[int, ...], ...],
+    missing_metric_keys: tuple[str, ...],
+) -> tuple[bool, str]:
+    if not report.valid:
+        return False, f"report:{report.reason}"
+    if not admission.valid:
+        return False, f"candidate:{admission.reason}"
+    if report.force_admissible or admission.force_admissible:
+        return False, "force_admissible_true"
+    if report.runtime_steps != 0 or admission.runtime_steps != 0:
+        return False, "runtime_steps_must_be_zero"
+    if tuple(report.face_component_shapes) != tuple(candidate_face_shapes):
+        return False, "face_component_shape_mismatch"
     if missing_metric_keys:
         return False, "missing_metrics:" + ",".join(missing_metric_keys)
     return True, "ok"
