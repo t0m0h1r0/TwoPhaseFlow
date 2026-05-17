@@ -1,4 +1,4 @@
-# Wiki Index — 446 entries
+# Wiki Index — 447 entries
 
 ## Active Retrieval Gate
 
@@ -207,6 +207,10 @@ runtime face-history blocker and `force_admissible=0`.
 Use [WIKI-E-080](experiment/WIKI-E-080.md) before citing a longer reduced
 capillary-wave graph run because it records the GPU hot-path `T/16` result,
 exact-reference errors, residuals, volume drift, and `0.2 s/step` target.
+Use [WIKI-E-081](experiment/WIKI-E-081.md) before citing the production
+capillary-wave `T/4` pressure/velocity visualization run because it records the
+runtime command, quarter-period metrics, pulled velocity/pressure PDFs, and the
+scalar-pressure diagnostic boundary.
 Use [WIKI-L-074](code/WIKI-L-074.md) before optimizing or reviewing the
 PhaseRegion graph GPU route because it records the exact graph column-integral
 hot path, the device-aware owner/measurement reductions, and the validated
@@ -486,7 +490,7 @@ support.
 | [WIKI-X-055](cross-domain/WIKI-X-055.md) | Theory-First Deliberation Best Practices |
 | [WIKI-X-056](cross-domain/WIKI-X-056.md) | Ch14 Capillary Origin-Reset Handoff Protocol |
 
-## Experiment (80)
+## Experiment (81)
 
 | REF-ID | Title |
 |--------|-------|
@@ -570,6 +574,7 @@ support.
 | [WIKI-E-078](experiment/WIKI-E-078.md) | Ch14 PhaseRegion Capillary Graph Few-Step PASS |
 | [WIKI-E-079](experiment/WIKI-E-079.md) | Ch14 PhaseRegion Oscillating Droplet Few-Step PASS |
 | [WIKI-E-080](experiment/WIKI-E-080.md) | Ch14 PhaseRegion Capillary Graph 1/16 Period PASS |
+| [WIKI-E-081](experiment/WIKI-E-081.md) | Ch14 Production Capillary T/4 Pressure/Velocity PASS |
 
 ## Paper (24)
 
