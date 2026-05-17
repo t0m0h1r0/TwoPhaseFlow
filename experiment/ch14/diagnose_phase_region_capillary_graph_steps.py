@@ -28,6 +28,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 import pathlib
 import sys
+import time
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -53,6 +54,7 @@ from twophase.geometry import (  # noqa: E402
     component_offsets_from_batch_ids,
     enum_values,
     graph_q_from_eta,
+    graph_q_from_eta_column_integral,
     graph_segment_energy_gradient,
     map_cell_measure_to_phase_owner,
 )
@@ -118,7 +120,7 @@ def _wave_from_config(cfg: ExperimentConfig) -> CapillaryWaveSpec:
     )
 
 
-def _grid_from_config(cfg: ExperimentConfig) -> Grid:
+def _grid_from_config(cfg: ExperimentConfig, *, use_gpu: bool = False) -> Grid:
     g = cfg.grid
     grid = Grid(
         GridConfig(
@@ -141,7 +143,7 @@ def _grid_from_config(cfg: ExperimentConfig) -> Grid:
             dx_min_floor=float(g.dx_min_floor),
             fitting_dx_min_floor=tuple(float(value) for value in g.fitting_dx_min_floor),
         ),
-        Backend(use_gpu=False),
+        Backend(use_gpu=bool(use_gpu)),
     )
     grid.set_boundary_type(g.bc_type)
     return grid
@@ -164,19 +166,46 @@ def _initial_eta(x_edges: np.ndarray, spec: CapillaryWaveSpec) -> np.ndarray:
     return eta
 
 
-def _fit_grid_to_initial_graph(cfg: ExperimentConfig, spec: CapillaryWaveSpec) -> Grid:
-    grid = _grid_from_config(cfg)
+def _fit_grid_to_initial_graph(
+    cfg: ExperimentConfig,
+    spec: CapillaryWaveSpec,
+    *,
+    use_gpu: bool = False,
+) -> Grid:
+    if bool(use_gpu):
+        step_backend = Backend(use_gpu=True)
+        grid = _grid_from_config(cfg, use_gpu=False)
+    else:
+        step_backend = None
+        grid = _grid_from_config(cfg, use_gpu=False)
     if float(cfg.grid.alpha_grid) <= 1.0:
+        if step_backend is not None:
+            _attach_step_backend(grid, step_backend)
         return grid
     eps = float(cfg.grid.eps_factor) * (float(cfg.grid.LX) / float(cfg.grid.NX))
     eta_uniform = _initial_eta(np.asarray(grid.coords[0], dtype=float), spec)
     psi_uniform = heaviside(np, -_phi_for_eta(grid, eta_uniform), eps)
     ccd = CCDSolver(grid, grid.backend, bc_type=cfg.grid.bc_type)
     grid.update_from_levelset(psi_uniform, eps, ccd=ccd)
+    if step_backend is not None:
+        _attach_step_backend(grid, step_backend)
     return grid
 
 
-def _cell_area(grid: Grid) -> np.ndarray:
+def _attach_step_backend(grid: Grid, backend: Backend) -> None:
+    grid.backend = backend
+    grid.xp = backend.xp
+    grid._device_coord_cache.clear()
+    grid._device_cell_width_cache.clear()
+    grid._device_metric_cache.clear()
+    grid._device_metric_gradient_cache.clear()
+
+
+def _cell_area(grid: Grid, *, device: bool = False):
+    if bool(device):
+        dx = grid.device_cell_widths(0, dtype=float)
+        dy = grid.device_cell_widths(1, dtype=float)
+        return dx[:, None] * dy[None, :]
     dx = np.diff(np.asarray(grid.coords[0], dtype=float))
     dy = np.diff(np.asarray(grid.coords[1], dtype=float))
     return dx[:, None] * dy[None, :]
@@ -345,20 +374,28 @@ def _measure_phase_region(
     amplitude: float,
     cell_area: np.ndarray,
     sigma: float,
+    use_fast_graph_q: bool,
 ) -> dict[str, object]:
     eta = _eta_from_amplitude(spec, modal.basis_nodes, amplitude=float(amplitude))
-    q_l = np.asarray(graph_q_from_eta(grid, eta).q, dtype=float)
+    if bool(use_fast_graph_q):
+        q_l = graph_q_from_eta_column_integral(
+            grid,
+            grid.backend.xp.asarray(eta),
+        ).q
+    else:
+        q_l = np.asarray(graph_q_from_eta(grid, eta).q, dtype=float)
     owner = map_cell_measure_to_phase_owner(
         q_l,
         cell_area,
         source_phase=CellMeasurePhase.LIQUID,
         owner_phase=CellMeasurePhase.GAS,
     )
-    q_g = cell_area - q_l
+    q_g = owner.q_owner
+    q_g_host = np.asarray(grid.backend.to_host(q_g), dtype=float)
     region = _region_from_graph_gas_above(
         x_edges=x_edges,
         eta_nodes=eta,
-        q_g_phys=q_g,
+        q_g_phys=q_g_host,
     )
     energy = graph_segment_energy_gradient(x_edges, eta, sigma=float(sigma))
     measurement = assemble_phase_region_measurement(
@@ -372,14 +409,14 @@ def _measure_phase_region(
         raise AssertionError("PhaseRegion graph step did not assemble residual")
     return {
         "eta": eta,
-        "q_l": q_l,
-        "q_g": q_g,
+        "q_l": np.asarray(grid.backend.to_host(q_l), dtype=float),
+        "q_g": q_g_host,
         "residual_l2": float(measurement.residual_l2),
         "residual_linf": float(measurement.residual_linf),
-        "residual_volume_abs": abs(float(measurement.residual_volume[0])),
-        "gas_volume": float(measurement.batch_volumes[0]),
-        "liquid_volume": float(np.sum(q_l)),
-        "perimeter": float(measurement.batch_perimeters[0]),
+        "residual_volume_abs": abs(grid.backend.to_scalar(measurement.residual_volume[0])),
+        "gas_volume": grid.backend.to_scalar(measurement.batch_volumes[0]),
+        "liquid_volume": grid.backend.to_scalar(grid.backend.xp.sum(q_l)),
+        "perimeter": grid.backend.to_scalar(measurement.batch_perimeters[0]),
     }
 
 
@@ -394,13 +431,14 @@ def _compute(
     residual_tolerance: float,
     volume_tolerance: float,
     stiffness_probe_fraction: float,
+    use_gpu: bool,
 ) -> dict[str, object]:
     cfg = ExperimentConfig.from_yaml(config_path)
     spec = _wave_from_config(cfg)
-    grid = _fit_grid_to_initial_graph(cfg, spec)
+    grid = _fit_grid_to_initial_graph(cfg, spec, use_gpu=bool(use_gpu))
     x_edges = np.asarray(grid.coords[0], dtype=float)
     y_edges = np.asarray(grid.coords[1], dtype=float)
-    cell_area = _cell_area(grid)
+    cell_area = _cell_area(grid, device=bool(use_gpu))
     modal = _modal_geometry(
         cfg,
         spec,
@@ -429,10 +467,13 @@ def _compute(
     q_l_snapshots = []
     q_g_snapshots = []
     eta_snapshots = []
+    step_wall_times = []
 
     sigma = float(cfg.physics.sigma)
     surface_energies = []
     for step_index in range(step_count + 1):
+        _synchronize_backend(grid.backend)
+        step_wall_start = time.perf_counter()
         measurement = _measure_phase_region(
             grid,
             x_edges,
@@ -441,6 +482,7 @@ def _compute(
             amplitude=amplitude,
             cell_area=cell_area,
             sigma=sigma,
+            use_fast_graph_q=bool(use_gpu),
         )
         surface_energy, _rate = _surface_energy_and_linear_rate(
             x_edges,
@@ -466,6 +508,8 @@ def _compute(
             q_g_snapshots.append(np.asarray(measurement["q_g"], dtype=float))
             eta_snapshots.append(np.asarray(measurement["eta"], dtype=float))
         if step_index == step_count:
+            _synchronize_backend(grid.backend)
+            step_wall_times.append(time.perf_counter() - step_wall_start)
             break
         amplitude, velocity = _step_verlet(
             x_edges,
@@ -476,6 +520,8 @@ def _compute(
             dt=dt_value,
             sigma=sigma,
         )
+        _synchronize_backend(grid.backend)
+        step_wall_times.append(time.perf_counter() - step_wall_start)
         times.append((step_index + 1) * dt_value)
         amplitudes.append(amplitude)
         velocities.append(velocity)
@@ -538,6 +584,12 @@ def _compute(
         "min_dy": float(np.min(np.diff(y_edges))),
         "phase_region_graph_steps_admitted": 1.0,
         "force_admissible": 0.0,
+        "step_backend_gpu": 1.0 if grid.backend.is_gpu() else 0.0,
+        "q_measurement_fast_column_integral": 1.0 if bool(use_gpu) else 0.0,
+        "mean_step_wall_seconds": float(np.mean(step_wall_times)),
+        "max_step_wall_seconds": float(np.max(step_wall_times)),
+        "target_step_wall_seconds": 2.0e-1,
+        "target_met": 1.0 if float(np.max(step_wall_times)) <= 2.0e-1 else 0.0,
     }
     return {
         "metrics": metrics,
@@ -554,7 +606,7 @@ def _compute(
         "volume_drift": volume_drift,
         "x_edges": x_edges,
         "y_edges": y_edges,
-        "cell_area": cell_area,
+        "cell_area": np.asarray(grid.backend.to_host(cell_area), dtype=float),
         "q_l_initial": q_l_snapshots[0],
         "q_l_final": q_l_snapshots[-1],
         "q_g_initial": q_g_snapshots[0],
@@ -562,6 +614,11 @@ def _compute(
         "eta_initial": eta_snapshots[0],
         "eta_final": eta_snapshots[-1],
     }
+
+
+def _synchronize_backend(backend: Backend) -> None:
+    if backend.is_gpu():
+        backend.xp.cuda.Stream.null.synchronize()
 
 
 def _plot(results: dict[str, object]) -> pathlib.Path:
@@ -640,6 +697,7 @@ def _plot(results: dict[str, object]) -> pathlib.Path:
                 f"max energy drift = {float(metrics['max_energy_drift']):.8e}",
                 f"max residual L2 = {float(metrics['max_residual_l2']):.8e}",
                 f"max volume drift = {float(metrics['max_volume_drift']):.8e}",
+                f"max step wall = {float(metrics['max_step_wall_seconds']):.8e}s",
                 "phase_region_graph_steps_admitted = 1",
                 "force_admissible = 0",
             )
@@ -665,6 +723,7 @@ def main() -> None:
     parser.add_argument("--residual-tolerance", type=float, default=1.0e-18)
     parser.add_argument("--volume-tolerance", type=float, default=1.0e-16)
     parser.add_argument("--stiffness-probe-fraction", type=float, default=1.0e-2)
+    parser.add_argument("--use-gpu", action="store_true")
     args = parser.parse_args()
 
     if args.plot_only:
@@ -680,6 +739,7 @@ def main() -> None:
             residual_tolerance=float(args.residual_tolerance),
             volume_tolerance=float(args.volume_tolerance),
             stiffness_probe_fraction=float(args.stiffness_probe_fraction),
+            use_gpu=bool(args.use_gpu),
         )
         save_results(NPZ, results)
     pdf = _plot(results)
@@ -696,6 +756,8 @@ def main() -> None:
         f"max_energy_drift={float(metrics['max_energy_drift']):.12e} "
         f"max_residual_l2={float(metrics['max_residual_l2']):.12e} "
         f"max_volume_drift={float(metrics['max_volume_drift']):.12e} "
+        f"max_step_wall_seconds={float(metrics['max_step_wall_seconds']):.12e} "
+        f"target_met={float(metrics['target_met']):.1f} "
         f"final_amplitude={float(metrics['final_amplitude']):.12e} "
         f"final_exact_amplitude={float(metrics['final_exact_amplitude']):.12e} "
         f"force_admissible={float(metrics['force_admissible']):.1f} "

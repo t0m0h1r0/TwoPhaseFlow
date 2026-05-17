@@ -102,6 +102,49 @@ def test_assemble_phase_region_measurement_reduces_components_by_batch():
     assert measurement.force_admissible is False
 
 
+def test_assemble_phase_region_measurement_accepts_device_component_arrays_when_available():
+    cp = pytest.importorskip("cupy")
+    try:
+        if cp.cuda.runtime.getDeviceCount() < 1:
+            pytest.skip("CUDA device is unavailable")
+    except cp.cuda.runtime.CUDARuntimeError as exc:
+        pytest.skip(f"CUDA device is unavailable: {exc}")
+    region = _region_for_three_components()
+    component_q_cpu = np.array(
+        (
+            [[0.10, 0.00], [0.00, 0.05]],
+            [[0.00, 0.20], [0.10, 0.00]],
+            [[0.30, 0.00], [0.00, 0.10]],
+        ),
+        dtype=float,
+    )
+    perimeters_cpu = np.array((1.0, 2.0, 4.0))
+    target_cpu = np.stack(
+        (
+            component_q_cpu[0] + component_q_cpu[1],
+            component_q_cpu[2],
+        ),
+        axis=0,
+    )
+
+    measurement = assemble_phase_region_measurement(
+        region,
+        cp.asarray(component_q_cpu),
+        cp.asarray(perimeters_cpu),
+        q_target=cp.asarray(target_cpu),
+        cell_area=cp.ones((2, 2)),
+    )
+
+    assert hasattr(measurement.q_phys, "__cuda_array_interface__")
+    np.testing.assert_allclose(
+        cp.asnumpy(measurement.q_phys[0]),
+        component_q_cpu[0] + component_q_cpu[1],
+    )
+    np.testing.assert_allclose(cp.asnumpy(measurement.batch_perimeters), np.array((3.0, 4.0)))
+    assert measurement.residual_l2 == pytest.approx(0.0)
+    assert measurement.force_admissible is False
+
+
 def test_single_batch_target_may_omit_batch_axis():
     component_to_batch = np.array((0,), dtype=np.int64)
     atlas = InterfaceAtlas(

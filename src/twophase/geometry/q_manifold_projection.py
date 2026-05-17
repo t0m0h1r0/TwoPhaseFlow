@@ -18,6 +18,7 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from ..backend import is_device_array, scalar_value
 from .gpu_runtime_guard import reject_device_value, reject_gpu_namespace
 from .interface_charts import (
     ClosedRadialChartState,
@@ -127,6 +128,58 @@ def closed_radial_q_from_chart(
         phi=phi,
         sign_margin=float(geometry.sign_margin),
     )
+
+
+def graph_q_from_eta_column_integral(
+    grid,
+    eta_nodes: object,
+    *,
+    level: float = 0.0,
+) -> GraphQMeasurement:
+    """Measure graph-cell volume by exact vectorized column integration.
+
+    For a graph chart with linear edge data on each x-cell, the liquid measure
+    below the graph in a cell band ``[y_j,y_{j+1}]`` is
+
+    ``q_ij = int_{x_i}^{x_{i+1}} [(eta(x)-y_j)_+ - (eta(x)-y_{j+1})_+] dx``.
+
+    This is the same P1 graph geometry as ``graph_q_from_eta`` but avoids the
+    dense cut-geometry oracle and runs on ``grid.backend.xp``.  A CUDA request
+    therefore stays on device for the cell-volume hot path instead of using a
+    hidden CPU fallback.
+    """
+    xp = grid.xp
+    if getattr(xp, "__name__", "") != "cupy" and is_device_array(eta_nodes):
+        raise ValueError("graph column integral received device eta on a CPU grid")
+    eta_arr = xp.asarray(eta_nodes, dtype=float)
+    if eta_arr.shape != (grid.N[0] + 1,):
+        raise ValueError("eta_nodes must have shape (grid.N[0] + 1,)")
+    periodic_error = scalar_value(xp.max(xp.abs(eta_arr[-1] - eta_arr[0])))
+    if periodic_error > 1.0e-12:
+        raise ValueError("eta_nodes must be periodic")
+
+    x_edges = grid.device_coords(0, dtype=float)
+    y_edges = grid.device_coords(1, dtype=float)
+    dx = x_edges[1:] - x_edges[:-1]
+    dy = y_edges[1:] - y_edges[:-1]
+    eta_eff = eta_arr + float(level)
+    lower = _linear_positive_part_integral(
+        xp,
+        eta_eff[:-1, None] - y_edges[:-1][None, :],
+        eta_eff[1:, None] - y_edges[:-1][None, :],
+        dx[:, None],
+    )
+    upper = _linear_positive_part_integral(
+        xp,
+        eta_eff[:-1, None] - y_edges[1:][None, :],
+        eta_eff[1:, None] - y_edges[1:][None, :],
+        dx[:, None],
+    )
+    cell_area = dx[:, None] * dy[None, :]
+    q = xp.clip(lower - upper, 0.0, cell_area)
+    phi = y_edges[None, :] - eta_arr[:, None]
+    sign_margin = scalar_value(xp.min(xp.abs(phi - float(level))))
+    return GraphQMeasurement(q=q, phi=phi, sign_margin=sign_margin)
 
 
 def column_height_from_q(grid, q: object) -> object:
@@ -507,6 +560,31 @@ def _graph_coeff_vector_from_state(state: GraphChartState, *, max_mode: int) -> 
         coeffs[idx] = float(entry.cos)
         coeffs[idx + 1] = float(entry.sin)
     return coeffs
+
+
+def _linear_positive_part_integral(xp, left: object, right: object, width: object) -> object:
+    """Return ``int (linear endpoint interpolation)_+ dx`` elementwise."""
+    a = xp.asarray(left, dtype=float)
+    b = xp.asarray(right, dtype=float)
+    w = xp.asarray(width, dtype=float)
+    both_positive = (a >= 0.0) & (b >= 0.0)
+    both_nonpositive = (a <= 0.0) & (b <= 0.0)
+    left_triangle = (a > 0.0) & (b < 0.0)
+    right_triangle = (a < 0.0) & (b > 0.0)
+    full = 0.5 * w * (a + b)
+    left_denominator = xp.where(left_triangle, a - b, 1.0)
+    right_denominator = xp.where(right_triangle, b - a, 1.0)
+    left_value = 0.5 * w * a * a / left_denominator
+    right_value = 0.5 * w * b * b / right_denominator
+    return xp.where(
+        both_positive,
+        full,
+        xp.where(
+            both_nonpositive,
+            0.0,
+            xp.where(left_triangle, left_value, xp.where(right_triangle, right_value, 0.0)),
+        ),
+    )
 
 
 def _graph_state_from_coeff_vector(

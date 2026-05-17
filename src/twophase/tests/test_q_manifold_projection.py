@@ -21,6 +21,7 @@ from twophase.geometry.q_manifold_projection import (
     closed_radial_q_from_chart,
     graph_force_projection,
     graph_q_from_eta,
+    graph_q_from_eta_column_integral,
     project_closed_radial_mode_f0,
     project_graph_q_f0,
     project_graph_q_f1_low_mode,
@@ -214,13 +215,51 @@ def test_graph_constant_chart_matches_exact_cell_volumes_on_fitted_grid():
     expected_q = _exact_constant_graph_q(grid, height=height)
 
     measured = graph_q_from_eta(grid, eta).q
+    measured_column = graph_q_from_eta_column_integral(grid, eta).q
     projected = project_graph_q_f0(grid, expected_q, max_mode=0, sigma=1.0)
 
     np.testing.assert_allclose(measured, expected_q, atol=5.0e-15)
+    np.testing.assert_allclose(measured_column, expected_q, atol=5.0e-15)
     np.testing.assert_allclose(projected.q_phys, expected_q, atol=5.0e-15)
     assert projected.gamma_state.mean == pytest.approx(height, abs=5.0e-15)
     assert projected.residual_report.l2 < 1.0e-14
     assert projected.constraint_report["column_residual_linf"] < 1.0e-14
+
+
+def test_graph_column_integral_matches_p1_cut_for_sloped_nonuniform_graph():
+    grid = _grid(32, 40, alpha_grid=2.0)
+    _fit_x_nonuniform_grid(grid)
+    x_edges = np.asarray(grid.coords[0], dtype=float)
+    eta = 0.4317 + 0.07 * np.cos(2.0 * np.pi * x_edges) + 0.02 * np.sin(4.0 * np.pi * x_edges)
+    eta[-1] = eta[0]
+
+    p1_cut = graph_q_from_eta(grid, eta).q
+    column_integral = graph_q_from_eta_column_integral(grid, eta).q
+
+    np.testing.assert_allclose(column_integral, p1_cut, atol=5.0e-15)
+
+
+def test_graph_column_integral_gpu_matches_cpu_when_available():
+    cp = pytest.importorskip("cupy")
+    try:
+        if cp.cuda.runtime.getDeviceCount() < 1:
+            pytest.skip("CUDA device is unavailable")
+    except cp.cuda.runtime.CUDARuntimeError as exc:
+        pytest.skip(f"CUDA device is unavailable: {exc}")
+    cpu_grid = _grid(48, 40)
+    gpu_grid = Grid(
+        GridConfig(ndim=2, N=(48, 40), L=(1.0, 1.0), alpha_grid=1.0),
+        Backend(use_gpu=True),
+    )
+    x_edges = np.asarray(cpu_grid.coords[0], dtype=float)
+    eta = 0.44 + 0.04 * np.cos(2.0 * np.pi * x_edges) - 0.015 * np.sin(6.0 * np.pi * x_edges)
+    eta[-1] = eta[0]
+
+    cpu_q = graph_q_from_eta_column_integral(cpu_grid, eta).q
+    gpu_result = graph_q_from_eta_column_integral(gpu_grid, gpu_grid.backend.xp.asarray(eta))
+
+    assert hasattr(gpu_result.q, "__cuda_array_interface__")
+    np.testing.assert_allclose(cp.asnumpy(gpu_result.q), cpu_q, atol=5.0e-15)
 
 
 def test_graph_f0_recovers_clean_and_low_mode_chart():

@@ -1,4 +1,4 @@
-# Wiki Index — 444 entries
+# Wiki Index — 445 entries
 
 ## Active Retrieval Gate
 
@@ -204,6 +204,10 @@ Use [WIKI-E-079](experiment/WIKI-E-079.md) before claiming the closed-droplet
 route shares the same reduced dynamic PhaseRegion gate, because it records the
 oscillating-droplet closed-chart few-step PASS while preserving the production
 runtime face-history blocker and `force_admissible=0`.
+Use [WIKI-L-074](code/WIKI-L-074.md) before optimizing or reviewing the
+PhaseRegion graph GPU route because it records the exact graph column-integral
+hot path, the device-aware owner/measurement reductions, and the validated
+`0.2 s/step` capillary-wave target.
 Before implementing or reviewing an
 established-theory change, use [WIKI-L-046](code/WIKI-L-046.md) as the
 equation-to-code contract gate. Older cards remain listed for
@@ -632,7 +636,7 @@ support.
 | [WIKI-M-034](meta/WIKI-M-034.md) | Paper Review Revisions Should Reduce Cognitive Load, Not Add Decoration |
 | [WIKI-M-035](meta/WIKI-M-035.md) | Meta-Prompt Deployment Needs Project Boundaries, Native Adapters, and Token ROI Gates |
 
-## Code (73)
+## Code (74)
 
 | REF-ID | Title |
 |--------|-------|
@@ -709,3 +713,4 @@ support.
 | [WIKI-L-071](code/WIKI-L-071.md) | Ch14 Pressure/Velocity G3 Face-Projection Oracle PASS |
 | [WIKI-L-072](code/WIKI-L-072.md) | Ch14 Pressure/Velocity G4 Face-Force Admission PASS |
 | [WIKI-L-073](code/WIKI-L-073.md) | Ch14 Pressure/Velocity G5 Face-Force Projection Probe PASS |
+| [WIKI-L-074](code/WIKI-L-074.md) | Ch14 PhaseRegion Graph GPU Hot Path PASS |

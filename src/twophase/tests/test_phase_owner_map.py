@@ -52,6 +52,29 @@ def test_matching_phase_owner_passes_measure_without_hidden_complement():
     assert mapped.owner_volume == pytest.approx(float(np.sum(gas_q)))
 
 
+def test_phase_owner_map_accepts_device_arrays_when_available():
+    cp = pytest.importorskip("cupy")
+    try:
+        if cp.cuda.runtime.getDeviceCount() < 1:
+            pytest.skip("CUDA device is unavailable")
+    except cp.cuda.runtime.CUDARuntimeError as exc:
+        pytest.skip(f"CUDA device is unavailable: {exc}")
+    cell_area_cpu = np.array(((0.10, 0.20), (0.15, 0.25)), dtype=float)
+    liquid_cpu = np.array(((0.03, 0.14), (0.05, 0.10)), dtype=float)
+
+    mapped = map_cell_measure_to_phase_owner(
+        cp.asarray(liquid_cpu),
+        cp.asarray(cell_area_cpu),
+        source_phase=CellMeasurePhase.LIQUID,
+        owner_phase=CellMeasurePhase.GAS,
+    )
+
+    assert hasattr(mapped.q_owner, "__cuda_array_interface__")
+    np.testing.assert_allclose(cp.asnumpy(mapped.q_owner), cell_area_cpu - liquid_cpu)
+    assert mapped.owner_volume == pytest.approx(float(np.sum(cell_area_cpu - liquid_cpu)))
+    assert mapped.complement_used is True
+
+
 def test_phase_owner_map_fails_closed_on_shape_capacity_and_phase_errors():
     cell_area = np.ones((2, 2), dtype=float)
 

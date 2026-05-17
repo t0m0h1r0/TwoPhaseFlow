@@ -19,6 +19,7 @@ from enum import IntEnum
 
 import numpy as np
 
+from ..backend import array_namespace, scalar_value
 from .interface_atlas import AtlasValidationError
 
 
@@ -73,27 +74,28 @@ def map_cell_measure_to_phase_owner(
         ``PhaseOwnerMapResult`` with the converted measure and a visible
         ``complement_used`` flag.
     """
-    q = np.asarray(q_source, dtype=float)
-    area = np.asarray(cell_area, dtype=float)
+    xp = array_namespace(q_source)
+    q = xp.asarray(q_source, dtype=float)
+    area = xp.asarray(cell_area, dtype=float)
     if q.shape != area.shape:
         raise AtlasValidationError("q_source and cell_area must have the same shape")
     if q.ndim == 0:
         raise AtlasValidationError("q_source must be an array of cell measures")
-    if not np.all(np.isfinite(q)):
+    if not _bool_scalar(xp.all(xp.isfinite(q))):
         raise AtlasValidationError("q_source must be finite")
-    if not np.all(np.isfinite(area)) or np.any(area <= 0.0):
+    if not _bool_scalar(xp.all(xp.isfinite(area))) or _bool_scalar(xp.any(area <= 0.0)):
         raise AtlasValidationError("cell_area must be positive and finite")
 
     tol = float(capacity_tolerance)
     if not np.isfinite(tol) or tol < 0.0:
         raise AtlasValidationError("capacity_tolerance must be finite and nonnegative")
-    _validate_capacity(q, area, tol, "q_source")
+    _validate_capacity(q, area, tol, "q_source", xp=xp)
 
     source = _coerce_phase(source_phase, "source_phase")
     owner = _coerce_phase(owner_phase, "owner_phase")
     complement_used = source != owner
     q_owner = area - q if complement_used else q.copy()
-    _validate_capacity(q_owner, area, tol, "q_owner")
+    _validate_capacity(q_owner, area, tol, "q_owner", xp=xp)
 
     return PhaseOwnerMapResult(
         q_owner=q_owner,
@@ -102,10 +104,10 @@ def map_cell_measure_to_phase_owner(
         source_phase=source,
         owner_phase=owner,
         complement_used=bool(complement_used),
-        source_volume=float(np.sum(q)),
-        owner_volume=float(np.sum(q_owner)),
-        q_min=float(np.min(q_owner)),
-        capacity_excess_linf=float(np.max(q_owner - area)),
+        source_volume=scalar_value(xp.sum(q)),
+        owner_volume=scalar_value(xp.sum(q_owner)),
+        q_min=scalar_value(xp.min(q_owner)),
+        capacity_excess_linf=scalar_value(xp.max(q_owner - area)),
     )
 
 
@@ -123,8 +125,12 @@ def _coerce_phase(value: CellMeasurePhase | int | str, name: str) -> CellMeasure
         raise AtlasValidationError(f"{name} must be LIQUID or GAS") from exc
 
 
-def _validate_capacity(q: object, area: object, tol: float, name: str) -> None:
-    if float(np.min(q)) < -tol:
+def _validate_capacity(q: object, area: object, tol: float, name: str, *, xp) -> None:
+    if scalar_value(xp.min(q)) < -tol:
         raise AtlasValidationError(f"{name} is below zero beyond tolerance")
-    if float(np.max(q - area)) > tol:
+    if scalar_value(xp.max(q - area)) > tol:
         raise AtlasValidationError(f"{name} exceeds cell capacity beyond tolerance")
+
+
+def _bool_scalar(value: object) -> bool:
+    return bool(scalar_value(value))
