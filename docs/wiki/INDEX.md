@@ -1,4 +1,4 @@
-# Wiki Index — 410 entries
+# Wiki Index — 411 entries
 
 ## Active Retrieval Gate
 
@@ -76,7 +76,10 @@ treats graph/closed/open charts as an `InterfaceAtlas`; use
 PhaseRegion variational axioms and requires a mixed closed-bubble/top-layer
 atlas smoke oracle first; use [WIKI-L-050](code/WIKI-L-050.md) before adding
 PhaseRegion/InterfaceAtlas code because it fixes the vectorized packed atlas
-layout and F0/F1 fast-admission ladder. Before implementing or reviewing an
+layout and F0/F1 fast-admission ladder; use
+[WIKI-L-051](code/WIKI-L-051.md) before adding atlas `Q_h`, perimeter
+reductions, or admission because it records the validation-only
+`PhaseRegionBatch/InterfaceAtlas` schema PASS. Before implementing or reviewing an
 established-theory change, use [WIKI-L-046](code/WIKI-L-046.md) as the
 equation-to-code contract gate. Older cards remain listed for
 provenance, but cards marked
@@ -493,7 +496,7 @@ support.
 | [WIKI-M-034](meta/WIKI-M-034.md) | Paper Review Revisions Should Reduce Cognitive Load, Not Add Decoration |
 | [WIKI-M-035](meta/WIKI-M-035.md) | Meta-Prompt Deployment Needs Project Boundaries, Native Adapters, and Token ROI Gates |
 
-## Code (50)
+## Code (51)
 
 | REF-ID | Title |
 |--------|-------|
@@ -547,3 +550,4 @@ support.
 | [WIKI-L-048](code/WIKI-L-048.md) | Ch14 Graph q-Manifold Helper Implementation PASS |
 | [WIKI-L-049](code/WIKI-L-049.md) | Ch14 q-Manifold Vectorized Geometry Parity PASS |
 | [WIKI-L-050](code/WIKI-L-050.md) | Ch14 PhaseRegion InterfaceAtlas Implementation Design |
+| [WIKI-L-051](code/WIKI-L-051.md) | Ch14 PhaseRegion InterfaceAtlas Schema PASS |
