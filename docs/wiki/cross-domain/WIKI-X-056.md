@@ -13,10 +13,13 @@ sources:
     description: "Current U12/V11 AO-Fast capillary split gates on main"
   - path: artifacts/A/ch14_origin_reset_handoff_CHK-RA-CH14-ORIGIN-RESET-001.md
     description: "Extracted handoff facts, negative evidence, and next-session prompt path"
+  - path: docs/wiki/experiment/WIKI-E-064.md
+    description: "Main-side preservation of the concrete screened graph-q runtime failure"
 depends_on:
   - "[[WIKI-T-174]]"
   - "[[WIKI-X-055]]"
   - "[[WIKI-E-063]]"
+  - "[[WIKI-E-064]]"
 consumers:
   - domain: management
     usage: "Use to start a separate origin-reset session without importing failed implementation momentum"

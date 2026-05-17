@@ -13,6 +13,8 @@ sources:
     description: "Theory-first deliberation and hypothesis/falsification protocol"
   - path: artifacts/A/ch14_origin_reset_handoff_CHK-RA-CH14-ORIGIN-RESET-001.md
     description: "Extracted Ch14 origin-reset handoff and negative evidence from the oscillating-droplet branch"
+  - path: docs/wiki/experiment/WIKI-E-064.md
+    description: "Concrete baseline/screened graph-q runtime evidence preserved from the discarded source branch"
   - branch: codex/ra-ch14-osc-droplet-eighth-20260516
     commit: b0d36536
     description: "Screened graph-q runtime probe branch; not merged here because this card extracts theory knowledge only"
@@ -20,6 +22,7 @@ depends_on:
   - "[[WIKI-T-077]]"
   - "[[WIKI-T-173]]"
   - "[[WIKI-X-055]]"
+  - "[[WIKI-E-064]]"
 consumers:
   - domain: theory
     usage: "Use before designing a new capillary-wave or closed-droplet route after q/phi rebuild failures"

@@ -1,4 +1,4 @@
-# Wiki Index — 398 entries
+# Wiki Index — 399 entries
 
 ## Active Retrieval Gate
 
@@ -44,7 +44,9 @@ efficiency bottleneck, use
 [WIKI-L-045](code/WIKI-L-045.md). For a fresh Ch14 capillary origin reset
 after q/phi rebuild failures, use [WIKI-T-174](theory/WIKI-T-174.md) to choose
 the owned state and [WIKI-X-056](cross-domain/WIKI-X-056.md) for the
-oracle-first handoff protocol before continuing implementation. Before implementing or reviewing an
+oracle-first handoff protocol before continuing implementation; use
+[WIKI-E-064](experiment/WIKI-E-064.md) for the concrete baseline/screened
+graph-q runtime evidence preserved from the discarded source branch. Before implementing or reviewing an
 established-theory change, use [WIKI-L-046](code/WIKI-L-046.md) as the
 equation-to-code contract gate. Older cards remain listed for
 provenance, but cards marked
@@ -316,7 +318,7 @@ support.
 | [WIKI-X-055](cross-domain/WIKI-X-055.md) | Theory-First Deliberation Best Practices |
 | [WIKI-X-056](cross-domain/WIKI-X-056.md) | Ch14 Capillary Origin-Reset Handoff Protocol |
 
-## Experiment (63)
+## Experiment (64)
 
 | REF-ID | Title |
 |--------|-------|
@@ -383,6 +385,7 @@ support.
 | [WIKI-E-061](experiment/WIKI-E-061.md) | N64 Non-DC Trial Matrix Separates Contracts from Probes |
 | [WIKI-E-062](experiment/WIKI-E-062.md) | Static Droplet Pressure Images Must Use Hodge Representatives |
 | [WIKI-E-063](experiment/WIKI-E-063.md) | U12/V11 AO-Fast Capillary Split Gates |
+| [WIKI-E-064](experiment/WIKI-E-064.md) | Capillary Runtime Baseline and Screened Graph-q Failure |
 
 ## Paper (24)
 
