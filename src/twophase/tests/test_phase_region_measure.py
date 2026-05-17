@@ -132,6 +132,48 @@ def test_single_batch_target_may_omit_batch_axis():
     np.testing.assert_allclose(measurement.q_phys[0], component_q[0])
 
 
+def test_gas_owner_measurement_matches_exact_liquid_complement():
+    component_to_batch = np.array((0,), dtype=np.int64)
+    atlas = InterfaceAtlas(
+        batch_size=1,
+        component_offsets=component_offsets_from_batch_ids(1, component_to_batch),
+        component_to_batch=component_to_batch,
+        chart_type=enum_values((ChartType.CLOSED_RADIAL,)),
+        topology=enum_values((TopologyType.CLOSED,)),
+        attachment=enum_values((BoundaryAttachment.NONE,)),
+        orientation=np.array((-1.0,)),
+        phase_role=enum_values((PhaseRole.GAS_OUTSIDE,)),
+        constraint_policy=enum_values((ConstraintPolicy.TOTAL_VOLUME,)),
+        dof_offsets=np.array((0, 1), dtype=np.int64),
+        vertex_offsets=np.array((0, 4), dtype=np.int64),
+        active_cell_offsets=np.array((0, 4), dtype=np.int64),
+    )
+    region = PhaseRegionBatch(
+        atlas=atlas,
+        dofs=np.array((0.2,)),
+        vertices=np.zeros((4, 2)),
+        active_cell_ids=np.arange(4, dtype=np.int64),
+        active_weights=np.ones(4),
+    )
+    cell_area = np.array(((0.10, 0.20), (0.15, 0.25)), dtype=float)
+    liquid_q = np.array(((0.03, 0.14), (0.05, 0.10)), dtype=float)
+    gas_q = cell_area - liquid_q
+
+    measurement = assemble_phase_region_measurement(
+        region,
+        gas_q[None, ...],
+        np.array((1.25,)),
+        q_target=gas_q,
+        cell_area=cell_area,
+    )
+
+    np.testing.assert_allclose(measurement.q_phys[0], gas_q)
+    assert measurement.batch_volumes[0] == pytest.approx(float(np.sum(cell_area - liquid_q)))
+    assert measurement.residual_l2 == pytest.approx(0.0)
+    assert measurement.capacity_excess_linf <= 0.0
+    assert measurement.force_admissible is False
+
+
 def test_assemble_phase_region_measurement_fails_closed_on_bad_shapes_and_capacity():
     region = _region_for_three_components()
     component_q = np.ones((3, 2, 2))

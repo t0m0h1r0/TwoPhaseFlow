@@ -55,6 +55,59 @@ def test_low_mode_kkt_energy_regularization_shrinks_correction():
     assert regularized.objective > 0.0
 
 
+def test_low_mode_kkt_matches_exact_weighted_regularized_constrained_system():
+    jacobian = np.array(
+        (
+            (1.0, 2.0),
+            (-1.0, 0.5),
+            (0.25, 1.5),
+        )
+    )
+    residual = np.array((0.3, -0.2, 0.5))
+    weights = np.array((2.0, 0.5, 1.25))
+    energy_hessian = np.array(((2.0, 0.1), (0.1, 1.0)))
+    energy_weight = 0.7
+    constraint_jacobian = np.array(((1.0, -1.0),))
+    constraint_rhs = np.array((0.05,))
+
+    normal = jacobian.T @ (weights[:, None] * jacobian) + energy_weight * energy_hessian
+    rhs = jacobian.T @ (weights * residual)
+    kkt_matrix = np.block(
+        [
+            [normal, constraint_jacobian.T],
+            [constraint_jacobian, np.zeros((1, 1))],
+        ]
+    )
+    exact_solution = np.linalg.solve(
+        kkt_matrix,
+        np.concatenate((rhs, constraint_rhs)),
+    )
+    exact_delta = exact_solution[:2]
+    exact_multipliers = exact_solution[2:]
+    exact_predicted_residual = residual - jacobian @ exact_delta
+    exact_objective = (
+        0.5 * np.sum(weights * exact_predicted_residual * exact_predicted_residual)
+        + 0.5 * energy_weight * exact_delta @ energy_hessian @ exact_delta
+    )
+
+    result = solve_low_mode_kkt(
+        jacobian,
+        residual,
+        weights=weights,
+        energy_hessian=energy_hessian,
+        energy_weight=energy_weight,
+        constraint_jacobian=constraint_jacobian,
+        constraint_rhs=constraint_rhs,
+    )
+
+    np.testing.assert_allclose(result.delta, exact_delta, atol=1.0e-14)
+    np.testing.assert_allclose(result.multipliers, exact_multipliers, atol=1.0e-14)
+    np.testing.assert_allclose(result.predicted_residual, exact_predicted_residual, atol=1.0e-14)
+    assert result.objective == pytest.approx(exact_objective, abs=1.0e-14)
+    assert result.constraint_residual_linf < 1.0e-14
+    assert result.force_admissible is False
+
+
 def test_low_mode_kkt_supports_batched_solve():
     jacobian = np.stack((np.eye(2), 2.0 * np.eye(2)), axis=0)
     delta_true = np.array(((0.2, -0.1), (0.05, 0.15)))

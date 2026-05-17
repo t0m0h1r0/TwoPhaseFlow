@@ -1,4 +1,4 @@
-# Wiki Index — 419 entries
+# Wiki Index — 420 entries
 
 ## Active Retrieval Gate
 
@@ -100,6 +100,10 @@ cell-average low-mode solve and validates a real x-nonuniform oracle.
 Use [WIKI-L-056](code/WIKI-L-056.md) before extending F1 to other charts or
 atlas components because it records the low-moment graph F1 KKT connection and
 the rejected all-cell KKT failure mode.
+Use [WIKI-L-057](code/WIKI-L-057.md) before changing q-manifold,
+PhaseRegion-measurement, or low-mode KKT tests because it adds exact
+theoretical references for graph q, polygon geometry, KKT algebra, and
+gas-owner complement mapping.
 Use [WIKI-E-071](experiment/WIKI-E-071.md) before implementing a PhaseRegion
 runtime dry-run adapter because it records that existing runtime
 `GeometricPhaseState.q` is liquid volume while the current PhaseRegion theory
@@ -524,7 +528,7 @@ support.
 | [WIKI-M-034](meta/WIKI-M-034.md) | Paper Review Revisions Should Reduce Cognitive Load, Not Add Decoration |
 | [WIKI-M-035](meta/WIKI-M-035.md) | Meta-Prompt Deployment Needs Project Boundaries, Native Adapters, and Token ROI Gates |
 
-## Code (56)
+## Code (57)
 
 | REF-ID | Title |
 |--------|-------|
@@ -584,3 +588,4 @@ support.
 | [WIKI-L-054](code/WIKI-L-054.md) | Ch14 PhaseRegion Boundary and Nonuniform Audit PASS |
 | [WIKI-L-055](code/WIKI-L-055.md) | Ch14 Nonuniform Graph F0 Admission PASS |
 | [WIKI-L-056](code/WIKI-L-056.md) | Ch14 Graph F1 Low-Mode KKT PASS |
+| [WIKI-L-057](code/WIKI-L-057.md) | Ch14 Exact Theory Unit Tests PASS |

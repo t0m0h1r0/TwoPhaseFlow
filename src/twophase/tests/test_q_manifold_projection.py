@@ -100,6 +100,34 @@ def _closed_high_residual(grid: Grid, q: object, *, mode: int, fraction: float) 
     return q_arr + scale * residual
 
 
+def _exact_constant_graph_q(grid: Grid, *, height: float) -> np.ndarray:
+    x_edges = np.asarray(grid.coords[0], dtype=float)
+    y_edges = np.asarray(grid.coords[1], dtype=float)
+    dx = np.diff(x_edges)
+    dy = np.diff(y_edges)
+    fill_height = np.clip(float(height) - y_edges[:-1], 0.0, dy)
+    return dx[:, None] * fill_height[None, :]
+
+
+def test_graph_constant_chart_matches_exact_cell_volumes_on_fitted_grid():
+    grid = _grid(32, 40, alpha_grid=2.0)
+    _fit_x_nonuniform_grid(grid)
+    x_edges = np.asarray(grid.coords[0], dtype=float)
+    assert float(np.max(np.diff(x_edges)) - np.min(np.diff(x_edges))) > 1.0e-4
+    height = 0.437
+    eta = np.full(grid.N[0] + 1, height, dtype=float)
+    expected_q = _exact_constant_graph_q(grid, height=height)
+
+    measured = graph_q_from_eta(grid, eta).q
+    projected = project_graph_q_f0(grid, expected_q, max_mode=0, sigma=1.0)
+
+    np.testing.assert_allclose(measured, expected_q, atol=5.0e-15)
+    np.testing.assert_allclose(projected.q_phys, expected_q, atol=5.0e-15)
+    assert projected.gamma_state.mean == pytest.approx(height, abs=5.0e-15)
+    assert projected.residual_report.l2 < 1.0e-14
+    assert projected.constraint_report["column_residual_linf"] < 1.0e-14
+
+
 def test_graph_f0_recovers_clean_and_low_mode_chart():
     grid = _grid()
     x_edges = np.asarray(grid.coords[0], dtype=float)
@@ -292,6 +320,33 @@ def test_graph_projection_fails_closed_for_device_inputs():
 
     with pytest.raises(ValueError, match="GPU execution requires"):
         project_graph_q_f0(grid, DeviceLike(), max_mode=4)
+
+
+def test_closed_regular_polygon_matches_exact_geometry_and_radial_variations():
+    vertex_count = 128
+    radius = 0.23
+    theta = np.linspace(0.0, 2.0 * np.pi, vertex_count, endpoint=False)
+    state = closed_radial_chart_from_modes(
+        theta,
+        center=(0.41, 0.53),
+        base_radius=radius,
+        modes=(),
+    )
+
+    geometry = closed_polygon_geometry(state.vertices, sigma=1.0)
+
+    exact_area = 0.5 * vertex_count * radius * radius * np.sin(2.0 * np.pi / vertex_count)
+    exact_length = 2.0 * vertex_count * radius * np.sin(np.pi / vertex_count)
+    radial_direction = np.stack((np.cos(theta), np.sin(theta)), axis=-1)
+    radial_area_variation = float(np.sum(np.asarray(geometry.area_gradient) * radial_direction))
+    radial_length_variation = float(
+        np.sum(np.asarray(geometry.surface_gradient) * radial_direction)
+    )
+
+    assert float(geometry.area) == pytest.approx(exact_area, abs=1.0e-14)
+    assert float(geometry.length) == pytest.approx(exact_length, abs=1.0e-14)
+    assert radial_area_variation == pytest.approx(2.0 * exact_area / radius, abs=1.0e-13)
+    assert radial_length_variation == pytest.approx(exact_length / radius, abs=1.0e-13)
 
 
 def test_closed_polygon_area_length_and_gradients_match_finite_difference():
