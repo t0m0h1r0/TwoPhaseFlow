@@ -1,0 +1,11 @@
+{
+  "branch": "codex/ra-ch12-13-experiment-audit-20260517",
+  "branch_slug": "codex-ra-ch12-13-experiment-audit-20260517",
+  "session_id": "FF8DC762-404A-4AC0-AA61-959090A693D4",
+  "worktree_path": ".claude/worktrees/codex-ra-ch12-13-experiment-audit-20260517",
+  "holder_agent": "ResearchArchitect",
+  "acquired_at": "2026-05-17T22:35:21+09:00",
+  "expires_at": "2026-05-18T22:35:21+09:00",
+  "meta_version": "7.1.0",
+  "scope": "audit Chapters 1--11 and Section 14.2 against Chapter 12--13 experiments, remove stale claims, and update or run required experiments without merging to main"
+}

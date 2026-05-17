@@ -1,4 +1,4 @@
-# Wiki Index — 449 entries
+# Wiki Index — 450 entries
 
 ## Active Retrieval Gate
 
@@ -219,6 +219,10 @@ Use [WIKI-E-083](experiment/WIKI-E-083.md) before citing the corrected new
 PhaseRegion graph YAML one-period route because it records
 `config/ch14_capillary.yaml`, YAML-owned period/step/GPU settings,
 GPU exact graph-column measurement, and one-period exact-reference metrics.
+Use [WIKI-E-084](experiment/WIKI-E-084.md) before citing the Chapter 13
+closed-interface volume admission gate or claiming that the Section 14.2
+oscillating-droplet production route still uses
+`sharp_phase_volume` / Ridge--Eikonal.
 Use [WIKI-L-074](code/WIKI-L-074.md) before optimizing or reviewing the
 PhaseRegion graph GPU route because it records the exact graph column-integral
 hot path, the device-aware owner/measurement reductions, and the validated
@@ -498,7 +502,7 @@ support.
 | [WIKI-X-055](cross-domain/WIKI-X-055.md) | Theory-First Deliberation Best Practices |
 | [WIKI-X-056](cross-domain/WIKI-X-056.md) | Ch14 Capillary Origin-Reset Handoff Protocol |
 
-## Experiment (83)
+## Experiment (84)
 
 | REF-ID | Title |
 |--------|-------|
@@ -585,6 +589,7 @@ support.
 | [WIKI-E-081](experiment/WIKI-E-081.md) | Ch14 Production Capillary T/4 Pressure/Velocity PASS |
 | [WIKI-E-082](experiment/WIKI-E-082.md) | Ch14 Production Capillary YAML One-Period PASS |
 | [WIKI-E-083](experiment/WIKI-E-083.md) | Ch14 PhaseRegion Graph YAML One-Period PASS |
+| [WIKI-E-084](experiment/WIKI-E-084.md) | Ch13 Closed-Interface Volume Admission Gate |
 
 ## Paper (24)
 
