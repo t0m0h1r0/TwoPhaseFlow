@@ -1,0 +1,12 @@
+{
+  "branch": "codex/ra-paper-review-cover-ch14-2-20260517",
+  "branch_slug": "codex-ra-paper-review-cover-ch14-2-20260517",
+  "session_id": "1E65D882-3D3A-4668-94D3-CE3FC0E263DE",
+  "worktree_path": ".claude/worktrees/codex-ra-paper-review-cover-ch14-2-20260517",
+  "holder_agent": "ResearchArchitect",
+  "acquired_at": "2026-05-17T23:55:20+09:00",
+  "expires_at": "2026-05-18T23:55:20+09:00",
+  "meta_version": "7.1.0",
+  "id_prefix": "RA-PAPER-COVER-14P2",
+  "scope": "strict reviewer-style paper review and revision from cover/front matter through Section 14.2 after latest Ch14 PhaseRegion updates"
+}
