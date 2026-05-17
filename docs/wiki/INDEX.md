@@ -177,7 +177,7 @@ Use [WIKI-E-075](experiment/WIKI-E-075.md) before any PhaseRegion runtime
 force adapter, pressure/velocity coupling, micro-step, or T/8 probe because it
 validates the zero-step Ch14 runtime force dry-run with explicit `q_l -> q_g`
 ownership, runtime nodal-density face metric, fixed-stratum work pairing, and
-`force_admissible=0`.
+G0--G3 pressure/velocity gate metrics while keeping `force_admissible=0`.
 Before implementing or reviewing an
 established-theory change, use [WIKI-L-046](code/WIKI-L-046.md) as the
 equation-to-code contract gate. Older cards remain listed for

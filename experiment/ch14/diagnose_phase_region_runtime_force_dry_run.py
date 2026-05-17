@@ -48,6 +48,12 @@ from twophase.geometry.phase_state import GeometricPhaseState  # noqa: E402
 from twophase.levelset.heaviside import heaviside  # noqa: E402
 from twophase.simulation.config_models import ExperimentConfig  # noqa: E402
 from twophase.simulation.divergence_ops import FCCDDivergenceOperator  # noqa: E402
+from twophase.simulation.phase_region_work_gate import (  # noqa: E402
+    build_phase_region_pressure_velocity_g0_report,
+    build_phase_region_pressure_velocity_g1_report,
+    build_phase_region_pressure_velocity_g2_report,
+    build_phase_region_pressure_velocity_g3_report,
+)
 from twophase.tools.experiment import (  # noqa: E402
     apply_style,
     experiment_argparser,
@@ -185,6 +191,7 @@ def _compute(
     riesz_tolerance: float,
     fd_power_tolerance: float,
     divergence_tolerance: float,
+    projection_dt: float,
 ) -> dict[str, object]:
     cfg = ExperimentConfig.from_yaml(config_path)
     ellipse = _ellipse_from_config(cfg)
@@ -257,10 +264,62 @@ def _compute(
     check_probe = diagnostics.probe_work
     decomposition = diagnostics.hodge
     reaction_gate = diagnostics.reaction
+    gate_velocity = diagnostics.self_velocity.face_velocity_components
+    gate_pressure_faces = decomposition.range_components
+    g0 = build_phase_region_pressure_velocity_g0_report(
+        xp=xp,
+        admission=admission,
+        decision=decision,
+        runtime_face_velocity_components=gate_velocity,
+        pressure_face_components=gate_pressure_faces,
+        bc_type=cfg.grid.bc_type,
+        boundary_face_space="full_face",
+    )
+    if not g0.valid:
+        raise AssertionError(f"runtime force G0 gate failed: {g0.reason}")
+    g1 = build_phase_region_pressure_velocity_g1_report(
+        xp=xp,
+        div_op=div_op,
+        admission=admission,
+        g0_report=g0,
+        pressure_face_components=gate_pressure_faces,
+    )
+    if not g1.valid:
+        raise AssertionError(f"runtime force G1 gate failed: {g1.reason}")
+    g2 = build_phase_region_pressure_velocity_g2_report(
+        xp=xp,
+        grid=grid,
+        fccd=fccd,
+        admission=admission,
+        g0_report=g0,
+        g1_report=g1,
+        runtime_face_velocity_components=gate_velocity,
+        fd_eps=float(fd_eps),
+        fd_power_tolerance=float(fd_power_tolerance),
+        riesz_tolerance=float(riesz_tolerance),
+    )
+    if not g2.valid:
+        raise AssertionError(f"runtime force G2 gate failed: {g2.reason}")
+    g3 = build_phase_region_pressure_velocity_g3_report(
+        xp=xp,
+        admission=admission,
+        g0_report=g0,
+        g1_report=g1,
+        g2_report=g2,
+        runtime_face_velocity_components=gate_velocity,
+        pressure_face_components=gate_pressure_faces,
+        dt=float(projection_dt),
+    )
+    if not g3.valid:
+        raise AssertionError(f"runtime force G3 gate failed: {g3.reason}")
 
     x_edges = np.asarray(grid.coords[0], dtype=float)
     y_edges = np.asarray(grid.coords[1], dtype=float)
     metrics = dict(decision.metrics)
+    metrics.update(g0.metrics)
+    metrics.update(g1.metrics)
+    metrics.update(g2.metrics)
+    metrics.update(g3.metrics)
     metrics.update(
         {
         "runtime_steps": 0.0,
@@ -275,6 +334,7 @@ def _compute(
         "rho_g": float(cfg.physics.rho_g),
         "grid_alpha": float(cfg.grid.alpha_grid),
         "min_dx": min(float(np.min(np.diff(x_edges))), float(np.min(np.diff(y_edges)))),
+        "projection_dt": float(projection_dt),
         "force_admissible": 0.0,
         }
     )
@@ -446,6 +506,24 @@ def _print_summary(results: dict[str, object], figure_path: pathlib.Path) -> Non
         "rho_g",
         "grid_alpha",
         "min_dx",
+        "g0_valid",
+        "boundary_residual_linf",
+        "surface_velocity_work",
+        "pressure_velocity_work",
+        "g1_valid",
+        "pressure_hodge_weighted_l2",
+        "pressure_hodge_ratio",
+        "surface_hodge_weighted_l2",
+        "surface_hodge_ratio",
+        "g2_valid",
+        "work_closure_residual",
+        "same_weight_surface_work_residual",
+        "g3_valid",
+        "projection_identity_linf",
+        "pressure_update_weighted_l2",
+        "surface_update_weighted_l2",
+        "projected_weighted_l2",
+        "projection_dt",
         "force_admissible",
     ):
         print(key, f"{float(metrics[key]):.12e}", sep=",")
@@ -462,6 +540,7 @@ def main() -> None:
     parser.add_argument("--riesz-tolerance", type=float, default=1.0e-12)
     parser.add_argument("--fd-power-tolerance", type=float, default=1.0e-5)
     parser.add_argument("--divergence-tolerance", type=float, default=1.0e-8)
+    parser.add_argument("--projection-dt", type=float, default=1.0e-4)
     args = parser.parse_args()
 
     if args.plot_only:
@@ -475,6 +554,7 @@ def main() -> None:
             riesz_tolerance=float(args.riesz_tolerance),
             fd_power_tolerance=float(args.fd_power_tolerance),
             divergence_tolerance=float(args.divergence_tolerance),
+            projection_dt=float(args.projection_dt),
         )
         save_results(NPZ, results)
     figure_path = _plot(results)
