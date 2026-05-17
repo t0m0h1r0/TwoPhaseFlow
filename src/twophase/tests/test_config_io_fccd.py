@@ -333,8 +333,25 @@ def test_ch14_capillary_yaml_declares_phase_region_graph_route():
     assert route["pressure_velocity"] == "not_connected"
     assert route["force_admissible"] is False
     assert route["backend"]["use_gpu"] is True
-    assert route["run"]["periods"] == pytest.approx(1.0)
-    assert route["run"]["steps_per_period"] == 2560
+    assert raw["run"]["time"]["final"] == pytest.approx(0.046742983863)
+    assert raw["run"]["time"]["cfl"] == pytest.approx(1.0)
+    assert "dt" not in raw["run"]["time"]
+    assert raw["interface"]["state_space"] == "active_geometry_capillary"
+    assert raw["numerics"]["interface"]["transport"]["variable"] == "q"
+    assert raw["numerics"]["projection"]["mode"] == "face_hodge"
+    assert raw["output"]["snapshots"]["times"] == pytest.approx(
+        [0.0, 0.011685745966, 0.023371491932, 0.035057237897, 0.046742983863]
+    )
+    figure_files = {figure["file"] for figure in raw["output"]["figures"] if "file" in figure}
+    figure_prefixes = {
+        figure["file_prefix"] for figure in raw["output"]["figures"] if "file_prefix" in figure
+    }
+    figure_fields = {figure.get("field") for figure in raw["output"]["figures"]}
+    assert {"phi", "velocity", "pressure"} <= figure_fields
+    assert {"phi_t", "velocity_t", "pressure_t"} <= figure_prefixes
+    assert "signed_interface_amplitude.pdf" in figure_files
+    assert "phase_region_capillary_graph_steps.pdf" in figure_files
+    assert "phase_region_capillary_graph_yaml_snapshots.pdf" in figure_files
 
 
 def test_ch14_capillary_legacy_runtime_yaml_loads_execution_stack():
@@ -544,9 +561,9 @@ def test_ch14_canonical_yamls_use_theory_cfl_not_fixed_dt():
     for path in sorted(config_dir.glob("*.yaml")):
         raw = yaml.safe_load(path.read_text())
         if _is_phase_region_capillary_route(raw):
-            route = raw["phase_region_graph"]
-            assert route["run"]["periods"] > 0.0, path.name
-            assert route["run"]["steps_per_period"] > 0, path.name
+            assert "dt" not in raw["run"]["time"], path.name
+            assert raw["run"]["time"]["cfl"] > 0.0, path.name
+            assert raw["output"]["snapshots"]["times"], path.name
             continue
         cfg = ExperimentConfig.from_yaml(path)
         assert cfg.run.dt_fixed is None, path.name

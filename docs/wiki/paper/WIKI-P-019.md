@@ -80,16 +80,17 @@ experiment/ch14/config/ch14_capillary.yaml
 Remote one-period PhaseRegion graph run:
 
 ```text
-steps                  = 2560
-t_over_T               = 1.0
+steps                  = 3103
+dt                     = 1.506380401644e-05
+cfl                    = 1.0
+t_over_T               = 9.999999999959e-01
 step_backend_gpu       = 1
-max_amplitude_error    = 2.416836235604e-10
-max_velocity_error     = 4.456387104473e-08
-max_energy_drift       = 1.505982113082e-06
+max_amplitude_error    = 1.644990574895e-10
+max_velocity_error     = 3.033187518861e-08
+max_energy_drift       = 1.025028838090e-06
 max_residual_l2        = 0
 max_volume_drift       = 5.421010862428e-20
-mean_step_wall_seconds = 3.516834525792e-03
-max_step_wall_seconds  = 3.977783117443e-02
+max_step_wall_seconds  = 3.863535495475e-02
 target_met             = 1
 force_admissible       = 0
 ```
@@ -100,11 +101,12 @@ YAML-output figures used in Chapter 14.2:
 paper/figures/ch14_capillary_yaml/signed_interface_amplitude.pdf
 paper/figures/ch14_capillary_yaml/volume_drift.pdf
 paper/figures/ch14_capillary_yaml/kinetic_energy.pdf
-paper/figures/ch14_capillary_yaml/psi_t0.000.pdf
-paper/figures/ch14_capillary_yaml/psi_t0.012.pdf
-paper/figures/ch14_capillary_yaml/psi_t0.023.pdf
-paper/figures/ch14_capillary_yaml/psi_t0.035.pdf
-paper/figures/ch14_capillary_yaml/psi_t0.047.pdf
+paper/figures/ch14_phase_region_capillary_graph_yaml_snapshots.pdf
+paper/figures/ch14_capillary_yaml/phi_t0.000.pdf
+paper/figures/ch14_capillary_yaml/phi_t0.012.pdf
+paper/figures/ch14_capillary_yaml/phi_t0.023.pdf
+paper/figures/ch14_capillary_yaml/phi_t0.035.pdf
+paper/figures/ch14_capillary_yaml/phi_t0.047.pdf
 paper/figures/ch14_capillary_yaml/velocity_t0.000.pdf
 paper/figures/ch14_capillary_yaml/velocity_t0.012.pdf
 paper/figures/ch14_capillary_yaml/velocity_t0.023.pdf
