@@ -1,4 +1,4 @@
-# Wiki Index — 402 entries
+# Wiki Index — 403 entries
 
 ## Active Retrieval Gate
 
@@ -55,7 +55,10 @@ chart or any T/8 runtime connection. Use
 from non-geometric residual `r`; use
 [WIKI-T-175](theory/WIKI-T-175.md) before implementing the projection route,
 because it defines the vectorized F0/F1 fast path and keeps full nonlinear
-optimization as an oracle/fail-close tool only. Before implementing or reviewing an
+optimization as an oracle/fail-close tool only; use
+[WIKI-L-047](code/WIKI-L-047.md) before writing projection helpers or runtime
+adapters, because it fixes the implementation layers, public result object,
+backend boundary, and no-code-before-oracle gates. Before implementing or reviewing an
 established-theory change, use [WIKI-L-046](code/WIKI-L-046.md) as the
 equation-to-code contract gate. Older cards remain listed for
 provenance, but cards marked
@@ -468,7 +471,7 @@ support.
 | [WIKI-M-034](meta/WIKI-M-034.md) | Paper Review Revisions Should Reduce Cognitive Load, Not Add Decoration |
 | [WIKI-M-035](meta/WIKI-M-035.md) | Meta-Prompt Deployment Needs Project Boundaries, Native Adapters, and Token ROI Gates |
 
-## Code (46)
+## Code (47)
 
 | REF-ID | Title |
 |--------|-------|
@@ -518,3 +521,4 @@ support.
 | [WIKI-L-044](code/WIKI-L-044.md) | Post-Transfer GPU Acceleration Uses Finite-Stratum Fusion |
 | [WIKI-L-045](code/WIKI-L-045.md) | AO-Fast GPU Efficiency Bottleneck Is Fixed-Loop Geometry Compatibility |
 | [WIKI-L-046](code/WIKI-L-046.md) | Theory-Established Implementation Review Gate |
+| [WIKI-L-047](code/WIKI-L-047.md) | Ch14 q-Manifold Projection Implementation Contract |
