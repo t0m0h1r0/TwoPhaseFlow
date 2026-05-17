@@ -149,12 +149,15 @@ PhaseRegion/InterfaceAtlas 毛管状態空間 (§\ref{sec:capillary_pressure_rea
 U12 が全圧力像への過射影反例，成分体積 Hodge 診断，PhaseRegion graph chart の測度・HFE 候補，
 支配法線方向の正則層ガード，標準経路への採用境界を事前ゲートとして確認する． &
 V11 が移動格子で保存する面量・圧力履歴座標・DC 収束判定・正則層保持を加えた統合受理境界を確認し，第~\ref{sec:benchmarks}章の PhaseRegion graph/closed chart 診断へ接続する． \\
+閉界面 production 体積境界 (§\ref{sec:val_oscillating_droplet}) &
+U4/U5/U10/U12 が支える再初期化・体積測度・保存形台帳・PhaseRegion 境界を前提にする． &
+V12 が現行 \texttt{active\_geometry\_capillary} YAML，旧 sharp-volume/Ridge--Eikonal 補修の fail-close，および 1 周期 production 未受理境界を検証する． \\
 非一様格子と同一幾何データ (§\ref{sec:grid}) &
 U3 が非一様 CCD/FCCD と D1--D4 計量診断を確認する． &
 固定非一様 NS 静止と基準/局所 $\varepsilon$ 切替は V8/V9．移動界面の追随格子は本章の保証範囲外とする． \\
 7 ステップ統合更新 (§\ref{sec:algorithm}) &
 U10 は保存形共通フラックス台帳，U11 は制約付き面速度状態空間，U12 は PhaseRegion 毛管経路ゲートを単体条件として追加し，それ以外は U1--U9 の検証済み数値要素を入力として扱う． &
-V1--V11 と §\ref{sec:error_budget} が更新順序，面データ引き渡し，物理指標，適用限界を検証する． \\
+V1--V12 と §\ref{sec:error_budget} が更新順序，面データ引き渡し，物理指標，適用限界を検証する． \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -191,7 +194,7 @@ U5 & III & $H_\varepsilon$ / $\delta_\varepsilon$ のモーメント精度と $\
 U6 & IV & DC 緩和受理条件と HFE 1D/2D 場延長精度．一括 PPE の高密度比劣化は保証対象ではなく，§9/§11 の分相 PPE+HFE を必要とする設計根拠として本文で扱う． & V6/V7/V9 の圧力ジャンプ・毛管射影結合系（分相 PPE+HFE+DC, 毛管成分の圧力勾配射影, 射影後面速度閉包, アフィン圧力履歴面加速度）． \\
 U7 & V & 縮約 BF 静止液滴 1-step と面 $\mu$ 補間；FD2 不整合は負対照としてのみ読む． & V3/V5/V8 の静止液滴・寄生流れ，および V6/V7/V9 圧力ジャンプ・毛管射影結合系との差分整理． \\
 U8 & VI & TVD-RK3 / EXT2 / implicit-BDF2 / 3-layer BDF2 の単体時間精度． & V1-b/V7/V10 の時間軸診断． \\
-U9 & VII & DCCD-on-pressure 禁止の否定検証． & V1--V11 全体の圧力勾配演算子方針． \\
+U9 & VII & DCCD-on-pressure 禁止の否定検証． & V1--V12 全体の圧力勾配演算子方針． \\
 U10 & VIII & FCCD 面フラックス台帳を $\psi$，アフィン密度，運動量へ同一に渡す保存形共通フラックス条件． & 第13章の V 系列に新しい物理検証として加えず，第14章の保存形共通フラックス物理経路へ送る． \\
 U11 & IX & $P_w$ の冪等性・$M$-自己随伴性・$C_wP_w=0$，制限 Green 恒等式，壁/周期壁商空間の階数条件． & V6/V7/V9 の壁付き圧力ジャンプ結合系の状態空間前提を単体で支え，周期壁の物理応答は第14章へ送る． \\
 U12 & X & PhaseRegion 毛管経路の $R_p$ ゲート：全圧力像への過射影反例，成分体積 Hodge 診断，graph chart 測度・HFE 候補，支配法線方向の正則層ガード，標準経路への採用境界． & V11 で移動格子で保存する面量・圧力履歴座標・DC 収束判定・正則層保持を加えた最終契約へ送り，Ch14 の reduced PhaseRegion chart 実験とは force-admission 境界を分ける． \\
