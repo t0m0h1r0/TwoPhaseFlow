@@ -25,9 +25,11 @@ Code:
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import pathlib
 import sys
+import time
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -58,7 +60,9 @@ from twophase.geometry import (  # noqa: E402
     map_cell_measure_to_phase_owner,
 )
 from twophase.levelset.heaviside import heaviside  # noqa: E402
+from twophase.simulation.config_loader import require_pyyaml  # noqa: E402
 from twophase.simulation.config_models import ExperimentConfig  # noqa: E402
+from twophase.tools.plot_factory import generate_figures  # noqa: E402
 from twophase.tools.experiment import (  # noqa: E402
     COLORS,
     apply_style,
@@ -72,6 +76,8 @@ from twophase.tools.experiment import (  # noqa: E402
 apply_style()
 
 CONFIG = ROOT / "experiment/ch14/config/ch14_oscillating_droplet.yaml"
+DEFAULT_STEPS = 8
+DEFAULT_DT = 2.0e-5
 OUT = experiment_dir(__file__)
 NPZ = OUT / "data.npz"
 
@@ -112,6 +118,33 @@ def _ellipse_from_config(cfg: ExperimentConfig) -> EllipseSpec:
     if semi_axes[0] <= 0.0 or semi_axes[1] <= 0.0:
         raise ValueError("ellipse semi_axes must be positive")
     return EllipseSpec(center=center, semi_axes=semi_axes)
+
+
+def _load_phase_region_droplet_config(
+    config_path: pathlib.Path,
+) -> tuple[ExperimentConfig, dict[str, Any]]:
+    """Load the canonical PhaseRegion closed-chart droplet route."""
+    yaml = require_pyyaml()
+    with pathlib.Path(config_path).open() as fh:
+        raw = yaml.safe_load(fh) or {}
+    if not isinstance(raw, dict):
+        raise ValueError("PhaseRegion droplet config must be a YAML mapping")
+    cfg = ExperimentConfig.from_yaml(config_path)
+    route = raw.get("phase_region_droplet", {})
+    if route is None:
+        route = {}
+    if not isinstance(route, dict):
+        raise ValueError("phase_region_droplet section must be a YAML mapping")
+    return cfg, dict(route)
+
+
+def _route_section(route: dict[str, Any], name: str) -> dict[str, Any]:
+    section = route.get(name, {})
+    if section is None:
+        return {}
+    if not isinstance(section, dict):
+        raise ValueError(f"phase_region_droplet.{name} must be a YAML mapping")
+    return dict(section)
 
 
 def _omega_from_config(cfg: ExperimentConfig) -> float:
@@ -181,6 +214,170 @@ def _cell_area(grid: Grid) -> np.ndarray:
     dx = np.diff(np.asarray(grid.coords[0], dtype=float))
     dy = np.diff(np.asarray(grid.coords[1], dtype=float))
     return dx[:, None] * dy[None, :]
+
+
+def _volume_closed_cell_measure(
+    q_source: np.ndarray,
+    cell_area: np.ndarray,
+    *,
+    target_volume: float,
+    capacity_tolerance: float,
+) -> tuple[np.ndarray, float, float]:
+    """Close a chart-derived cell measure to the chart's fixed total volume."""
+    q = np.asarray(q_source, dtype=float).copy()
+    area = np.asarray(cell_area, dtype=float)
+    delta = float(target_volume) - float(np.sum(q))
+    raw_delta_abs = abs(delta)
+    if raw_delta_abs <= 1.0e-18:
+        return q, raw_delta_abs, 0.0
+
+    lower_margin = q
+    upper_margin = area - q
+    if delta > 0.0:
+        capacity = upper_margin
+    else:
+        capacity = lower_margin
+    admissible = capacity > float(capacity_tolerance)
+    interface_weight = np.minimum(lower_margin, upper_margin)
+    weights = np.where(admissible, interface_weight, 0.0)
+    if float(np.sum(weights)) <= abs(delta):
+        weights = np.where(admissible, capacity, 0.0)
+    weight_sum = float(np.sum(weights))
+    if weight_sum <= 0.0 or weight_sum + float(capacity_tolerance) < abs(delta):
+        raise AssertionError("closed chart q volume closure has insufficient capacity")
+
+    q = q + delta * weights / weight_sum
+    if np.any(q < -float(capacity_tolerance)) or np.any(q - area > float(capacity_tolerance)):
+        raise AssertionError("closed chart q volume closure violated cell capacity")
+    closed_delta_abs = abs(float(target_volume) - float(np.sum(q)))
+    return q, raw_delta_abs, closed_delta_abs
+
+
+def _step_count_from_route(
+    cli_steps: int | None,
+    route: dict[str, Any],
+    cfg: ExperimentConfig,
+) -> int:
+    if cli_steps is not None:
+        step_count = int(cli_steps)
+    elif cfg.run.T_final is not None and cfg.run.dt_fixed is not None:
+        step_count = int(round(float(cfg.run.T_final) / float(cfg.run.dt_fixed)))
+    else:
+        run = _route_section(route, "run")
+        if "steps" in run:
+            step_count = int(run["steps"])
+        elif "periods" in run and "steps_per_period" in run:
+            step_count = int(round(float(run["periods"]) * int(run["steps_per_period"])))
+        else:
+            step_count = DEFAULT_STEPS
+    if step_count <= 0:
+        raise ValueError("--steps or phase_region_droplet.run.steps must be positive")
+    return step_count
+
+
+def _dt_from_route(
+    cli_dt: float | None,
+    route: dict[str, Any],
+    cfg: ExperimentConfig,
+    *,
+    modal: ModalGeometry,
+    step_count: int,
+) -> float:
+    if cli_dt is not None:
+        dt_value = float(cli_dt)
+    elif cfg.run.T_final is not None and step_count > 0:
+        dt_value = float(cfg.run.T_final) / float(step_count)
+    elif cfg.run.dt_fixed is not None:
+        dt_value = float(cfg.run.dt_fixed)
+    else:
+        run = _route_section(route, "run")
+        if "dt" in run:
+            dt_value = float(run["dt"])
+        elif "periods" in run:
+            dt_value = float(modal.period) * float(run["periods"]) / float(step_count)
+        else:
+            dt_value = DEFAULT_DT
+    if not np.isfinite(dt_value) or dt_value <= 0.0:
+        raise ValueError("--dt or phase_region_droplet.run.dt must be positive and finite")
+    return dt_value
+
+
+def _capillary_cfl_dt_limit(
+    cfg: ExperimentConfig,
+    x_edges: np.ndarray,
+    y_edges: np.ndarray,
+) -> float:
+    h_min = min(
+        float(np.min(np.diff(np.asarray(x_edges, dtype=float)))),
+        float(np.min(np.diff(np.asarray(y_edges, dtype=float)))),
+    )
+    sigma = float(cfg.physics.sigma)
+    if sigma <= 0.0:
+        return float("inf")
+    rho_sum = float(cfg.physics.rho_l) + float(cfg.physics.rho_g)
+    return float(
+        float(cfg.run.cfl_capillary)
+        * np.sqrt(rho_sum * h_min ** 3 / (2.0 * np.pi * sigma))
+    )
+
+
+def _time_grid_from_config(
+    cli_steps: int | None,
+    cli_dt: float | None,
+    route: dict[str, Any],
+    cfg: ExperimentConfig,
+    *,
+    x_edges: np.ndarray,
+    y_edges: np.ndarray,
+    modal: ModalGeometry,
+) -> tuple[int, float, float]:
+    if cli_dt is not None:
+        dt_limit = float(cli_dt)
+    elif cfg.run.dt_fixed is not None:
+        dt_limit = float(cfg.run.dt_fixed)
+    else:
+        dt_limit = _capillary_cfl_dt_limit(cfg, x_edges, y_edges)
+    if not np.isfinite(dt_limit) or dt_limit <= 0.0:
+        dt_limit = _dt_from_route(None, route, cfg, modal=modal, step_count=DEFAULT_STEPS)
+
+    if cli_steps is not None:
+        step_count = _step_count_from_route(cli_steps, route, cfg)
+    elif cfg.run.T_final is not None:
+        step_count = max(1, int(np.ceil(float(cfg.run.T_final) / float(dt_limit))))
+    else:
+        step_count = _step_count_from_route(None, route, cfg)
+
+    if cfg.run.T_final is not None and cli_dt is None:
+        dt_value = float(cfg.run.T_final) / float(step_count)
+    elif cfg.run.T_final is not None and cli_steps is None:
+        dt_value = float(cfg.run.T_final) / float(step_count)
+    else:
+        dt_value = _dt_from_route(cli_dt, route, cfg, modal=modal, step_count=step_count)
+    if dt_value <= 0.0:
+        raise ValueError("time step must be positive")
+    return int(step_count), float(dt_value), float(dt_limit)
+
+
+def _snapshot_indices_from_times(
+    snap_times: list[float],
+    *,
+    dt: float,
+    step_count: int,
+) -> np.ndarray:
+    """Map configured snapshot times to the nearest reduced-route steps."""
+    if not snap_times:
+        return np.array((0, step_count), dtype=np.int64)
+    indices: list[int] = []
+    for raw_time in snap_times:
+        time_value = float(raw_time)
+        step_index = int(round(time_value / float(dt)))
+        if 0 <= step_index <= int(step_count):
+            indices.append(step_index)
+    if 0 not in indices:
+        indices.append(0)
+    if int(step_count) not in indices:
+        indices.append(int(step_count))
+    return np.array(sorted(set(indices)), dtype=np.int64)
 
 
 def _active_payload(q_component: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
@@ -366,7 +563,13 @@ def _measure_phase_region(
     capacity_tolerance: float,
 ) -> dict[str, object]:
     state = _state_from_amplitude(ellipse, modal, amplitude=float(amplitude))
-    q_l = np.asarray(closed_radial_q_from_chart(grid, state).q, dtype=float)
+    q_l_raw = np.asarray(closed_radial_q_from_chart(grid, state).q, dtype=float)
+    q_l, raw_closure_abs, closed_closure_abs = _volume_closed_cell_measure(
+        q_l_raw,
+        cell_area,
+        target_volume=float(np.pi * modal.area_over_pi),
+        capacity_tolerance=float(capacity_tolerance),
+    )
     owner = map_cell_measure_to_phase_owner(
         q_l,
         cell_area,
@@ -403,14 +606,101 @@ def _measure_phase_region(
         "perimeter": float(measurement.batch_perimeters[0]),
         "polygon_area": float(geometry.area),
         "base_radius": float(state.base_radius),
+        "q_volume_closure_raw_abs": raw_closure_abs,
+        "q_volume_closure_closed_abs": closed_closure_abs,
+    }
+
+
+def _reduced_droplet_snapshot_fields(
+    cfg: ExperimentConfig,
+    ellipse: EllipseSpec,
+    modal: ModalGeometry,
+    x_edges: np.ndarray,
+    y_edges: np.ndarray,
+    amplitudes: np.ndarray,
+    velocities: np.ndarray,
+    snapshot_indices: np.ndarray,
+) -> dict[str, np.ndarray]:
+    """Build linear Rayleigh-Lamb diagnostic fields at configured snapshots."""
+    x_nodes = np.asarray(x_edges, dtype=float)
+    y_nodes = np.asarray(y_edges, dtype=float)
+    x_grid, y_grid = np.meshgrid(x_nodes, y_nodes, indexing="ij")
+    cx, cy = ellipse.center
+    rel_x = x_grid - float(cx)
+    rel_y = y_grid - float(cy)
+    radius = np.sqrt(rel_x ** 2 + rel_y ** 2)
+    theta = np.arctan2(rel_y, rel_x)
+    radius_safe = np.maximum(radius, 1.0e-14)
+    mode = int(modal.mode)
+    cos_mode = np.cos(mode * theta)
+    sin_mode = np.sin(mode * theta)
+    cos_theta = np.cos(theta)
+    sin_theta = np.sin(theta)
+    reference_radius = float(np.sqrt(modal.area_over_pi))
+    inside_radius = np.maximum(radius_safe / reference_radius, 0.0)
+    outside_radius = reference_radius / np.maximum(radius_safe, reference_radius * 1.0e-6)
+
+    phi_snapshots = []
+    psi_snapshots = []
+    u_snapshots = []
+    v_snapshots = []
+    pressure_snapshots = []
+    rho_snapshots = []
+    for step_index in np.asarray(snapshot_indices, dtype=int):
+        amplitude = float(amplitudes[step_index])
+        modal_velocity = float(velocities[step_index])
+        modal_acceleration = -float(modal.omega) ** 2 * amplitude
+        base_radius = _base_radius_for_amplitude(modal.area_over_pi, amplitude)
+        interface_radius = base_radius + amplitude * cos_mode
+        phi = radius - interface_radius
+        psi = (phi <= 0.0).astype(float)
+
+        inner_power = inside_radius ** max(mode - 1, 0)
+        outer_power = outside_radius ** (mode + 1)
+        radial_velocity = (
+            psi * modal_velocity * inner_power * cos_mode
+            + (1.0 - psi) * modal_velocity * outer_power * cos_mode
+        )
+        tangential_velocity = (
+            -psi * modal_velocity * inner_power * sin_mode
+            + (1.0 - psi) * modal_velocity * outer_power * sin_mode
+        )
+        u = radial_velocity * cos_theta - tangential_velocity * sin_theta
+        v = radial_velocity * sin_theta + tangential_velocity * cos_theta
+
+        inner_potential = (radius_safe ** mode) / (mode * reference_radius ** (mode - 1))
+        outer_potential = (
+            reference_radius ** (mode + 1) / (mode * radius_safe ** mode)
+        )
+        p_l = -float(cfg.physics.rho_l) * modal_acceleration * inner_potential * cos_mode
+        p_g = float(cfg.physics.rho_g) * modal_acceleration * outer_potential * cos_mode
+        pressure = psi * p_l + (1.0 - psi) * p_g
+
+        phi_snapshots.append(phi)
+        psi_snapshots.append(psi)
+        u_snapshots.append(u)
+        v_snapshots.append(v)
+        pressure_snapshots.append(pressure)
+        rho_snapshots.append(
+            psi * float(cfg.physics.rho_l)
+            + (1.0 - psi) * float(cfg.physics.rho_g)
+        )
+
+    return {
+        "psi_snapshots": np.stack(psi_snapshots, axis=0),
+        "phi_snapshots": np.stack(phi_snapshots, axis=0),
+        "u_snapshots": np.stack(u_snapshots, axis=0),
+        "v_snapshots": np.stack(v_snapshots, axis=0),
+        "pressure_snapshots": np.stack(pressure_snapshots, axis=0),
+        "rho_snapshots": np.stack(rho_snapshots, axis=0),
     }
 
 
 def _compute(
     config_path: pathlib.Path,
     *,
-    steps: int,
-    dt: float,
+    steps: int | None,
+    dt: float | None,
     theta_count: int,
     mode: int,
     reference_amplitude_tolerance: float,
@@ -421,7 +711,7 @@ def _compute(
     capacity_tolerance: float,
     stiffness_probe_fraction: float,
 ) -> dict[str, object]:
-    cfg = ExperimentConfig.from_yaml(config_path)
+    cfg, route = _load_phase_region_droplet_config(config_path)
     ellipse = _ellipse_from_config(cfg)
     grid = _fit_grid_to_initial_ellipse(cfg, ellipse)
     x_edges = np.asarray(grid.coords[0], dtype=float)
@@ -434,12 +724,21 @@ def _compute(
         mode=int(mode),
         stiffness_probe_fraction=float(stiffness_probe_fraction),
     )
-    step_count = int(steps)
-    if step_count <= 0:
-        raise ValueError("--steps must be positive")
-    dt_value = float(dt)
-    if not np.isfinite(dt_value) or dt_value <= 0.0:
-        raise ValueError("--dt must be positive and finite")
+    step_count, dt_value, dt_limit = _time_grid_from_config(
+        steps,
+        dt,
+        route,
+        cfg,
+        x_edges=x_edges,
+        y_edges=y_edges,
+        modal=modal,
+    )
+    snapshot_indices = _snapshot_indices_from_times(
+        list(cfg.run.snap_times),
+        dt=dt_value,
+        step_count=step_count,
+    )
+    snapshot_index_set = set(int(value) for value in snapshot_indices)
 
     amplitude = float(modal.initial_amplitude)
     velocity = 0.0
@@ -456,12 +755,16 @@ def _compute(
     perimeters = []
     polygon_areas = []
     base_radii = []
+    q_volume_closure_raw_abs = []
+    q_volume_closure_closed_abs = []
     q_l_snapshots = []
     q_g_snapshots = []
     vertices_snapshots = []
+    step_wall_times = []
 
     sigma = float(cfg.physics.sigma)
     for step_index in range(step_count + 1):
+        step_wall_start = time.perf_counter()
         measurement = _measure_phase_region(
             grid,
             ellipse,
@@ -491,13 +794,18 @@ def _compute(
         perimeters.append(float(measurement["perimeter"]))
         polygon_areas.append(float(measurement["polygon_area"]))
         base_radii.append(float(measurement["base_radius"]))
-        if step_index in {0, step_count}:
+        q_volume_closure_raw_abs.append(float(measurement["q_volume_closure_raw_abs"]))
+        q_volume_closure_closed_abs.append(
+            float(measurement["q_volume_closure_closed_abs"])
+        )
+        if step_index in snapshot_index_set:
             q_l_snapshots.append(np.asarray(measurement["q_l"], dtype=float))
             q_g_snapshots.append(np.asarray(measurement["q_g"], dtype=float))
             vertices_snapshots.append(
                 np.asarray(measurement["state"].vertices, dtype=float)
             )
         if step_index == step_count:
+            step_wall_times.append(time.perf_counter() - step_wall_start)
             break
         amplitude, velocity = _step_verlet(
             ellipse,
@@ -507,6 +815,7 @@ def _compute(
             dt=dt_value,
             sigma=sigma,
         )
+        step_wall_times.append(time.perf_counter() - step_wall_start)
         times.append((step_index + 1) * dt_value)
         amplitudes.append(amplitude)
         velocities.append(velocity)
@@ -515,6 +824,7 @@ def _compute(
     amplitudes_arr = np.asarray(amplitudes, dtype=float)
     velocities_arr = np.asarray(velocities, dtype=float)
     energy_arr = np.asarray(energies, dtype=float)
+    kinetic_energy = 0.5 * float(modal.mass) * velocities_arr * velocities_arr
     exact_amplitude = float(modal.initial_amplitude) * np.cos(float(modal.omega) * times_arr)
     exact_velocity = -float(modal.initial_amplitude) * float(modal.omega) * np.sin(
         float(modal.omega) * times_arr
@@ -532,6 +842,7 @@ def _compute(
     polygon_area_drift = np.abs(
         np.asarray(polygon_areas, dtype=float) - float(polygon_areas[0])
     )
+    mean_axis = 0.5 * (float(ellipse.semi_axes[0]) + float(ellipse.semi_axes[1]))
 
     if float(np.max(amplitude_error)) > float(reference_amplitude_tolerance):
         raise AssertionError("PhaseRegion droplet steps exceed amplitude reference tolerance")
@@ -547,6 +858,9 @@ def _compute(
     metrics = {
         "steps": float(step_count),
         "dt": dt_value,
+        "dt_cfl_limit": float(dt_limit),
+        "cfl": float(cfg.run.cfl),
+        "cfl_capillary": float(cfg.run.cfl_capillary),
         "t_final": float(times_arr[-1]),
         "omega": float(modal.omega),
         "period": float(modal.period),
@@ -563,6 +877,8 @@ def _compute(
         "max_residual_volume_abs": float(np.max(q_residual_volume)),
         "max_volume_drift": float(np.max(volume_drift)),
         "max_polygon_area_drift": float(np.max(polygon_area_drift)),
+        "max_q_volume_closure_raw_abs": float(np.max(q_volume_closure_raw_abs)),
+        "max_q_volume_closure_closed_abs": float(np.max(q_volume_closure_closed_abs)),
         "final_amplitude": float(amplitudes_arr[-1]),
         "final_exact_amplitude": float(exact_amplitude[-1]),
         "final_velocity": float(velocities_arr[-1]),
@@ -576,24 +892,71 @@ def _compute(
         "min_dy": float(np.min(np.diff(y_edges))),
         "phase_region_droplet_steps_admitted": 1.0,
         "force_admissible": 0.0,
+        "step_backend_gpu": 0.0,
+        "mean_step_wall_seconds": float(np.mean(step_wall_times)),
+        "max_step_wall_seconds": float(np.max(step_wall_times)),
     }
+    q_l_snapshot_arr = np.stack(q_l_snapshots, axis=0)
+    q_g_snapshot_arr = np.stack(q_g_snapshots, axis=0)
+    vertices_snapshot_arr = np.stack(vertices_snapshots, axis=0)
+    reduced_fields = _reduced_droplet_snapshot_fields(
+        cfg,
+        ellipse,
+        modal,
+        x_edges,
+        y_edges,
+        amplitudes_arr,
+        velocities_arr,
+        snapshot_indices,
+    )
+    snapshots = []
+    for out_index, snap_time in enumerate(times_arr[snapshot_indices]):
+        snapshots.append(
+            {
+                "t": float(snap_time),
+                "psi": reduced_fields["psi_snapshots"][out_index],
+                "phi": reduced_fields["phi_snapshots"][out_index],
+                "u": reduced_fields["u_snapshots"][out_index],
+                "v": reduced_fields["v_snapshots"][out_index],
+                "p": reduced_fields["pressure_snapshots"][out_index],
+                "rho": reduced_fields["rho_snapshots"][out_index],
+                "grid_coords": [x_edges, y_edges],
+            }
+        )
+    initial_volume = max(float(liquid_volumes_arr[0]), 1.0e-30)
     return {
         "metrics": metrics,
         "times": times_arr,
         "amplitude": amplitudes_arr,
+        "signed_deformation": amplitudes_arr / mean_axis,
         "velocity": velocities_arr,
         "exact_amplitude": exact_amplitude,
         "exact_velocity": exact_velocity,
+        "kinetic_energy": kinetic_energy,
         "total_energy": energy_arr,
         "surface_energy": np.asarray(surface_energies, dtype=float),
         "relative_energy_drift": energy_drift,
         "q_residual_l2": np.asarray(q_residual_l2, dtype=float),
         "q_residual_linf": np.asarray(q_residual_linf, dtype=float),
+        "volume_conservation": volume_drift / initial_volume,
         "volume_drift": volume_drift,
         "polygon_area_drift": polygon_area_drift,
+        "q_volume_closure_raw_abs": np.asarray(q_volume_closure_raw_abs, dtype=float),
+        "q_volume_closure_closed_abs": np.asarray(
+            q_volume_closure_closed_abs,
+            dtype=float,
+        ),
         "x_edges": x_edges,
         "y_edges": y_edges,
         "cell_area": cell_area,
+        "snapshot_indices": snapshot_indices,
+        "snapshot_times": times_arr[snapshot_indices],
+        "snapshot_config_times": np.asarray(list(cfg.run.snap_times), dtype=float),
+        "q_l_snapshots": q_l_snapshot_arr,
+        "q_g_snapshots": q_g_snapshot_arr,
+        "vertices_snapshots": vertices_snapshot_arr,
+        **reduced_fields,
+        "snapshots": snapshots,
         "q_l_initial": q_l_snapshots[0],
         "q_l_final": q_l_snapshots[-1],
         "q_g_initial": q_g_snapshots[0],
@@ -691,6 +1054,8 @@ def _plot(results: dict[str, object]) -> pathlib.Path:
                 f"max energy drift = {float(metrics['max_energy_drift']):.8e}",
                 f"max residual L2 = {float(metrics['max_residual_l2']):.8e}",
                 f"max volume drift = {float(metrics['max_volume_drift']):.8e}",
+                f"max raw q closure = {float(metrics['max_q_volume_closure_raw_abs']):.8e}",
+                f"max step wall = {float(metrics['max_step_wall_seconds']):.8e}s",
                 "phase_region_droplet_steps_admitted = 1",
                 "force_admissible = 0",
             )
@@ -705,11 +1070,98 @@ def _plot(results: dict[str, object]) -> pathlib.Path:
     return (OUT / "phase_region_oscillating_droplet_steps").with_suffix(".pdf")
 
 
+def _ensure_snapshot_dicts(results: dict[str, object]) -> dict[str, object]:
+    """Attach plot-factory snapshot dictionaries from stored reduced fields."""
+    existing = results.get("snapshots")
+    if isinstance(existing, list):
+        return results
+    out = dict(results)
+    snapshot_times = np.asarray(out["snapshot_times"], dtype=float)
+    x_edges = np.asarray(out["x_edges"], dtype=float)
+    y_edges = np.asarray(out["y_edges"], dtype=float)
+    snapshots = []
+    for index, snap_time in enumerate(snapshot_times):
+        snapshots.append(
+            {
+                "t": float(snap_time),
+                "psi": np.asarray(out["psi_snapshots"], dtype=float)[index],
+                "phi": np.asarray(out["phi_snapshots"], dtype=float)[index],
+                "u": np.asarray(out["u_snapshots"], dtype=float)[index],
+                "v": np.asarray(out["v_snapshots"], dtype=float)[index],
+                "p": np.asarray(out["pressure_snapshots"], dtype=float)[index],
+                "rho": np.asarray(out["rho_snapshots"], dtype=float)[index],
+                "grid_coords": [x_edges, y_edges],
+            }
+        )
+    out["snapshots"] = snapshots
+    return out
+
+
+def _plot_yaml_snapshots(results: dict[str, object]) -> pathlib.Path:
+    """Render closed-chart phase measures at YAML-configured output times."""
+    x_edges = np.asarray(results["x_edges"], dtype=float)
+    y_edges = np.asarray(results["y_edges"], dtype=float)
+    cell_area = np.asarray(results["cell_area"], dtype=float)
+    snapshot_times = np.asarray(results["snapshot_times"], dtype=float)
+    period = float(results["metrics"]["period"])
+    q_l = np.asarray(results["q_l_snapshots"], dtype=float) / cell_area[None, ...]
+    q_g = np.asarray(results["q_g_snapshots"], dtype=float) / cell_area[None, ...]
+    vertices = np.asarray(results["vertices_snapshots"], dtype=float)
+
+    count = int(snapshot_times.size)
+    fig, axes = plt.subplots(
+        2,
+        count,
+        figsize=(2.35 * count, 4.55),
+        constrained_layout=True,
+        squeeze=False,
+    )
+    for col in range(count):
+        label = f"t/T={snapshot_times[col] / period:.2f}"
+        curve = vertices[col]
+        curve_x = np.r_[curve[:, 0], curve[0, 0]]
+        curve_y = np.r_[curve[:, 1], curve[0, 1]]
+        for row, (name, fields) in enumerate((("q_l / |C|", q_l), ("q_g / |C|", q_g))):
+            ax = axes[row, col]
+            mesh = ax.pcolormesh(
+                x_edges,
+                y_edges,
+                fields[col].T,
+                shading="auto",
+                cmap="viridis",
+                vmin=0.0,
+                vmax=1.0,
+            )
+            ax.plot(curve_x, curve_y, color="white" if row == 0 else "black", lw=0.85)
+            ax.set_title(f"{name}\n{label}", fontsize=8.5)
+            ax.set_aspect("equal")
+            ax.tick_params(labelsize=7.0)
+            if col == count - 1:
+                fig.colorbar(mesh, ax=ax, shrink=0.78)
+    save_figure(fig, OUT / "phase_region_oscillating_droplet_yaml_snapshots")
+    plt.close(fig)
+    return (OUT / "phase_region_oscillating_droplet_yaml_snapshots").with_suffix(".pdf")
+
+
+def _generate_configured_figures(
+    cfg: ExperimentConfig,
+    results: dict[str, object],
+) -> None:
+    known_types = {"time_series", "snapshot_series"}
+    figure_specs = [
+        spec for spec in cfg.output.figures if str(spec.get("type", "")) in known_types
+    ]
+    if not figure_specs:
+        return
+    figure_cfg = replace(cfg, output=replace(cfg.output, figures=figure_specs))
+    generate_figures(figure_cfg, results, OUT)
+
+
 def main() -> None:
     parser = experiment_argparser("Ch14 PhaseRegion oscillating droplet few-step experiment")
     parser.add_argument("--config", default=str(CONFIG))
-    parser.add_argument("--steps", type=int, default=8)
-    parser.add_argument("--dt", type=float, default=2.0e-5)
+    parser.add_argument("--steps", type=int, default=None)
+    parser.add_argument("--dt", type=float, default=None)
     parser.add_argument("--theta-count", type=int, default=192)
     parser.add_argument("--mode", type=int, default=2)
     parser.add_argument("--reference-amplitude-tolerance", type=float, default=5.0e-10)
@@ -726,8 +1178,8 @@ def main() -> None:
     else:
         results = _compute(
             pathlib.Path(args.config),
-            steps=int(args.steps),
-            dt=float(args.dt),
+            steps=None if args.steps is None else int(args.steps),
+            dt=None if args.dt is None else float(args.dt),
             theta_count=int(args.theta_count),
             mode=int(args.mode),
             reference_amplitude_tolerance=float(args.reference_amplitude_tolerance),
@@ -739,7 +1191,11 @@ def main() -> None:
             stiffness_probe_fraction=float(args.stiffness_probe_fraction),
         )
         save_results(NPZ, results)
+    results = _ensure_snapshot_dicts(results)
+    cfg, _route = _load_phase_region_droplet_config(pathlib.Path(args.config))
+    _generate_configured_figures(cfg, results)
     pdf = _plot(results)
+    snapshots_pdf = _plot_yaml_snapshots(results)
     metrics = results["metrics"]
     print(
         "PHASE_REGION_OSCILLATING_DROPLET_STEPS "
@@ -748,15 +1204,20 @@ def main() -> None:
         f"dt={float(metrics['dt']):.12e} "
         f"t_final={float(metrics['t_final']):.12e} "
         f"t_over_T={float(metrics['t_over_T']):.12e} "
+        f"dt_cfl_limit={float(metrics['dt_cfl_limit']):.12e} "
         f"max_amplitude_error={float(metrics['max_amplitude_error']):.12e} "
         f"max_velocity_error={float(metrics['max_velocity_error']):.12e} "
         f"max_energy_drift={float(metrics['max_energy_drift']):.12e} "
         f"max_residual_l2={float(metrics['max_residual_l2']):.12e} "
         f"max_volume_drift={float(metrics['max_volume_drift']):.12e} "
+        f"max_q_volume_closure_raw_abs={float(metrics['max_q_volume_closure_raw_abs']):.12e} "
+        f"max_q_volume_closure_closed_abs={float(metrics['max_q_volume_closure_closed_abs']):.12e} "
+        f"max_step_wall_seconds={float(metrics['max_step_wall_seconds']):.12e} "
         f"final_amplitude={float(metrics['final_amplitude']):.12e} "
         f"final_exact_amplitude={float(metrics['final_exact_amplitude']):.12e} "
         f"force_admissible={float(metrics['force_admissible']):.1f} "
-        f"pdf={pdf}"
+        f"pdf={pdf} "
+        f"snapshots_pdf={snapshots_pdf}"
     )
 
 
