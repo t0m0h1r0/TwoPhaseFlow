@@ -1,4 +1,4 @@
-# Wiki Index — 425 entries
+# Wiki Index — 426 entries
 
 ## Active Retrieval Gate
 
@@ -128,6 +128,11 @@ Use [WIKI-E-074](experiment/WIKI-E-074.md) before any runtime force dry-run,
 pressure/velocity coupling, micro-step, or T/8 probe because it validates the
 fixed-stratum endpoint identity from interface energy covector to face cochain
 work, including pressure range/Hodge and nonuniform boundary adjoint checks.
+Use [WIKI-E-075](experiment/WIKI-E-075.md) before any PhaseRegion runtime
+force adapter, pressure/velocity coupling, micro-step, or T/8 probe because it
+validates the zero-step Ch14 runtime force dry-run with explicit `q_l -> q_g`
+ownership, runtime nodal-density face metric, fixed-stratum work pairing, and
+`force_admissible=0`.
 Before implementing or reviewing an
 established-theory change, use [WIKI-L-046](code/WIKI-L-046.md) as the
 equation-to-code contract gate. Older cards remain listed for
@@ -403,7 +408,7 @@ support.
 | [WIKI-X-055](cross-domain/WIKI-X-055.md) | Theory-First Deliberation Best Practices |
 | [WIKI-X-056](cross-domain/WIKI-X-056.md) | Ch14 Capillary Origin-Reset Handoff Protocol |
 
-## Experiment (74)
+## Experiment (75)
 
 | REF-ID | Title |
 |--------|-------|
@@ -481,6 +486,7 @@ support.
 | [WIKI-E-072](experiment/WIKI-E-072.md) | Ch14 PhaseRegion Runtime Dry-Run Adapter PASS |
 | [WIKI-E-073](experiment/WIKI-E-073.md) | Ch14 PhaseRegion Force/Work Oracle PASS |
 | [WIKI-E-074](experiment/WIKI-E-074.md) | Ch14 PhaseRegion Face-Cochain Work Oracle PASS |
+| [WIKI-E-075](experiment/WIKI-E-075.md) | Ch14 PhaseRegion Runtime Force Dry-Run PASS |
 
 ## Paper (24)
 
