@@ -31,6 +31,7 @@ from .face_boundary import (
     apply_direct_face_boundary_space,
     normalise_boundary_face_space,
 )
+from .face_projection import apply_pressure_projection
 
 
 @dataclass(frozen=True)
@@ -89,6 +90,22 @@ class PhaseRegionPressureVelocityG2Report:
     riesz_residual: float
     same_weight_surface_work_residual: float
     pressure_work_finite: bool
+    metrics: dict[str, float]
+
+
+@dataclass(frozen=True)
+class PhaseRegionPressureVelocityG3Report:
+    """Explicit face-projection oracle report."""
+
+    valid: bool
+    reason: str
+    force_admissible: bool
+    dt: float
+    projected_face_shapes: tuple[tuple[int, ...], ...]
+    projection_identity_linf: float
+    pressure_update_weighted_l2: float
+    surface_update_weighted_l2: float
+    projected_weighted_l2: float
     metrics: dict[str, float]
 
 
@@ -443,6 +460,108 @@ def build_phase_region_pressure_velocity_g2_report(
     )
 
 
+def build_phase_region_pressure_velocity_g3_report(
+    *,
+    xp,
+    admission: PhaseRegionForceAdmission,
+    g0_report: PhaseRegionPressureVelocityG0Report,
+    g1_report: PhaseRegionPressureVelocityG1Report,
+    g2_report: PhaseRegionPressureVelocityG2Report,
+    runtime_face_velocity_components,
+    pressure_face_components,
+    dt: float,
+    projection_tolerance: float = 1.0e-12,
+) -> PhaseRegionPressureVelocityG3Report:
+    """Call the explicit face-array projection oracle without runtime admission."""
+    if not g0_report.valid:
+        return _invalid_g3_report(reason=f"g0:{g0_report.reason}")
+    if not g1_report.valid:
+        return _invalid_g3_report(reason=f"g1:{g1_report.reason}")
+    if not g2_report.valid:
+        return _invalid_g3_report(reason=f"g2:{g2_report.reason}")
+    if not admission.valid or admission.cochain is None or admission.face_metric is None:
+        return _invalid_g3_report(reason=f"candidate:{admission.reason}")
+    if (
+        admission.force_admissible
+        or g0_report.force_admissible
+        or g1_report.force_admissible
+        or g2_report.force_admissible
+    ):
+        return _invalid_g3_report(reason="force_admissible_true")
+    dt_value = float(dt)
+    tol = float(projection_tolerance)
+    if not np.isfinite(dt_value) or dt_value <= 0.0:
+        return _invalid_g3_report(reason="dt_invalid")
+    if not np.isfinite(tol) or tol < 0.0:
+        return _invalid_g3_report(reason="projection_tolerance_invalid")
+
+    velocity_faces = [xp.asarray(face) for face in runtime_face_velocity_components]
+    pressure_faces = [xp.asarray(face) for face in pressure_face_components]
+    surface_faces = [xp.asarray(face) for face in admission.cochain.surface_acceleration]
+    weights = [xp.asarray(weight) for weight in admission.face_metric.face_weight_components]
+    expected_shapes = tuple(g0_report.surface_face_shapes)
+    velocity_shapes = _component_shapes(velocity_faces)
+    pressure_shapes = _component_shapes(pressure_faces)
+    surface_shapes = _component_shapes(surface_faces)
+    metric_shapes = _component_shapes(weights)
+    valid, reason = _g0_shape_validity(
+        surface_shapes=surface_shapes,
+        velocity_shapes=velocity_shapes,
+        pressure_shapes=pressure_shapes,
+        metric_shapes=metric_shapes,
+    )
+    if not valid:
+        return _invalid_g3_report(reason=reason)
+    if surface_shapes != expected_shapes:
+        return _invalid_g3_report(reason="g0_face_shape_mismatch")
+
+    projected_faces = apply_pressure_projection(
+        velocity_faces,
+        pressure_faces,
+        surface_faces,
+        dt_value,
+    )
+    projected_shapes = _component_shapes(projected_faces)
+    balance = [
+        xp.asarray(projected)
+        - xp.asarray(velocity)
+        + dt_value * xp.asarray(pressure)
+        - dt_value * xp.asarray(surface)
+        for projected, velocity, pressure, surface in zip(
+            projected_faces,
+            velocity_faces,
+            pressure_faces,
+            surface_faces,
+        )
+    ]
+    identity_linf = _component_linf(xp, balance)
+    pressure_update = [-dt_value * xp.asarray(face) for face in pressure_faces]
+    surface_update = [dt_value * xp.asarray(face) for face in surface_faces]
+    valid = bool(identity_linf <= tol)
+    reason = "ok" if valid else "projection_identity_linf"
+    metrics = {
+        "g3_valid": float(valid),
+        "force_admissible": 0.0,
+        "dt": float(dt_value),
+        "projection_identity_linf": float(identity_linf),
+        "pressure_update_weighted_l2": _weighted_l2(xp, pressure_update, weights),
+        "surface_update_weighted_l2": _weighted_l2(xp, surface_update, weights),
+        "projected_weighted_l2": _weighted_l2(xp, projected_faces, weights),
+    }
+    return PhaseRegionPressureVelocityG3Report(
+        valid=valid,
+        reason=reason,
+        force_admissible=False,
+        dt=float(dt_value),
+        projected_face_shapes=projected_shapes,
+        projection_identity_linf=float(identity_linf),
+        pressure_update_weighted_l2=metrics["pressure_update_weighted_l2"],
+        surface_update_weighted_l2=metrics["surface_update_weighted_l2"],
+        projected_weighted_l2=metrics["projected_weighted_l2"],
+        metrics=metrics,
+    )
+
+
 def _invalid_g0_report(
     *,
     reason: str,
@@ -518,6 +637,24 @@ def _invalid_g2_report(*, reason: str) -> PhaseRegionPressureVelocityG2Report:
     )
 
 
+def _invalid_g3_report(*, reason: str) -> PhaseRegionPressureVelocityG3Report:
+    return PhaseRegionPressureVelocityG3Report(
+        valid=False,
+        reason=str(reason),
+        force_admissible=False,
+        dt=float("nan"),
+        projected_face_shapes=(),
+        projection_identity_linf=float("nan"),
+        pressure_update_weighted_l2=float("nan"),
+        surface_update_weighted_l2=float("nan"),
+        projected_weighted_l2=float("nan"),
+        metrics={
+            "g3_valid": 0.0,
+            "force_admissible": 0.0,
+        },
+    )
+
+
 def _g0_shape_validity(
     *,
     surface_shapes: tuple[tuple[int, ...], ...],
@@ -551,6 +688,14 @@ def _component_linf_difference(xp, left, right) -> float:
     residuals = [
         float(np.max(np.abs(array_to_numpy(xp, xp.asarray(a) - xp.asarray(b)))))
         for a, b in zip(left, right)
+    ]
+    return max(residuals) if residuals else float("nan")
+
+
+def _component_linf(xp, components) -> float:
+    residuals = [
+        float(np.max(np.abs(array_to_numpy(xp, xp.asarray(component)))))
+        for component in components
     ]
     return max(residuals) if residuals else float("nan")
 
