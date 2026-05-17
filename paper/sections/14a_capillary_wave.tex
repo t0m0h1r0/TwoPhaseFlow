@@ -1,4 +1,4 @@
-\subsection{毛管波：PhaseRegion graph chart の正規ルート}
+\subsection{毛管波：PhaseRegion グラフチャートの正規経路}
 \label{sec:val_capillary}
 % ═══════════════════════════════════════════════════════════════════
 
@@ -8,10 +8,8 @@
 表面張力による復元振動を観察する最も単純な移動界面テストである．
 本節では，第~\ref{sec:ao_fast_state_space}節で導いた
 PhaseRegion 正規経路を標準の入口として用いる．
-ただし，紙面に載せる可視化は，勝手に選んだ診断時刻ではなく，
-正規 YAML \texttt{experiment/ch14/config/ch14\_capillary.yaml} が
-所有する \texttt{output.snapshots.times} と
-\texttt{output.figures} で生成された出力に限定する．
+紙面に載せる可視化時刻と図は，後から都合よく選ぶのではなく，
+同じ再現設定で固定された時刻列から読む．
 すなわち，所有者は
 \[
   \Omega_g(t)=\{y>\eta(x,t)\},
@@ -51,7 +49,7 @@ $m=2$，$L_x=0.02\,\mathrm{m}$，$\theta_0=0$ とする．
 \]
 である．
 
-離散 route は次である：
+離散経路は次である：
 \[
   \eta
   \longrightarrow
@@ -59,45 +57,36 @@ $m=2$，$L_x=0.02\,\mathrm{m}$，$\theta_0=0$ とする．
   \longrightarrow
   q_g=|C|-q_l
   \longrightarrow
-  \mathrm{PhaseRegionBatch}(\mathrm{GAS\_ABOVE},\mathrm{graph})
+  \Omega_g\text{ を所有する PhaseRegion}
   \longrightarrow
   E_h^{(2)}[\eta].
 \]
-$Q_h$ は列ごとの exact P1 graph column-integral で評価し，
-$E_h^{(2)}$ は同じ graph perimeter の二次変分として
-線形毛管波 mode を進める．
-時間発展は velocity-Verlet の reduced chart stepper であり，
-圧力・速度場へ PhaseRegion face force を消費する段階は未接続である．
+$Q_h$ は列ごとの厳密 P1 グラフ列積分で評価し，
+$E_h^{(2)}$ は同じグラフ周長の二次変分として
+線形毛管波モードを進める．
+時間発展は velocity-Verlet による縮約チャート時間発展であり，
+圧力・速度場へ PhaseRegion の面力を渡す段階は未接続である．
 したがって本節の合格条件は，厳密解との振幅・速度・エネルギー比較，
-$Q_h$ 測度残差，体積ドリフト，GPU hot path，および
-\texttt{force\_admissible=0} の fail-close である．
+$Q_h$ 測度残差，体積ドリフト，GPU 経路，および
+力連成を採用しないことの明示である．
 
 \begin{itemize}[noitemsep,leftmargin=2em]
-  \item 正規入口：\texttt{experiment/ch14/config/ch14\_capillary.yaml}
-  \item 実行：\texttt{experiment/ch14/diagnose\_phase\_region\_capillary\_graph\_steps.py}
   \item グリッド：$[0,0.02]^2\,\mathrm{m}^2$，$32^2$，
-        $x$ 周期，$y$ 壁面，正規 YAML が所有する非一様診断格子
-  \item interface/numerics：
-        正規 YAML が \texttt{active\_geometry\_capillary}，
-        \texttt{q} transport，\texttt{column\_height\_graph} gauge，
-        \texttt{face\_hodge}/FCCD pressure stack を明示する
-  \item PhaseRegion owner：\texttt{gas\_above}
-  \item PhaseRegion chart：\texttt{graph\_periodic}
-  \item PhaseRegion measurement：
-        \texttt{exact\_graph\_column\_integral}
+        $x$ 周期，$y$ 壁面，非一様診断格子
+  \item 相領域所有者：上側気相
+  \item チャート：$x$ 周期グラフチャート
+  \item 測度：列ごとの厳密 P1 グラフ列積分
+  \item 力連成：圧力・速度場へは未接続
   \item 時間：$T=T_\sigma=0.046742983863\,\mathrm{s}$，
-        \texttt{run.time.cfl=1.0} から毛管 CFL を評価し，
+        CFL 係数 $1.0$ から毛管 CFL を評価し，
         $3103$ step，$\Delta t=1.506380401644\times10^{-5}\,\mathrm{s}$
-  \item GPU：\texttt{backend.use\_gpu=true}，
-        測度 reduction と owner map は \texttt{backend.xp} 上で実行
-  \item 可視化時刻：\texttt{output.snapshots.times}
-        $=[0,T/4,T/2,3T/4,T]$
+  \item GPU：測度集約と所有者写像を GPU 配列上で実行
+  \item 可視化時刻：$0,T/4,T/2,3T/4,T$
 \end{itemize}
 
 \subsubsection{結果と判定}
 
-正規 YAML \texttt{ch14\_capillary.yaml} による 1 周期計算は，
-remote GPU hot path で PASS した．
+再現設定で固定した 1 周期計算は，GPU 経路で合格した．
 結果は表~\ref{tab:ch14_phase_region_capillary_graph} に示す．
 終端時刻は $T_\sigma$ と一致し，
 終端振幅 $1.999999999999\times10^{-4}\,\mathrm{m}$ は
@@ -109,27 +98,26 @@ $5.43\times10^{-20}$ 以下である．
 $0.2\,\mathrm{s/step}$ の GPU 目標を満たした．
 
 \begin{table}[!htbp]
-\caption{N=32，PhaseRegion graph route 毛管波 1 周期計算}
+\caption{N=32，PhaseRegion グラフ経路の毛管波 1 周期計算}
 \label{tab:ch14_phase_region_capillary_graph}
 \centering\small
-\begin{tabular}{lr}
+\begin{tabular}{ll}
 \toprule
 診断 & 値 \\
 \midrule
 steps & $3103$ \\
 $t_{\mathrm{final}}/T_\sigma$ & $1.000000000000$ \\
-\texttt{cfl} & $1.0$ \\
-\texttt{dt} & $1.506380401644\times10^{-5}$ \\
-\texttt{step\_backend\_gpu} & $1$ \\
-\texttt{q\_measurement\_fast\_column\_integral} & $1$ \\
-\texttt{max\_amplitude\_error} & $1.644990574895\times10^{-10}$ \\
-\texttt{max\_velocity\_error} & $3.033187518861\times10^{-8}$ \\
-\texttt{max\_energy\_drift} & $1.025028838090\times10^{-6}$ \\
-\texttt{max\_residual\_l2} & $0$ \\
-\texttt{max\_volume\_drift} & $5.421010862428\times10^{-20}$ \\
-\texttt{max\_step\_wall\_seconds} & $3.863535495475\times10^{-2}$ \\
-\texttt{target\_met} & $1$ \\
-\texttt{force\_admissible} & $0$ \\
+CFL 係数 & $1.0$ \\
+$\Delta t$ & $1.506380401644\times10^{-5}$ \\
+GPU 経路 & 使用 \\
+測度評価 & 厳密グラフ列積分 \\
+最大振幅誤差 & $1.644990574895\times10^{-10}$ \\
+最大速度誤差 & $3.033187518861\times10^{-8}$ \\
+最大エネルギードリフト & $1.025028838090\times10^{-6}$ \\
+最大測度残差 & $0$ \\
+最大体積ドリフト & $5.421010862428\times10^{-20}$ \\
+最大 step 時間 & $3.863535495475\times10^{-2}\,\mathrm{s}$ \\
+力連成 & 未接続として合格 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -138,26 +126,24 @@ $t_{\mathrm{final}}/T_\sigma$ & $1.000000000000$ \\
 \centering
 \begin{subfigure}[t]{0.32\linewidth}
   \includegraphics[width=\linewidth]{figures/ch14_capillary_yaml/signed_interface_amplitude.pdf}
-  \caption{signed amplitude}
+  \caption{符号付き振幅}
 \end{subfigure}\hfill
 \begin{subfigure}[t]{0.32\linewidth}
   \includegraphics[width=\linewidth]{figures/ch14_capillary_yaml/volume_drift.pdf}
-  \caption{volume drift}
+  \caption{体積ドリフト}
 \end{subfigure}\hfill
 \begin{subfigure}[t]{0.32\linewidth}
   \includegraphics[width=\linewidth]{figures/ch14_capillary_yaml/kinetic_energy.pdf}
-  \caption{kinetic energy}
+  \caption{運動エネルギー}
 \end{subfigure}
-\caption{\texttt{ch14\_capillary.yaml} の \texttt{output.figures} で
-出力された毛管波時系列．}
+\caption{再現設定で固定した毛管波時系列．}
 \label{fig:ch14_capillary_yaml_timeseries}
 \end{figure}
 
 \begin{figure}[!htbp]
 \centering
 \includegraphics[width=\linewidth]{figures/ch14_phase_region_capillary_graph_yaml_snapshots.pdf}
-\caption{\texttt{ch14\_capillary.yaml} の
-\texttt{output.snapshots.times} で出力された PhaseRegion 測度
+\caption{固定時刻で出力した PhaseRegion 測度
 $q_l/|C|$ と $q_g/|C|$．列は左から 0, T/4, T/2, 3T/4, T である．}
 \label{fig:ch14_capillary_yaml_q_snapshots}
 \end{figure}
@@ -169,8 +155,7 @@ $q_l/|C|$ と $q_g/|C|$．列は左から 0, T/4, T/2, 3T/4, T である．}
 \includegraphics[width=0.19\linewidth]{figures/ch14_capillary_yaml/phi_t0.023.pdf}\hfill
 \includegraphics[width=0.19\linewidth]{figures/ch14_capillary_yaml/phi_t0.035.pdf}\hfill
 \includegraphics[width=0.19\linewidth]{figures/ch14_capillary_yaml/phi_t0.047.pdf}
-\caption{\texttt{ch14\_capillary.yaml} の
-\texttt{output.snapshots.times} で出力された $\phi$ gauge スナップショット．
+\caption{固定時刻で出力した $\phi$ gauge スナップショット．
 左から 0, T/4, T/2, 3T/4, T である．}
 \label{fig:ch14_capillary_yaml_phi_snapshots}
 \end{figure}
@@ -189,8 +174,7 @@ $q_l/|C|$ と $q_g/|C|$．列は左から 0, T/4, T/2, 3T/4, T である．}
 \includegraphics[width=0.19\linewidth]{figures/ch14_capillary_yaml/pressure_t0.023.pdf}\hfill
 \includegraphics[width=0.19\linewidth]{figures/ch14_capillary_yaml/pressure_t0.035.pdf}\hfill
 \includegraphics[width=0.19\linewidth]{figures/ch14_capillary_yaml/pressure_t0.047.pdf}
-\caption{\texttt{ch14\_capillary.yaml} の
-\texttt{output.snapshots.times} で出力された速度場と圧力ゲージ診断．
+\caption{固定時刻で出力した速度場と圧力ゲージ診断．
 上段が速度，下段が圧力で，列は左から 0, T/4, T/2, 3T/4, T である．}
 \label{fig:ch14_capillary_yaml_velocity_pressure_snapshots}
 \end{figure}
@@ -198,19 +182,16 @@ $q_l/|C|$ と $q_g/|C|$．列は左から 0, T/4, T/2, 3T/4, T である．}
 この結果の判定は，
 「PhaseRegion が界面を所有し，$q$ は測度，
 $\phi/\eta$ は chart である」という第~\ref{sec:ao_fast_state_space}節の
-状態所有者が，毛管波 graph chart では可視化つきで動作した，
+状態所有者が，毛管波グラフチャートでは可視化つきで動作した，
 である．
-重要なのは，これは旧 screened graph-$q$ projection の修理ではない点である．
-旧経路では，輸送後の $q_T$ を滑らかな graph/phi chart に厳密に戻すことを
-本体にしていたため，非幾何的なセル自由度を曲率へ押し付けた．
-本節の正規 route は，$\Omega_g$ から $Q_h$ と $E_h$ を同時に読み，
-測度残差を 0 として確認する reduced chart 問題である．
+本節の正規経路は，$\Omega_g$ から $Q_h$ と $E_h$ を同時に読み，
+測度残差を 0 として確認する縮約チャート問題である．
 
 一方で，図~\ref{fig:ch14_capillary_yaml_velocity_pressure_snapshots} の
-圧力・速度場は，YAML で定義された出力時刻の可視化診断であって，
-PhaseRegion face cochain を production PPE/corrector へ消費できたことを
+圧力・速度場は，固定時刻で保存した可視化診断であって，
+PhaseRegion から得る面力を PPE や速度補正へ渡せたことを
 主張する証拠ではない．
 その契約は別ゲートであり，本節では \texttt{force\_admissible=0} を
-明示したまま合格とする．
+「力連成未採用」として明示したまま合格とする．
 
 % ═══════════════════════════════════════════════════════════════════
