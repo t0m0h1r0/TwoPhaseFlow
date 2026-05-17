@@ -1,0 +1,11 @@
+{
+  "branch": "codex/ra-ch14-origin-reset-knowledge-20260517",
+  "branch_slug": "codex-ra-ch14-origin-reset-knowledge-20260517",
+  "session_id": "57DDCF6D-9D31-4628-BA03-CE33CC0DB29B",
+  "worktree_path": ".claude/worktrees/codex-ra-ch14-origin-reset-knowledge-20260517",
+  "holder_agent": "ResearchArchitect",
+  "acquired_at": "2026-05-17T11:17:03+09:00",
+  "expires_at": "2026-05-18T11:17:03+09:00",
+  "meta_version": "7.1.0",
+  "scope": "extract Ch14 capillary origin-reset knowledge into wiki/artifact/prompt and merge docs-only handoff into main"
+}
