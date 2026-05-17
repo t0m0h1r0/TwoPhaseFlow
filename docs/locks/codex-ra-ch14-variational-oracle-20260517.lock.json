@@ -1,0 +1,11 @@
+{
+  "branch": "codex/ra-ch14-variational-oracle-20260517",
+  "branch_slug": "codex-ra-ch14-variational-oracle-20260517",
+  "session_id": "6272C43B-9170-4AE9-8D1D-AD19A624F26C",
+  "worktree_path": ".claude/worktrees/codex-ra-ch14-variational-oracle-20260517",
+  "holder_agent": "ResearchArchitect",
+  "acquired_at": "2026-05-17T11:34:16+09:00",
+  "expires_at": "2026-05-18T11:34:16+09:00",
+  "meta_version": "7.1.0",
+  "scope": "rebuild Ch14 capillary-wave and oscillating-droplet T/8 theory from variational state ownership, preserve screened graph-q failure knowledge, and implement the first minimal capillary-wave oracle"
+}
