@@ -15,13 +15,18 @@ Execute ResearchArchitect
 * docs/wiki/theory/WIKI-T-174.md
 * docs/wiki/cross-domain/WIKI-X-056.md
 * docs/wiki/cross-domain/WIKI-X-055.md
+* docs/wiki/experiment/WIKI-E-064.md
 * artifacts/A/ch14_origin_reset_handoff_CHK-RA-CH14-ORIGIN-RESET-001.md
+* artifacts/A/ch14_capillary_screened_graph_q_runtime_CHK-RA-CH14-OSC-EIGHTH-032.md
 
 [目的]
 Ch14 の毛管波・振動液滴 T/8 を、同じ計算思想で扱える理論から再構築する。
 screened q/phi projection の失敗は事実として保持するが、それを既定路線として
 修理し続けない。まず物理学・数学の原点に戻り、界面を所有する離散状態が
 何であるべきかを決める。
+特に WIKI-E-064 と CHK-RA-CH14-OSC-EIGHTH-032 artifact に保存された
+baseline PASS / screened graph-q FAIL の具体ログを、失敗知として仮説表に
+必ず反映する。
 
 [必須の理論検討]
 * 連続問題の主役を、物質界面 Gamma(t)、表面エネルギー E[Gamma]、体積保存、
@@ -48,6 +53,8 @@ screened q/phi projection の失敗は事実として保持するが、それを
 
 [検証方針]
 * いきなり長い T/8 実験に入らないこと
+* 既存の baseline PASS と screened graph-q FAIL を再読し、どの失敗知を
+  継承するかを明記してから新規検証に入ること
 * まず最小の毛管波 oracle を作ること
   - eta(x) -> Q_h(eta)
   - E[eta]
