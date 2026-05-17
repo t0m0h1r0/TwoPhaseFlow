@@ -109,6 +109,101 @@ def _exact_constant_graph_q(grid: Grid, *, height: float) -> np.ndarray:
     return dx[:, None] * fill_height[None, :]
 
 
+def _exact_weighted_p1_projection(
+    x_edges: np.ndarray,
+    height: np.ndarray,
+    *,
+    max_mode: int,
+):
+    dx = np.diff(np.asarray(x_edges, dtype=float))
+    h = np.asarray(height, dtype=float)
+    mean = float(np.sum(dx * h) / np.sum(dx))
+    cell_basis_columns = []
+    edge_basis_columns = []
+    for mode in range(1, int(max_mode) + 1):
+        cos_e = np.cos(2.0 * np.pi * mode * x_edges)
+        sin_e = np.sin(2.0 * np.pi * mode * x_edges)
+        edge_basis_columns.extend((cos_e, sin_e))
+        cell_basis_columns.extend(
+            (
+                0.5 * (cos_e[:-1] + cos_e[1:]),
+                0.5 * (sin_e[:-1] + sin_e[1:]),
+            )
+        )
+    cell_basis = np.stack(cell_basis_columns, axis=-1)
+    edge_basis = np.stack(edge_basis_columns, axis=-1)
+    basis_mean = np.sum(dx[:, None] * cell_basis, axis=0) / np.sum(dx)
+    centered_basis = cell_basis - basis_mean[None, :]
+    normal = centered_basis.T @ (dx[:, None] * centered_basis)
+    rhs = centered_basis.T @ (dx * (h - mean))
+    coeffs = np.linalg.solve(normal, rhs)
+    corrected_mean = mean - float(coeffs @ basis_mean)
+    eta = corrected_mean + edge_basis @ coeffs
+    eta[-1] = eta[0]
+    cell_average = corrected_mean + cell_basis @ coeffs
+    return mean, corrected_mean, coeffs, eta, cell_average
+
+
+def test_step1_nonuniform_graph_f0_matches_exact_weighted_normal_equations():
+    x_edges = np.array(
+        (0.0, 0.035, 0.11, 0.19, 0.34, 0.51, 0.63, 0.78, 0.91, 1.0),
+        dtype=float,
+    )
+    x_mid = 0.5 * (x_edges[:-1] + x_edges[1:])
+    height = (
+        0.42
+        + 0.035 * np.cos(2.0 * np.pi * 2 * x_mid)
+        - 0.014 * np.sin(2.0 * np.pi * 3 * x_mid)
+        + 0.006 * np.cos(2.0 * np.pi * 5 * x_mid)
+    )
+    mean, _corrected_mean, coeffs, eta, cell_average = _exact_weighted_p1_projection(
+        x_edges,
+        height,
+        max_mode=3,
+    )
+
+    result = project_column_height_to_graph(x_edges, height, max_mode=3)
+    result_coeffs = result.coefficient_map()
+    result_cell_average = 0.5 * (
+        np.asarray(result.eta[:-1]) + np.asarray(result.eta[1:])
+    )
+    dx = np.diff(x_edges)
+
+    assert result.mean == pytest.approx(mean, abs=1.0e-14)
+    np.testing.assert_allclose(result.eta, eta, atol=1.0e-14)
+    np.testing.assert_allclose(result_cell_average, cell_average, atol=1.0e-14)
+    for mode in range(1, 4):
+        assert result_coeffs[f"cos_{mode}"] == pytest.approx(
+            coeffs[2 * (mode - 1)],
+            abs=1.0e-14,
+        )
+        assert result_coeffs[f"sin_{mode}"] == pytest.approx(
+            coeffs[2 * (mode - 1) + 1],
+            abs=1.0e-14,
+        )
+    residual = cell_average - height
+    basis_columns = []
+    for mode in range(1, 4):
+        cos_e = np.cos(2.0 * np.pi * mode * x_edges)
+        sin_e = np.sin(2.0 * np.pi * mode * x_edges)
+        basis_columns.extend(
+            (
+                0.5 * (cos_e[:-1] + cos_e[1:]),
+                0.5 * (sin_e[:-1] + sin_e[1:]),
+            )
+        )
+    basis = np.stack(basis_columns, axis=-1)
+    np.testing.assert_allclose(
+        basis.T @ (dx * residual),
+        np.zeros(6),
+        atol=1.0e-14,
+    )
+    assert float(np.sum(dx * result_cell_average)) == pytest.approx(
+        float(np.sum(dx * height)),
+        abs=1.0e-14,
+    )
+
+
 def test_graph_constant_chart_matches_exact_cell_volumes_on_fitted_grid():
     grid = _grid(32, 40, alpha_grid=2.0)
     _fit_x_nonuniform_grid(grid)

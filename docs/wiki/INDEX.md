@@ -1,4 +1,4 @@
-# Wiki Index — 420 entries
+# Wiki Index — 421 entries
 
 ## Active Retrieval Gate
 
@@ -104,6 +104,10 @@ Use [WIKI-L-057](code/WIKI-L-057.md) before changing q-manifold,
 PhaseRegion-measurement, or low-mode KKT tests because it adds exact
 theoretical references for graph q, polygon geometry, KKT algebra, and
 gas-owner complement mapping.
+Use [WIKI-L-058](code/WIKI-L-058.md) before changing Step 1 nonuniform graph F0
+admission or its tests because it pins the weighted P1 normal equations, basis
+centering, coefficients, residual orthogonality, and weighted-volume
+conservation against an exact reference.
 Use [WIKI-E-071](experiment/WIKI-E-071.md) before implementing a PhaseRegion
 runtime dry-run adapter because it records that existing runtime
 `GeometricPhaseState.q` is liquid volume while the current PhaseRegion theory
@@ -528,7 +532,7 @@ support.
 | [WIKI-M-034](meta/WIKI-M-034.md) | Paper Review Revisions Should Reduce Cognitive Load, Not Add Decoration |
 | [WIKI-M-035](meta/WIKI-M-035.md) | Meta-Prompt Deployment Needs Project Boundaries, Native Adapters, and Token ROI Gates |
 
-## Code (57)
+## Code (58)
 
 | REF-ID | Title |
 |--------|-------|
@@ -589,3 +593,4 @@ support.
 | [WIKI-L-055](code/WIKI-L-055.md) | Ch14 Nonuniform Graph F0 Admission PASS |
 | [WIKI-L-056](code/WIKI-L-056.md) | Ch14 Graph F1 Low-Mode KKT PASS |
 | [WIKI-L-057](code/WIKI-L-057.md) | Ch14 Exact Theory Unit Tests PASS |
+| [WIKI-L-058](code/WIKI-L-058.md) | Ch14 Step 1 Nonuniform F0 Exact Test PASS |
