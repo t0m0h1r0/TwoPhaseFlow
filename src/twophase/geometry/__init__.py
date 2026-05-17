@@ -68,6 +68,11 @@ from .phase_region_measure import (
     PhaseRegionMeasurement,
     assemble_phase_region_measurement,
 )
+from .phase_owner_map import (
+    CellMeasurePhase,
+    PhaseOwnerMapResult,
+    map_cell_measure_to_phase_owner,
+)
 from .phase_region_admission import (
     LowModeKKTResult,
     solve_low_mode_kkt,
@@ -164,6 +169,7 @@ __all__ = [
     "CompatibilityProjectionLedger",
     "CompatibilityProjectionResult",
     "ConstraintPolicy",
+    "CellMeasurePhase",
     "GEOMETRIC_PHASE_CHECKPOINT_PREFIX",
     "GeometricBundleLift",
     "GeometricCapillaryBundleWork",
@@ -193,6 +199,7 @@ __all__ = [
     "P1SweptFluxResult",
     "PhaseRegionBatch",
     "PhaseRegionMeasurement",
+    "PhaseOwnerMapResult",
     "PhaseRole",
     "ProjectionResult",
     "ResidualReport",
@@ -235,6 +242,7 @@ __all__ = [
     "geometric_surface_energy_covector_2d",
     "geometric_young_laplace_residual_2d",
     "has_geometric_phase_checkpoint",
+    "map_cell_measure_to_phase_owner",
     "project_cell_volume_compatibility_2d",
     "project_active_cell_volume_compatibility_2d",
     "project_closed_radial_mode_f0",

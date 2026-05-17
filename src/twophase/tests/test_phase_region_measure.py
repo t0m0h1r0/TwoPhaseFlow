@@ -8,6 +8,7 @@ import pytest
 from twophase.geometry import (
     AtlasValidationError,
     BoundaryAttachment,
+    CellMeasurePhase,
     ChartType,
     ConstraintPolicy,
     InterfaceAtlas,
@@ -17,6 +18,7 @@ from twophase.geometry import (
     assemble_phase_region_measurement,
     component_offsets_from_batch_ids,
     enum_values,
+    map_cell_measure_to_phase_owner,
 )
 
 
@@ -157,18 +159,24 @@ def test_gas_owner_measurement_matches_exact_liquid_complement():
     )
     cell_area = np.array(((0.10, 0.20), (0.15, 0.25)), dtype=float)
     liquid_q = np.array(((0.03, 0.14), (0.05, 0.10)), dtype=float)
-    gas_q = cell_area - liquid_q
+    owner_map = map_cell_measure_to_phase_owner(
+        liquid_q,
+        cell_area,
+        source_phase=CellMeasurePhase.LIQUID,
+        owner_phase=CellMeasurePhase.GAS,
+    )
 
     measurement = assemble_phase_region_measurement(
         region,
-        gas_q[None, ...],
+        owner_map.q_owner[None, ...],
         np.array((1.25,)),
-        q_target=gas_q,
+        q_target=owner_map.q_owner,
         cell_area=cell_area,
     )
 
-    np.testing.assert_allclose(measurement.q_phys[0], gas_q)
+    np.testing.assert_allclose(measurement.q_phys[0], cell_area - liquid_q)
     assert measurement.batch_volumes[0] == pytest.approx(float(np.sum(cell_area - liquid_q)))
+    assert owner_map.complement_used is True
     assert measurement.residual_l2 == pytest.approx(0.0)
     assert measurement.capacity_excess_linf <= 0.0
     assert measurement.force_admissible is False
