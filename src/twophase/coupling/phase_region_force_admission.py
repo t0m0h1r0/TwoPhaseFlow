@@ -23,8 +23,11 @@ from twophase.geometry import CellMeasurePhase
 from twophase.geometry import map_cell_measure_to_phase_owner
 
 from .closed_interface_riesz import closed_interface_riesz_cochain
+from .closed_interface_riesz import component_reaction_hodge_gate
 from .closed_interface_riesz import face_mass_components
+from .closed_interface_riesz import fixed_stratum_virtual_work_check
 from .closed_interface_riesz import transport_increment_from_face_velocity
+from .closed_interface_riesz import weighted_hodge_decomposition
 from .closed_interface_stratum import array_to_numpy
 
 
@@ -51,6 +54,21 @@ class FixedStratumVelocityScale:
 
 
 @dataclass(frozen=True)
+class PhaseRegionForceDiagnostics:
+    """Optional zero-step work/Hodge diagnostics for a force candidate."""
+
+    valid: bool
+    reason: str
+    self_velocity: FixedStratumVelocityScale | None
+    probe_velocity: FixedStratumVelocityScale | None
+    self_work: object | None
+    probe_work: object | None
+    hodge: object | None
+    reaction: object | None
+    metrics: dict[str, float]
+
+
+@dataclass(frozen=True)
 class PhaseRegionForceAdmission:
     """Zero-step PhaseRegion force candidate with explicit admission status."""
 
@@ -62,6 +80,7 @@ class PhaseRegionForceAdmission:
     face_metric: PhaseRegionFaceMassMetric | None
     cochain: object | None
     metrics: dict[str, float]
+    diagnostics: PhaseRegionForceDiagnostics | None = None
 
 
 def two_phase_nodal_density(
@@ -157,6 +176,116 @@ def build_phase_region_force_admission_candidate(
         cochain=cochain,
         metrics=metrics,
     )
+
+
+def attach_phase_region_force_diagnostics(
+    *,
+    xp,
+    grid,
+    fccd,
+    div_op,
+    admission: PhaseRegionForceAdmission,
+    probe_face_velocity_components=None,
+    fd_eps: float = 1.0e-7,
+    sign_fraction: float = 2.0e-2,
+    riesz_tolerance: float = 1.0e-12,
+    fd_power_tolerance: float = 1.0e-5,
+    divergence_tolerance: float = 1.0e-8,
+) -> PhaseRegionForceAdmission:
+    """Return ``admission`` with zero-step work/Hodge diagnostics attached."""
+    if not admission.valid or admission.cochain is None:
+        diagnostics = _invalid_diagnostics("candidate_not_valid")
+        return _admission_with_diagnostics(admission, diagnostics)
+    cochain = admission.cochain
+    self_velocity = scale_face_velocity_to_fixed_stratum(
+        xp=xp,
+        fccd=fccd,
+        psi=cochain.psi,
+        face_velocity_components=cochain.surface_acceleration,
+        fd_eps=float(fd_eps),
+        sign_fraction=float(sign_fraction),
+    )
+    if not self_velocity.valid:
+        diagnostics = _invalid_diagnostics(
+            f"self_velocity:{self_velocity.reason}",
+            self_velocity=self_velocity,
+        )
+        return _admission_with_diagnostics(admission, diagnostics)
+    self_work = fixed_stratum_virtual_work_check(
+        xp=xp,
+        grid=grid,
+        fccd=fccd,
+        cochain=cochain,
+        face_velocity_components=self_velocity.face_velocity_components,
+        epsilon=float(fd_eps),
+    )
+    probe_velocity = None
+    probe_work = None
+    if probe_face_velocity_components is not None:
+        probe_velocity = scale_face_velocity_to_fixed_stratum(
+            xp=xp,
+            fccd=fccd,
+            psi=cochain.psi,
+            face_velocity_components=probe_face_velocity_components,
+            fd_eps=float(fd_eps),
+            sign_fraction=float(sign_fraction),
+        )
+        if not probe_velocity.valid:
+            diagnostics = _invalid_diagnostics(
+                f"probe_velocity:{probe_velocity.reason}",
+                self_velocity=self_velocity,
+                self_work=self_work,
+                probe_velocity=probe_velocity,
+            )
+            return _admission_with_diagnostics(admission, diagnostics)
+        probe_work = fixed_stratum_virtual_work_check(
+            xp=xp,
+            grid=grid,
+            fccd=fccd,
+            cochain=cochain,
+            face_velocity_components=probe_velocity.face_velocity_components,
+            epsilon=float(fd_eps),
+        )
+    hodge = weighted_hodge_decomposition(
+        xp=xp,
+        div_op=div_op,
+        face_components=cochain.surface_acceleration,
+        face_weight_components=cochain.face_weight_components,
+    )
+    reaction = component_reaction_hodge_gate(
+        xp=xp,
+        div_op=div_op,
+        cochain=cochain,
+    )
+    valid, reason = _diagnostic_validity(
+        self_work=self_work,
+        probe_work=probe_work,
+        hodge=hodge,
+        reaction=reaction,
+        riesz_tolerance=float(riesz_tolerance),
+        fd_power_tolerance=float(fd_power_tolerance),
+        divergence_tolerance=float(divergence_tolerance),
+    )
+    diagnostics = PhaseRegionForceDiagnostics(
+        valid=bool(valid),
+        reason=reason,
+        self_velocity=self_velocity,
+        probe_velocity=probe_velocity,
+        self_work=self_work,
+        probe_work=probe_work,
+        hodge=hodge,
+        reaction=reaction,
+        metrics=_diagnostic_metrics(
+            self_velocity=self_velocity,
+            probe_velocity=probe_velocity,
+            self_work=self_work,
+            probe_work=probe_work,
+            hodge=hodge,
+            reaction=reaction,
+            valid=bool(valid),
+        ),
+    )
+    return _admission_with_diagnostics(admission, diagnostics)
 
 
 def phase_region_face_mass_metric(
@@ -273,6 +402,128 @@ def _invalid_admission(reason: str, runtime_steps: int) -> PhaseRegionForceAdmis
             "valid": 0.0,
         },
     )
+
+
+def _invalid_diagnostics(
+    reason: str,
+    *,
+    self_velocity=None,
+    probe_velocity=None,
+    self_work=None,
+    probe_work=None,
+) -> PhaseRegionForceDiagnostics:
+    return PhaseRegionForceDiagnostics(
+        valid=False,
+        reason=str(reason),
+        self_velocity=self_velocity,
+        probe_velocity=probe_velocity,
+        self_work=self_work,
+        probe_work=probe_work,
+        hodge=None,
+        reaction=None,
+        metrics={
+            "diagnostics_valid": 0.0,
+            "force_admissible": 0.0,
+        },
+    )
+
+
+def _admission_with_diagnostics(
+    admission: PhaseRegionForceAdmission,
+    diagnostics: PhaseRegionForceDiagnostics,
+) -> PhaseRegionForceAdmission:
+    metrics = dict(admission.metrics)
+    metrics.update(diagnostics.metrics)
+    return PhaseRegionForceAdmission(
+        valid=admission.valid,
+        reason=admission.reason,
+        force_admissible=False,
+        runtime_steps=admission.runtime_steps,
+        owner_map=admission.owner_map,
+        face_metric=admission.face_metric,
+        cochain=admission.cochain,
+        metrics=metrics,
+        diagnostics=diagnostics,
+    )
+
+
+def _diagnostic_validity(
+    *,
+    self_work,
+    probe_work,
+    hodge,
+    reaction,
+    riesz_tolerance: float,
+    fd_power_tolerance: float,
+    divergence_tolerance: float,
+) -> tuple[bool, str]:
+    if not self_work.valid:
+        return False, f"self_work:{self_work.reason}"
+    if self_work.riesz_residual > riesz_tolerance:
+        return False, "self_riesz_residual"
+    if self_work.finite_difference_power_residual > fd_power_tolerance:
+        return False, "self_fd_power_residual"
+    if probe_work is not None:
+        if not probe_work.valid:
+            return False, f"probe_work:{probe_work.reason}"
+        if probe_work.riesz_residual > riesz_tolerance:
+            return False, "probe_riesz_residual"
+        if probe_work.finite_difference_power_residual > fd_power_tolerance:
+            return False, "probe_fd_power_residual"
+    if hodge.hodge_divergence_linf > divergence_tolerance:
+        return False, "hodge_divergence_linf"
+    if reaction.residual_divergence_linf > divergence_tolerance:
+        return False, "reaction_residual_divergence_linf"
+    return True, "ok"
+
+
+def _diagnostic_metrics(
+    *,
+    self_velocity,
+    probe_velocity,
+    self_work,
+    probe_work,
+    hodge,
+    reaction,
+    valid: bool,
+) -> dict[str, float]:
+    metrics = {
+        "diagnostics_valid": float(valid),
+        "force_admissible": 0.0,
+        "stratum_sign_margin": float(self_velocity.sign_margin),
+        "self_velocity_scale": float(self_velocity.scale),
+        "self_velocity_delta_linf": float(self_velocity.delta_linf),
+        "self_fd_power_residual": float(
+            self_work.finite_difference_power_residual
+        ),
+        "self_riesz_residual": float(self_work.riesz_residual),
+        "self_finite_difference": float(self_work.finite_difference),
+        "self_capillary_power": float(self_work.capillary_power),
+        "component_weighted_l2": float(hodge.component_weighted_l2),
+        "range_weighted_l2": float(hodge.range_weighted_l2),
+        "hodge_weighted_l2": float(hodge.hodge_weighted_l2),
+        "hodge_divergence_linf": float(hodge.hodge_divergence_linf),
+        "reaction_beta": float(reaction.beta),
+        "reaction_residual_weighted_l2": float(reaction.residual_weighted_l2),
+        "reaction_residual_ratio": float(reaction.residual_ratio),
+        "reaction_residual_divergence_linf": float(
+            reaction.residual_divergence_linf
+        ),
+    }
+    if probe_velocity is not None and probe_work is not None:
+        metrics.update(
+            {
+                "probe_velocity_scale": float(probe_velocity.scale),
+                "probe_velocity_delta_linf": float(probe_velocity.delta_linf),
+                "probe_fd_power_residual": float(
+                    probe_work.finite_difference_power_residual
+                ),
+                "probe_riesz_residual": float(probe_work.riesz_residual),
+                "probe_finite_difference": float(probe_work.finite_difference),
+                "probe_capillary_power": float(probe_work.capillary_power),
+            }
+        )
+    return metrics
 
 
 def _candidate_metrics(

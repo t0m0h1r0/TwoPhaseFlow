@@ -37,14 +37,9 @@ from twophase.ccd.ccd_solver import CCDSolver  # noqa: E402
 from twophase.ccd.fccd import FCCDSolver  # noqa: E402
 from twophase.config import GridConfig  # noqa: E402
 from twophase.core.grid import Grid  # noqa: E402
-from twophase.coupling.closed_interface_riesz import (  # noqa: E402
-    component_reaction_hodge_gate,
-    fixed_stratum_virtual_work_check,
-    weighted_hodge_decomposition,
-)
 from twophase.coupling.phase_region_force_admission import (  # noqa: E402
+    attach_phase_region_force_diagnostics,
     build_phase_region_force_admission_candidate,
-    scale_face_velocity_to_fixed_stratum,
 )
 from twophase.geometry import CellMeasurePhase  # noqa: E402
 from twophase.geometry.phase_state import GeometricPhaseState  # noqa: E402
@@ -207,79 +202,38 @@ def _compute(
         raise AssertionError(f"runtime force admission failed: {admission.reason}")
     owner_map = admission.owner_map
     cochain = admission.cochain
-    sign_margin = float(np.min(np.abs(np.asarray(psi, dtype=float) - 0.5)))
-    self_velocity = scale_face_velocity_to_fixed_stratum(
-        xp=xp,
-        fccd=fccd,
-        psi=cochain.psi,
-        face_velocity_components=cochain.surface_acceleration,
-        fd_eps=float(fd_eps),
-        sign_fraction=float(sign_fraction),
-    )
-    if not self_velocity.valid:
-        raise AssertionError(f"runtime self velocity scaling failed: {self_velocity.reason}")
-    check_self = fixed_stratum_virtual_work_check(
-        xp=xp,
-        grid=grid,
-        fccd=fccd,
-        cochain=cochain,
-        face_velocity_components=self_velocity.face_velocity_components,
-        epsilon=float(fd_eps),
-    )
     smooth = [xp.asarray(component) for component in _smooth_face_probe(grid)]
     probe = [
         surface + 0.125 * smooth_component
         for surface, smooth_component in zip(cochain.surface_acceleration, smooth, strict=True)
     ]
-    probe_velocity = scale_face_velocity_to_fixed_stratum(
-        xp=xp,
-        fccd=fccd,
-        psi=cochain.psi,
-        face_velocity_components=probe,
-        fd_eps=float(fd_eps),
-        sign_fraction=float(sign_fraction),
-    )
-    if not probe_velocity.valid:
-        raise AssertionError(f"runtime probe velocity scaling failed: {probe_velocity.reason}")
-    check_probe = fixed_stratum_virtual_work_check(
+    admission = attach_phase_region_force_diagnostics(
         xp=xp,
         grid=grid,
         fccd=fccd,
-        cochain=cochain,
-        face_velocity_components=probe_velocity.face_velocity_components,
-        epsilon=float(fd_eps),
-    )
-    decomposition = weighted_hodge_decomposition(
-        xp=xp,
         div_op=div_op,
-        face_components=cochain.surface_acceleration,
-        face_weight_components=cochain.face_weight_components,
+        admission=admission,
+        probe_face_velocity_components=probe,
+        fd_eps=float(fd_eps),
+        sign_fraction=float(sign_fraction),
+        riesz_tolerance=float(riesz_tolerance),
+        fd_power_tolerance=float(fd_power_tolerance),
+        divergence_tolerance=float(divergence_tolerance),
     )
-    reaction_gate = component_reaction_hodge_gate(
-        xp=xp,
-        div_op=div_op,
-        cochain=cochain,
-    )
-    if not check_self.valid:
-        raise AssertionError(f"runtime self virtual work left stratum: {check_self.reason}")
-    if not check_probe.valid:
-        raise AssertionError(f"runtime probe virtual work left stratum: {check_probe.reason}")
-    if check_self.riesz_residual > float(riesz_tolerance):
-        raise AssertionError("runtime self Riesz work pairing failed")
-    if check_probe.riesz_residual > float(riesz_tolerance):
-        raise AssertionError("runtime probe Riesz work pairing failed")
-    if check_self.finite_difference_power_residual > float(fd_power_tolerance):
-        raise AssertionError("runtime self finite-difference power pairing failed")
-    if check_probe.finite_difference_power_residual > float(fd_power_tolerance):
-        raise AssertionError("runtime probe finite-difference power pairing failed")
-    if decomposition.hodge_divergence_linf > float(divergence_tolerance):
-        raise AssertionError("runtime Hodge residual is not divergence-free")
-    if reaction_gate.residual_divergence_linf > float(divergence_tolerance):
-        raise AssertionError("runtime reaction-gate residual is not divergence-free")
+    diagnostics = admission.diagnostics
+    if diagnostics is None or not diagnostics.valid:
+        reason = "missing" if diagnostics is None else diagnostics.reason
+        raise AssertionError(f"runtime force diagnostics failed: {reason}")
+    check_self = diagnostics.self_work
+    check_probe = diagnostics.probe_work
+    decomposition = diagnostics.hodge
+    reaction_gate = diagnostics.reaction
 
     x_edges = np.asarray(grid.coords[0], dtype=float)
     y_edges = np.asarray(grid.coords[1], dtype=float)
-    metrics = {
+    metrics = dict(admission.metrics)
+    metrics.update(
+        {
         "runtime_steps": 0.0,
         "source_phase": float(CellMeasurePhase.LIQUID),
         "owner_phase": float(CellMeasurePhase.GAS),
@@ -287,32 +241,14 @@ def _compute(
         "liquid_runtime_volume": float(owner_map.source_volume),
         "gas_target_volume": float(owner_map.owner_volume),
         "compat_linf": float(phase_state.compatibility_residual_linf),
-        "stratum_sign_margin": sign_margin,
-        "self_fd_power_residual": float(check_self.finite_difference_power_residual),
-        "self_riesz_residual": float(check_self.riesz_residual),
-        "self_velocity_scale": float(self_velocity.scale),
-        "self_finite_difference": float(check_self.finite_difference),
-        "self_capillary_power": float(check_self.capillary_power),
-        "probe_fd_power_residual": float(check_probe.finite_difference_power_residual),
-        "probe_riesz_residual": float(check_probe.riesz_residual),
-        "probe_velocity_scale": float(probe_velocity.scale),
-        "probe_finite_difference": float(check_probe.finite_difference),
-        "probe_capillary_power": float(check_probe.capillary_power),
-        "component_weighted_l2": float(decomposition.component_weighted_l2),
-        "range_weighted_l2": float(decomposition.range_weighted_l2),
-        "hodge_weighted_l2": float(decomposition.hodge_weighted_l2),
-        "hodge_divergence_linf": float(decomposition.hodge_divergence_linf),
-        "reaction_beta": float(reaction_gate.beta),
-        "reaction_residual_weighted_l2": float(reaction_gate.residual_weighted_l2),
-        "reaction_residual_ratio": float(reaction_gate.residual_ratio),
-        "reaction_residual_divergence_linf": float(reaction_gate.residual_divergence_linf),
         "sigma": float(cfg.physics.sigma),
         "rho_l": float(cfg.physics.rho_l),
         "rho_g": float(cfg.physics.rho_g),
         "grid_alpha": float(cfg.grid.alpha_grid),
         "min_dx": min(float(np.min(np.diff(x_edges))), float(np.min(np.diff(y_edges)))),
         "force_admissible": 0.0,
-    }
+        }
+    )
     return {
         "metrics": metrics,
         "fields": {

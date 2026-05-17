@@ -55,8 +55,10 @@ from .closed_interface_trace_velocity import (
 )
 from .phase_region_force_admission import (
     FixedStratumVelocityScale,
+    PhaseRegionForceDiagnostics,
     PhaseRegionForceAdmission,
     PhaseRegionFaceMassMetric,
+    attach_phase_region_force_diagnostics,
     build_phase_region_force_admission_candidate,
     phase_region_face_mass_metric,
     scale_face_velocity_to_fixed_stratum,
@@ -84,6 +86,7 @@ __all__ = [
     "ComponentReactionHodgeGate",
     "FixedStratumVelocityScale",
     "PPERHSBuilderGFM",
+    "PhaseRegionForceDiagnostics",
     "PhaseRegionForceAdmission",
     "PhaseRegionFaceMassMetric",
     "ReconstructedNodalP1TraceVelocityMap",
@@ -101,6 +104,7 @@ __all__ = [
     "build_closed_interface_stratum",
     "build_phase_region_force_admission_candidate",
     "build_trace_graph_2d",
+    "attach_phase_region_force_diagnostics",
     "build_young_laplace_interface_stress_context",
     "closed_interface_riesz_cochain",
     "closed_interface_trace_riesz_cochain",

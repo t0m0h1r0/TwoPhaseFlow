@@ -15,12 +15,14 @@ from twophase.coupling.closed_interface_riesz import (
     transport_increment_from_face_velocity,
 )
 from twophase.coupling.phase_region_force_admission import (
+    attach_phase_region_force_diagnostics,
     build_phase_region_force_admission_candidate,
     phase_region_face_mass_metric,
     scale_face_velocity_to_fixed_stratum,
     two_phase_nodal_density,
 )
 from twophase.geometry import CellMeasurePhase
+from twophase.simulation.divergence_ops import FCCDDivergenceOperator
 
 
 def _setup(nx: int = 4, ny: int = 5):
@@ -173,6 +175,82 @@ def test_build_force_admission_candidate_fails_closed_on_cell_shaped_psi():
     assert not admission.valid
     assert "nodal grid shape" in admission.reason
     assert admission.force_admissible is False
+
+
+def test_attach_force_diagnostics_keeps_candidate_unadmitted():
+    grid, backend, fccd = _setup(12, 12)
+    cell_area = _cell_area(grid)
+    admission = build_phase_region_force_admission_candidate(
+        xp=backend.xp,
+        grid=grid,
+        fccd=fccd,
+        psi=_ellipse_psi(grid),
+        q_source=0.25 * cell_area,
+        cell_area=cell_area,
+        source_phase=CellMeasurePhase.LIQUID,
+        owner_phase=CellMeasurePhase.GAS,
+        rho_l=10.0,
+        rho_g=2.0,
+        sigma=0.072,
+    )
+    assert admission.valid, admission.reason
+
+    with_diagnostics = attach_phase_region_force_diagnostics(
+        xp=backend.xp,
+        grid=grid,
+        fccd=fccd,
+        div_op=FCCDDivergenceOperator(fccd),
+        admission=admission,
+        probe_face_velocity_components=admission.cochain.surface_acceleration,
+        fd_eps=1.0e-7,
+    )
+
+    diagnostics = with_diagnostics.diagnostics
+    assert with_diagnostics.valid
+    assert with_diagnostics.force_admissible is False
+    assert diagnostics is not None
+    assert diagnostics.valid, diagnostics.reason
+    assert diagnostics.reason == "ok"
+    assert diagnostics.self_work.valid
+    assert diagnostics.probe_work.valid
+    assert diagnostics.hodge.hodge_divergence_linf < 1.0e-8
+    assert diagnostics.reaction.residual_divergence_linf < 1.0e-8
+    assert with_diagnostics.metrics["diagnostics_valid"] == 1.0
+    assert with_diagnostics.metrics["force_admissible"] == 0.0
+    assert "probe_fd_power_residual" in with_diagnostics.metrics
+
+
+def test_attach_force_diagnostics_fails_closed_for_invalid_candidate():
+    grid, backend, fccd = _setup(12, 12)
+    cell_area = _cell_area(grid)
+    admission = build_phase_region_force_admission_candidate(
+        xp=backend.xp,
+        grid=grid,
+        fccd=fccd,
+        psi=_ellipse_psi(grid),
+        q_source=0.25 * cell_area,
+        cell_area=cell_area,
+        source_phase=CellMeasurePhase.LIQUID,
+        owner_phase=CellMeasurePhase.GAS,
+        rho_l=10.0,
+        rho_g=2.0,
+        sigma=0.072,
+        runtime_steps=1,
+    )
+
+    with_diagnostics = attach_phase_region_force_diagnostics(
+        xp=backend.xp,
+        grid=grid,
+        fccd=fccd,
+        div_op=FCCDDivergenceOperator(fccd),
+        admission=admission,
+    )
+
+    assert not with_diagnostics.valid
+    assert with_diagnostics.force_admissible is False
+    assert with_diagnostics.diagnostics is not None
+    assert with_diagnostics.diagnostics.reason == "candidate_not_valid"
+    assert with_diagnostics.metrics["diagnostics_valid"] == 0.0
 
 
 def test_phase_region_face_metric_rejects_cell_density_shape():

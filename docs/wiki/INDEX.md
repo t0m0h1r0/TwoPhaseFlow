@@ -1,4 +1,4 @@
-# Wiki Index — 429 entries
+# Wiki Index — 430 entries
 
 ## Active Retrieval Gate
 
@@ -124,6 +124,10 @@ Use [WIKI-L-062](code/WIKI-L-062.md) before adding diagnostic work/Hodge
 payloads or adapter experiments around PhaseRegion force candidates because it
 records the zero-step candidate object, fail-closed runtime-step and stratum
 guards, exact owner map, Riesz cochain assembly, and `force_admissible=false`.
+Use [WIKI-L-063](code/WIKI-L-063.md) before building candidate-focused
+zero-step adapter diagnostics because it attaches self/probe work checks,
+weighted Hodge decomposition, and component-reaction residuals to the same
+`PhaseRegionForceAdmission` while keeping `force_admissible=false`.
 Use [WIKI-E-071](experiment/WIKI-E-071.md) before implementing a PhaseRegion
 runtime dry-run adapter because it records that existing runtime
 `GeometricPhaseState.q` is liquid volume while the current PhaseRegion theory
@@ -570,7 +574,7 @@ support.
 | [WIKI-M-034](meta/WIKI-M-034.md) | Paper Review Revisions Should Reduce Cognitive Load, Not Add Decoration |
 | [WIKI-M-035](meta/WIKI-M-035.md) | Meta-Prompt Deployment Needs Project Boundaries, Native Adapters, and Token ROI Gates |
 
-## Code (62)
+## Code (63)
 
 | REF-ID | Title |
 |--------|-------|
@@ -636,3 +640,4 @@ support.
 | [WIKI-L-060](code/WIKI-L-060.md) | Ch14 PhaseRegion Force Adapter Boundary Design |
 | [WIKI-L-061](code/WIKI-L-061.md) | Ch14 PhaseRegion Force-Admission Helpers PASS |
 | [WIKI-L-062](code/WIKI-L-062.md) | Ch14 PhaseRegion Force-Admission Candidate PASS |
+| [WIKI-L-063](code/WIKI-L-063.md) | Ch14 PhaseRegion Force Diagnostics Payload PASS |
