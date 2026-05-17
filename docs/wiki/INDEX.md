@@ -1,4 +1,4 @@
-# Wiki Index — 443 entries
+# Wiki Index — 444 entries
 
 ## Active Retrieval Gate
 
@@ -200,6 +200,10 @@ Use [WIKI-E-078](experiment/WIKI-E-078.md) before extending the graph route
 from admission to force coupling, because it records the reduced PhaseRegion
 graph few-step PASS against the exact linear capillary wave while still
 withholding production face-force admission.
+Use [WIKI-E-079](experiment/WIKI-E-079.md) before claiming the closed-droplet
+route shares the same reduced dynamic PhaseRegion gate, because it records the
+oscillating-droplet closed-chart few-step PASS while preserving the production
+runtime face-history blocker and `force_admissible=0`.
 Before implementing or reviewing an
 established-theory change, use [WIKI-L-046](code/WIKI-L-046.md) as the
 equation-to-code contract gate. Older cards remain listed for
@@ -475,7 +479,7 @@ support.
 | [WIKI-X-055](cross-domain/WIKI-X-055.md) | Theory-First Deliberation Best Practices |
 | [WIKI-X-056](cross-domain/WIKI-X-056.md) | Ch14 Capillary Origin-Reset Handoff Protocol |
 
-## Experiment (78)
+## Experiment (79)
 
 | REF-ID | Title |
 |--------|-------|
@@ -557,6 +561,7 @@ support.
 | [WIKI-E-076](experiment/WIKI-E-076.md) | Ch14 Short Capillary/Droplet Runtime Probe |
 | [WIKI-E-077](experiment/WIKI-E-077.md) | Ch14 PhaseRegion Capillary Graph Dry-Run PASS |
 | [WIKI-E-078](experiment/WIKI-E-078.md) | Ch14 PhaseRegion Capillary Graph Few-Step PASS |
+| [WIKI-E-079](experiment/WIKI-E-079.md) | Ch14 PhaseRegion Oscillating Droplet Few-Step PASS |
 
 ## Paper (24)
 
