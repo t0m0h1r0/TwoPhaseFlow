@@ -1,4 +1,4 @@
-# Wiki Index — 408 entries
+# Wiki Index — 409 entries
 
 ## Active Retrieval Gate
 
@@ -71,7 +71,10 @@ attempt because it records the first runtime-facing q-manifold admission
 snapshot and keeps `force_admissible=0`; use
 [WIKI-T-176](theory/WIKI-T-176.md) before force-coupling or multi-component
 interface design because it lifts ownership to `PhaseRegion/Omega_h` and
-treats graph/closed/open charts as an `InterfaceAtlas`. Before implementing or reviewing an
+treats graph/closed/open charts as an `InterfaceAtlas`; use
+[WIKI-T-177](theory/WIKI-T-177.md) before force coupling because it fixes the
+PhaseRegion variational axioms and requires a mixed closed-bubble/top-layer
+atlas smoke oracle first. Before implementing or reviewing an
 established-theory change, use [WIKI-L-046](code/WIKI-L-046.md) as the
 equation-to-code contract gate. Older cards remain listed for
 provenance, but cards marked
@@ -103,7 +106,7 @@ reading order, evidence boundaries, and rendered convergence. For paper citation
 claim-level source verification and are placed at the manuscript claim they
 support.
 
-## Theory (176)
+## Theory (177)
 
 | REF-ID | Title |
 |--------|-------|
@@ -283,6 +286,7 @@ support.
 | [WIKI-T-174](theory/WIKI-T-174.md) | Capillary State Ownership: Interface Configuration or Cell Volume |
 | [WIKI-T-175](theory/WIKI-T-175.md) | Fast Vectorized Manifold Projection for Ch14 Capillary Charts |
 | [WIKI-T-176](theory/WIKI-T-176.md) | PhaseRegion-Primary InterfaceAtlas for Multi-Component Ch14 Capillarity |
+| [WIKI-T-177](theory/WIKI-T-177.md) | PhaseRegion Variational Axioms Before Ch14 Force Coupling |
 
 ## Cross-Domain (56)
 
