@@ -11,6 +11,8 @@ sources:
     description: "Runtime force dry-run with G0-G3 pressure/velocity gate metrics"
   - path: artifacts/A/ch14_pressure_velocity_g4_face_force_admission_CHK-RA-CH14-VAR-047.md
     description: "Runtime dry-run with G4 face-force admission metrics"
+  - path: artifacts/A/ch14_pressure_velocity_g5_face_force_projection_probe_CHK-RA-CH14-VAR-048.md
+    description: "Runtime dry-run with G5 zero-step face-force projection probe metrics"
   - path: experiment/ch14/diagnose_phase_region_runtime_force_dry_run.py
     description: "Zero-step runtime force dry-run diagnostic"
 depends_on:
@@ -52,6 +54,7 @@ G1 pressure range under the same M_f
 G2 scalar work closure
 G3 explicit face-array projection identity
 G4 face-force admission
+G5 admitted face-force projection probe
 ```
 
 The pressure input for these gates is the Hodge range component from the same
@@ -65,7 +68,9 @@ face-shaped payload:
 face_force_components = s_f
 ```
 
-The runtime solver still does not consume that payload.
+G5 consumes that payload only as a zero-step face-array probe and returns
+projected face arrays; the runtime solver still does not update velocity or
+state.
 
 ## Validation
 
@@ -92,7 +97,7 @@ reaction_residual_divergence_linf = 2.313299773959e-09
 force_admissible               = 0.0
 ```
 
-Updated G0--G4 metrics:
+Updated G0--G5 metrics:
 
 ```text
 g0_valid                       = 1.000000000000e+00
@@ -100,11 +105,14 @@ g1_valid                       = 1.000000000000e+00
 g2_valid                       = 1.000000000000e+00
 g3_valid                       = 1.000000000000e+00
 g4_valid                       = 1.000000000000e+00
+g5_valid                       = 1.000000000000e+00
 pressure_hodge_weighted_l2     = 1.216174229615e-14
 work_closure_residual          = 2.481405282624e-07
 projection_identity_linf       = 2.081668171172e-17
 face_force_exposed             = 1.000000000000e+00
+face_force_consumed            = 1.000000000000e+00
 surface_update_consistency_residual = 0.000000000000e+00
+face_projection_identity_linf  = 2.081668171172e-17
 force_admissible               = 1.0
 ```
 
@@ -124,9 +132,9 @@ uses the runtime nodal `psi` density and scales the virtual displacement to
 
 ## Boundary
 
-This authorizes only a zero-step runtime diagnostic and a production-adjacent
-face-force payload after G0--G4.  It does not authorize pressure/velocity
-runtime coupling, nonlinear optimization, micro-stepping, or T/8.  The next
-gate is an explicit face-force consumer or single-step probe that accepts
-`face_force_components` directly and does not use the nodal `force_components`
-route.
+This authorizes only a zero-step runtime diagnostic, a production-adjacent
+face-force payload after G0--G4, and a zero-step G5 face projection probe.  It
+does not authorize pressure/velocity runtime coupling, velocity
+reconstruction/update, nonlinear optimization, micro-stepping, or T/8.  The
+next gate is a controlled single-step probe that accepts projected face arrays
+directly and does not use the nodal `force_components` route.

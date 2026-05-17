@@ -125,6 +125,20 @@ class PhaseRegionPressureVelocityG4Report:
     metrics: dict[str, float]
 
 
+@dataclass(frozen=True)
+class PhaseRegionPressureVelocityG5Report:
+    """Zero-step consumer probe for an admitted face force."""
+
+    valid: bool
+    reason: str
+    force_admissible: bool
+    projected_face_components: tuple[object, ...] | None
+    projected_face_shapes: tuple[tuple[int, ...], ...]
+    projection_identity_linf: float
+    projected_weighted_l2: float
+    metrics: dict[str, float]
+
+
 def build_phase_region_pressure_velocity_g0_report(
     *,
     xp,
@@ -694,6 +708,88 @@ def build_phase_region_pressure_velocity_g4_report(
     )
 
 
+def build_phase_region_pressure_velocity_g5_report(
+    *,
+    xp,
+    admission: PhaseRegionForceAdmission,
+    g4_report: PhaseRegionPressureVelocityG4Report,
+    runtime_face_velocity_components,
+    pressure_face_components,
+    dt: float,
+    projection_tolerance: float = 1.0e-12,
+) -> PhaseRegionPressureVelocityG5Report:
+    """Consume an admitted face force without nodal reconstruction or state update."""
+    if not g4_report.valid:
+        return _invalid_g5_report(reason=f"g4:{g4_report.reason}")
+    if not g4_report.force_admissible or g4_report.face_force_components is None:
+        return _invalid_g5_report(reason="g4_force_not_admissible")
+    if not admission.valid or admission.face_metric is None:
+        return _invalid_g5_report(reason=f"candidate:{admission.reason}")
+    dt_value = float(dt)
+    tol = float(projection_tolerance)
+    if not np.isfinite(dt_value) or dt_value <= 0.0:
+        return _invalid_g5_report(reason="dt_invalid")
+    if not np.isfinite(tol) or tol < 0.0:
+        return _invalid_g5_report(reason="projection_tolerance_invalid")
+
+    velocity_faces = tuple(xp.asarray(face) for face in runtime_face_velocity_components)
+    pressure_faces = tuple(xp.asarray(face) for face in pressure_face_components)
+    force_faces = tuple(xp.asarray(face) for face in g4_report.face_force_components)
+    weights = tuple(
+        xp.asarray(weight) for weight in admission.face_metric.face_weight_components
+    )
+    force_shapes = tuple(g4_report.face_force_shapes)
+    if _component_shapes(velocity_faces) != force_shapes:
+        return _invalid_g5_report(reason="velocity_face_shape_mismatch")
+    if _component_shapes(pressure_faces) != force_shapes:
+        return _invalid_g5_report(reason="pressure_face_shape_mismatch")
+    if _component_shapes(force_faces) != force_shapes:
+        return _invalid_g5_report(reason="force_face_shape_mismatch")
+    if _component_shapes(weights) != force_shapes:
+        return _invalid_g5_report(reason="metric_face_shape_mismatch")
+
+    projected_faces = tuple(
+        apply_pressure_projection(
+            list(velocity_faces),
+            list(pressure_faces),
+            list(force_faces),
+            dt_value,
+        )
+    )
+    balance = [
+        xp.asarray(projected)
+        - xp.asarray(velocity)
+        + dt_value * xp.asarray(pressure)
+        - dt_value * xp.asarray(force)
+        for projected, velocity, pressure, force in zip(
+            projected_faces,
+            velocity_faces,
+            pressure_faces,
+            force_faces,
+        )
+    ]
+    identity_linf = _component_linf(xp, balance)
+    valid = bool(identity_linf <= tol)
+    reason = "ok" if valid else "projection_identity_linf"
+    metrics = {
+        "g5_valid": float(valid),
+        "force_admissible": 1.0 if valid else 0.0,
+        "face_force_consumed": 1.0 if valid else 0.0,
+        "face_projection_identity_linf": float(identity_linf),
+        "face_projected_weighted_l2": _weighted_l2(xp, projected_faces, weights),
+    }
+    return PhaseRegionPressureVelocityG5Report(
+        valid=valid,
+        reason=reason,
+        force_admissible=valid,
+        projected_face_components=projected_faces if valid else None,
+        projected_face_shapes=_component_shapes(projected_faces) if valid else (),
+        projection_identity_linf=float(identity_linf),
+        projected_weighted_l2=metrics["face_projected_weighted_l2"],
+        metrics=metrics,
+    )
+
+
 def _invalid_g0_report(
     *,
     reason: str,
@@ -801,6 +897,23 @@ def _invalid_g4_report(*, reason: str) -> PhaseRegionPressureVelocityG4Report:
             "g4_valid": 0.0,
             "force_admissible": 0.0,
             "face_force_exposed": 0.0,
+        },
+    )
+
+
+def _invalid_g5_report(*, reason: str) -> PhaseRegionPressureVelocityG5Report:
+    return PhaseRegionPressureVelocityG5Report(
+        valid=False,
+        reason=str(reason),
+        force_admissible=False,
+        projected_face_components=None,
+        projected_face_shapes=(),
+        projection_identity_linf=float("nan"),
+        projected_weighted_l2=float("nan"),
+        metrics={
+            "g5_valid": 0.0,
+            "force_admissible": 0.0,
+            "face_force_consumed": 0.0,
         },
     )
 

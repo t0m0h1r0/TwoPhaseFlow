@@ -31,6 +31,7 @@ from twophase.coupling.phase_region_force_admission import (
 from twophase.geometry import CellMeasurePhase
 from twophase.simulation.divergence_ops import FCCDDivergenceOperator
 from twophase.simulation.phase_region_work_gate import (
+    build_phase_region_pressure_velocity_g5_report,
     build_phase_region_pressure_velocity_g4_report,
     build_phase_region_pressure_velocity_g3_report,
     build_phase_region_pressure_velocity_g2_report,
@@ -291,6 +292,68 @@ def _valid_pressure_velocity_gate_chain():
     assert g2.valid, g2.reason
     assert g3.valid, g3.reason
     return grid, backend, admission, decision, g0, g1, g2, g3
+
+
+def _valid_pressure_velocity_g4_chain_with_faces():
+    grid, backend, fccd, admission, report = _valid_admission_and_report()
+    decision = build_phase_region_force_adapter_decision(
+        admission=admission,
+        report=report,
+    )
+    div_op = FCCDDivergenceOperator(fccd)
+    xp = backend.xp
+    velocity_faces = admission.diagnostics.self_velocity.face_velocity_components
+    pressure_range_faces = _manufactured_pressure_range_faces(
+        backend,
+        div_op,
+        admission,
+    )
+    g0 = build_phase_region_pressure_velocity_g0_report(
+        xp=xp,
+        admission=admission,
+        decision=decision,
+        runtime_face_velocity_components=velocity_faces,
+        pressure_face_components=pressure_range_faces,
+        bc_type=fccd.bc_type,
+        boundary_face_space="full_face",
+    )
+    g1 = build_phase_region_pressure_velocity_g1_report(
+        xp=xp,
+        div_op=div_op,
+        admission=admission,
+        g0_report=g0,
+        pressure_face_components=pressure_range_faces,
+    )
+    g2 = build_phase_region_pressure_velocity_g2_report(
+        xp=xp,
+        grid=grid,
+        fccd=fccd,
+        admission=admission,
+        g0_report=g0,
+        g1_report=g1,
+        runtime_face_velocity_components=velocity_faces,
+    )
+    g3 = build_phase_region_pressure_velocity_g3_report(
+        xp=xp,
+        admission=admission,
+        g0_report=g0,
+        g1_report=g1,
+        g2_report=g2,
+        runtime_face_velocity_components=velocity_faces,
+        pressure_face_components=pressure_range_faces,
+        dt=2.5e-4,
+    )
+    g4 = build_phase_region_pressure_velocity_g4_report(
+        xp=xp,
+        admission=admission,
+        adapter_decision=decision,
+        g0_report=g0,
+        g1_report=g1,
+        g2_report=g2,
+        g3_report=g3,
+    )
+    assert g4.valid, g4.reason
+    return grid, backend, admission, velocity_faces, pressure_range_faces, g4
 
 
 def test_two_phase_nodal_density_matches_runtime_indicator_formula():
@@ -1354,6 +1417,101 @@ def test_pressure_velocity_g4_report_rejects_pre_admitted_adapter_decision():
     assert g4.reason == "adapter_force_admissible_true"
     assert g4.force_admissible is False
     assert g4.face_force_components is None
+
+
+def test_pressure_velocity_g5_report_consumes_admitted_face_force():
+    (
+        _grid,
+        backend,
+        admission,
+        velocity_faces,
+        pressure_faces,
+        g4,
+    ) = _valid_pressure_velocity_g4_chain_with_faces()
+    dt = 2.5e-4
+
+    g5 = build_phase_region_pressure_velocity_g5_report(
+        xp=backend.xp,
+        admission=admission,
+        g4_report=g4,
+        runtime_face_velocity_components=velocity_faces,
+        pressure_face_components=pressure_faces,
+        dt=dt,
+    )
+
+    assert g5.valid, g5.reason
+    assert g5.force_admissible is True
+    assert g5.projected_face_components is not None
+    assert g5.projected_face_shapes == g4.face_force_shapes
+    for projected, velocity, pressure, force in zip(
+        g5.projected_face_components,
+        velocity_faces,
+        pressure_faces,
+        g4.face_force_components,
+        strict=True,
+    ):
+        expected = np.asarray(velocity) - dt * np.asarray(pressure) + dt * np.asarray(force)
+        np.testing.assert_allclose(projected, expected)
+    assert g5.projection_identity_linf <= 1.0e-12
+    assert g5.projected_weighted_l2 > 0.0
+    assert g5.metrics["g5_valid"] == 1.0
+    assert g5.metrics["face_force_consumed"] == 1.0
+    assert g5.metrics["force_admissible"] == 1.0
+
+
+def test_pressure_velocity_g5_report_rejects_nodal_velocity_route():
+    (
+        grid,
+        backend,
+        admission,
+        _velocity_faces,
+        pressure_faces,
+        g4,
+    ) = _valid_pressure_velocity_g4_chain_with_faces()
+    nodal_velocity = [
+        np.zeros(tuple(grid.shape), dtype=float),
+        np.zeros(tuple(grid.shape), dtype=float),
+    ]
+
+    g5 = build_phase_region_pressure_velocity_g5_report(
+        xp=backend.xp,
+        admission=admission,
+        g4_report=g4,
+        runtime_face_velocity_components=nodal_velocity,
+        pressure_face_components=pressure_faces,
+        dt=2.5e-4,
+    )
+
+    assert not g5.valid
+    assert g5.reason == "velocity_face_shape_mismatch"
+    assert g5.force_admissible is False
+    assert g5.projected_face_components is None
+
+
+def test_pressure_velocity_g5_report_rejects_invalid_g4_admission():
+    (
+        _grid,
+        backend,
+        admission,
+        velocity_faces,
+        pressure_faces,
+        g4,
+    ) = _valid_pressure_velocity_g4_chain_with_faces()
+    invalid_g4 = replace(g4, valid=False, reason="work_closure_residual")
+
+    g5 = build_phase_region_pressure_velocity_g5_report(
+        xp=backend.xp,
+        admission=admission,
+        g4_report=invalid_g4,
+        runtime_face_velocity_components=velocity_faces,
+        pressure_face_components=pressure_faces,
+        dt=2.5e-4,
+    )
+
+    assert not g5.valid
+    assert g5.reason == "g4:work_closure_residual"
+    assert g5.force_admissible is False
+    assert g5.projected_face_components is None
 
 
 def test_phase_region_face_metric_rejects_cell_density_shape():

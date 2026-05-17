@@ -1,4 +1,4 @@
-# Wiki Index — 439 entries
+# Wiki Index — 440 entries
 
 ## Active Retrieval Gate
 
@@ -160,6 +160,10 @@ Use [WIKI-L-072](code/WIKI-L-072.md) before implementing any explicit
 face-force consumer because it records the G4 admission boundary:
 `force_admissible=true` may expose only face-shaped `s_f`, not nodal
 `force_components`, projected faces, or runtime coupling.
+Use [WIKI-L-073](code/WIKI-L-073.md) before any single-step probe because it
+records the G5 zero-step face-force projection consumer: admitted `s_f` may be
+consumed only as face arrays, returning projected faces without nodal
+reconstruction or state mutation.
 Use [WIKI-E-071](experiment/WIKI-E-071.md) before implementing a PhaseRegion
 runtime dry-run adapter because it records that existing runtime
 `GeometricPhaseState.q` is liquid volume while the current PhaseRegion theory
@@ -181,8 +185,8 @@ Use [WIKI-E-075](experiment/WIKI-E-075.md) before any PhaseRegion runtime
 force adapter, pressure/velocity coupling, micro-step, or T/8 probe because it
 validates the zero-step Ch14 runtime force dry-run with explicit `q_l -> q_g`
 ownership, runtime nodal-density face metric, fixed-stratum work pairing, and
-G0--G4 pressure/velocity gate metrics; the admitted payload is face-shaped
-`s_f` only and is not connected to runtime projection.
+G0--G5 pressure/velocity gate metrics; the admitted payload and projection
+probe remain face-shaped and are not connected to runtime velocity update.
 Before implementing or reviewing an
 established-theory change, use [WIKI-L-046](code/WIKI-L-046.md) as the
 equation-to-code contract gate. Older cards remain listed for
@@ -607,7 +611,7 @@ support.
 | [WIKI-M-034](meta/WIKI-M-034.md) | Paper Review Revisions Should Reduce Cognitive Load, Not Add Decoration |
 | [WIKI-M-035](meta/WIKI-M-035.md) | Meta-Prompt Deployment Needs Project Boundaries, Native Adapters, and Token ROI Gates |
 
-## Code (72)
+## Code (73)
 
 | REF-ID | Title |
 |--------|-------|
@@ -683,3 +687,4 @@ support.
 | [WIKI-L-070](code/WIKI-L-070.md) | Ch14 Pressure/Velocity G2 Work-Closure Gate PASS |
 | [WIKI-L-071](code/WIKI-L-071.md) | Ch14 Pressure/Velocity G3 Face-Projection Oracle PASS |
 | [WIKI-L-072](code/WIKI-L-072.md) | Ch14 Pressure/Velocity G4 Face-Force Admission PASS |
+| [WIKI-L-073](code/WIKI-L-073.md) | Ch14 Pressure/Velocity G5 Face-Force Projection Probe PASS |

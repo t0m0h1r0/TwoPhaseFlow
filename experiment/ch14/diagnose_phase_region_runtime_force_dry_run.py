@@ -54,6 +54,7 @@ from twophase.simulation.phase_region_work_gate import (  # noqa: E402
     build_phase_region_pressure_velocity_g2_report,
     build_phase_region_pressure_velocity_g3_report,
     build_phase_region_pressure_velocity_g4_report,
+    build_phase_region_pressure_velocity_g5_report,
 )
 from twophase.tools.experiment import (  # noqa: E402
     apply_style,
@@ -324,6 +325,16 @@ def _compute(
     )
     if not g4.valid:
         raise AssertionError(f"runtime force G4 gate failed: {g4.reason}")
+    g5 = build_phase_region_pressure_velocity_g5_report(
+        xp=xp,
+        admission=admission,
+        g4_report=g4,
+        runtime_face_velocity_components=gate_velocity,
+        pressure_face_components=gate_pressure_faces,
+        dt=float(projection_dt),
+    )
+    if not g5.valid:
+        raise AssertionError(f"runtime force G5 gate failed: {g5.reason}")
 
     x_edges = np.asarray(grid.coords[0], dtype=float)
     y_edges = np.asarray(grid.coords[1], dtype=float)
@@ -333,6 +344,7 @@ def _compute(
     metrics.update(g2.metrics)
     metrics.update(g3.metrics)
     metrics.update(g4.metrics)
+    metrics.update(g5.metrics)
     metrics.update(
         {
             "runtime_steps": 0.0,
@@ -542,6 +554,10 @@ def _print_summary(results: dict[str, object], figure_path: pathlib.Path) -> Non
         "face_force_exposed",
         "face_force_weighted_l2",
         "surface_update_consistency_residual",
+        "g5_valid",
+        "face_force_consumed",
+        "face_projection_identity_linf",
+        "face_projected_weighted_l2",
         "projection_dt",
         "force_admissible",
     ):
