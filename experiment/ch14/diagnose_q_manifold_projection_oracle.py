@@ -30,7 +30,16 @@ sys.path.insert(0, str(ROOT / "src"))
 from twophase.backend import Backend  # noqa: E402
 from twophase.config import GridConfig  # noqa: E402
 from twophase.core.grid import Grid  # noqa: E402
-from twophase.geometry.p1_cut_geometry import cut_geometry_2d  # noqa: E402
+from twophase.geometry.interface_charts import (  # noqa: E402
+    eta_from_cosine_modes,
+    periodic_mode_basis,
+)
+from twophase.geometry.q_manifold_projection import (  # noqa: E402
+    column_height_from_q,
+    graph_force_projection,
+    graph_q_from_eta,
+    project_graph_q_f0,
+)
 from twophase.tools.experiment import (  # noqa: E402
     COLORS,
     apply_style,
@@ -46,94 +55,11 @@ apply_style()
 OUT = experiment_dir(__file__)
 NPZ = OUT / "data.npz"
 
-
-def _mode_basis(x: np.ndarray, *, mode: int) -> tuple[np.ndarray, np.ndarray]:
-    phase = 2.0 * np.pi * int(mode) * x
-    return np.cos(phase), np.sin(phase)
-
-
 def _weighted_projection(values: np.ndarray, basis: np.ndarray, weights: np.ndarray) -> float:
     denom = float(np.sum(weights * basis * basis))
     if denom <= 0.0:
         return 0.0
     return float(np.sum(weights * values * basis) / denom)
-
-
-def _eta_from_modes(
-    x: np.ndarray,
-    *,
-    base_height: float,
-    modes: tuple[tuple[int, float], ...],
-) -> np.ndarray:
-    eta = np.full_like(x, float(base_height), dtype=float)
-    for mode, amplitude in modes:
-        eta = eta + float(amplitude) * np.cos(2.0 * np.pi * int(mode) * x)
-    return eta
-
-
-def _graph_energy_and_gradient(
-    x_edges: np.ndarray,
-    eta_unique: np.ndarray,
-    *,
-    sigma: float,
-) -> tuple[float, np.ndarray, np.ndarray]:
-    dx = np.diff(x_edges)
-    eta_next = np.roll(eta_unique, -1)
-    d_eta = eta_next - eta_unique
-    segment_length = np.sqrt(dx * dx + d_eta * d_eta)
-    slope_right = d_eta / segment_length
-    slope_left = np.roll(slope_right, 1)
-    nodal_gradient = float(sigma) * (slope_left - slope_right)
-    weights = 0.5 * (dx + np.roll(dx, 1))
-    return float(sigma) * float(np.sum(segment_length)), nodal_gradient, weights
-
-
-def _p1_q_for_eta(grid: Grid, eta_nodes: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    y_nodes = np.asarray(grid.coords[1], dtype=float)
-    _x, y = np.meshgrid(np.asarray(grid.coords[0], dtype=float), y_nodes, indexing="ij")
-    phi = y - eta_nodes.reshape((-1, 1))
-    geometry = cut_geometry_2d(grid, phi, level=0.0)
-    return np.asarray(geometry.q, dtype=float), phi
-
-
-def _column_height(grid: Grid, q: np.ndarray) -> np.ndarray:
-    dx = np.diff(np.asarray(grid.coords[0], dtype=float))
-    return np.sum(np.asarray(q, dtype=float), axis=1) / dx
-
-
-def _project_column_height_to_eta(
-    grid: Grid,
-    q_target: np.ndarray,
-    *,
-    max_mode: int,
-) -> tuple[np.ndarray, dict[str, float]]:
-    """Project ``q_T`` to a low-mode graph by matching column-volume modes."""
-    x_edges = np.asarray(grid.coords[0], dtype=float)
-    x_center = 0.5 * (x_edges[:-1] + x_edges[1:])
-    dx = np.diff(x_edges)
-    height = _column_height(grid, q_target)
-    mean = float(np.sum(dx * height) / np.sum(dx))
-    eta = np.full_like(x_edges, mean, dtype=float)
-    coeffs: dict[str, float] = {"mean": mean}
-    centered = height - mean
-    n = int(height.size)
-    for mode in range(1, int(max_mode) + 1):
-        cos_c, sin_c = _mode_basis(x_center, mode=mode)
-        cos_coef_center = _weighted_projection(centered, cos_c, dx)
-        sin_coef_center = _weighted_projection(centered, sin_c, dx)
-        cell_average_factor = np.cos(np.pi * mode / n)
-        if abs(cell_average_factor) < 1.0e-14:
-            cos_coef = 0.0
-            sin_coef = 0.0
-        else:
-            cos_coef = cos_coef_center / cell_average_factor
-            sin_coef = sin_coef_center / cell_average_factor
-        cos_e, sin_e = _mode_basis(x_edges, mode=mode)
-        eta = eta + cos_coef * cos_e + sin_coef * sin_e
-        coeffs[f"cos_{mode}"] = float(cos_coef)
-        coeffs[f"sin_{mode}"] = float(sin_coef)
-    eta[-1] = eta[0]
-    return eta, coeffs
 
 
 def _add_zero_column_cell_residual(
@@ -180,27 +106,31 @@ def _case_metrics(
     x_edges = np.asarray(grid.coords[0], dtype=float)
     x_unique = x_edges[:-1]
     dx = np.diff(x_edges)
-    eta_star, coeffs = _project_column_height_to_eta(grid, q_target, max_mode=max_mode)
-    q_phys, _phi_star = _p1_q_for_eta(grid, eta_star)
-    residual = q_target - q_phys
-    residual_column = np.sum(residual, axis=1) / dx
-    energy, gradient, weights = _graph_energy_and_gradient(
-        x_edges,
-        eta_star[:-1],
+    projection = project_graph_q_f0(
+        grid,
+        q_target,
+        max_mode=max_mode,
         sigma=sigma,
     )
-    variation = gradient / weights
-    force = -variation
-    cos_force, _sin_force = _mode_basis(x_unique, mode=force_mode)
+    eta_star = np.asarray(projection.gamma_state.eta, dtype=float)
+    q_phys = np.asarray(projection.q_phys, dtype=float)
+    residual = np.asarray(projection.residual, dtype=float)
+    residual_column = column_height_from_q(grid, residual)
+    energy = float(projection.energy_report["surface_energy"])
+    weights = np.asarray(projection.energy_report["weights"], dtype=float)
+    cos_force, _sin_force = periodic_mode_basis(x_unique, mode=force_mode)
     eta_mode = _weighted_projection(
         eta_star[:-1] - float(np.sum(dx * eta_star[:-1]) / np.sum(dx)),
         cos_force,
         weights,
     )
-    force_projection = _weighted_projection(force, cos_force, weights)
-    q_norm = float(np.sqrt(np.sum(q_target * q_target)))
-    residual_norm = float(np.sqrt(np.sum(residual * residual)))
+    force_projection = graph_force_projection(
+        projection.energy_report,
+        x_edges,
+        mode=force_mode,
+    )
     reference_delta = eta_star - eta_reference
+    coeffs = projection.gamma_state.coefficient_map()
     return {
         "name": name,
         "eta_star": eta_star,
@@ -209,9 +139,9 @@ def _case_metrics(
         "residual": residual,
         "residual_column": residual_column,
         "energy": energy,
-        "residual_l2": residual_norm,
-        "residual_rel": residual_norm / max(q_norm, 1.0e-30),
-        "residual_column_linf": float(np.max(np.abs(residual_column))),
+        "residual_l2": projection.residual_report.l2,
+        "residual_rel": projection.residual_report.relative_l2,
+        "residual_column_linf": projection.residual_report.column_linf,
         "eta_delta_linf": float(np.max(np.abs(reference_delta))),
         "eta_mode": eta_mode,
         "force_mode": force_projection,
@@ -231,12 +161,12 @@ def _compute(args) -> dict:
     y_edges = np.asarray(grid.coords[1], dtype=float)
     cell_area = dx[:, None] * np.diff(y_edges)[None, :]
 
-    eta_clean = _eta_from_modes(
+    eta_clean = eta_from_cosine_modes(
         x_edges,
         base_height=float(args.base_height),
         modes=((int(args.base_mode), float(args.base_amplitude)),),
     )
-    eta_low = _eta_from_modes(
+    eta_low = eta_from_cosine_modes(
         x_edges,
         base_height=float(args.base_height),
         modes=(
@@ -244,8 +174,8 @@ def _compute(args) -> dict:
             (int(args.low_mode), float(args.low_amplitude)),
         ),
     )
-    q_clean, _phi_clean = _p1_q_for_eta(grid, eta_clean)
-    q_low, _phi_low = _p1_q_for_eta(grid, eta_low)
+    q_clean = graph_q_from_eta(grid, eta_clean).q
+    q_low = graph_q_from_eta(grid, eta_low).q
     q_high = _add_zero_column_cell_residual(
         grid,
         q_clean,

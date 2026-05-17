@@ -1,4 +1,4 @@
-# Wiki Index — 403 entries
+# Wiki Index — 404 entries
 
 ## Active Retrieval Gate
 
@@ -58,7 +58,9 @@ because it defines the vectorized F0/F1 fast path and keeps full nonlinear
 optimization as an oracle/fail-close tool only; use
 [WIKI-L-047](code/WIKI-L-047.md) before writing projection helpers or runtime
 adapters, because it fixes the implementation layers, public result object,
-backend boundary, and no-code-before-oracle gates. Before implementing or reviewing an
+backend boundary, and no-code-before-oracle gates; use
+[WIKI-L-048](code/WIKI-L-048.md) as the validated graph helper baseline before
+closed radial residual-classification work. Before implementing or reviewing an
 established-theory change, use [WIKI-L-046](code/WIKI-L-046.md) as the
 equation-to-code contract gate. Older cards remain listed for
 provenance, but cards marked
@@ -471,7 +473,7 @@ support.
 | [WIKI-M-034](meta/WIKI-M-034.md) | Paper Review Revisions Should Reduce Cognitive Load, Not Add Decoration |
 | [WIKI-M-035](meta/WIKI-M-035.md) | Meta-Prompt Deployment Needs Project Boundaries, Native Adapters, and Token ROI Gates |
 
-## Code (47)
+## Code (48)
 
 | REF-ID | Title |
 |--------|-------|
@@ -522,3 +524,4 @@ support.
 | [WIKI-L-045](code/WIKI-L-045.md) | AO-Fast GPU Efficiency Bottleneck Is Fixed-Loop Geometry Compatibility |
 | [WIKI-L-046](code/WIKI-L-046.md) | Theory-Established Implementation Review Gate |
 | [WIKI-L-047](code/WIKI-L-047.md) | Ch14 q-Manifold Projection Implementation Contract |
+| [WIKI-L-048](code/WIKI-L-048.md) | Ch14 Graph q-Manifold Helper Implementation PASS |
