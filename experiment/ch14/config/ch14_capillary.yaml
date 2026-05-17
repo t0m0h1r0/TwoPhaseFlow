@@ -84,6 +84,8 @@ run:
   momentum_form: conservative_common_flux
   time:
     # Paper-facing one continuum free-slip capillary-wave period.
+    # This is the default production-route run target; quarter/short probes
+    # should override --final-time from the runner instead of changing YAML.
     final: 0.046742983863
     # Multiplier on theory CFL constants; 1.0 uses the theory budget.
     cfl: 1.0

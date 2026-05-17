@@ -1,4 +1,4 @@
-# Wiki Index — 447 entries
+# Wiki Index — 448 entries
 
 ## Active Retrieval Gate
 
@@ -211,6 +211,10 @@ Use [WIKI-E-081](experiment/WIKI-E-081.md) before citing the production
 capillary-wave `T/4` pressure/velocity visualization run because it records the
 runtime command, quarter-period metrics, pulled velocity/pressure PDFs, and the
 scalar-pressure diagnostic boundary.
+Use [WIKI-E-082](experiment/WIKI-E-082.md) before citing the production
+capillary-wave YAML default one-period run because it records the YAML
+one-period target, no-override command, full-cycle metrics, and comment-only
+config boundary.
 Use [WIKI-L-074](code/WIKI-L-074.md) before optimizing or reviewing the
 PhaseRegion graph GPU route because it records the exact graph column-integral
 hot path, the device-aware owner/measurement reductions, and the validated
@@ -490,7 +494,7 @@ support.
 | [WIKI-X-055](cross-domain/WIKI-X-055.md) | Theory-First Deliberation Best Practices |
 | [WIKI-X-056](cross-domain/WIKI-X-056.md) | Ch14 Capillary Origin-Reset Handoff Protocol |
 
-## Experiment (81)
+## Experiment (82)
 
 | REF-ID | Title |
 |--------|-------|
@@ -575,6 +579,7 @@ support.
 | [WIKI-E-079](experiment/WIKI-E-079.md) | Ch14 PhaseRegion Oscillating Droplet Few-Step PASS |
 | [WIKI-E-080](experiment/WIKI-E-080.md) | Ch14 PhaseRegion Capillary Graph 1/16 Period PASS |
 | [WIKI-E-081](experiment/WIKI-E-081.md) | Ch14 Production Capillary T/4 Pressure/Velocity PASS |
+| [WIKI-E-082](experiment/WIKI-E-082.md) | Ch14 Production Capillary YAML One-Period PASS |
 
 ## Paper (24)
 
