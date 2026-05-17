@@ -6,8 +6,10 @@
 # free-slip rigid-wall continuum reference omega=134.419859151 and
 # T=0.046742983863 s.  The paper production window follows this linear
 # capillary-wave period: upper crest -> flat -> lower crest -> flat -> upper crest.
-# Production numerical stack: active-geometry capillary decomposition + FCCD PPE +
+# Legacy production-runtime numerical stack: active-geometry capillary decomposition + FCCD PPE +
 # bundle Young-Laplace work + UCCD6.
+# The new PhaseRegion graph route uses routes/ch14_phase_region_capillary_graph.yaml
+# and diagnose_phase_region_capillary_graph_steps.py instead of experiment/run.py.
 # - Active geometry: q is the transported physical cell volume, theta is its normalized
 #   view, and phi is the P1 gauge used only for geometric compatibility.
 # - FCCD: pressure gradient/PPE stay on the variational FCCD route.

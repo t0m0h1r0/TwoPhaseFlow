@@ -48,3 +48,6 @@ Pulled PDFs include amplitude/volume/kinetic histories and
 The YAML change is comment-only: it changes no physics, numerics, CFL,
 tolerance, solver route, or output directory.  Pressure snapshots are scalar
 gauge diagnostics, not the full AO pressure-reaction face cochain.
+
+This is legacy production-runtime evidence.  It is not the new PhaseRegion
+graph route; use WIKI-E-083 for the corrected new-route YAML one-period run.

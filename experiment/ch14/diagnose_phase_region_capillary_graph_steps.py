@@ -29,6 +29,7 @@ from dataclasses import dataclass
 import pathlib
 import sys
 import time
+from typing import Any
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -59,6 +60,7 @@ from twophase.geometry import (  # noqa: E402
     map_cell_measure_to_phase_owner,
 )
 from twophase.levelset.heaviside import heaviside  # noqa: E402
+from twophase.simulation.config_loader import require_pyyaml  # noqa: E402
 from twophase.simulation.config_models import ExperimentConfig  # noqa: E402
 from twophase.tools.experiment import (  # noqa: E402
     COLORS,
@@ -73,6 +75,8 @@ from twophase.tools.experiment import (  # noqa: E402
 apply_style()
 
 CONFIG = ROOT / "experiment/ch14/config/ch14_capillary.yaml"
+DEFAULT_STEPS = 8
+DEFAULT_DT = 2.0e-5
 OUT = experiment_dir(__file__)
 NPZ = OUT / "data.npz"
 
@@ -118,6 +122,89 @@ def _wave_from_config(cfg: ExperimentConfig) -> CapillaryWaveSpec:
         length=float(obj["length"]),
         phase=float(obj.get("phase", 0.0)),
     )
+
+
+def _load_phase_region_graph_config(
+    config_path: pathlib.Path,
+) -> tuple[ExperimentConfig, dict[str, Any]]:
+    """Load a full or wrapper YAML for the PhaseRegion graph route."""
+    yaml = require_pyyaml()
+    with pathlib.Path(config_path).open() as fh:
+        raw = yaml.safe_load(fh) or {}
+    if not isinstance(raw, dict):
+        raise ValueError("PhaseRegion graph config must be a YAML mapping")
+
+    if "base_config" in raw:
+        base_path = pathlib.Path(str(raw["base_config"]))
+        if not base_path.is_absolute():
+            base_path = pathlib.Path(config_path).parent / base_path
+        cfg = ExperimentConfig.from_yaml(base_path)
+        route = raw.get("phase_region_graph", {})
+    else:
+        cfg = ExperimentConfig.from_yaml(config_path)
+        route = raw.get("phase_region_graph", {})
+    if route is None:
+        route = {}
+    if not isinstance(route, dict):
+        raise ValueError("phase_region_graph section must be a YAML mapping")
+    return cfg, dict(route)
+
+
+def _route_section(route: dict[str, Any], name: str) -> dict[str, Any]:
+    section = route.get(name, {})
+    if section is None:
+        return {}
+    if not isinstance(section, dict):
+        raise ValueError(f"phase_region_graph.{name} must be a YAML mapping")
+    return dict(section)
+
+
+def _use_gpu_from_route(cli_use_gpu: bool | None, route: dict[str, Any]) -> bool:
+    if cli_use_gpu is not None:
+        return bool(cli_use_gpu)
+    backend = _route_section(route, "backend")
+    return bool(backend.get("use_gpu", False))
+
+
+def _step_count_from_route(
+    cli_steps: int | None,
+    route: dict[str, Any],
+) -> int:
+    if cli_steps is not None:
+        step_count = int(cli_steps)
+    else:
+        run = _route_section(route, "run")
+        if "steps" in run:
+            step_count = int(run["steps"])
+        elif "periods" in run and "steps_per_period" in run:
+            step_count = int(round(float(run["periods"]) * int(run["steps_per_period"])))
+        else:
+            step_count = DEFAULT_STEPS
+    if step_count <= 0:
+        raise ValueError("--steps or phase_region_graph.run.steps must be positive")
+    return step_count
+
+
+def _dt_from_route(
+    cli_dt: float | None,
+    route: dict[str, Any],
+    *,
+    modal: ModalGeometry,
+    step_count: int,
+) -> float:
+    if cli_dt is not None:
+        dt_value = float(cli_dt)
+    else:
+        run = _route_section(route, "run")
+        if "dt" in run:
+            dt_value = float(run["dt"])
+        elif "periods" in run:
+            dt_value = float(modal.period) * float(run["periods"]) / float(step_count)
+        else:
+            dt_value = DEFAULT_DT
+    if not np.isfinite(dt_value) or dt_value <= 0.0:
+        raise ValueError("--dt or phase_region_graph.run.dt must be positive and finite")
+    return dt_value
 
 
 def _grid_from_config(cfg: ExperimentConfig, *, use_gpu: bool = False) -> Grid:
@@ -423,34 +510,31 @@ def _measure_phase_region(
 def _compute(
     config_path: pathlib.Path,
     *,
-    steps: int,
-    dt: float,
+    steps: int | None,
+    dt: float | None,
     reference_amplitude_tolerance: float,
     reference_velocity_tolerance: float,
     energy_drift_tolerance: float,
     residual_tolerance: float,
     volume_tolerance: float,
     stiffness_probe_fraction: float,
-    use_gpu: bool,
+    use_gpu: bool | None,
 ) -> dict[str, object]:
-    cfg = ExperimentConfig.from_yaml(config_path)
+    cfg, route = _load_phase_region_graph_config(config_path)
     spec = _wave_from_config(cfg)
-    grid = _fit_grid_to_initial_graph(cfg, spec, use_gpu=bool(use_gpu))
+    route_use_gpu = _use_gpu_from_route(use_gpu, route)
+    grid = _fit_grid_to_initial_graph(cfg, spec, use_gpu=route_use_gpu)
     x_edges = np.asarray(grid.coords[0], dtype=float)
     y_edges = np.asarray(grid.coords[1], dtype=float)
-    cell_area = _cell_area(grid, device=bool(use_gpu))
+    cell_area = _cell_area(grid, device=route_use_gpu)
     modal = _modal_geometry(
         cfg,
         spec,
         x_edges,
         stiffness_probe_fraction=float(stiffness_probe_fraction),
     )
-    step_count = int(steps)
-    if step_count <= 0:
-        raise ValueError("--steps must be positive")
-    dt_value = float(dt)
-    if not np.isfinite(dt_value) or dt_value <= 0.0:
-        raise ValueError("--dt must be positive and finite")
+    step_count = _step_count_from_route(steps, route)
+    dt_value = _dt_from_route(dt, route, modal=modal, step_count=step_count)
 
     amplitude = float(spec.amplitude)
     velocity = 0.0
@@ -482,7 +566,7 @@ def _compute(
             amplitude=amplitude,
             cell_area=cell_area,
             sigma=sigma,
-            use_fast_graph_q=bool(use_gpu),
+            use_fast_graph_q=route_use_gpu,
         )
         surface_energy, _rate = _surface_energy_and_linear_rate(
             x_edges,
@@ -585,7 +669,7 @@ def _compute(
         "phase_region_graph_steps_admitted": 1.0,
         "force_admissible": 0.0,
         "step_backend_gpu": 1.0 if grid.backend.is_gpu() else 0.0,
-        "q_measurement_fast_column_integral": 1.0 if bool(use_gpu) else 0.0,
+        "q_measurement_fast_column_integral": 1.0 if route_use_gpu else 0.0,
         "mean_step_wall_seconds": float(np.mean(step_wall_times)),
         "max_step_wall_seconds": float(np.max(step_wall_times)),
         "target_step_wall_seconds": 2.0e-1,
@@ -715,15 +799,15 @@ def _plot(results: dict[str, object]) -> pathlib.Path:
 def main() -> None:
     parser = experiment_argparser("Ch14 PhaseRegion capillary graph few-step experiment")
     parser.add_argument("--config", default=str(CONFIG))
-    parser.add_argument("--steps", type=int, default=8)
-    parser.add_argument("--dt", type=float, default=2.0e-5)
+    parser.add_argument("--steps", type=int, default=None)
+    parser.add_argument("--dt", type=float, default=None)
     parser.add_argument("--reference-amplitude-tolerance", type=float, default=5.0e-10)
     parser.add_argument("--reference-velocity-tolerance", type=float, default=5.0e-8)
     parser.add_argument("--energy-drift-tolerance", type=float, default=2.0e-5)
     parser.add_argument("--residual-tolerance", type=float, default=1.0e-18)
     parser.add_argument("--volume-tolerance", type=float, default=1.0e-16)
     parser.add_argument("--stiffness-probe-fraction", type=float, default=1.0e-2)
-    parser.add_argument("--use-gpu", action="store_true")
+    parser.add_argument("--use-gpu", action="store_true", default=None)
     args = parser.parse_args()
 
     if args.plot_only:
@@ -731,15 +815,15 @@ def main() -> None:
     else:
         results = _compute(
             pathlib.Path(args.config),
-            steps=int(args.steps),
-            dt=float(args.dt),
+            steps=None if args.steps is None else int(args.steps),
+            dt=None if args.dt is None else float(args.dt),
             reference_amplitude_tolerance=float(args.reference_amplitude_tolerance),
             reference_velocity_tolerance=float(args.reference_velocity_tolerance),
             energy_drift_tolerance=float(args.energy_drift_tolerance),
             residual_tolerance=float(args.residual_tolerance),
             volume_tolerance=float(args.volume_tolerance),
             stiffness_probe_fraction=float(args.stiffness_probe_fraction),
-            use_gpu=bool(args.use_gpu),
+            use_gpu=args.use_gpu,
         )
         save_results(NPZ, results)
     pdf = _plot(results)

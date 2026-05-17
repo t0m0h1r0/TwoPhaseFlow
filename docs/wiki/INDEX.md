@@ -1,4 +1,4 @@
-# Wiki Index — 448 entries
+# Wiki Index — 449 entries
 
 ## Active Retrieval Gate
 
@@ -215,6 +215,10 @@ Use [WIKI-E-082](experiment/WIKI-E-082.md) before citing the production
 capillary-wave YAML default one-period run because it records the YAML
 one-period target, no-override command, full-cycle metrics, and comment-only
 config boundary.
+Use [WIKI-E-083](experiment/WIKI-E-083.md) before citing the corrected new
+PhaseRegion graph YAML one-period route because it records
+`config/routes/ch14_phase_region_capillary_graph.yaml`, YAML-owned period/step/GPU settings,
+GPU exact graph-column measurement, and one-period exact-reference metrics.
 Use [WIKI-L-074](code/WIKI-L-074.md) before optimizing or reviewing the
 PhaseRegion graph GPU route because it records the exact graph column-integral
 hot path, the device-aware owner/measurement reductions, and the validated
@@ -494,7 +498,7 @@ support.
 | [WIKI-X-055](cross-domain/WIKI-X-055.md) | Theory-First Deliberation Best Practices |
 | [WIKI-X-056](cross-domain/WIKI-X-056.md) | Ch14 Capillary Origin-Reset Handoff Protocol |
 
-## Experiment (82)
+## Experiment (83)
 
 | REF-ID | Title |
 |--------|-------|
@@ -580,6 +584,7 @@ support.
 | [WIKI-E-080](experiment/WIKI-E-080.md) | Ch14 PhaseRegion Capillary Graph 1/16 Period PASS |
 | [WIKI-E-081](experiment/WIKI-E-081.md) | Ch14 Production Capillary T/4 Pressure/Velocity PASS |
 | [WIKI-E-082](experiment/WIKI-E-082.md) | Ch14 Production Capillary YAML One-Period PASS |
+| [WIKI-E-083](experiment/WIKI-E-083.md) | Ch14 PhaseRegion Graph YAML One-Period PASS |
 
 ## Paper (24)
 
