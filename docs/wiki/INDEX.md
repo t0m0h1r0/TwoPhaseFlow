@@ -5,9 +5,9 @@
 Start with [WIKI-X-041](cross-domain/WIKI-X-041.md) for the curated active
 contract map, [WIKI-P-018](paper/WIKI-P-018.md) for the recent Chapters 1-13
 paper-theory contract digest, [WIKI-P-019](paper/WIKI-P-019.md) for the
-Chapter 14 active-geometry capillary benchmark contract, then
+Chapter 14 PhaseRegion capillary benchmark contract, then
 [WIKI-X-040](cross-domain/WIKI-X-040.md) for recent research findings.  For
-active-geometry capillary admission and Chapter 14 YAML state-space boundaries,
+PhaseRegion capillary admission and Chapter 14 YAML state-space boundaries,
 use [WIKI-X-054](cross-domain/WIKI-X-054.md),
 [WIKI-E-063](experiment/WIKI-E-063.md),
 [WIKI-X-049](cross-domain/WIKI-X-049.md), and
@@ -608,7 +608,7 @@ support.
 | [WIKI-P-016](paper/WIKI-P-016.md) | Appendices Are Proof Layers for Main-Text Contracts |
 | [WIKI-P-017](paper/WIKI-P-017.md) | Paper Build Hygiene: Zero-Warning Float Placement |
 | [WIKI-P-018](paper/WIKI-P-018.md) | Chapters 1-13 Recent Paper-Theory Contract Digest |
-| [WIKI-P-019](paper/WIKI-P-019.md) | Chapter 14 Active-Geometry Capillary Benchmark Paper Contract |
+| [WIKI-P-019](paper/WIKI-P-019.md) | Chapter 14 PhaseRegion Capillary Benchmark Paper Contract |
 | [WIKI-P-020](paper/WIKI-P-020.md) | Paper Citation Additions Need Claim-Level Source Verification |
 | [WIKI-P-021](paper/WIKI-P-021.md) | Whole-Scope Paper Review Reuses Local Review Gates |
 | [WIKI-P-022](paper/WIKI-P-022.md) | Formula-Heavy Paper Sections Need Ownership-Ledger Prose |

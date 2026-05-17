@@ -1,8 +1,8 @@
 % paper/sections/13e2_ao_capillary_split_gate.tex
 %
-% V11: active-geometry capillary split integration gate
+% V11: PhaseRegion capillary integration gate
 % ═══════════════════════════════════════════════════════════════════════════════
-\subsection{V11：アクティブ幾何毛管分解の統合ゲート}
+\subsection{V11：PhaseRegion 毛管経路の統合ゲート}
 \label{sec:ao_fast_capillary_gate}
 
 \paragraph{目的．}
@@ -13,17 +13,17 @@ V11 では，その反例を踏まえて，
 式~\eqref{eq:capillary_pressure_reaction_projection} の $R_p$，
 式~\eqref{eq:ao_projection_face_bridge} の Hodge 逆適用済み面補間，
 式~\eqref{eq:ao_graph_hfe_jump}--\eqref{eq:ao_graph_hfe_face_law} の
-$q$ 所有グラフ HFE 圧力ジャンプ，
+PhaseRegion graph chart HFE 圧力ジャンプ候補，
 式~\eqref{eq:ao_face_cochain_regrid} の移動格子における面量移送，
 式~\eqref{eq:ao_pressure_coordinate_split} の滑らかな圧力履歴座標，
 式~\eqref{eq:ao_dc_convergence_gate} の DC 収束判定，
 および式~\eqref{eq:grid_regular_stratum_axis}--\eqref{eq:grid_regular_stratum_shift}
 の正則層ガードを
-同時に満たすことを，アクティブ幾何毛管分解の統合条件として固定する．
+同時に満たすことを，PhaseRegion 毛管経路の統合条件として固定する．
 
 \paragraph{統合ゲートの根拠．}
 後続の毛管波ベンチマークは，U12 の代数反例だけでなく，
-$q$ 所有グラフ HFE，圧力履歴座標の分離，
+PhaseRegion graph chart の測度・HFE 候補，圧力履歴座標の分離，
 HFE 受理条件，および界面追随格子の正則層保持に依存する．
 V11 では，これらの単体契約を U12 から引き継ぎつつ，
 圧力履歴座標と面加速度の履歴表現を変えても
@@ -44,7 +44,7 @@ V11 は以下を同時に要求する．
   \item 面 Hodge ゲート：毛管共変量は式~\eqref{eq:ao_hodge_divided_face_increment}
         で一度だけ面加速度へ写し，投影面空間へは
         式~\eqref{eq:ao_projection_face_bridge} の同次元補間で渡す．
-  \item グラフ HFE ゲート：柱状高さグラフでは
+  \item PhaseRegion graph HFE ゲート：柱状高さグラフでは
         式~\eqref{eq:ao_graph_hfe_cut} の現在グラフで HFE を切り，
         式~\eqref{eq:ao_graph_hfe_jump} のジャンプを現在格子の面法則として使う．
   \item 移動格子ゲート：射影後の面量を節点速度補間で作り直さず，
@@ -57,7 +57,7 @@ V11 は以下を同時に要求する．
 \end{enumerate}
 
 \begin{table}[htbp]
-\caption{V11：アクティブ幾何毛管分解の統合ゲート判定}
+\caption{V11：PhaseRegion 毛管経路の統合ゲート判定}
 \label{tab:V11_ao_gate}
 \centering
 \PaperTableDenseSetup
@@ -68,12 +68,12 @@ V11 は以下を同時に要求する．
 平坦・静的ゲート & 平坦界面はゼロ駆動．静的問題で非零駆動を作る経路は標準経路へ入れない． & \checkmark \\
 全圧力像の反例 & N32/N64 毛管波で厳密全圧力分解は釣合い駆動を $0$ にする．これは成功ではなく過射影の反例である． & \checkmark 診断 \\
 成分体積 Hodge 診断 & 同じ毛管波で成分体積 Hodge 診断は N32/N64 の釣合いノルム $2.1176/2.3055$ を検出する．ただしこれは最終 $R_p$ の代替証明ではなく非静的性の診断である． & \checkmark 診断 \\
-$q$ 所有グラフ HFE & 非一様 $x$ 格子で $\|j_{gl}^{G}\|_\infty=11.5323$，$\Delta x$ 加重平均 $1.30\times10^{-16}$，波頂ジャンプは負．圧力履歴座標へ不連続ジャンプを保存せず，現在格子で面ジャンプを再構築する． & \checkmark 契約 \\
+PhaseRegion graph HFE & 非一様 $x$ 格子で $\|j_{gl}^{G}\|_\infty=11.5323$，$\Delta x$ 加重平均 $1.30\times10^{-16}$，波頂ジャンプは負．圧力履歴座標へ不連続ジャンプを保存せず，現在格子で面ジャンプを再構築する． & \checkmark 契約 \\
 履歴・受理 & グラフ HFE ジャンプは BDF2 圧力履歴から除外される．HFE 受理条件は $dt$ 倍増分ではなく空間駆動で判定され，$dt=10^{-8}$，増分 $10^{-14}$，空間駆動 $10^{-6}$ の非静的条件を受理した． & \checkmark 契約 \\
 追随格子正則層 & ほぼ水平な毛管波で支配法線方向ガードは $x$ 方向変位 $0$，$y$ 最大変位 $2.50\times10^{-3}$．全 active 軸移動で見られた接線方向格子崩壊は再現しない． & \checkmark \\
 未確定分解境界 & 圧力履歴座標と面加速度の履歴表現のどちらでも，採用条件を満たさない近似分解は停止し，N32 毛管波の非静的駆動 $2.40\times10^{-5}$ を消さない． & \checkmark 境界 \\
-1 周期統合走行 & 第~\ref{sec:val_capillary}節の N32 毛管波は $T_\sigma=0.046742983863\,\mathrm{s}$ まで完走し，体積ドリフト最大 $5.72\times10^{-14}$，運動エネルギー最大 $8.29\times10^{-6}$，終端振幅比 $0.794$ を得た． & \checkmark 物理ベンチへ接続 \\
-最終採用境界 & $R_p$，Hodge 逆適用済み面補間，$q$ 所有グラフ HFE，移動格子で保存する面量，圧力履歴座標，正則層ガード，DC 収束判定を同時に満たす経路だけをアクティブ幾何毛管分解として標準構成へ入れる． & \checkmark 契約 \\
+PhaseRegion graph 走行 & 第~\ref{sec:val_capillary}節の N32 毛管波は reduced PhaseRegion graph route で $T_\sigma=0.046742983863\,\mathrm{s}$ まで進み，$q$ 測度残差 $0$，最大振幅誤差 $2.42\times10^{-10}$，最大エネルギードリフト $1.51\times10^{-6}$ を得た． & \checkmark chart 診断 \\
+最終採用境界 & $R_p$，Hodge 逆適用済み面補間，PhaseRegion graph HFE 候補，移動格子で保存する面量，圧力履歴座標，正則層ガード，DC 収束判定を同時に満たす経路だけを PhaseRegion 毛管経路として標準構成へ入れる．Reduced chart 実験は \texttt{force\_admissible=0} のまま圧力・速度連成から分ける． & \checkmark 契約 \\
 \bottomrule
 \end{tabularx}
 \end{table}
@@ -81,7 +81,7 @@ $q$ 所有グラフ HFE & 非一様 $x$ 格子で $\|j_{gl}^{G}\|_\infty=11.5323
 \begin{figure}[htbp]
 \centering
 \includegraphics[width=0.96\linewidth]{figures/ch13_v11_ao_capillary_split_gate.pdf}
-\caption{V11：アクティブ幾何毛管分解の統合ゲート．
+\caption{V11：PhaseRegion 毛管経路の統合ゲート．
 圧力座標と面加速度の履歴表現を含め，
 非静的波では全圧力像への過射影を棄却し，採用条件を満たさない分解を停止して
 駆動を残すこと，およびグラフ HFE と追随格子の受理条件が通ることを確認する．}
@@ -91,10 +91,13 @@ $q$ 所有グラフ HFE & 非一様 $x$ 格子で $\|j_{gl}^{G}\|_\infty=11.5323
 \paragraph{第14章への接続．}
 V11 は，過射影で非静的駆動を消す分解を棄却し，
 第~\ref{sec:ao_fast_state_space}節の採用条件を標準経路の境界として固定する．
-したがって第~\ref{sec:val_capillary}節の毛管波は，
-幾何セル分率，Young--Laplace 束仮想仕事，圧力反力成分，
-Hodge 逆適用済み面補間，$q$ 所有グラフ HFE，射影後の面量保存，
-正則層ガード，および圧力履歴座標を同時に使う
-アクティブ幾何毛管分解の物理ベンチマークとして読む．
+第~\ref{sec:val_capillary}節の毛管波は，
+相領域所有，graph chart，exact column-integral 測度，
+表面エネルギー第二変分，PhaseRegion 測度 reduction，および
+GPU hot path を用いる正規 chart ベンチマークとして読む．
+一方，圧力・速度場への連成はこの V11 だけでは受理されない．
+したがって Ch12--Ch13 の既存 NS 実験は再実験を要求されず，
+PhaseRegion 力の消費側が入るまでは \texttt{force\_admissible=0} を
+合格条件として保持する．
 ただし，U12 が棄却した全圧力像への過射影や，
 面量移送を欠く節点速度再構成経路は，本節の合格経路ではない．

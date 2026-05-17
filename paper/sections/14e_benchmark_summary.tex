@@ -14,17 +14,18 @@
 毛管波 &
   $32^2$，$T=T_\sigma=0.046742983863\,\mathrm{s}$，水--空気，
   $\lambda=10\,\mathrm{mm}$，$x$ 周期/$y$ 壁面 &
-  \texttt{signed\_interface\_amplitude} の復元位相，
-  \texttt{kinetic\_energy} の有界振動，
-  \texttt{volume\_conservation} &
+  PhaseRegion graph chart の厳密解比較，
+  $Q_h$ 測度残差，
+  energy drift，GPU step time，
+  \texttt{force\_admissible=0} &
   \checkmark \\
 振動液滴 &
-  $32^2$，$T=0.105460663082\,\mathrm{s}$，水--空気，
-  periodic，$D_0=0.10$ &
-  \texttt{signed\_deformation}，
-  \texttt{volume\_conservation}，
-  P1 sharp area，運動エネルギー交換 &
-  未合格 \\
+  $32^2$，短時間 PhaseRegion closed chart + production 1 周期比較，
+  水--空気，periodic，$D_0=0.10$ &
+  closed chart 厳密解比較，
+  production \texttt{signed\_deformation}，
+  P1 sharp area，体積保存境界 &
+  chart PASS / runtime 未合格 \\
 単一気泡上昇 &
   $32\times64$，掲載窓 $0\le t\le0.03\,\mathrm{s}$，
   $10\,\mathrm{mm}\times20\,\mathrm{mm}$，水--空気，$g=9.81$ &
@@ -43,10 +44,13 @@ Rayleigh--Taylor &
 
 4 本のベンチマークは，同じ標準構成を
 異なる物理機構へ置いたときの成功条件を分担している．
-毛管波は pressure-jump の符号と毛管復元力を確認した．
-振動液滴は，有限値で 1 周期完走する一方，
+毛管波は PhaseRegion graph chart を正規入口とし，
+測度残差 0，厳密振幅比較，energy drift，GPU step time の全てで
+reduced route の成立を確認した．
+振動液滴は PhaseRegion closed chart の短時間 stepper が
+厳密解比較に通る一方，既存 production runtime の 1 周期では
 P1 sharp area が終端で $+25.9\%$ 増えるため，
-閉界面保存量の同一 cochain 化がまだ不足していることを示した．
+閉界面保存量の同一 cochain 化と圧力・速度消費ゲートがまだ不足していることを示した．
 単一気泡上昇は，$0\le t\le0.03\,\mathrm{s}$ の初期窓で
 浮力残差と射影が同じ面速度空間を共有することを確認したが，
 後続時刻の形状保存は未解決として合格 claim から外した．
@@ -54,5 +58,7 @@ Rayleigh--Taylor は，復元ではなく不安定成長を起こす配置でも
 同じ閉包が形状発展を支えることを示した．
 したがって本章の結論は，個別部品が単体で正しいだけでなく，
 移動界面二相流の代表的な安定振動・初期浮力上昇・不安定成長に対して
-同じ stack が有効に働く範囲と，閉界面振動でなお破れている
-保存量契約および気泡長時間形状保存の境界を同時に示した，という点にある．
+同じ stack が有効に働く範囲と，PhaseRegion route がまだ
+\texttt{force\_admissible=0} の reduced chart 診断に留まる境界，
+閉界面振動でなお破れている保存量契約，および気泡長時間形状保存の境界を
+同時に示した，という点にある．

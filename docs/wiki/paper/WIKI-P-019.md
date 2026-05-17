@@ -1,119 +1,131 @@
 ---
 ref_id: WIKI-P-019
-title: "Chapter 14 Active-Geometry Capillary Benchmark Paper Contract"
+title: "Chapter 14 PhaseRegion Capillary Benchmark Paper Contract"
 domain: paper
 status: ACTIVE
-tags: [paper, chapter14, active_geometry_capillary, capillary_wave, benchmark, v11]
+tags: [paper, chapter14, phase_region, capillary_wave, oscillating_droplet, benchmark, v11]
 sources:
-  - path: paper/sections/14_benchmarks.tex
-    description: "Current Chapter 14 N32 one-period active-geometry capillary-wave benchmark"
+  - path: paper/sections/14a_capillary_wave.tex
+    description: "Canonical Chapter 14 PhaseRegion graph capillary-wave benchmark"
+  - path: paper/sections/14b_oscillating_droplet.tex
+    description: "PhaseRegion closed-chart short-step result and production runtime boundary"
   - path: paper/sections/13e2_ao_capillary_split_gate.tex
-    description: "V11 integration gate connecting active-geometry capillary to physical benchmarks"
+    description: "V11 integration gate separating PhaseRegion chart diagnostics from pressure/velocity force admission"
   - path: paper/sections/12u12_ao_capillary_split_gate.tex
     description: "U12 component pre-gate and overprojection counterexample"
-  - path: docs/wiki/experiment/WIKI-E-063.md
-    description: "Current U12/V11 experiment reading rule"
-  - path: docs/wiki/cross-domain/WIKI-X-054.md
-    description: "Session synthesis of final active-geometry capillary contracts"
+  - path: docs/wiki/experiment/WIKI-E-083.md
+    description: "Canonical ch14_capillary.yaml PhaseRegion graph one-period PASS"
+  - path: docs/wiki/code/WIKI-L-074.md
+    description: "PhaseRegion graph GPU hot path PASS"
 depends_on:
   - "[[WIKI-P-018]]"
-  - "[[WIKI-E-063]]"
-  - "[[WIKI-X-054]]"
-  - "[[WIKI-T-172]]"
-  - "[[WIKI-T-173]]"
+  - "[[WIKI-E-083]]"
+  - "[[WIKI-L-074]]"
+  - "[[WIKI-T-176]]"
+  - "[[WIKI-T-177]]"
 consumers:
   - domain: paper
-    usage: "Use before editing Chapter 14 capillary-wave benchmark claims"
+    usage: "Use before editing Chapter 14 PhaseRegion capillary-wave or oscillating-droplet claims"
   - domain: experiment
-    usage: "Use to separate U12/V11 gates from Chapter 14 physical benchmark evidence"
+    usage: "Use to separate reduced PhaseRegion chart evidence from production pressure/velocity evidence"
   - domain: code
-    usage: "Use as the paper-facing acceptance boundary for active-geometry capillary route changes"
+    usage: "Use as the paper-facing acceptance boundary for PhaseRegion capillary route changes"
 compiled_by: ResearchArchitect
-compiled_at: 2026-05-16
+compiled_at: 2026-05-17
 ---
 
-# Chapter 14 Active-Geometry Capillary Benchmark Paper Contract
+# Chapter 14 PhaseRegion Capillary Benchmark Paper Contract
 
 ## Knowledge Card
 
-Chapter 14 now contains a physical one-period capillary-wave benchmark for the
-active-geometry capillary route.  The paper claim is deliberately narrower than
-"the N32 waveform equals the continuum solution after one period."  The
-finite-depth dispersion relation is the continuum phase clock; the numerical
-claim is that the admitted active-geometry route produces restoring capillary
-motion, bounded kinetic energy, regular fitted-grid geometry, and
-roundoff-level q-volume conservation over one period.
+Chapter 14 now treats the reduced PhaseRegion route as the canonical capillary
+entry point for the capillary wave.  The owner is the phase region
+`Omega_h`; `q_h=Q_h(Omega_h)` is a cell measure, and `phi`/graph/closed
+coordinates are charts or gauges.  The paper must not describe the old
+production runtime pressure/velocity plots as evidence for the new route.
 
-## Paper Reading
-
-The benchmark is valid only after the earlier gates are satisfied:
+The capillary-wave paper claim is:
 
 ```text
-U12: component/admission gate and full-pressure overprojection counterexample
-V11: integration gate for graph HFE, face bridge, pressure history, moving
-     face cochains, regular stratum, and DC convergence
-Ch14: physical one-period benchmark using the admitted route
+PhaseRegion graph chart
+exact graph-column Q_h
+graph-perimeter second variation
+velocity-Verlet linear capillary mode
+GPU hot path
+force_admissible = 0
 ```
 
-Do not move a Chapter 14 plot or number into the paper as a standalone proof of
-the algorithm.  Chapter 14 is downstream of U12/V11.
+The oscillating-droplet paper claim is narrower:
+
+```text
+PhaseRegion closed chart few-step PASS
+production one-period runtime remains not accepted
+force_admissible = 0
+```
 
 ## Current Published Values
 
-The current N32 capillary-wave run uses the real-scale water--air parameters in
-`paper/sections/14_benchmarks.tex`, with
+Canonical capillary YAML:
 
 ```text
-T = T_sigma = 0.046742983863 s
-samples = 2585
-initial signed amplitude = 2.002821e-4 m
-quarter-period signed amplitude = 1.574613e-5 m
-final signed amplitude = 1.590461e-4 m
-final signed-amplitude ratio = 0.794
-max kinetic energy = 8.2924e-6
-final kinetic energy = 1.1434e-6
-final volume drift = 1.4772e-14
-max volume drift = 5.7192e-14
-final dy_min = 3.9198e-4 m
+experiment/ch14/config/ch14_capillary.yaml
 ```
 
-The paper figures paired to these values are:
+Remote one-period PhaseRegion graph run:
 
-- `ch14_capillary_signed_interface_amplitude.pdf`;
-- `ch14_capillary_kinetic_energy.pdf`;
-- `ch14_capillary_volume_drift.pdf`;
-- five `psi`, velocity, and pressure/Hodge-representative snapshots at
-  `0`, `T/4`, `T/2`, `3T/4`, and `T`.
+```text
+steps                  = 2560
+t_over_T               = 1.0
+step_backend_gpu       = 1
+max_amplitude_error    = 2.416836235604e-10
+max_velocity_error     = 4.456387104473e-08
+max_energy_drift       = 1.505982113082e-06
+max_residual_l2        = 0
+max_volume_drift       = 5.421010862428e-20
+mean_step_wall_seconds = 3.516834525792e-03
+max_step_wall_seconds  = 3.977783117443e-02
+target_met             = 1
+force_admissible       = 0
+```
 
-Pressure plots must use the Hodge/gauge representative reading described in
-Chapter 14; raw absolute pressure color collapse is not the physical
-observable.
+PhaseRegion closed-chart droplet few-step result:
+
+```text
+steps                 = 8
+t_over_T              = 1.517153366218e-03
+max_amplitude_error   = 2.687954026026e-15
+max_velocity_error    = 3.359899413812e-11
+max_energy_drift      = 3.225430493134e-11
+max_residual_l2       = 0
+max_volume_drift      = 5.428131902296e-13
+force_admissible      = 0
+```
 
 ## Wording Guardrails
 
 Use these phrases or equivalents:
 
-- finite-depth dispersion is a phase-time reference;
-- q-owned graph surface energy and graph HFE jump;
-- pressure-reaction component and Hodge-divided face bridge;
-- projected face-cochain transport across moving-grid epochs;
-- smooth pressure-history coordinate;
-- DC residual convergence gate;
-- one-period restoring/bounded/conservative benchmark.
+- PhaseRegion owns the interface state;
+- `q` is a finite-volume measure, not the owner;
+- `phi`, graph, and closed curve are charts/gauges;
+- capillary wave and closed droplet are chart differences of the same
+  perimeter variation;
+- reduced chart result, not pressure/velocity force consumption;
+- `force_admissible=0` is a fail-closed success condition for the current
+  reduced route.
 
 Avoid these claims:
 
-- exact N32 continuum waveform return;
-- success of the full pressure-image split;
-- generic P1 cut-cell surface work for a `column_height_graph` gauge;
-- nodal velocity remap as projected face-cochain transport;
-- pressure magnitude plots as absolute physical pressure;
-- solver-family substitution, damping, smoothing, or CFL tuning as the
-  explanation for the benchmark.
+- old production pressure/velocity snapshots prove the new route;
+- exact all-cell `q` projection is the canonical interface reconstruction;
+- screened graph-q failure has been repaired by tolerance, smoothing, damping,
+  CFL retuning, or rebuild skipping;
+- closed droplets and graph waves use different theories;
+- PhaseRegion face force is already admitted into production PPE/corrector.
 
 ## Update Rule
 
-If a future code change alters graph HFE, pressure-reaction space,
-boundary-face space, affine low-order DC coefficients, moving-grid face
-cochain transfer, or the capillary benchmark numbers, update this card,
-[[WIKI-E-063]], [[WIKI-X-054]], and the Chapter 14 paper text together.
+If a future change connects PhaseRegion face cochains to pressure/velocity
+state, updates `force_admissible`, changes `ch14_capillary.yaml`, or replaces
+the graph/closed chart diagnostics, update this card, [[WIKI-E-083]],
+[[WIKI-L-074]], and the Chapter 14 paper text together.
