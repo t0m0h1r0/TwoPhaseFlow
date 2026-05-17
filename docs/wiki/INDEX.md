@@ -1,4 +1,4 @@
-# Wiki Index — 401 entries
+# Wiki Index — 402 entries
 
 ## Active Retrieval Gate
 
@@ -52,7 +52,10 @@ interface-configuration primary graph oracle before designing the closed-curve
 chart or any T/8 runtime connection. Use
 [WIKI-E-066](experiment/WIKI-E-066.md) before testing transported runtime
 `q_T`, because it records the first graph-chart split of physical low modes
-from non-geometric residual `r`. Before implementing or reviewing an
+from non-geometric residual `r`; use
+[WIKI-T-175](theory/WIKI-T-175.md) before implementing the projection route,
+because it defines the vectorized F0/F1 fast path and keeps full nonlinear
+optimization as an oracle/fail-close tool only. Before implementing or reviewing an
 established-theory change, use [WIKI-L-046](code/WIKI-L-046.md) as the
 equation-to-code contract gate. Older cards remain listed for
 provenance, but cards marked
@@ -84,7 +87,7 @@ reading order, evidence boundaries, and rendered convergence. For paper citation
 claim-level source verification and are placed at the manuscript claim they
 support.
 
-## Theory (174)
+## Theory (175)
 
 | REF-ID | Title |
 |--------|-------|
@@ -262,6 +265,7 @@ support.
 | [WIKI-T-172](theory/WIKI-T-172.md) | AO-Fast Moving-Grid Face-Cochain and Pressure-History Contract |
 | [WIKI-T-173](theory/WIKI-T-173.md) | Capillary-Wave Surface-Tension Literature Survey and AO-Fast Route |
 | [WIKI-T-174](theory/WIKI-T-174.md) | Capillary State Ownership: Interface Configuration or Cell Volume |
+| [WIKI-T-175](theory/WIKI-T-175.md) | Fast Vectorized Manifold Projection for Ch14 Capillary Charts |
 
 ## Cross-Domain (56)
 
