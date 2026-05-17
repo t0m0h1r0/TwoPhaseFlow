@@ -1,4 +1,4 @@
-# Wiki Index — 424 entries
+# Wiki Index — 425 entries
 
 ## Active Retrieval Gate
 
@@ -124,6 +124,10 @@ pressure/velocity coupling, micro-step, or T/8 probe because it validates the
 closed-chart capillary force as the area-reaction-free negative variation of
 the same surface energy and records that the pressure/velocity work metric is
 still the next gate.
+Use [WIKI-E-074](experiment/WIKI-E-074.md) before any runtime force dry-run,
+pressure/velocity coupling, micro-step, or T/8 probe because it validates the
+fixed-stratum endpoint identity from interface energy covector to face cochain
+work, including pressure range/Hodge and nonuniform boundary adjoint checks.
 Before implementing or reviewing an
 established-theory change, use [WIKI-L-046](code/WIKI-L-046.md) as the
 equation-to-code contract gate. Older cards remain listed for
@@ -399,7 +403,7 @@ support.
 | [WIKI-X-055](cross-domain/WIKI-X-055.md) | Theory-First Deliberation Best Practices |
 | [WIKI-X-056](cross-domain/WIKI-X-056.md) | Ch14 Capillary Origin-Reset Handoff Protocol |
 
-## Experiment (73)
+## Experiment (74)
 
 | REF-ID | Title |
 |--------|-------|
@@ -476,6 +480,7 @@ support.
 | [WIKI-E-071](experiment/WIKI-E-071.md) | Ch14 Runtime Phase-Owner Gate |
 | [WIKI-E-072](experiment/WIKI-E-072.md) | Ch14 PhaseRegion Runtime Dry-Run Adapter PASS |
 | [WIKI-E-073](experiment/WIKI-E-073.md) | Ch14 PhaseRegion Force/Work Oracle PASS |
+| [WIKI-E-074](experiment/WIKI-E-074.md) | Ch14 PhaseRegion Face-Cochain Work Oracle PASS |
 
 ## Paper (24)
 
