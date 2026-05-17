@@ -1,4 +1,4 @@
-# Wiki Index — 426 entries
+# Wiki Index — 427 entries
 
 ## Active Retrieval Gate
 
@@ -111,6 +111,11 @@ conservation against an exact reference.
 Use [WIKI-L-059](code/WIKI-L-059.md) before implementing a PhaseRegion runtime
 dry-run adapter because it makes the runtime liquid `q_l` to PhaseRegion gas
 `q_g` owner map explicit through the exact finite-volume complement.
+Use [WIKI-L-060](code/WIKI-L-060.md) before writing any PhaseRegion runtime
+force adapter helper because it fixes the candidate-builder boundary:
+`q_l -> q_g`, runtime `psi=H(-phi)`, nodal-density face metric, Riesz cochain,
+diagnostics, and `force_admissible=false` stay explicit until a later
+pressure/velocity consumer proves the same metric and work pairing.
 Use [WIKI-E-071](experiment/WIKI-E-071.md) before implementing a PhaseRegion
 runtime dry-run adapter because it records that existing runtime
 `GeometricPhaseState.q` is liquid volume while the current PhaseRegion theory
@@ -557,7 +562,7 @@ support.
 | [WIKI-M-034](meta/WIKI-M-034.md) | Paper Review Revisions Should Reduce Cognitive Load, Not Add Decoration |
 | [WIKI-M-035](meta/WIKI-M-035.md) | Meta-Prompt Deployment Needs Project Boundaries, Native Adapters, and Token ROI Gates |
 
-## Code (59)
+## Code (60)
 
 | REF-ID | Title |
 |--------|-------|
@@ -620,3 +625,4 @@ support.
 | [WIKI-L-057](code/WIKI-L-057.md) | Ch14 Exact Theory Unit Tests PASS |
 | [WIKI-L-058](code/WIKI-L-058.md) | Ch14 Step 1 Nonuniform F0 Exact Test PASS |
 | [WIKI-L-059](code/WIKI-L-059.md) | Ch14 Phase-Owner Map PASS |
+| [WIKI-L-060](code/WIKI-L-060.md) | Ch14 PhaseRegion Force Adapter Boundary Design |
