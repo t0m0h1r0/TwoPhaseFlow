@@ -1,13 +1,13 @@
-# Wiki Index — 399 entries
+# Wiki Index — 449 entries
 
 ## Active Retrieval Gate
 
 Start with [WIKI-X-041](cross-domain/WIKI-X-041.md) for the curated active
 contract map, [WIKI-P-018](paper/WIKI-P-018.md) for the recent Chapters 1-13
 paper-theory contract digest, [WIKI-P-019](paper/WIKI-P-019.md) for the
-Chapter 14 active-geometry capillary benchmark contract, then
+Chapter 14 PhaseRegion capillary benchmark contract, then
 [WIKI-X-040](cross-domain/WIKI-X-040.md) for recent research findings.  For
-active-geometry capillary admission and Chapter 14 YAML state-space boundaries,
+PhaseRegion capillary admission and Chapter 14 YAML state-space boundaries,
 use [WIKI-X-054](cross-domain/WIKI-X-054.md),
 [WIKI-E-063](experiment/WIKI-E-063.md),
 [WIKI-X-049](cross-domain/WIKI-X-049.md), and
@@ -46,7 +46,184 @@ after q/phi rebuild failures, use [WIKI-T-174](theory/WIKI-T-174.md) to choose
 the owned state and [WIKI-X-056](cross-domain/WIKI-X-056.md) for the
 oracle-first handoff protocol before continuing implementation; use
 [WIKI-E-064](experiment/WIKI-E-064.md) for the concrete baseline/screened
-graph-q runtime evidence preserved from the discarded source branch. Before implementing or reviewing an
+graph-q runtime evidence preserved from the discarded source branch; and use
+[WIKI-E-065](experiment/WIKI-E-065.md) for the first validated
+interface-configuration primary graph oracle before designing the closed-curve
+chart or any T/8 runtime connection. Use
+[WIKI-E-066](experiment/WIKI-E-066.md) before testing transported runtime
+`q_T`, because it records the first graph-chart split of physical low modes
+from non-geometric residual `r`; use
+[WIKI-T-175](theory/WIKI-T-175.md) before implementing the projection route,
+because it defines the vectorized F0/F1 fast path and keeps full nonlinear
+optimization as an oracle/fail-close tool only; use
+[WIKI-L-047](code/WIKI-L-047.md) before writing projection helpers or runtime
+adapters, because it fixes the implementation layers, public result object,
+backend boundary, and no-code-before-oracle gates; use
+[WIKI-L-048](code/WIKI-L-048.md) as the validated graph helper baseline before
+closed radial residual-classification work, then use
+[WIKI-E-067](experiment/WIKI-E-067.md) before any runtime admission probe or
+T/8 oscillating-droplet run because it records the closed radial residual
+classification PASS; use [WIKI-L-049](code/WIKI-L-049.md) before adding
+runtime adapters or batched projection paths because it records scalar-vs-batch
+closed-chart geometry parity; use
+[WIKI-E-068](experiment/WIKI-E-068.md) before force-coupling probes or any T/8
+attempt because it records the first runtime-facing q-manifold admission
+snapshot and keeps `force_admissible=0`; use
+[WIKI-T-176](theory/WIKI-T-176.md) before force-coupling or multi-component
+interface design because it lifts ownership to `PhaseRegion/Omega_h` and
+treats graph/closed/open charts as an `InterfaceAtlas`; use
+[WIKI-T-177](theory/WIKI-T-177.md) before force coupling because it fixes the
+PhaseRegion variational axioms and requires a mixed closed-bubble/top-layer
+atlas smoke oracle first; use [WIKI-L-050](code/WIKI-L-050.md) before adding
+PhaseRegion/InterfaceAtlas code because it fixes the vectorized packed atlas
+layout and F0/F1 fast-admission ladder; use
+[WIKI-L-051](code/WIKI-L-051.md) before adding atlas `Q_h`, perimeter
+reductions, or admission because it records the validation-only
+`PhaseRegionBatch/InterfaceAtlas` schema PASS; use
+[WIKI-E-069](experiment/WIKI-E-069.md) before atlas admission or runtime
+snapshot adapters because it records the closed-bubble + top-layer
+PhaseRegion smoke oracle PASS with visualization and `force_admissible=0`.
+Use [WIKI-L-052](code/WIKI-L-052.md) before atlas F0/F1 admission because it
+records the component-measure reduction and residual-report helper.
+Use [WIKI-L-053](code/WIKI-L-053.md) before chart-specific F1 admission
+because it records the low-mode KKT kernel and keeps nonlinear optimization out
+of the runtime default.
+Use [WIKI-L-054](code/WIKI-L-054.md) before boundary/nonuniform atlas admission
+because it records fail-closed attachment, component-q, KKT, and alpha-grid=2
+smoke validation, plus the remaining uniform-graph-F0 blocker.
+Use [WIKI-E-070](experiment/WIKI-E-070.md) before starting new Ch14
+PhaseRegion capillary experiments because it freezes the PASS/FAIL evidence,
+acceptance metrics, stop conditions, and the next nonuniform graph F0 gate.
+Use [WIKI-L-055](code/WIKI-L-055.md) before connecting graph F1 low-mode KKT
+because it removes the uniform-x graph F0 blocker with a weighted P1
+cell-average low-mode solve and validates a real x-nonuniform oracle.
+Use [WIKI-L-056](code/WIKI-L-056.md) before extending F1 to other charts or
+atlas components because it records the low-moment graph F1 KKT connection and
+the rejected all-cell KKT failure mode.
+Use [WIKI-L-057](code/WIKI-L-057.md) before changing q-manifold,
+PhaseRegion-measurement, or low-mode KKT tests because it adds exact
+theoretical references for graph q, polygon geometry, KKT algebra, and
+gas-owner complement mapping.
+Use [WIKI-L-058](code/WIKI-L-058.md) before changing Step 1 nonuniform graph F0
+admission or its tests because it pins the weighted P1 normal equations, basis
+centering, coefficients, residual orthogonality, and weighted-volume
+conservation against an exact reference.
+Use [WIKI-L-059](code/WIKI-L-059.md) before implementing a PhaseRegion runtime
+dry-run adapter because it makes the runtime liquid `q_l` to PhaseRegion gas
+`q_g` owner map explicit through the exact finite-volume complement.
+Use [WIKI-L-060](code/WIKI-L-060.md) before writing any PhaseRegion runtime
+force adapter helper because it fixes the candidate-builder boundary:
+`q_l -> q_g`, runtime `psi=H(-phi)`, nodal-density face metric, Riesz cochain,
+diagnostics, and `force_admissible=false` stay explicit until a later
+pressure/velocity consumer proves the same metric and work pairing.
+Use [WIKI-L-061](code/WIKI-L-061.md) before building a zero-step
+`PhaseRegionForceAdmission` candidate object because it factors the nodal
+density face metric and fixed-stratum velocity scaling into tested helpers
+while keeping cell-density misuse fail-closed and `force_admissible=0`.
+Use [WIKI-L-062](code/WIKI-L-062.md) before adding diagnostic work/Hodge
+payloads or adapter experiments around PhaseRegion force candidates because it
+records the zero-step candidate object, fail-closed runtime-step and stratum
+guards, exact owner map, Riesz cochain assembly, and `force_admissible=false`.
+Use [WIKI-L-063](code/WIKI-L-063.md) before building candidate-focused
+zero-step adapter diagnostics because it attaches self/probe work checks,
+weighted Hodge decomposition, and component-reaction residuals to the same
+`PhaseRegionForceAdmission` while keeping `force_admissible=false`.
+Use [WIKI-L-064](code/WIKI-L-064.md) before adding zero-step adapter consumers
+for PhaseRegion force candidates because it defines the fail-closed scalar
+report boundary over candidate validity, diagnostics validity, required
+metrics, boundary/nonuniform metadata, and `force_admissible=false`.
+Use [WIKI-L-065](code/WIKI-L-065.md) before implementing any PhaseRegion force
+adapter consumer because it defines the blocked read gate: a valid report may
+produce only a diagnostic decision with `force_components=None` and
+`force_admissible=false` until a later pressure/velocity work gate exists.
+Use [WIKI-L-066](code/WIKI-L-066.md) before designing pressure/velocity work
+gates because it implements the blocked adapter decision and keeps valid
+diagnostic force candidates from exposing face-cochain force arrays.
+Use [WIKI-L-067](code/WIKI-L-067.md) before implementing any pressure/velocity
+work-gate oracle because it records that PhaseRegion `s_f` is already a face
+cochain and must not be passed through nodal `force_components`.
+Use [WIKI-L-068](code/WIKI-L-068.md) before any PhaseRegion pressure/velocity
+force-coupling probe because it records the diagnostic-only G0 face-space gate
+for shape, boundary, nonuniform metric, and same-weight work checks.
+Use [WIKI-L-069](code/WIKI-L-069.md) before any pressure-range or projection
+oracle because it records the diagnostic-only G1 gate: pressure faces must lie
+in `range(M_f^{-1}D_f^T)` under the same PhaseRegion face metric, while the
+capillary Hodge component remains diagnostic and unconverted.
+Use [WIKI-L-070](code/WIKI-L-070.md) before any face-projection oracle because
+it records the diagnostic-only G2 gate for
+`dE[T_h(u_f)] + <s_f,u_f>_M = 0`, same-weight work closure, and fixed-stratum
+velocity rejection.
+Use [WIKI-L-071](code/WIKI-L-071.md) before wiring pressure/velocity gate
+metrics into a Chapter 14 dry-run because it records the diagnostic-only G3
+face-projection oracle and keeps `s_f` out of nodal `force_components`.
+Use [WIKI-L-072](code/WIKI-L-072.md) before implementing any explicit
+face-force consumer because it records the G4 admission boundary:
+`force_admissible=true` may expose only face-shaped `s_f`, not nodal
+`force_components`, projected faces, or runtime coupling.
+Use [WIKI-L-073](code/WIKI-L-073.md) before any single-step probe because it
+records the G5 zero-step face-force projection consumer: admitted `s_f` may be
+consumed only as face arrays, returning projected faces without nodal
+reconstruction or state mutation.
+Use [WIKI-E-071](experiment/WIKI-E-071.md) before implementing a PhaseRegion
+runtime dry-run adapter because it records that existing runtime
+`GeometricPhaseState.q` is liquid volume while the current PhaseRegion theory
+names `Omega_g`, so the phase-owner map must be explicit first.
+Use [WIKI-E-072](experiment/WIKI-E-072.md) before any runtime micro-step or
+force-coupling probe because it records the first PhaseRegion runtime dry-run
+adapter PASS with explicit `q_l -> q_g` owner map, visible residual, perimeter,
+and `force_admissible=0`.
+Use [WIKI-E-073](experiment/WIKI-E-073.md) before any runtime force-coupling,
+pressure/velocity coupling, micro-step, or T/8 probe because it validates the
+closed-chart capillary force as the area-reaction-free negative variation of
+the same surface energy and records that the pressure/velocity work metric is
+still the next gate.
+Use [WIKI-E-074](experiment/WIKI-E-074.md) before any runtime force dry-run,
+pressure/velocity coupling, micro-step, or T/8 probe because it validates the
+fixed-stratum endpoint identity from interface energy covector to face cochain
+work, including pressure range/Hodge and nonuniform boundary adjoint checks.
+Use [WIKI-E-075](experiment/WIKI-E-075.md) before any PhaseRegion runtime
+force adapter, pressure/velocity coupling, micro-step, or T/8 probe because it
+validates the zero-step Ch14 runtime force dry-run with explicit `q_l -> q_g`
+ownership, runtime nodal-density face metric, fixed-stratum work pairing, and
+G0--G5 pressure/velocity gate metrics; the admitted payload and projection
+probe remain face-shaped and are not connected to runtime velocity update.
+Use [WIKI-E-076](experiment/WIKI-E-076.md) before any dynamic nonuniform
+oscillating-droplet micro-step or T/8 attempt because it records that short
+capillary-wave runtime probes pass, the droplet YAML runner saves a one-step
+result, but two-step dynamic nonuniform droplet runtime fails closed at
+projection-native face-history reprojection across grid rebuild.
+Use [WIKI-E-077](experiment/WIKI-E-077.md) before claiming graph capillary
+waves and closed droplets share the PhaseRegion owner route, because it records
+the capillary-wave `q_l -> q_g` GAS_ABOVE graph dry-run PASS while keeping
+`force_admissible=0` until the graph-chart G0--G5 face-force path exists.
+Use [WIKI-E-078](experiment/WIKI-E-078.md) before extending the graph route
+from admission to force coupling, because it records the reduced PhaseRegion
+graph few-step PASS against the exact linear capillary wave while still
+withholding production face-force admission.
+Use [WIKI-E-079](experiment/WIKI-E-079.md) before claiming the closed-droplet
+route shares the same reduced dynamic PhaseRegion gate, because it records the
+oscillating-droplet closed-chart few-step PASS while preserving the production
+runtime face-history blocker and `force_admissible=0`.
+Use [WIKI-E-080](experiment/WIKI-E-080.md) before citing a longer reduced
+capillary-wave graph run because it records the GPU hot-path `T/16` result,
+exact-reference errors, residuals, volume drift, and `0.2 s/step` target.
+Use [WIKI-E-081](experiment/WIKI-E-081.md) before citing the production
+capillary-wave `T/4` pressure/velocity visualization run because it records the
+runtime command, quarter-period metrics, pulled velocity/pressure PDFs, and the
+scalar-pressure diagnostic boundary.
+Use [WIKI-E-082](experiment/WIKI-E-082.md) before citing the production
+capillary-wave YAML default one-period run because it records the YAML
+one-period target, no-override command, full-cycle metrics, and comment-only
+config boundary.
+Use [WIKI-E-083](experiment/WIKI-E-083.md) before citing the corrected new
+PhaseRegion graph YAML one-period route because it records
+`config/ch14_capillary.yaml`, YAML-owned period/step/GPU settings,
+GPU exact graph-column measurement, and one-period exact-reference metrics.
+Use [WIKI-L-074](code/WIKI-L-074.md) before optimizing or reviewing the
+PhaseRegion graph GPU route because it records the exact graph column-integral
+hot path, the device-aware owner/measurement reductions, and the validated
+`0.2 s/step` capillary-wave target.
+Before implementing or reviewing an
 established-theory change, use [WIKI-L-046](code/WIKI-L-046.md) as the
 equation-to-code contract gate. Older cards remain listed for
 provenance, but cards marked
@@ -78,7 +255,7 @@ reading order, evidence boundaries, and rendered convergence. For paper citation
 claim-level source verification and are placed at the manuscript claim they
 support.
 
-## Theory (174)
+## Theory (177)
 
 | REF-ID | Title |
 |--------|-------|
@@ -256,6 +433,9 @@ support.
 | [WIKI-T-172](theory/WIKI-T-172.md) | AO-Fast Moving-Grid Face-Cochain and Pressure-History Contract |
 | [WIKI-T-173](theory/WIKI-T-173.md) | Capillary-Wave Surface-Tension Literature Survey and AO-Fast Route |
 | [WIKI-T-174](theory/WIKI-T-174.md) | Capillary State Ownership: Interface Configuration or Cell Volume |
+| [WIKI-T-175](theory/WIKI-T-175.md) | Fast Vectorized Manifold Projection for Ch14 Capillary Charts |
+| [WIKI-T-176](theory/WIKI-T-176.md) | PhaseRegion-Primary InterfaceAtlas for Multi-Component Ch14 Capillarity |
+| [WIKI-T-177](theory/WIKI-T-177.md) | PhaseRegion Variational Axioms Before Ch14 Force Coupling |
 
 ## Cross-Domain (56)
 
@@ -318,7 +498,7 @@ support.
 | [WIKI-X-055](cross-domain/WIKI-X-055.md) | Theory-First Deliberation Best Practices |
 | [WIKI-X-056](cross-domain/WIKI-X-056.md) | Ch14 Capillary Origin-Reset Handoff Protocol |
 
-## Experiment (64)
+## Experiment (83)
 
 | REF-ID | Title |
 |--------|-------|
@@ -386,6 +566,25 @@ support.
 | [WIKI-E-062](experiment/WIKI-E-062.md) | Static Droplet Pressure Images Must Use Hodge Representatives |
 | [WIKI-E-063](experiment/WIKI-E-063.md) | U12/V11 AO-Fast Capillary Split Gates |
 | [WIKI-E-064](experiment/WIKI-E-064.md) | Capillary Runtime Baseline and Screened Graph-q Failure |
+| [WIKI-E-065](experiment/WIKI-E-065.md) | Ch14 Variational Capillary Graph Oracle PASS |
+| [WIKI-E-066](experiment/WIKI-E-066.md) | Ch14 q-Manifold Projection Graph Oracle PASS |
+| [WIKI-E-067](experiment/WIKI-E-067.md) | Ch14 Closed Radial q-Manifold Oracle PASS |
+| [WIKI-E-068](experiment/WIKI-E-068.md) | Ch14 q-Manifold Runtime Admission Snapshot Probe PASS |
+| [WIKI-E-069](experiment/WIKI-E-069.md) | Ch14 PhaseRegion Atlas Smoke Oracle PASS |
+| [WIKI-E-070](experiment/WIKI-E-070.md) | Ch14 PhaseRegion Experiment Readiness Gate |
+| [WIKI-E-071](experiment/WIKI-E-071.md) | Ch14 Runtime Phase-Owner Gate |
+| [WIKI-E-072](experiment/WIKI-E-072.md) | Ch14 PhaseRegion Runtime Dry-Run Adapter PASS |
+| [WIKI-E-073](experiment/WIKI-E-073.md) | Ch14 PhaseRegion Force/Work Oracle PASS |
+| [WIKI-E-074](experiment/WIKI-E-074.md) | Ch14 PhaseRegion Face-Cochain Work Oracle PASS |
+| [WIKI-E-075](experiment/WIKI-E-075.md) | Ch14 PhaseRegion Runtime Force Dry-Run PASS |
+| [WIKI-E-076](experiment/WIKI-E-076.md) | Ch14 Short Capillary/Droplet Runtime Probe |
+| [WIKI-E-077](experiment/WIKI-E-077.md) | Ch14 PhaseRegion Capillary Graph Dry-Run PASS |
+| [WIKI-E-078](experiment/WIKI-E-078.md) | Ch14 PhaseRegion Capillary Graph Few-Step PASS |
+| [WIKI-E-079](experiment/WIKI-E-079.md) | Ch14 PhaseRegion Oscillating Droplet Few-Step PASS |
+| [WIKI-E-080](experiment/WIKI-E-080.md) | Ch14 PhaseRegion Capillary Graph 1/16 Period PASS |
+| [WIKI-E-081](experiment/WIKI-E-081.md) | Ch14 Production Capillary T/4 Pressure/Velocity PASS |
+| [WIKI-E-082](experiment/WIKI-E-082.md) | Ch14 Production Capillary YAML One-Period PASS |
+| [WIKI-E-083](experiment/WIKI-E-083.md) | Ch14 PhaseRegion Graph YAML One-Period PASS |
 
 ## Paper (24)
 
@@ -409,7 +608,7 @@ support.
 | [WIKI-P-016](paper/WIKI-P-016.md) | Appendices Are Proof Layers for Main-Text Contracts |
 | [WIKI-P-017](paper/WIKI-P-017.md) | Paper Build Hygiene: Zero-Warning Float Placement |
 | [WIKI-P-018](paper/WIKI-P-018.md) | Chapters 1-13 Recent Paper-Theory Contract Digest |
-| [WIKI-P-019](paper/WIKI-P-019.md) | Chapter 14 Active-Geometry Capillary Benchmark Paper Contract |
+| [WIKI-P-019](paper/WIKI-P-019.md) | Chapter 14 PhaseRegion Capillary Benchmark Paper Contract |
 | [WIKI-P-020](paper/WIKI-P-020.md) | Paper Citation Additions Need Claim-Level Source Verification |
 | [WIKI-P-021](paper/WIKI-P-021.md) | Whole-Scope Paper Review Reuses Local Review Gates |
 | [WIKI-P-022](paper/WIKI-P-022.md) | Formula-Heavy Paper Sections Need Ownership-Ledger Prose |
@@ -456,7 +655,7 @@ support.
 | [WIKI-M-034](meta/WIKI-M-034.md) | Paper Review Revisions Should Reduce Cognitive Load, Not Add Decoration |
 | [WIKI-M-035](meta/WIKI-M-035.md) | Meta-Prompt Deployment Needs Project Boundaries, Native Adapters, and Token ROI Gates |
 
-## Code (46)
+## Code (74)
 
 | REF-ID | Title |
 |--------|-------|
@@ -506,3 +705,31 @@ support.
 | [WIKI-L-044](code/WIKI-L-044.md) | Post-Transfer GPU Acceleration Uses Finite-Stratum Fusion |
 | [WIKI-L-045](code/WIKI-L-045.md) | AO-Fast GPU Efficiency Bottleneck Is Fixed-Loop Geometry Compatibility |
 | [WIKI-L-046](code/WIKI-L-046.md) | Theory-Established Implementation Review Gate |
+| [WIKI-L-047](code/WIKI-L-047.md) | Ch14 q-Manifold Projection Implementation Contract |
+| [WIKI-L-048](code/WIKI-L-048.md) | Ch14 Graph q-Manifold Helper Implementation PASS |
+| [WIKI-L-049](code/WIKI-L-049.md) | Ch14 q-Manifold Vectorized Geometry Parity PASS |
+| [WIKI-L-050](code/WIKI-L-050.md) | Ch14 PhaseRegion InterfaceAtlas Implementation Design |
+| [WIKI-L-051](code/WIKI-L-051.md) | Ch14 PhaseRegion InterfaceAtlas Schema PASS |
+| [WIKI-L-052](code/WIKI-L-052.md) | Ch14 PhaseRegion Measure Reduction PASS |
+| [WIKI-L-053](code/WIKI-L-053.md) | Ch14 PhaseRegion Low-Mode KKT PASS |
+| [WIKI-L-054](code/WIKI-L-054.md) | Ch14 PhaseRegion Boundary and Nonuniform Audit PASS |
+| [WIKI-L-055](code/WIKI-L-055.md) | Ch14 Nonuniform Graph F0 Admission PASS |
+| [WIKI-L-056](code/WIKI-L-056.md) | Ch14 Graph F1 Low-Mode KKT PASS |
+| [WIKI-L-057](code/WIKI-L-057.md) | Ch14 Exact Theory Unit Tests PASS |
+| [WIKI-L-058](code/WIKI-L-058.md) | Ch14 Step 1 Nonuniform F0 Exact Test PASS |
+| [WIKI-L-059](code/WIKI-L-059.md) | Ch14 Phase-Owner Map PASS |
+| [WIKI-L-060](code/WIKI-L-060.md) | Ch14 PhaseRegion Force Adapter Boundary Design |
+| [WIKI-L-061](code/WIKI-L-061.md) | Ch14 PhaseRegion Force-Admission Helpers PASS |
+| [WIKI-L-062](code/WIKI-L-062.md) | Ch14 PhaseRegion Force-Admission Candidate PASS |
+| [WIKI-L-063](code/WIKI-L-063.md) | Ch14 PhaseRegion Force Diagnostics Payload PASS |
+| [WIKI-L-064](code/WIKI-L-064.md) | Ch14 PhaseRegion Force Admission Report PASS |
+| [WIKI-L-065](code/WIKI-L-065.md) | Ch14 PhaseRegion Force Adapter Consumer Design |
+| [WIKI-L-066](code/WIKI-L-066.md) | Ch14 PhaseRegion Force Adapter Decision PASS |
+| [WIKI-L-067](code/WIKI-L-067.md) | Ch14 Pressure/Velocity Work-Gate Design |
+| [WIKI-L-068](code/WIKI-L-068.md) | Ch14 Pressure/Velocity G0 Face-Space Gate PASS |
+| [WIKI-L-069](code/WIKI-L-069.md) | Ch14 Pressure/Velocity G1 Pressure-Range Gate PASS |
+| [WIKI-L-070](code/WIKI-L-070.md) | Ch14 Pressure/Velocity G2 Work-Closure Gate PASS |
+| [WIKI-L-071](code/WIKI-L-071.md) | Ch14 Pressure/Velocity G3 Face-Projection Oracle PASS |
+| [WIKI-L-072](code/WIKI-L-072.md) | Ch14 Pressure/Velocity G4 Face-Force Admission PASS |
+| [WIKI-L-073](code/WIKI-L-073.md) | Ch14 Pressure/Velocity G5 Face-Force Projection Probe PASS |
+| [WIKI-L-074](code/WIKI-L-074.md) | Ch14 PhaseRegion Graph GPU Hot Path PASS |

@@ -1,4 +1,4 @@
-\subsection{毛管波：平坦界面の毛管復元力}
+\subsection{毛管波：PhaseRegion graph chart の正規ルート}
 \label{sec:val_capillary}
 % ═══════════════════════════════════════════════════════════════════
 
@@ -6,6 +6,20 @@
 
 毛管波ベンチマークは，平坦界面に小振幅の正弦波摂動を与え，
 表面張力による復元振動を観察する最も単純な移動界面テストである．
+本節では，旧 production runtime の速度・圧力可視化ではなく，
+第~\ref{sec:ao_fast_state_space}節で導いた PhaseRegion 正規経路を
+標準の入口として用いる．
+すなわち，所有者は
+\[
+  \Omega_g(t)=\{y>\eta(x,t)\},
+  \qquad
+  \Gamma_h(t)=\partial\Omega_g(t)
+\]
+であり，セル測度は $q_g=Q_h(\Omega_g)$，
+液相測度は $q_l=|C|-q_g$ として従属的に読む．
+$\eta$ は graph chart，$\phi$ は必要なら作る gauge であり，
+どちらも単独では物理状態の所有者ではない．
+
 初期界面は
 \begin{equation}
   y_\Gamma(x,0)=y_0 + A_0\cos(kx+\theta_0),
@@ -16,7 +30,6 @@
 初期条件は水--空気の実スケールとして
 $y_0=0.01\,\mathrm{m}$，$A_0=2.0\times10^{-4}\,\mathrm{m}$，
 $m=2$，$L_x=0.02\,\mathrm{m}$，$\theta_0=0$ とする．
-したがって波長は $\lambda=L_x/m=0.01\,\mathrm{m}$ である．
 上下壁の間に置かれた有限深さ二流体の小振幅理論では
 \begin{equation}
   \omega^2
@@ -26,175 +39,116 @@ $m=2$，$L_x=0.02\,\mathrm{m}$，$\theta_0=0$ とする．
   h_l=h_g=0.01\,\mathrm{m},\quad g=0,
   \label{eq:flat_capillary_dispersion}
 \end{equation}
-を第一基準に置く~\cite{Prosperetti1981}．
-この式は，分子の $\sigma k^3$ を正弦波界面を平らに戻す毛管剛性，
-分母の $\rho_l\coth(kh_l)+\rho_g\coth(kh_g)$ を上下二相が一緒に動くときの
-有効慣性として読む．
-したがって本節で追うべき量は，振幅値そのものだけでなく，
-この剛性と慣性が決める位相時刻に対して復元力の向きが合っているかである．
-この設定では $k=628.318530718\,\mathrm{m^{-1}}$ であり，
+を位相基準に置く~\cite{Prosperetti1981}．
+本設定では
 \[
   \omega_\sigma
   =134.419859151\,\mathrm{s^{-1}},\qquad
   T_\sigma=\frac{2\pi}{\omega_\sigma}=0.046742983863\,\mathrm{s}
 \]
-を連続体の基準時刻とする．
-この有限深さ分散式は位相時刻の基準であり，
-$32^2$ の粘性・離散・追随格子計算が 1 周期後に
-連続体解の振幅へ厳密に戻ることを要求するものではない．
-本節の掲載値は，第~\ref{sec:ao_fast_state_space}節の採用条件を満たす
-アクティブ幾何毛管分解の標準経路で得た 1 周期結果である．
-この経路では，輸送される物理量はセル液相体積 $q_C$，
-界面ゲージは式~\eqref{eq:ao_q_owned_graph_gauge} の列体積グラフ，
-毛管仕事は式~\eqref{eq:ao_graph_surface_energy}--\eqref{eq:ao_graph_capillary_covector}，
-HFE 圧力ジャンプは式~\eqref{eq:ao_graph_hfe_jump}--\eqref{eq:ao_graph_hfe_face_law}
-で与える．
-速度へ入る毛管成分は面 Hodge で定義した圧力反力成分であり，
-追随格子では式~\eqref{eq:ao_face_cochain_regrid} の射影後面量の移送と
-式~\eqref{eq:grid_regular_stratum_axis}--\eqref{eq:grid_regular_stratum_shift}
-の正則層ガードを同時に満たす．
-本ケースでは重力を切るため，初期加速度は曲率と圧力ジャンプだけで決まる．
-向き付き規約
+である．
+
+離散 route は次である：
 \[
-  \psi=1\ \text{液相},\quad \psi=0\ \text{気相},\quad
-  \kappa_{lg}=\nabla_\Gamma\!\cdot\hat{\bm n}_{lg},\quad
-  j_{gl}=p_g-p_l=-\sigma\kappa_{lg}
+  \eta
+  \longrightarrow
+  q_l=Q_h(\eta)
+  \longrightarrow
+  q_g=|C|-q_l
+  \longrightarrow
+  \mathrm{PhaseRegionBatch}(\mathrm{GAS\_ABOVE},\mathrm{graph})
+  \longrightarrow
+  E_h^{(2)}[\eta].
 \]
-に従えば，山の初期加速度は復元向きでなければならない．
+$Q_h$ は列ごとの exact P1 graph column-integral で評価し，
+$E_h^{(2)}$ は同じ graph perimeter の二次変分として
+線形毛管波 mode を進める．
+時間発展は velocity-Verlet の reduced chart stepper であり，
+圧力・速度場へ PhaseRegion face force を消費する段階は未接続である．
+したがって本節の合格条件は，厳密解との振幅・速度・エネルギー比較，
+$Q_h$ 測度残差，体積ドリフト，GPU hot path，および
+\texttt{force\_admissible=0} の fail-close である．
 
 \begin{itemize}[noitemsep,leftmargin=2em]
-  \item グリッド：$[0,0.02]^2\,\mathrm{m}^2$，$32^2$，$x$ 周期，$y$ 壁面，
-        界面・壁面適合非一様格子
-  \item 物性：$\rho_l=998.2\,\mathrm{kg/m^3}$，
-        $\rho_g=1.204\,\mathrm{kg/m^3}$，
-        $\mu_l=1.002\times10^{-3}\,\mathrm{Pa\,s}$，
-        $\mu_g=1.825\times10^{-5}\,\mathrm{Pa\,s}$，
-        $\sigma=0.0728\,\mathrm{N/m}$，$g=0$
+  \item 正規入口：\texttt{experiment/ch14/config/ch14\_capillary.yaml}
+  \item 実行：\texttt{experiment/ch14/diagnose\_phase\_region\_capillary\_graph\_steps.py}
+  \item グリッド：$[0,0.02]^2\,\mathrm{m}^2$，$32^2$，
+        $x$ 周期，$y$ 壁面，legacy runtime YAML から読み込む診断格子
+  \item PhaseRegion owner：\texttt{gas\_above}
+  \item PhaseRegion chart：\texttt{graph\_periodic}
+  \item PhaseRegion measurement：
+        \texttt{exact\_graph\_column\_integral}
   \item 時間：$T=T_\sigma=0.046742983863\,\mathrm{s}$，
-        理論 CFL 係数 $1.0$
-  \item スキーム：$q$ の幾何掃引輸送，列体積グラフ追跡，
-        Young--Laplace 束仮想仕事，圧力反力成分，
-        分相 FCCD PPE + アフィンジャンプ HFE，DC 収束判定，
-        アクティブ幾何 PCG 互換射影
-  \item 出力：\texttt{signed\_interface\_amplitude}，
-        \texttt{volume\_conservation}，\texttt{kinetic\_energy}，
-        $0,\frac14T_\sigma,\frac12T_\sigma,\frac34T_\sigma,T_\sigma$ 近傍の
-        $\psi$/速度/圧力スナップショット
+        $2560$ step，$\Delta t=1.825897807156\times10^{-5}\,\mathrm{s}$
+  \item GPU：\texttt{backend.use\_gpu=true}，
+        測度 reduction と owner map は \texttt{backend.xp} 上で実行
 \end{itemize}
 
 \subsubsection{結果と判定}
 
-N=32 の 1 周期計算は $2585$ 標本で
-$t=T_\sigma=0.046742983863\,\mathrm{s}$ に到達し，
-事前停止判定は発火しなかった．
-追随格子は終端で
-\[
-  \Delta x_{\min}=6.25\times10^{-4}\,\mathrm{m},
-  \qquad
-  \Delta y_{\min}=3.9198\times10^{-4}\,\mathrm{m}
-\]
-を保ち，正則層ガードによる接線方向格子崩壊は観測されなかった．
-\texttt{signed\_interface\_amplitude} の初期離散値は
-$2.002821\times10^{-4}\,\mathrm{m}$ であり，
-$\frac14T_\sigma$ では $1.574613\times10^{-5}\,\mathrm{m}$
-（初期比 $0.0786$）まで平坦化した．
-$\frac12T_\sigma$ では負側へ反転し，終端では
-$1.590461\times10^{-4}\,\mathrm{m}$（初期比 $0.794$）へ戻った．
-符号付き診断を用いることで，非負 envelope の
-\texttt{interface\_amplitude} が符号を折り返して見かけ上短い周期を作る問題を避ける．
+正規 YAML \texttt{ch14\_capillary.yaml} による 1 周期計算は，
+remote GPU hot path で PASS した．
+結果は表~\ref{tab:ch14_phase_region_capillary_graph} に示す．
+終端時刻は $T_\sigma$ と一致し，
+終端振幅 $1.999999999998\times10^{-4}\,\mathrm{m}$ は
+厳密基準 $2.0\times10^{-4}\,\mathrm{m}$ と
+$2.42\times10^{-10}\,\mathrm{m}$ 以下の最大誤差で一致した．
+測度残差は全時刻で 0，体積ドリフトは
+$5.43\times10^{-20}$ 以下である．
+平均 step 時間は $3.52\times10^{-3}\,\mathrm{s}$，
+最大 step 時間は $3.98\times10^{-2}\,\mathrm{s}$ であり，
+$0.2\,\mathrm{s/step}$ の GPU 目標を満たした．
 
 \begin{table}[!htbp]
-\caption{N=32，アクティブ幾何毛管波 1 周期計算の位相別診断}
-\label{tab:ch14_capillary_phase_samples}
+\caption{N=32，PhaseRegion graph route 毛管波 1 周期計算}
+\label{tab:ch14_phase_region_capillary_graph}
 \centering\small
-\begin{tabular}{lrrrr}
+\begin{tabular}{lr}
 \toprule
-位相 & $t$ [s] & $a_2(t)$ [m] & $a_2(t)/a_2(0)$ & $E_k$ \\
+診断 & 値 \\
 \midrule
-$0$ & $1.8436\times10^{-5}$ & $2.0028\times10^{-4}$ & $1.000$ & $4.70\times10^{-11}$ \\
-$\frac14T_\sigma$ & $1.1692\times10^{-2}$ & $1.5746\times10^{-5}$ & $0.0786$ & $8.04\times10^{-6}$ \\
-$\frac12T_\sigma$ & $2.3368\times10^{-2}$ & $-1.8339\times10^{-4}$ & $-0.916$ & $8.18\times10^{-7}$ \\
-$\frac34T_\sigma$ & $3.5055\times10^{-2}$ & $-4.0674\times10^{-5}$ & $-0.203$ & $6.94\times10^{-6}$ \\
-$T_\sigma$ & $4.6743\times10^{-2}$ & $1.5905\times10^{-4}$ & $0.794$ & $1.14\times10^{-6}$ \\
+steps & $2560$ \\
+$t_{\mathrm{final}}/T_\sigma$ & $1.000000000000$ \\
+\texttt{step\_backend\_gpu} & $1$ \\
+\texttt{q\_measurement\_fast\_column\_integral} & $1$ \\
+\texttt{max\_amplitude\_error} & $2.416836235604\times10^{-10}$ \\
+\texttt{max\_velocity\_error} & $4.456387104473\times10^{-8}$ \\
+\texttt{max\_energy\_drift} & $1.505982113082\times10^{-6}$ \\
+\texttt{max\_residual\_l2} & $0$ \\
+\texttt{max\_volume\_drift} & $5.421010862428\times10^{-20}$ \\
+\texttt{mean\_step\_wall\_seconds} & $3.516834525792\times10^{-3}$ \\
+\texttt{max\_step\_wall\_seconds} & $3.977783117443\times10^{-2}$ \\
+\texttt{target\_met} & $1$ \\
+\texttt{force\_admissible} & $0$ \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-運動エネルギーは最大 $8.2924\times10^{-6}$，
-終端 $1.1434\times10^{-6}$ で有界である．
-体積ドリフトは終端 $1.4772\times10^{-14}$，
-最大 $5.7192\times10^{-14}$ であり，
-$q$ を所有者とする幾何掃引輸送と追随格子再構築は
-1 周期の範囲で機械丸め水準の保存性を保った．
-圧力図は絶対値ではなく
-$p-\langle p\rangle$ の外れ値に強い対称色軸で描く．
-これは，本経路の圧力が HFE ジャンプと面 Hodge 上の圧力反力を含む
-ゲージ代表であり，絶対圧の一色塗りでは圧力差を読めないためである．
-
 \begin{figure}[!htbp]
 \centering
-\includegraphics[width=0.32\linewidth]{figures/ch14_capillary_signed_interface_amplitude.pdf}
-\includegraphics[width=0.32\linewidth]{figures/ch14_capillary_kinetic_energy.pdf}
-\includegraphics[width=0.32\linewidth]{figures/ch14_capillary_volume_drift.pdf}
-\caption{N=32，アクティブ幾何毛管波 1 周期計算の時系列診断．左から，符号付き第2モード界面振幅，
-運動エネルギー，体積ドリフトを示す．}
-\label{fig:ch14_capillary_histories}
+\includegraphics[width=0.92\linewidth]{figures/ch14_phase_region_capillary_graph_steps.pdf}
+\caption{PhaseRegion graph route による N=32 毛管波 1 周期診断．
+graph chart から作る $Q_h(\Omega_g)$，振幅の厳密解比較，エネルギー drift，
+測度残差，体積 drift，および GPU step 時間を同じ reduced route 上で示す．}
+\label{fig:ch14_phase_region_capillary_graph_steps}
 \end{figure}
 
-2 次元場としては，\autoref{fig:ch14_capillary_psi_snapshots} に
-界面形状の 1 周期推移を示し，
-\autoref{fig:ch14_capillary_velocity_pressure_snapshots} に速度場と
-圧力代表を示す．
-速度場は $\frac14T_\sigma$ 近傍で界面を平坦化する向きを持ち，
-終端では上側最大位相へ戻りつつ，粘性散逸と $32^2$ 表現により
-初期振幅より小さい．
-圧力スナップショットは界面近傍の圧力代表として読み，
-拡散界面を滑らかに塗りつぶした絶対圧分布としては解釈しない．
-
-\begin{figure}[!htbp]
-\centering
-\includegraphics[width=0.19\linewidth]{figures/ch14_capillary_psi_t0.pdf}
-\includegraphics[width=0.19\linewidth]{figures/ch14_capillary_psi_tq1.pdf}
-\includegraphics[width=0.19\linewidth]{figures/ch14_capillary_psi_tq2.pdf}
-\includegraphics[width=0.19\linewidth]{figures/ch14_capillary_psi_tq3.pdf}
-\includegraphics[width=0.19\linewidth]{figures/ch14_capillary_psi_t1.pdf}
-\caption{N=32，アクティブ幾何毛管波の \texorpdfstring{$\psi$}{psi} スナップショット．左から
-$0,\frac14T_\sigma,\frac12T_\sigma,\frac34T_\sigma,T_\sigma$ 近傍を示す．
-色軸は全時刻で共通である．}
-\label{fig:ch14_capillary_psi_snapshots}
-\end{figure}
-
-\begin{figure}[!htbp]
-\centering
-\includegraphics[width=0.19\linewidth]{figures/ch14_capillary_velocity_t0.pdf}
-\includegraphics[width=0.19\linewidth]{figures/ch14_capillary_velocity_tq1.pdf}
-\includegraphics[width=0.19\linewidth]{figures/ch14_capillary_velocity_tq2.pdf}
-\includegraphics[width=0.19\linewidth]{figures/ch14_capillary_velocity_tq3.pdf}
-\includegraphics[width=0.19\linewidth]{figures/ch14_capillary_velocity_t1.pdf}
-\par\smallskip
-\includegraphics[width=0.19\linewidth]{figures/ch14_capillary_pressure_t0.pdf}
-\includegraphics[width=0.19\linewidth]{figures/ch14_capillary_pressure_tq1.pdf}
-\includegraphics[width=0.19\linewidth]{figures/ch14_capillary_pressure_tq2.pdf}
-\includegraphics[width=0.19\linewidth]{figures/ch14_capillary_pressure_tq3.pdf}
-\includegraphics[width=0.19\linewidth]{figures/ch14_capillary_pressure_t1.pdf}
-\caption{N=32，アクティブ幾何毛管波の 2 次元速度場と圧力代表．
-上段は速度場，下段は圧力代表であり，左から
-$0,\frac14T_\sigma,\frac12T_\sigma,\frac34T_\sigma,T_\sigma$ 近傍を示す．
-上段は背景スカラー場を描かず，矢印の長さと色で速度ベクトルを表す．
-速度矢印の色軸と矢印スケール，
-および圧力差色軸はそれぞれ全時刻で共通である．}
-\label{fig:ch14_capillary_velocity_pressure_snapshots}
-\end{figure}
-
-このケースの判定は，
-「平坦界面の毛管剛性が正しい向きで PPE 補正段に伝わり，
-幾何セル分率輸送，射影後面量の移送，圧力履歴座標，
-グラフ HFE 圧力ジャンプ，正則層ガード，FCCD PPE，
-IMEX--BDF2 運動量更新が有界な復元振動を保つ」
+この結果の判定は，
+「PhaseRegion が界面を所有し，$q$ は測度，
+$\phi/\eta$ は chart である」という第~\ref{sec:ao_fast_state_space}節の
+状態所有者が，毛管波 graph chart では可視化つきで動作した，
 である．
-この結果により，後続の液滴・気泡・Rayleigh--Taylor で用いる
-同じ Young--Laplace 束仮想仕事と $j_{gl}$ の面法則を，
-界面曲率の符号に対して分岐させずに使える．
-ただし，U12 で棄却した全圧力像過射影はこの結果の一部ではない．
+重要なのは，これは旧 screened graph-$q$ projection の修理ではない点である．
+旧経路では，輸送後の $q_T$ を滑らかな graph/phi chart に厳密に戻すことを
+本体にしていたため，非幾何的なセル自由度を曲率へ押し付けた．
+本節の正規 route は，$\Omega_g$ から $Q_h$ と $E_h$ を同時に読み，
+測度残差を 0 として確認する reduced chart 問題である．
+
+一方で，圧力・速度場はまだこの route の claim ではない．
+PhaseRegion face cochain を production PPE/corrector へ消費する契約は
+別ゲートであり，本節では \texttt{force\_admissible=0} を
+明示したまま合格とする．
+したがって旧 production runtime で生成された速度場・圧力場スナップショットは，
+本節の PhaseRegion 正規ルートの成功根拠からは外す．
 
 % ═══════════════════════════════════════════════════════════════════

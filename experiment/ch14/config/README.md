@@ -1,9 +1,9 @@
 # ch14 Benchmark YAML Design
 
-The §14 benchmark set is the canonical surface for the two-phase NS production
-stack. Five production YAML files are checked in:
+The §14 benchmark set is the canonical surface for the two-phase benchmarks.
+Five canonical entry-point YAML files are checked in:
 
-- `ch14_capillary.yaml` — capillary-wave benchmark.
+- `ch14_capillary.yaml` — PhaseRegion-primary capillary graph route.
 - `ch14_static_droplet.yaml` — periodic static-droplet GPU benchmark.
 - `ch14_oscillating_droplet.yaml` — oscillating-droplet benchmark.
 - `ch14_rising_bubble.yaml` — rising-bubble benchmark.
@@ -13,9 +13,13 @@ Each experiment type intentionally has exactly one checked-in YAML. Short,
 bounded, diagnostic, resolution, one-period, and GPU-profiling variants should
 be created as untracked local run copies, command-line overrides, or in-memory
 diagnostic configs. They must not be checked in as additional ch14 YAMLs.
-Run them through the unified runner (`experiment/run.py`):
+Run the capillary route through its PhaseRegion graph diagnostic runner:
 
-- `python experiment/run.py --config ch14_capillary`
+- `python experiment/ch14/diagnose_phase_region_capillary_graph_steps.py --config experiment/ch14/config/ch14_capillary.yaml`
+
+Run the four production-runtime NS configs through the unified runner
+(`experiment/run.py`):
+
 - `python experiment/run.py --config ch14_static_droplet`
 - `python experiment/run.py --config ch14_oscillating_droplet`
 - `python experiment/run.py --config ch14_rising_bubble`
@@ -36,11 +40,11 @@ read-only dry run is needed. Numerical state is stored as NumPy `.npy` binary
 members inside the `.npz`, preserving array dtype bytes losslessly; JSON is used
 only for non-numerical metadata such as the manifest and debug key names.
 
-The five production configs share the chapter-14 execution contract introduced
+The four production-runtime NS configs share the chapter-14 execution contract introduced
 for the rising-bubble route: conservative common-flux momentum transport,
 `predictor.assembly: none`, projected-face preservation, pressure-coordinate
 BDF2 history, and an explicit fail-closed boundary-Hodge state-space contract.
-All five YAMLs select the active-geometry capillary decomposition scheme with
+The four production-runtime NS YAMLs select the active-geometry capillary decomposition scheme with
 `interface.state_space: active_geometry_capillary`.  The parser validates that
 scheme against the fixed short-paper active-geometry contract internally:
 transported `q`, normalized `theta`, P1 gauge `phi`, active-cached
@@ -50,7 +54,9 @@ compatibility, required GPU storage, no implicit dense runtime fallback,
 `pressure_component_hodge` reaction.
 
 `ch14_capillary.yaml` and `ch14_oscillating_droplet.yaml` are SI water-air
-cases at about 20 C.  The capillary wave uses a 20 mm x 20 mm tank with
+cases at about 20 C.  The capillary route now uses the PhaseRegion graph
+entry point and takes its physical/grid/initial-state data from
+`legacy/ch14_capillary_legacy_runtime.yaml`.  The capillary wave uses a 20 mm x 20 mm tank with
 mode 2, so the wavelength is 10 mm; the oscillating droplet uses the same
 20 mm square tank with a 10 mm-class ellipse (`a=5.5 mm`, `b=4.5 mm`).
 Their final times and snapshot times are no longer inherited from the old
@@ -59,14 +65,14 @@ two-layer finite-depth dispersion relation because the 10 mm interface sits
 midway between the upper and lower walls of the 20 mm tank; the paper-facing
 snapshot window then follows the signed mode-2 production response over one
 observed cycle.  The oscillating-droplet window follows the Rayleigh-Lamb
-water-air period.  All five Chapter 14 YAMLs use active-geometry `q` as the
-interface carrier; the `interface.reinitialization` block therefore selects
+water-air period.  The production-runtime NS YAMLs use active-geometry `q` as the
+interface carrier; their `interface.reinitialization` blocks therefore select
 `compatibility_projection` every step.  This is not diffuse-CLS redistance:
 it is the hard active-geometry constraint solve that restores `Q_h(phi)=q`
 after swept-volume `q` transport and before bundle capillarity evaluates
 surface-energy work.
 
-The five production configs emit periodic snapshots with `psi`, `velocity`,
+The production-runtime NS configs emit periodic snapshots with `psi`, `velocity`,
 and pressure-family figures. The runner stores raw fields in `data.npz` under
 `fields/psi`, `fields/velocity`, and `fields/pressure` (plus compatibility
 fields `fields/u`, `fields/v`, and `fields/p`), and stores the affine face
