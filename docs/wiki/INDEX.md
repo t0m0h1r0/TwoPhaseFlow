@@ -1,4 +1,4 @@
-# Wiki Index — 411 entries
+# Wiki Index — 412 entries
 
 ## Active Retrieval Gate
 
@@ -79,7 +79,11 @@ PhaseRegion/InterfaceAtlas code because it fixes the vectorized packed atlas
 layout and F0/F1 fast-admission ladder; use
 [WIKI-L-051](code/WIKI-L-051.md) before adding atlas `Q_h`, perimeter
 reductions, or admission because it records the validation-only
-`PhaseRegionBatch/InterfaceAtlas` schema PASS. Before implementing or reviewing an
+`PhaseRegionBatch/InterfaceAtlas` schema PASS; use
+[WIKI-E-069](experiment/WIKI-E-069.md) before atlas admission or runtime
+snapshot adapters because it records the closed-bubble + top-layer
+PhaseRegion smoke oracle PASS with visualization and `force_admissible=0`.
+Before implementing or reviewing an
 established-theory change, use [WIKI-L-046](code/WIKI-L-046.md) as the
 equation-to-code contract gate. Older cards remain listed for
 provenance, but cards marked
@@ -354,7 +358,7 @@ support.
 | [WIKI-X-055](cross-domain/WIKI-X-055.md) | Theory-First Deliberation Best Practices |
 | [WIKI-X-056](cross-domain/WIKI-X-056.md) | Ch14 Capillary Origin-Reset Handoff Protocol |
 
-## Experiment (68)
+## Experiment (69)
 
 | REF-ID | Title |
 |--------|-------|
@@ -426,6 +430,7 @@ support.
 | [WIKI-E-066](experiment/WIKI-E-066.md) | Ch14 q-Manifold Projection Graph Oracle PASS |
 | [WIKI-E-067](experiment/WIKI-E-067.md) | Ch14 Closed Radial q-Manifold Oracle PASS |
 | [WIKI-E-068](experiment/WIKI-E-068.md) | Ch14 q-Manifold Runtime Admission Snapshot Probe PASS |
+| [WIKI-E-069](experiment/WIKI-E-069.md) | Ch14 PhaseRegion Atlas Smoke Oracle PASS |
 
 ## Paper (24)
 
