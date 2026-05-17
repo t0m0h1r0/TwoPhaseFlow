@@ -1,4 +1,4 @@
-# Wiki Index — 412 entries
+# Wiki Index — 413 entries
 
 ## Active Retrieval Gate
 
@@ -83,6 +83,8 @@ reductions, or admission because it records the validation-only
 [WIKI-E-069](experiment/WIKI-E-069.md) before atlas admission or runtime
 snapshot adapters because it records the closed-bubble + top-layer
 PhaseRegion smoke oracle PASS with visualization and `force_admissible=0`.
+Use [WIKI-L-052](code/WIKI-L-052.md) before atlas F0/F1 admission because it
+records the component-measure reduction and residual-report helper.
 Before implementing or reviewing an
 established-theory change, use [WIKI-L-046](code/WIKI-L-046.md) as the
 equation-to-code contract gate. Older cards remain listed for
@@ -501,7 +503,7 @@ support.
 | [WIKI-M-034](meta/WIKI-M-034.md) | Paper Review Revisions Should Reduce Cognitive Load, Not Add Decoration |
 | [WIKI-M-035](meta/WIKI-M-035.md) | Meta-Prompt Deployment Needs Project Boundaries, Native Adapters, and Token ROI Gates |
 
-## Code (51)
+## Code (52)
 
 | REF-ID | Title |
 |--------|-------|
@@ -556,3 +558,4 @@ support.
 | [WIKI-L-049](code/WIKI-L-049.md) | Ch14 q-Manifold Vectorized Geometry Parity PASS |
 | [WIKI-L-050](code/WIKI-L-050.md) | Ch14 PhaseRegion InterfaceAtlas Implementation Design |
 | [WIKI-L-051](code/WIKI-L-051.md) | Ch14 PhaseRegion InterfaceAtlas Schema PASS |
+| [WIKI-L-052](code/WIKI-L-052.md) | Ch14 PhaseRegion Measure Reduction PASS |

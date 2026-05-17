@@ -64,6 +64,10 @@ from .interface_atlas import (
     component_offsets_from_batch_ids,
     enum_values,
 )
+from .phase_region_measure import (
+    PhaseRegionMeasurement,
+    assemble_phase_region_measurement,
+)
 from .q_manifold_projection import (
     ClosedQMeasurement,
     GraphQMeasurement,
@@ -182,6 +186,7 @@ __all__ = [
     "P1SweptFluxCertificate",
     "P1SweptFluxResult",
     "PhaseRegionBatch",
+    "PhaseRegionMeasurement",
     "PhaseRole",
     "ProjectionResult",
     "ResidualReport",
@@ -193,6 +198,7 @@ __all__ = [
     "TopologyType",
     "active_cut_geometry_2d",
     "apply_certified_swept_flux_2d",
+    "assemble_phase_region_measurement",
     "build_active_table_for_cell_ids",
     "build_debug_active_table_from_dense",
     "capture_geometric_phase_checkpoint",
