@@ -83,6 +83,26 @@ class PhaseRegionForceAdmission:
     diagnostics: PhaseRegionForceDiagnostics | None = None
 
 
+@dataclass(frozen=True)
+class PhaseRegionForceAdmissionReport:
+    """Stable scalar report for zero-step adapter diagnostics."""
+
+    valid: bool
+    reason: str
+    force_admissible: bool
+    runtime_steps: int
+    diagnostics_valid: bool
+    complement_used: bool | None
+    bc_type: str | None
+    grid_alpha: float | None
+    min_dx: float | None
+    max_dx: float | None
+    face_component_shapes: tuple[tuple[int, ...], ...]
+    required_metric_keys: tuple[str, ...]
+    missing_metric_keys: tuple[str, ...]
+    metrics: dict[str, float]
+
+
 def two_phase_nodal_density(
     *,
     xp,
@@ -174,6 +194,64 @@ def build_phase_region_force_admission_candidate(
         owner_map=owner_map,
         face_metric=face_metric,
         cochain=cochain,
+        metrics=metrics,
+    )
+
+
+def build_phase_region_force_admission_report(
+    *,
+    admission: PhaseRegionForceAdmission,
+    grid=None,
+    compatibility_residual_linf: float | None = None,
+    required_metric_keys: tuple[str, ...] = (),
+) -> PhaseRegionForceAdmissionReport:
+    """Build a fail-closed scalar report for a zero-step force candidate.
+
+    The report is for diagnostics and adapter admission checks only.  It does
+    not make the force consumable by a pressure/velocity projection path.
+    """
+    metrics = dict(admission.metrics)
+    if compatibility_residual_linf is not None:
+        metrics["compat_linf"] = float(compatibility_residual_linf)
+    bc_type = _grid_bc_type(grid)
+    grid_alpha = _grid_alpha(grid)
+    min_dx, max_dx = _grid_spacing_range(grid)
+    if grid_alpha is not None:
+        metrics["grid_alpha"] = float(grid_alpha)
+    if min_dx is not None:
+        metrics["min_dx"] = float(min_dx)
+    if max_dx is not None:
+        metrics["max_dx"] = float(max_dx)
+    face_shapes = _face_component_shapes(admission)
+    required = tuple(str(key) for key in required_metric_keys)
+    missing = tuple(key for key in required if key not in metrics)
+    diagnostics = admission.diagnostics
+    diagnostics_valid = bool(diagnostics is not None and diagnostics.valid)
+    valid, reason = _report_validity(
+        admission=admission,
+        diagnostics_valid=diagnostics_valid,
+        diagnostics_reason=None if diagnostics is None else diagnostics.reason,
+        min_dx=min_dx,
+        max_dx=max_dx,
+        missing_metric_keys=missing,
+    )
+    complement_used = None
+    if admission.owner_map is not None:
+        complement_used = bool(admission.owner_map.complement_used)
+    return PhaseRegionForceAdmissionReport(
+        valid=bool(valid),
+        reason=reason,
+        force_admissible=bool(admission.force_admissible),
+        runtime_steps=int(admission.runtime_steps),
+        diagnostics_valid=diagnostics_valid,
+        complement_used=complement_used,
+        bc_type=bc_type,
+        grid_alpha=grid_alpha,
+        min_dx=min_dx,
+        max_dx=max_dx,
+        face_component_shapes=face_shapes,
+        required_metric_keys=required,
+        missing_metric_keys=missing,
         metrics=metrics,
     )
 
@@ -554,3 +632,75 @@ def _candidate_metrics(
         "phase_threshold": float(cochain.phase_threshold),
         "sigma": float(cochain.sigma),
     }
+
+
+def _report_validity(
+    *,
+    admission: PhaseRegionForceAdmission,
+    diagnostics_valid: bool,
+    diagnostics_reason: str | None,
+    min_dx: float | None,
+    max_dx: float | None,
+    missing_metric_keys: tuple[str, ...],
+) -> tuple[bool, str]:
+    if not admission.valid:
+        return False, f"candidate:{admission.reason}"
+    if admission.force_admissible:
+        return False, "force_admissible_true"
+    if admission.runtime_steps != 0:
+        return False, "runtime_steps_must_be_zero"
+    if not diagnostics_valid:
+        if diagnostics_reason is None:
+            return False, "diagnostics_missing"
+        return False, f"diagnostics:{diagnostics_reason}"
+    if min_dx is not None:
+        if not np.isfinite(min_dx) or not np.isfinite(max_dx) or min_dx <= 0.0:
+            return False, "grid_spacing_invalid"
+    if missing_metric_keys:
+        return False, "missing_metrics:" + ",".join(missing_metric_keys)
+    return True, "ok"
+
+
+def _face_component_shapes(
+    admission: PhaseRegionForceAdmission,
+) -> tuple[tuple[int, ...], ...]:
+    if admission.cochain is not None:
+        return tuple(
+            tuple(int(axis) for axis in component.shape)
+            for component in admission.cochain.surface_acceleration
+        )
+    if admission.face_metric is not None:
+        return tuple(
+            tuple(int(axis) for axis in component.shape)
+            for component in admission.face_metric.face_weight_components
+        )
+    return ()
+
+
+def _grid_bc_type(grid) -> str | None:
+    if grid is None:
+        return None
+    return str(getattr(grid, "bc_type", "unknown"))
+
+
+def _grid_alpha(grid) -> float | None:
+    if grid is None:
+        return None
+    config = getattr(grid, "_gc", None)
+    if config is None or not hasattr(config, "alpha_grid"):
+        return None
+    return float(config.alpha_grid)
+
+
+def _grid_spacing_range(grid) -> tuple[float | None, float | None]:
+    if grid is None:
+        return None, None
+    widths = [
+        np.diff(np.asarray(coords, dtype=float))
+        for coords in getattr(grid, "coords", ())
+    ]
+    if not widths:
+        return None, None
+    min_dx = min(float(np.min(axis_widths)) for axis_widths in widths)
+    max_dx = max(float(np.max(axis_widths)) for axis_widths in widths)
+    return min_dx, max_dx

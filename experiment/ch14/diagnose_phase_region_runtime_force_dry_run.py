@@ -40,6 +40,7 @@ from twophase.core.grid import Grid  # noqa: E402
 from twophase.coupling.phase_region_force_admission import (  # noqa: E402
     attach_phase_region_force_diagnostics,
     build_phase_region_force_admission_candidate,
+    build_phase_region_force_admission_report,
 )
 from twophase.geometry import CellMeasurePhase  # noqa: E402
 from twophase.geometry.phase_state import GeometricPhaseState  # noqa: E402
@@ -60,6 +61,18 @@ apply_style()
 CONFIG = ROOT / "experiment/ch14/config/ch14_oscillating_droplet.yaml"
 OUT = experiment_dir(__file__)
 NPZ = OUT / "data.npz"
+REPORT_REQUIRED_METRICS = (
+    "source_volume",
+    "owner_volume",
+    "diagnostics_valid",
+    "self_fd_power_residual",
+    "probe_fd_power_residual",
+    "hodge_divergence_linf",
+    "reaction_residual_divergence_linf",
+    "compat_linf",
+    "grid_alpha",
+    "min_dx",
+)
 
 
 @dataclass(frozen=True)
@@ -224,6 +237,14 @@ def _compute(
     if diagnostics is None or not diagnostics.valid:
         reason = "missing" if diagnostics is None else diagnostics.reason
         raise AssertionError(f"runtime force diagnostics failed: {reason}")
+    report = build_phase_region_force_admission_report(
+        admission=admission,
+        grid=grid,
+        compatibility_residual_linf=float(phase_state.compatibility_residual_linf),
+        required_metric_keys=REPORT_REQUIRED_METRICS,
+    )
+    if not report.valid:
+        raise AssertionError(f"runtime force admission report failed: {report.reason}")
     check_self = diagnostics.self_work
     check_probe = diagnostics.probe_work
     decomposition = diagnostics.hodge
@@ -231,7 +252,7 @@ def _compute(
 
     x_edges = np.asarray(grid.coords[0], dtype=float)
     y_edges = np.asarray(grid.coords[1], dtype=float)
-    metrics = dict(admission.metrics)
+    metrics = dict(report.metrics)
     metrics.update(
         {
         "runtime_steps": 0.0,

@@ -17,6 +17,7 @@ from twophase.coupling.closed_interface_riesz import (
 from twophase.coupling.phase_region_force_admission import (
     attach_phase_region_force_diagnostics,
     build_phase_region_force_admission_candidate,
+    build_phase_region_force_admission_report,
     phase_region_face_mass_metric,
     scale_face_velocity_to_fixed_stratum,
     two_phase_nodal_density,
@@ -251,6 +252,172 @@ def test_attach_force_diagnostics_fails_closed_for_invalid_candidate():
     assert with_diagnostics.diagnostics is not None
     assert with_diagnostics.diagnostics.reason == "candidate_not_valid"
     assert with_diagnostics.metrics["diagnostics_valid"] == 0.0
+
+
+def test_build_force_admission_report_exports_zero_step_contract_metrics():
+    grid, backend, fccd = _setup(12, 12)
+    cell_area = _cell_area(grid)
+    admission = build_phase_region_force_admission_candidate(
+        xp=backend.xp,
+        grid=grid,
+        fccd=fccd,
+        psi=_ellipse_psi(grid),
+        q_source=0.25 * cell_area,
+        cell_area=cell_area,
+        source_phase=CellMeasurePhase.LIQUID,
+        owner_phase=CellMeasurePhase.GAS,
+        rho_l=10.0,
+        rho_g=2.0,
+        sigma=0.072,
+    )
+    admission = attach_phase_region_force_diagnostics(
+        xp=backend.xp,
+        grid=grid,
+        fccd=fccd,
+        div_op=FCCDDivergenceOperator(fccd),
+        admission=admission,
+        probe_face_velocity_components=admission.cochain.surface_acceleration,
+    )
+    required = (
+        "source_volume",
+        "owner_volume",
+        "diagnostics_valid",
+        "self_fd_power_residual",
+        "hodge_divergence_linf",
+        "compat_linf",
+        "grid_alpha",
+        "min_dx",
+    )
+
+    report = build_phase_region_force_admission_report(
+        admission=admission,
+        grid=grid,
+        compatibility_residual_linf=0.0,
+        required_metric_keys=required,
+    )
+
+    assert report.valid, report.reason
+    assert report.reason == "ok"
+    assert report.force_admissible is False
+    assert report.runtime_steps == 0
+    assert report.diagnostics_valid is True
+    assert report.complement_used is True
+    assert report.bc_type == "periodic"
+    assert report.face_component_shapes == ((12, 13), (13, 12))
+    assert report.missing_metric_keys == ()
+    assert report.metrics["compat_linf"] == 0.0
+    assert report.metrics["grid_alpha"] == pytest.approx(1.0)
+    assert report.metrics["min_dx"] == pytest.approx(min(grid.L[0] / 12, grid.L[1] / 12))
+    assert report.metrics["force_admissible"] == 0.0
+
+
+def test_build_force_admission_report_fails_closed_on_missing_required_metric():
+    grid, backend, fccd = _setup(12, 12)
+    cell_area = _cell_area(grid)
+    admission = build_phase_region_force_admission_candidate(
+        xp=backend.xp,
+        grid=grid,
+        fccd=fccd,
+        psi=_ellipse_psi(grid),
+        q_source=0.25 * cell_area,
+        cell_area=cell_area,
+        source_phase=CellMeasurePhase.LIQUID,
+        owner_phase=CellMeasurePhase.GAS,
+        rho_l=10.0,
+        rho_g=2.0,
+        sigma=0.072,
+    )
+    admission = attach_phase_region_force_diagnostics(
+        xp=backend.xp,
+        grid=grid,
+        fccd=fccd,
+        div_op=FCCDDivergenceOperator(fccd),
+        admission=admission,
+    )
+
+    report = build_phase_region_force_admission_report(
+        admission=admission,
+        grid=grid,
+        required_metric_keys=("not_a_metric",),
+    )
+
+    assert not report.valid
+    assert report.reason == "missing_metrics:not_a_metric"
+    assert report.force_admissible is False
+    assert report.missing_metric_keys == ("not_a_metric",)
+
+
+def test_build_force_admission_report_fails_closed_on_invalid_grid_spacing():
+    grid, backend, fccd = _setup(12, 12)
+    cell_area = _cell_area(grid)
+    admission = build_phase_region_force_admission_candidate(
+        xp=backend.xp,
+        grid=grid,
+        fccd=fccd,
+        psi=_ellipse_psi(grid),
+        q_source=0.25 * cell_area,
+        cell_area=cell_area,
+        source_phase=CellMeasurePhase.LIQUID,
+        owner_phase=CellMeasurePhase.GAS,
+        rho_l=10.0,
+        rho_g=2.0,
+        sigma=0.072,
+    )
+    admission = attach_phase_region_force_diagnostics(
+        xp=backend.xp,
+        grid=grid,
+        fccd=fccd,
+        div_op=FCCDDivergenceOperator(fccd),
+        admission=admission,
+    )
+    grid.coords[0] = np.array(
+        (0.0, 0.1, 0.2, 0.2, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2),
+        dtype=float,
+    )
+
+    report = build_phase_region_force_admission_report(
+        admission=admission,
+        grid=grid,
+    )
+
+    assert not report.valid
+    assert report.reason == "grid_spacing_invalid"
+    assert report.force_admissible is False
+
+
+def test_build_force_admission_report_records_wall_nonuniform_grid_metadata():
+    grid, backend, fccd = _setup(4, 5)
+    grid.set_boundary_type("wall")
+    grid.coords[0] = np.array((0.0, 0.1, 0.35, 0.9, 1.2), dtype=float)
+    grid.coords[1] = np.array((0.0, 0.05, 0.2, 0.42, 0.65, 0.8), dtype=float)
+    cell_area = _cell_area(grid)
+    admission = build_phase_region_force_admission_candidate(
+        xp=backend.xp,
+        grid=grid,
+        fccd=fccd,
+        psi=_ellipse_psi(grid),
+        q_source=0.25 * cell_area,
+        cell_area=cell_area,
+        source_phase=CellMeasurePhase.LIQUID,
+        owner_phase=CellMeasurePhase.GAS,
+        rho_l=10.0,
+        rho_g=2.0,
+        sigma=0.072,
+        runtime_steps=1,
+    )
+
+    report = build_phase_region_force_admission_report(
+        admission=admission,
+        grid=grid,
+    )
+
+    assert not report.valid
+    assert report.reason == "candidate:runtime_steps_must_be_zero"
+    assert report.bc_type == "wall"
+    assert report.min_dx == pytest.approx(0.05)
+    assert report.max_dx == pytest.approx(0.55)
+    assert report.face_component_shapes == ()
+    assert report.complement_used is None
 
 
 def test_phase_region_face_metric_rejects_cell_density_shape():
