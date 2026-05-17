@@ -27,6 +27,9 @@ from twophase.coupling.phase_region_force_admission import (
 )
 from twophase.geometry import CellMeasurePhase
 from twophase.simulation.divergence_ops import FCCDDivergenceOperator
+from twophase.simulation.phase_region_work_gate import (
+    build_phase_region_pressure_velocity_g0_report,
+)
 
 
 def _setup(nx: int = 4, ny: int = 5):
@@ -103,6 +106,111 @@ def _valid_admission_and_report():
     )
     assert report.valid, report.reason
     return grid, backend, fccd, admission, report
+
+
+def _valid_nonuniform_admission_and_report():
+    backend = Backend(use_gpu=False)
+    grid = Grid(
+        GridConfig(
+            ndim=2,
+            N=(12, 12),
+            L=(1.2, 0.8),
+            alpha_grid=2.0,
+            eps_g_cells=4.0,
+        ),
+        backend,
+    )
+    grid.coords[0] = np.array(
+        (
+            0.0,
+            0.07,
+            0.15,
+            0.25,
+            0.38,
+            0.52,
+            0.66,
+            0.78,
+            0.89,
+            0.99,
+            1.08,
+            1.15,
+            1.2,
+        ),
+        dtype=float,
+    )
+    grid.coords[1] = np.array(
+        (
+            0.0,
+            0.04,
+            0.10,
+            0.17,
+            0.26,
+            0.37,
+            0.49,
+            0.59,
+            0.67,
+            0.73,
+            0.77,
+            0.79,
+            0.8,
+        ),
+        dtype=float,
+    )
+    grid._refresh_node_spacings()
+    ccd = CCDSolver(grid, backend, bc_type="periodic")
+    grid._build_metrics(ccd=ccd)
+    fccd = FCCDSolver(grid, backend, bc_type="periodic", ccd_solver=ccd)
+    cell_area = _cell_area(grid)
+    admission = build_phase_region_force_admission_candidate(
+        xp=backend.xp,
+        grid=grid,
+        fccd=fccd,
+        psi=_ellipse_psi(grid),
+        q_source=0.25 * cell_area,
+        cell_area=cell_area,
+        source_phase=CellMeasurePhase.LIQUID,
+        owner_phase=CellMeasurePhase.GAS,
+        rho_l=10.0,
+        rho_g=2.0,
+        sigma=0.072,
+    )
+    admission = attach_phase_region_force_diagnostics(
+        xp=backend.xp,
+        grid=grid,
+        fccd=fccd,
+        div_op=FCCDDivergenceOperator(fccd),
+        admission=admission,
+        probe_face_velocity_components=admission.cochain.surface_acceleration,
+    )
+    report = build_phase_region_force_admission_report(
+        admission=admission,
+        grid=grid,
+        compatibility_residual_linf=0.0,
+        required_metric_keys=("grid_alpha", "min_dx", "max_dx"),
+    )
+    assert report.valid, report.reason
+    assert report.grid_alpha == pytest.approx(2.0)
+    assert report.min_dx < report.max_dx
+    return grid, backend, fccd, admission, report
+
+
+def _runtime_pressure_velocity_faces(grid, backend, fccd, admission):
+    div_op = FCCDDivergenceOperator(fccd)
+    x = np.asarray(grid.coords[0], dtype=float)
+    y = np.asarray(grid.coords[1], dtype=float)
+    X, Y = np.meshgrid(x / x[-1], y / y[-1], indexing="ij")
+    velocity = [
+        np.sin(2.0 * np.pi * X) * np.cos(np.pi * Y),
+        -0.5 * np.cos(np.pi * X) * np.sin(2.0 * np.pi * Y),
+    ]
+    pressure = 0.3 * X + 0.2 * Y + 0.1 * np.sin(np.pi * X) * np.sin(np.pi * Y)
+    runtime_faces = div_op.face_fluxes(velocity)
+    pressure_faces = div_op.pressure_fluxes(
+        pressure,
+        admission.face_metric.rho_node,
+        boundary_face_space="full_face",
+    )
+    return backend.xp, runtime_faces, pressure_faces
 
 
 def test_two_phase_nodal_density_matches_runtime_indicator_formula():
@@ -531,6 +639,182 @@ def test_build_force_adapter_decision_fails_closed_on_missing_required_metric():
     assert decision.force_admissible is False
     assert decision.force_components is None
     assert decision.metrics["adapter_missing_metric_count"] == 1.0
+
+
+def test_pressure_velocity_g0_report_accepts_matching_face_space_and_metric():
+    grid, backend, fccd, admission, report = _valid_admission_and_report()
+    decision = build_phase_region_force_adapter_decision(
+        admission=admission,
+        report=report,
+    )
+    xp, runtime_faces, pressure_faces = _runtime_pressure_velocity_faces(
+        grid,
+        backend,
+        fccd,
+        admission,
+    )
+
+    g0 = build_phase_region_pressure_velocity_g0_report(
+        xp=xp,
+        admission=admission,
+        decision=decision,
+        runtime_face_velocity_components=runtime_faces,
+        pressure_face_components=pressure_faces,
+        bc_type=fccd.bc_type,
+        boundary_face_space="full_face",
+    )
+
+    expected_surface_work = sum(
+        float(np.sum(np.asarray(w) * np.asarray(s) * np.asarray(u)))
+        for w, s, u in zip(
+            admission.face_metric.face_weight_components,
+            admission.cochain.surface_acceleration,
+            runtime_faces,
+        )
+    )
+
+    assert g0.valid, g0.reason
+    assert g0.reason == "ok"
+    assert g0.force_admissible is False
+    assert g0.surface_face_shapes == ((12, 13), (13, 12))
+    assert g0.surface_face_shapes == g0.velocity_face_shapes
+    assert g0.surface_face_shapes == g0.pressure_face_shapes
+    assert g0.surface_face_shapes == g0.metric_face_shapes
+    assert g0.boundary_residual_linf == 0.0
+    assert g0.surface_velocity_work == pytest.approx(expected_surface_work)
+    assert np.isfinite(g0.pressure_velocity_work)
+    assert g0.metrics["g0_valid"] == 1.0
+    assert g0.metrics["force_admissible"] == 0.0
+
+
+def test_pressure_velocity_g0_report_accepts_nonuniform_metric_faces():
+    grid, backend, fccd, admission, report = _valid_nonuniform_admission_and_report()
+    decision = build_phase_region_force_adapter_decision(
+        admission=admission,
+        report=report,
+    )
+    xp, runtime_faces, pressure_faces = _runtime_pressure_velocity_faces(
+        grid,
+        backend,
+        fccd,
+        admission,
+    )
+
+    g0 = build_phase_region_pressure_velocity_g0_report(
+        xp=xp,
+        admission=admission,
+        decision=decision,
+        runtime_face_velocity_components=runtime_faces,
+        pressure_face_components=pressure_faces,
+        bc_type=fccd.bc_type,
+        boundary_face_space="full_face",
+    )
+
+    assert g0.valid, g0.reason
+    assert g0.force_admissible is False
+    assert g0.surface_face_shapes == g0.metric_face_shapes
+    assert report.min_dx < report.max_dx
+    assert g0.metrics["metric_weight_min"] > 0.0
+    assert np.isfinite(g0.surface_velocity_work)
+    assert np.isfinite(g0.pressure_velocity_work)
+
+
+def test_pressure_velocity_g0_report_rejects_nodal_force_component_route():
+    grid, backend, _fccd, admission, report = _valid_admission_and_report()
+    decision = build_phase_region_force_adapter_decision(
+        admission=admission,
+        report=report,
+    )
+    nodal_components = [
+        np.zeros(tuple(grid.shape), dtype=float),
+        np.zeros(tuple(grid.shape), dtype=float),
+    ]
+    pressure_faces = [
+        np.zeros_like(component)
+        for component in admission.cochain.surface_acceleration
+    ]
+
+    g0 = build_phase_region_pressure_velocity_g0_report(
+        xp=backend.xp,
+        admission=admission,
+        decision=decision,
+        runtime_face_velocity_components=nodal_components,
+        pressure_face_components=pressure_faces,
+    )
+
+    assert not g0.valid
+    assert g0.reason == "velocity_face_shape_mismatch"
+    assert g0.force_admissible is False
+    assert g0.surface_face_shapes != tuple(tuple(grid.shape) for _axis in range(grid.ndim))
+
+
+def test_pressure_velocity_g0_report_rejects_boundary_space_mismatch():
+    grid, backend, fccd, admission, report = _valid_admission_and_report()
+    decision = build_phase_region_force_adapter_decision(
+        admission=admission,
+        report=report,
+    )
+    xp, runtime_faces, pressure_faces = _runtime_pressure_velocity_faces(
+        grid,
+        backend,
+        fccd,
+        admission,
+    )
+    bad_surface_faces = [
+        np.array(component, copy=True)
+        for component in admission.cochain.surface_acceleration
+    ]
+    bad_surface_faces[0][0, :] = 1.0
+    bad_cochain = replace(
+        admission.cochain,
+        surface_acceleration=bad_surface_faces,
+    )
+    bad_admission = replace(admission, cochain=bad_cochain)
+
+    g0 = build_phase_region_pressure_velocity_g0_report(
+        xp=xp,
+        admission=bad_admission,
+        decision=decision,
+        runtime_face_velocity_components=runtime_faces,
+        pressure_face_components=pressure_faces,
+        bc_type="wall",
+        boundary_face_space="impermeable_face",
+    )
+
+    assert not g0.valid
+    assert g0.reason == "surface_face_boundary_space_mismatch"
+    assert g0.force_admissible is False
+    assert g0.boundary_residual_linf > 0.0
+
+
+def test_pressure_velocity_g0_report_fails_closed_on_pressure_shape_mismatch():
+    grid, backend, fccd, admission, report = _valid_admission_and_report()
+    decision = build_phase_region_force_adapter_decision(
+        admission=admission,
+        report=report,
+    )
+    xp, runtime_faces, pressure_faces = _runtime_pressure_velocity_faces(
+        grid,
+        backend,
+        fccd,
+        admission,
+    )
+    mismatched_pressure_faces = [
+        pressure_faces[0][:-1, :],
+        pressure_faces[1],
+    ]
+
+    g0 = build_phase_region_pressure_velocity_g0_report(
+        xp=xp,
+        admission=admission,
+        decision=decision,
+        runtime_face_velocity_components=runtime_faces,
+        pressure_face_components=mismatched_pressure_faces,
+    )
+
+    assert not g0.valid
+    assert g0.reason == "pressure_face_shape_mismatch"
+    assert g0.force_admissible is False
 
 
 def test_phase_region_face_metric_rejects_cell_density_shape():
