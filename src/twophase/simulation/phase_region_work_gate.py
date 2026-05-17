@@ -7,8 +7,9 @@ Symbol mapping
 ``p_f`` -> pressure reaction faces.
 ``M_f`` -> PhaseRegion face mass metric.
 
-The helpers in this module are zero-step diagnostics only.  They do not expose
-``s_f`` as a runtime force, call projection, or advance a velocity field.
+The helpers in this module are zero-step diagnostics only.  G4 may expose
+``s_f`` as a face payload for a later explicit consumer, but this module does
+not connect it to runtime projection or advance a velocity field.
 """
 
 from __future__ import annotations
@@ -106,6 +107,21 @@ class PhaseRegionPressureVelocityG3Report:
     pressure_update_weighted_l2: float
     surface_update_weighted_l2: float
     projected_weighted_l2: float
+    metrics: dict[str, float]
+
+
+@dataclass(frozen=True)
+class PhaseRegionPressureVelocityG4Report:
+    """Final face-force exposure decision after G0--G3."""
+
+    valid: bool
+    reason: str
+    force_admissible: bool
+    withheld_force_reason: str
+    face_force_components: tuple[object, ...] | None
+    face_force_shapes: tuple[tuple[int, ...], ...]
+    face_force_weighted_l2: float
+    surface_update_consistency_residual: float
     metrics: dict[str, float]
 
 
@@ -562,6 +578,122 @@ def build_phase_region_pressure_velocity_g3_report(
     )
 
 
+def build_phase_region_pressure_velocity_g4_report(
+    *,
+    xp,
+    admission: PhaseRegionForceAdmission,
+    adapter_decision: PhaseRegionForceAdapterDecision,
+    g0_report: PhaseRegionPressureVelocityG0Report,
+    g1_report: PhaseRegionPressureVelocityG1Report,
+    g2_report: PhaseRegionPressureVelocityG2Report,
+    g3_report: PhaseRegionPressureVelocityG3Report,
+    boundary_tolerance: float = 0.0,
+    pressure_hodge_tolerance: float = 1.0e-10,
+    work_closure_tolerance: float = 1.0e-5,
+    same_weight_tolerance: float = 1.0e-12,
+    projection_tolerance: float = 1.0e-12,
+    surface_update_consistency_tolerance: float = 1.0e-12,
+) -> PhaseRegionPressureVelocityG4Report:
+    """Expose only the admitted face cochain, never nodal force components."""
+    if not adapter_decision.valid:
+        return _invalid_g4_report(reason=f"adapter:{adapter_decision.reason}")
+    if adapter_decision.force_admissible:
+        return _invalid_g4_report(reason="adapter_force_admissible_true")
+    if adapter_decision.withheld_force_reason != "pressure_velocity_work_gate_missing":
+        return _invalid_g4_report(reason="adapter_withheld_force_reason")
+    if not g0_report.valid:
+        return _invalid_g4_report(reason=f"g0:{g0_report.reason}")
+    if not g1_report.valid:
+        return _invalid_g4_report(reason=f"g1:{g1_report.reason}")
+    if not g2_report.valid:
+        return _invalid_g4_report(reason=f"g2:{g2_report.reason}")
+    if not g3_report.valid:
+        return _invalid_g4_report(reason=f"g3:{g3_report.reason}")
+    if not admission.valid or admission.cochain is None or admission.face_metric is None:
+        return _invalid_g4_report(reason=f"candidate:{admission.reason}")
+    if (
+        admission.force_admissible
+        or g0_report.force_admissible
+        or g1_report.force_admissible
+        or g2_report.force_admissible
+        or g3_report.force_admissible
+    ):
+        return _invalid_g4_report(reason="pre_gate_force_admissible_true")
+
+    tolerances = {
+        "boundary_tolerance": float(boundary_tolerance),
+        "pressure_hodge_tolerance": float(pressure_hodge_tolerance),
+        "work_closure_tolerance": float(work_closure_tolerance),
+        "same_weight_tolerance": float(same_weight_tolerance),
+        "projection_tolerance": float(projection_tolerance),
+        "surface_update_consistency_tolerance": float(
+            surface_update_consistency_tolerance
+        ),
+    }
+    for name, value in tolerances.items():
+        if not np.isfinite(value) or value < 0.0:
+            return _invalid_g4_report(reason=f"{name}_invalid")
+
+    face_force = tuple(
+        xp.asarray(component).copy()
+        for component in admission.cochain.surface_acceleration
+    )
+    weights = [
+        xp.asarray(weight) for weight in admission.face_metric.face_weight_components
+    ]
+    face_force_shapes = _component_shapes(face_force)
+    if face_force_shapes != tuple(g0_report.surface_face_shapes):
+        return _invalid_g4_report(reason="g0_face_shape_mismatch")
+    if face_force_shapes != tuple(g3_report.projected_face_shapes):
+        return _invalid_g4_report(reason="g3_face_shape_mismatch")
+    if face_force_shapes != _component_shapes(weights):
+        return _invalid_g4_report(reason="metric_face_shape_mismatch")
+
+    face_force_l2 = _weighted_l2(xp, face_force, weights)
+    surface_update_residual = _relative_residual(
+        float(g3_report.surface_update_weighted_l2),
+        float(g3_report.dt) * float(face_force_l2),
+    )
+    if g0_report.boundary_residual_linf > tolerances["boundary_tolerance"]:
+        return _invalid_g4_report(reason="boundary_residual_linf")
+    if g1_report.pressure_hodge_weighted_l2 > tolerances["pressure_hodge_tolerance"]:
+        return _invalid_g4_report(reason="pressure_hodge_weighted_l2")
+    if g2_report.work_closure_residual > tolerances["work_closure_tolerance"]:
+        return _invalid_g4_report(reason="work_closure_residual")
+    if g2_report.same_weight_surface_work_residual > tolerances["same_weight_tolerance"]:
+        return _invalid_g4_report(reason="same_weight_surface_work_residual")
+    if g3_report.projection_identity_linf > tolerances["projection_tolerance"]:
+        return _invalid_g4_report(reason="projection_identity_linf")
+    if surface_update_residual > tolerances["surface_update_consistency_tolerance"]:
+        return _invalid_g4_report(reason="surface_update_consistency_residual")
+
+    metrics = {
+        "g4_valid": 1.0,
+        "force_admissible": 1.0,
+        "face_force_exposed": 1.0,
+        "face_force_component_count": float(len(face_force_shapes)),
+        "face_force_weighted_l2": float(face_force_l2),
+        "surface_update_consistency_residual": float(surface_update_residual),
+        "final_boundary_residual_linf": float(g0_report.boundary_residual_linf),
+        "final_pressure_hodge_weighted_l2": float(
+            g1_report.pressure_hodge_weighted_l2
+        ),
+        "final_work_closure_residual": float(g2_report.work_closure_residual),
+        "final_projection_identity_linf": float(g3_report.projection_identity_linf),
+    }
+    return PhaseRegionPressureVelocityG4Report(
+        valid=True,
+        reason="ok",
+        force_admissible=True,
+        withheld_force_reason="",
+        face_force_components=face_force,
+        face_force_shapes=face_force_shapes,
+        face_force_weighted_l2=float(face_force_l2),
+        surface_update_consistency_residual=float(surface_update_residual),
+        metrics=metrics,
+    )
+
+
 def _invalid_g0_report(
     *,
     reason: str,
@@ -651,6 +783,24 @@ def _invalid_g3_report(*, reason: str) -> PhaseRegionPressureVelocityG3Report:
         metrics={
             "g3_valid": 0.0,
             "force_admissible": 0.0,
+        },
+    )
+
+
+def _invalid_g4_report(*, reason: str) -> PhaseRegionPressureVelocityG4Report:
+    return PhaseRegionPressureVelocityG4Report(
+        valid=False,
+        reason=str(reason),
+        force_admissible=False,
+        withheld_force_reason=str(reason),
+        face_force_components=None,
+        face_force_shapes=(),
+        face_force_weighted_l2=float("nan"),
+        surface_update_consistency_residual=float("nan"),
+        metrics={
+            "g4_valid": 0.0,
+            "force_admissible": 0.0,
+            "face_force_exposed": 0.0,
         },
     )
 

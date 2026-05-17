@@ -53,6 +53,7 @@ from twophase.simulation.phase_region_work_gate import (  # noqa: E402
     build_phase_region_pressure_velocity_g1_report,
     build_phase_region_pressure_velocity_g2_report,
     build_phase_region_pressure_velocity_g3_report,
+    build_phase_region_pressure_velocity_g4_report,
 )
 from twophase.tools.experiment import (  # noqa: E402
     apply_style,
@@ -312,6 +313,17 @@ def _compute(
     )
     if not g3.valid:
         raise AssertionError(f"runtime force G3 gate failed: {g3.reason}")
+    g4 = build_phase_region_pressure_velocity_g4_report(
+        xp=xp,
+        admission=admission,
+        adapter_decision=decision,
+        g0_report=g0,
+        g1_report=g1,
+        g2_report=g2,
+        g3_report=g3,
+    )
+    if not g4.valid:
+        raise AssertionError(f"runtime force G4 gate failed: {g4.reason}")
 
     x_edges = np.asarray(grid.coords[0], dtype=float)
     y_edges = np.asarray(grid.coords[1], dtype=float)
@@ -320,22 +332,25 @@ def _compute(
     metrics.update(g1.metrics)
     metrics.update(g2.metrics)
     metrics.update(g3.metrics)
+    metrics.update(g4.metrics)
     metrics.update(
         {
-        "runtime_steps": 0.0,
-        "source_phase": float(CellMeasurePhase.LIQUID),
-        "owner_phase": float(CellMeasurePhase.GAS),
-        "complement_used": float(owner_map.complement_used),
-        "liquid_runtime_volume": float(owner_map.source_volume),
-        "gas_target_volume": float(owner_map.owner_volume),
-        "compat_linf": float(phase_state.compatibility_residual_linf),
-        "sigma": float(cfg.physics.sigma),
-        "rho_l": float(cfg.physics.rho_l),
-        "rho_g": float(cfg.physics.rho_g),
-        "grid_alpha": float(cfg.grid.alpha_grid),
-        "min_dx": min(float(np.min(np.diff(x_edges))), float(np.min(np.diff(y_edges)))),
-        "projection_dt": float(projection_dt),
-        "force_admissible": 0.0,
+            "runtime_steps": 0.0,
+            "source_phase": float(CellMeasurePhase.LIQUID),
+            "owner_phase": float(CellMeasurePhase.GAS),
+            "complement_used": float(owner_map.complement_used),
+            "liquid_runtime_volume": float(owner_map.source_volume),
+            "gas_target_volume": float(owner_map.owner_volume),
+            "compat_linf": float(phase_state.compatibility_residual_linf),
+            "sigma": float(cfg.physics.sigma),
+            "rho_l": float(cfg.physics.rho_l),
+            "rho_g": float(cfg.physics.rho_g),
+            "grid_alpha": float(cfg.grid.alpha_grid),
+            "min_dx": min(
+                float(np.min(np.diff(x_edges))),
+                float(np.min(np.diff(y_edges))),
+            ),
+            "projection_dt": float(projection_dt),
         }
     )
     return {
@@ -445,7 +460,7 @@ def _plot(results: dict[str, object]) -> pathlib.Path:
                 f"|s|_M = {float(metrics['component_weighted_l2']):.8e}",
                 f"|H|_M = {float(metrics['hodge_weighted_l2']):.8e}",
                 f"reaction ratio = {float(metrics['reaction_residual_ratio']):.8e}",
-                "force_admissible = 0",
+                f"force_admissible = {float(metrics['force_admissible']):.0f}",
             )
         ),
         transform=ax.transAxes,
@@ -523,6 +538,10 @@ def _print_summary(results: dict[str, object], figure_path: pathlib.Path) -> Non
         "pressure_update_weighted_l2",
         "surface_update_weighted_l2",
         "projected_weighted_l2",
+        "g4_valid",
+        "face_force_exposed",
+        "face_force_weighted_l2",
+        "surface_update_consistency_residual",
         "projection_dt",
         "force_admissible",
     ):
