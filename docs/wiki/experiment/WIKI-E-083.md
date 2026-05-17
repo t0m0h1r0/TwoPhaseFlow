@@ -3,7 +3,7 @@
 ## Claim
 
 The corrected new-route capillary-wave YAML is
-`config/routes/ch14_phase_region_capillary_graph.yaml`, and it runs the
+`config/ch14_capillary.yaml`, and it runs the
 PhaseRegion graph route for one full period with GPU exact graph-column
 measurement enabled.
 
@@ -18,7 +18,7 @@ artifacts/A/ch14_phase_region_graph_yaml_one_period_CHK-RA-CH14-VAR-059.md
 Command:
 
 ```text
-make cycle EXP=experiment/ch14/diagnose_phase_region_capillary_graph_steps.py ARGS='--config experiment/ch14/config/routes/ch14_phase_region_capillary_graph.yaml'
+make cycle EXP=experiment/ch14/diagnose_phase_region_capillary_graph_steps.py ARGS='--config experiment/ch14/config/ch14_capillary.yaml'
 ```
 
 Result:
@@ -34,7 +34,7 @@ max_velocity_error                = 4.456387104473e-08
 max_energy_drift                  = 1.505982113082e-06
 max_residual_l2                   = 0.000000000000e+00
 max_volume_drift                  = 5.421010862428e-20
-max_step_wall_seconds             = 3.899358166382e-02
+max_step_wall_seconds             = 3.977783117443e-02
 target_met                        = 1
 force_admissible                  = 0
 ```
@@ -46,6 +46,6 @@ production-route evidence, but it is not the new PhaseRegion graph route.
 
 ## Boundary
 
-This card authorizes only the reduced PhaseRegion graph route.  It does not
-authorize production pressure/velocity coupling or relabel `ch14_capillary.yaml`
-as the new route.
+This card authorizes only the reduced PhaseRegion graph route under the
+canonical capillary filename.  It does not authorize production
+pressure/velocity coupling.

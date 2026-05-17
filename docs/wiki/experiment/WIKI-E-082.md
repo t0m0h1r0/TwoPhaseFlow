@@ -2,9 +2,10 @@
 
 ## Claim
 
-The production `ch14_capillary` YAML route now explicitly documents its
-one-period default target and runs for the full configured period without a
-runner final-time override.
+The legacy production capillary YAML route explicitly documented its one-period
+default target and ran for the full configured period without a runner
+final-time override before the canonical filename moved to the PhaseRegion
+route.
 
 ## Evidence
 
@@ -17,7 +18,7 @@ artifacts/A/ch14_capillary_yaml_one_period_run_CHK-RA-CH14-VAR-058.md
 YAML:
 
 ```text
-experiment/ch14/config/ch14_capillary.yaml
+experiment/ch14/config/legacy/ch14_capillary_legacy_runtime.yaml
 run.time.final = 0.046742983863
 ```
 
@@ -50,4 +51,5 @@ tolerance, solver route, or output directory.  Pressure snapshots are scalar
 gauge diagnostics, not the full AO pressure-reaction face cochain.
 
 This is legacy production-runtime evidence.  It is not the new PhaseRegion
-graph route; use WIKI-E-083 for the corrected new-route YAML one-period run.
+graph route; use WIKI-E-083 for the corrected new-route `ch14_capillary.yaml`
+one-period run.

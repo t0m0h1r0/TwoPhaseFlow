@@ -217,7 +217,7 @@ one-period target, no-override command, full-cycle metrics, and comment-only
 config boundary.
 Use [WIKI-E-083](experiment/WIKI-E-083.md) before citing the corrected new
 PhaseRegion graph YAML one-period route because it records
-`config/routes/ch14_phase_region_capillary_graph.yaml`, YAML-owned period/step/GPU settings,
+`config/ch14_capillary.yaml`, YAML-owned period/step/GPU settings,
 GPU exact graph-column measurement, and one-period exact-reference metrics.
 Use [WIKI-L-074](code/WIKI-L-074.md) before optimizing or reviewing the
 PhaseRegion graph GPU route because it records the exact graph column-integral

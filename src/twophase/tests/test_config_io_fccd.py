@@ -11,6 +11,11 @@ import pytest
 from twophase.simulation.config_io import ExperimentConfig
 
 
+def _is_phase_region_capillary_route(raw: dict) -> bool:
+    experiment = raw.get("experiment", {})
+    return isinstance(experiment, dict) and experiment.get("type") == "phase_region_capillary_graph"
+
+
 def _deep_update(base: dict, patch: dict) -> dict:
     for key, value in patch.items():
         if key == "solver":
@@ -308,10 +313,34 @@ def test_structured_cfl_policy_allows_term_multipliers():
     assert cfg.run.cfl_viscous == pytest.approx(0.8)
 
 
-def test_ch14_capillary_yaml_loads_execution_stack():
+def test_ch14_capillary_yaml_declares_phase_region_graph_route():
     path = (
         Path(__file__).resolve().parents[3]
         / "experiment/ch14/config/ch14_capillary.yaml"
+    )
+    import yaml
+
+    raw = yaml.safe_load(path.read_text())
+    assert _is_phase_region_capillary_route(raw)
+    assert raw["base_config"] == "legacy/ch14_capillary_legacy_runtime.yaml"
+    route = raw["phase_region_graph"]
+    assert route["owner"] == "gas_above"
+    assert route["chart"] == "graph_periodic"
+    assert route["q_measurement"] == "exact_graph_column_integral"
+    assert route["phase_owner_map"] == "exact_complement"
+    assert route["energy"] == "graph_perimeter_second_variation"
+    assert route["dynamics"] == "velocity_verlet_linear_capillary_mode"
+    assert route["pressure_velocity"] == "not_connected"
+    assert route["force_admissible"] is False
+    assert route["backend"]["use_gpu"] is True
+    assert route["run"]["periods"] == pytest.approx(1.0)
+    assert route["run"]["steps_per_period"] == 2560
+
+
+def test_ch14_capillary_legacy_runtime_yaml_loads_execution_stack():
+    path = (
+        Path(__file__).resolve().parents[3]
+        / "experiment/ch14/config/legacy/ch14_capillary_legacy_runtime.yaml"
     )
     cfg = ExperimentConfig.from_yaml(path)
 
@@ -505,12 +534,20 @@ def test_ch14_oscillating_droplet_variant_uses_signed_deformation_only():
 
 
 def test_ch14_canonical_yamls_use_theory_cfl_not_fixed_dt():
+    import yaml
+
     config_dir = (
         Path(__file__).resolve().parents[3]
         / "experiment/ch14/config"
     )
 
     for path in sorted(config_dir.glob("*.yaml")):
+        raw = yaml.safe_load(path.read_text())
+        if _is_phase_region_capillary_route(raw):
+            route = raw["phase_region_graph"]
+            assert route["run"]["periods"] > 0.0, path.name
+            assert route["run"]["steps_per_period"] > 0, path.name
+            continue
         cfg = ExperimentConfig.from_yaml(path)
         assert cfg.run.dt_fixed is None, path.name
         assert cfg.run.cfl_policy == "theory_multiplier", path.name
@@ -527,6 +564,14 @@ def test_ch14_canonical_yamls_share_base_numerical_stack():
 
     for path in sorted(p for p in config_dir.glob("*.yaml") if not p.name.startswith("_")):
         raw = yaml.safe_load(path.read_text())
+        if _is_phase_region_capillary_route(raw):
+            assert raw["base_config"] == "legacy/ch14_capillary_legacy_runtime.yaml", path.name
+            route = raw["phase_region_graph"]
+            assert route["q_measurement"] == "exact_graph_column_integral", path.name
+            assert route["phase_owner_map"] == "exact_complement", path.name
+            assert route["pressure_velocity"] == "not_connected", path.name
+            assert route["force_admissible"] is False, path.name
+            continue
         assert raw["interface"]["state_space"] == "active_geometry_capillary", path.name
         cfg = ExperimentConfig.from_yaml(path)
         assert cfg.interface_state_space.scheme == "active_geometry_capillary", path.name

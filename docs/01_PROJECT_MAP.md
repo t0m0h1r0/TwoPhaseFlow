@@ -369,6 +369,7 @@ PPE code must use dynamic center pin — never hardcode (0,0):
 | `exp_V7_imex_bdf2_twophase_time_legacy.py` | `experiment/ch13/legacy/exp_V7_imex_bdf2_twophase_time_legacy.py` | `experiment/ch13/exp_V7_imex_bdf2_twophase_time.py` | Reduced hand-rolled BDF2/PPE time-order proxy |
 | `exp_V2_manufactured_periodic_residual_legacy.py` | `experiment/ch13/legacy/exp_V2_manufactured_periodic_residual_legacy.py` | `experiment/ch13/exp_V2_kovasznay_residual.py` | Manufactured periodic NS residual cross-check |
 | `exp_V1_spectral_tgv_energy_legacy.py` | `experiment/ch13/legacy/exp_V1_spectral_tgv_energy_legacy.py` | `experiment/ch13/exp_V1_tgv_energy_decay.py` | Spectral TGV projection/time-order reference |
+| `ch14_capillary_legacy_runtime.yaml` | `experiment/ch14/config/legacy/ch14_capillary_legacy_runtime.yaml` | `experiment/ch14/config/ch14_capillary.yaml` | Retained production-runtime capillary config for regression after the canonical capillary filename moved to the PhaseRegion graph route |
 
 ### Re-export stubs (backward compat after `pressure/solvers/` restructure)
 

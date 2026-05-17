@@ -2,15 +2,16 @@
 
 Date: 2026-05-17
 
-Scope: update the capillary-wave YAML route note and run the production
-`ch14_capillary` route for one full configured capillary-wave period.
+Scope: update the then-canonical capillary-wave YAML route note and run the
+legacy production `ch14_capillary` route for one full configured
+capillary-wave period.
 
 ## YAML Update
 
 Updated:
 
 ```text
-experiment/ch14/config/ch14_capillary.yaml
+experiment/ch14/config/legacy/ch14_capillary_legacy_runtime.yaml
 ```
 
 The existing numerical value already targeted one continuum free-slip
@@ -20,10 +21,12 @@ capillary-wave period:
 run.time.final = 0.046742983863
 ```
 
-The update only clarifies that this is the default production-route one-period
-target, and that shorter quarter/short probes should use runner `--final-time`
-overrides rather than changing the YAML.  No physical parameter, CFL, solver
-choice, tolerance, or route flag changed.
+The original update only clarified that this was the default production-route
+one-period target, and that shorter quarter/short probes should use runner
+`--final-time` overrides rather than changing the YAML.  No physical parameter,
+CFL, solver choice, tolerance, or route flag changed.  This production-runtime
+YAML has since been retained under `config/legacy/` after the canonical
+`ch14_capillary.yaml` filename moved to the PhaseRegion graph route.
 
 ## Remote Experiment
 

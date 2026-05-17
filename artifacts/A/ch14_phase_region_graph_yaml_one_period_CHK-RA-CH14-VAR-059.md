@@ -21,16 +21,16 @@ E_h graph-perimeter second-variation modal step
 
 ## YAML Update
 
-Added:
+Canonical capillary entry point:
 
 ```text
-experiment/ch14/config/routes/ch14_phase_region_capillary_graph.yaml
+experiment/ch14/config/ch14_capillary.yaml
 ```
 
-This YAML is a wrapper around the physical/grid base config:
+This YAML is a wrapper around the retained legacy physical/grid base config:
 
 ```text
-base_config: ../ch14_capillary.yaml
+base_config: legacy/ch14_capillary_legacy_runtime.yaml
 phase_region_graph:
   owner: gas_above
   chart: graph_periodic
@@ -57,20 +57,18 @@ The script now reads `phase_region_graph.run.periods`,
 longer needs `--steps`, `--dt`, or `--use-gpu` to run the new route for one
 period.
 
-Also clarified that:
+The old production-runtime config is retained for regression at:
 
 ```text
-experiment/ch14/config/ch14_capillary.yaml
+experiment/ch14/config/legacy/ch14_capillary_legacy_runtime.yaml
 ```
-
-is the legacy production-runtime config, not the new PhaseRegion graph route.
 
 ## Remote Experiment
 
 Command:
 
 ```text
-make cycle EXP=experiment/ch14/diagnose_phase_region_capillary_graph_steps.py ARGS='--config experiment/ch14/config/routes/ch14_phase_region_capillary_graph.yaml'
+make cycle EXP=experiment/ch14/diagnose_phase_region_capillary_graph_steps.py ARGS='--config experiment/ch14/config/ch14_capillary.yaml'
 ```
 
 Result: PASS.
@@ -88,8 +86,8 @@ max_velocity_error                = 4.456387104473e-08
 max_energy_drift                  = 1.505982113082e-06
 max_residual_l2                   = 0.000000000000e+00
 max_volume_drift                  = 5.421010862428e-20
-max_step_wall_seconds             = 3.899358166382e-02
-mean_step_wall_seconds            = 3.579855309956e-03
+max_step_wall_seconds             = 3.977783117443e-02
+mean_step_wall_seconds            = 3.516834525792e-03
 target_met                        = 1
 final_amplitude                   = 1.999999999998e-04
 final_exact_amplitude             = 2.000000000000e-04
@@ -116,8 +114,9 @@ production `experiment/run.py` route, and it still does not connect a
 PhaseRegion face cochain to production pressure/velocity state.  Therefore
 `force_admissible=0` remains correct.
 
-[SOLID-X] New PhaseRegion graph wrapper YAML under non-canonical
-`config/routes/`, route-YAML parsing in the diagnostic experiment,
+[SOLID-X] Canonical capillary filename now points to the new PhaseRegion graph
+wrapper; the old production runtime config is retained under `config/legacy/`.
+Route-YAML parsing in the diagnostic experiment,
 artifact/wiki/ledger, and experiment execution only; no physical parameter,
 CFL, damping, smoothing, tolerance weakening, rebuild skipping, FD/WENO/PPE
 fallback, hidden CPU fallback, production pressure/velocity coupling, main

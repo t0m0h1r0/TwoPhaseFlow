@@ -4,7 +4,7 @@ reproject + InterfaceLimitedFilter HFE, end-to-end through
 ``TwoPhaseNSSolver``.
 
 Covers the minimum stack the user requested for
-``experiment/ch14/config/ch14_capillary.yaml`` at
+``experiment/ch14/config/legacy/ch14_capillary_legacy_runtime.yaml`` at
 ``N=16`` so the test stays fast, 2 steps, sigma>0.  No NaN, finite KE,
 non-trivial ψ advection after the stack swap.
 """
@@ -850,15 +850,15 @@ def test_fccd_solver_is_shared():
     assert solver._adv._fccd is solver._fccd
 
 
-def test_ch14_capillary_yaml_builds_solver():
-    """Checked-in ch14 capillary YAML enters the AO-Fast q-transport stack."""
+def test_ch14_capillary_legacy_runtime_yaml_builds_solver():
+    """Legacy ch14 capillary runtime YAML enters the AO-Fast q-transport stack."""
     from twophase.ppe.defect_correction import PPESolverDefectCorrection
     from twophase.ppe.fccd_matrixfree import PPESolverFCCDMatrixFree
     from twophase.ppe.fd_direct import PPESolverFDDirect
 
     path = (
         Path(__file__).resolve().parents[3]
-        / "experiment/ch14/config/ch14_capillary.yaml"
+        / "experiment/ch14/config/legacy/ch14_capillary_legacy_runtime.yaml"
     )
     cfg = ExperimentConfig.from_yaml(path)
     solver = TwoPhaseNSSolver.from_config(cfg)
@@ -1194,11 +1194,11 @@ def test_geometric_face_velocity_uses_projection_native_pullback():
     np.testing.assert_allclose(face_velocity[1], 0.0, atol=1.0e-12)
 
 
-def test_ch14_capillary_wave_yaml_builds_initial_field():
-    """Capillary-wave YAML should build a sinusoidal two-phase initial field."""
+def test_ch14_capillary_legacy_runtime_yaml_builds_initial_field():
+    """Legacy capillary-wave YAML should build a sinusoidal two-phase field."""
     path = (
         Path(__file__).resolve().parents[3]
-        / "experiment/ch14/config/ch14_capillary.yaml"
+        / "experiment/ch14/config/legacy/ch14_capillary_legacy_runtime.yaml"
     )
     cfg = ExperimentConfig.from_yaml(path)
     solver = TwoPhaseNSSolver.from_config(cfg)
@@ -1216,7 +1216,7 @@ def test_ch14_capillary_wave_yaml_builds_initial_field():
     assert psi[x0, y_high] < 0.5
 
 
-def test_ch14_capillary_rebuild_refreshes_ao_state_metric_owner():
+def test_ch14_capillary_legacy_rebuild_refreshes_ao_state_metric_owner():
     """Interface-fitted rebuild must keep AO q/phi on the rebuilt metric.
 
     The capillary-wave graph is periodic in x and nearly horizontal at the
@@ -1226,7 +1226,7 @@ def test_ch14_capillary_rebuild_refreshes_ao_state_metric_owner():
     """
     path = (
         Path(__file__).resolve().parents[3]
-        / "experiment/ch14/config/ch14_capillary.yaml"
+        / "experiment/ch14/config/legacy/ch14_capillary_legacy_runtime.yaml"
     )
     cfg = ExperimentConfig.from_yaml(path)
     solver = TwoPhaseNSSolver.from_config(cfg)
@@ -1275,7 +1275,7 @@ def test_geometric_grid_rebuild_remaps_projected_face_cochains():
     """Projected faces cross grid rebuild only through explicit face remap."""
     path = (
         Path(__file__).resolve().parents[3]
-        / "experiment/ch14/config/ch14_capillary.yaml"
+        / "experiment/ch14/config/legacy/ch14_capillary_legacy_runtime.yaml"
     )
     cfg = ExperimentConfig.from_yaml(path)
     solver = TwoPhaseNSSolver.from_config(cfg)
@@ -1412,6 +1412,8 @@ def test_ch14_rising_bubble_yaml_builds_solver():
 
 
 def test_ch14_canonical_yamls_build_shared_common_flux_contract():
+    import yaml
+
     config_dir = (
         Path(__file__).resolve().parents[3]
         / "experiment/ch14/config"
@@ -1422,6 +1424,12 @@ def test_ch14_canonical_yamls_build_shared_common_flux_contract():
     }
 
     for path in sorted(p for p in config_dir.glob("ch14_*.yaml") if not p.name.startswith("_")):
+        raw = yaml.safe_load(path.read_text()) or {}
+        if raw.get("experiment", {}).get("type") == "phase_region_capillary_graph":
+            route = raw["phase_region_graph"]
+            assert route["pressure_velocity"] == "not_connected", path.name
+            assert route["force_admissible"] is False, path.name
+            continue
         cfg = ExperimentConfig.from_yaml(path)
         solver = TwoPhaseNSSolver.from_config(cfg)
         assert cfg.interface_state_space.kind == "geometric_cell_fraction", path.name
@@ -1752,14 +1760,14 @@ def test_phase_separated_defect_correction_preserves_mirror_symmetry():
     )
 
 
-def test_ch14_capillary_yaml_uses_true_low_order_defect_base():
+def test_ch14_capillary_legacy_runtime_yaml_uses_true_low_order_defect_base():
     from twophase.ppe.defect_correction import PPESolverDefectCorrection
     from twophase.ppe.fccd_matrixfree import PPESolverFCCDMatrixFree
     from twophase.ppe.fd_direct import PPESolverFDDirect
 
     path = (
         Path(__file__).resolve().parents[3]
-        / "experiment/ch14/config/ch14_capillary.yaml"
+        / "experiment/ch14/config/legacy/ch14_capillary_legacy_runtime.yaml"
     )
     cfg = ExperimentConfig.from_yaml(path)
     solver = TwoPhaseNSSolver.from_config(cfg)

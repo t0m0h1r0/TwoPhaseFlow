@@ -54,6 +54,7 @@ from twophase.geometry import (  # noqa: E402
 )
 from twophase.geometry.phase_state import GeometricPhaseState  # noqa: E402
 from twophase.levelset.heaviside import heaviside  # noqa: E402
+from twophase.simulation.config_loader import require_pyyaml  # noqa: E402
 from twophase.simulation.config_models import ExperimentConfig  # noqa: E402
 from twophase.tools.experiment import (  # noqa: E402
     apply_style,
@@ -98,6 +99,21 @@ def _wave_from_config(cfg: ExperimentConfig) -> CapillaryWaveSpec:
         length=float(obj["length"]),
         phase=float(obj.get("phase", 0.0)),
     )
+
+
+def _load_phase_region_graph_config(config_path: pathlib.Path) -> ExperimentConfig:
+    """Load the canonical PhaseRegion wrapper or its legacy base config."""
+    yaml = require_pyyaml()
+    with pathlib.Path(config_path).open() as fh:
+        raw = yaml.safe_load(fh) or {}
+    if not isinstance(raw, dict):
+        raise ValueError("PhaseRegion graph config must be a YAML mapping")
+    if "base_config" not in raw:
+        return ExperimentConfig.from_yaml(config_path)
+    base_path = pathlib.Path(str(raw["base_config"]))
+    if not base_path.is_absolute():
+        base_path = pathlib.Path(config_path).parent / base_path
+    return ExperimentConfig.from_yaml(base_path)
 
 
 def _grid_from_config(cfg: ExperimentConfig) -> Grid:
@@ -273,7 +289,7 @@ def _compute(
     variation_tolerance: float,
     finite_difference_step: float,
 ) -> dict[str, object]:
-    cfg = ExperimentConfig.from_yaml(config_path)
+    cfg = _load_phase_region_graph_config(config_path)
     spec = _wave_from_config(cfg)
     grid, eta_nodes, phase_state = _phase_state_on_capillary_grid(cfg, spec)
     x_edges = np.asarray(grid.coords[0], dtype=float)

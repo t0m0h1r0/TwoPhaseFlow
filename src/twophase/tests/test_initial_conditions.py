@@ -17,6 +17,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+import yaml
 
 from ..simulation.initial_conditions import (
     InitialConditionBuilder,
@@ -441,7 +442,12 @@ def test_ch14_yaml_initial_conditions_use_object_specs():
 
     assert {path.name for path in paths} == canonical_names
     for path in paths:
-        cfg = ExperimentConfig.from_yaml(path)
+        raw = yaml.safe_load(path.read_text()) or {}
+        if raw.get("experiment", {}).get("type") == "phase_region_capillary_graph":
+            path_for_ic = path.parent / raw["base_config"]
+        else:
+            path_for_ic = path
+        cfg = ExperimentConfig.from_yaml(path_for_ic)
         assert "objects" in cfg.initial_condition, path.name
         assert "type" not in cfg.initial_condition, path.name
         builder = InitialConditionBuilder.from_dict(
