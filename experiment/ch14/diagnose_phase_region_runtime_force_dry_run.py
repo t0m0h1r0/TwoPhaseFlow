@@ -38,19 +38,15 @@ from twophase.ccd.fccd import FCCDSolver  # noqa: E402
 from twophase.config import GridConfig  # noqa: E402
 from twophase.core.grid import Grid  # noqa: E402
 from twophase.coupling.closed_interface_riesz import (  # noqa: E402
-    closed_interface_riesz_cochain,
     component_reaction_hodge_gate,
     fixed_stratum_virtual_work_check,
     weighted_hodge_decomposition,
 )
 from twophase.coupling.phase_region_force_admission import (  # noqa: E402
-    phase_region_face_mass_metric,
+    build_phase_region_force_admission_candidate,
     scale_face_velocity_to_fixed_stratum,
 )
-from twophase.geometry import (  # noqa: E402
-    CellMeasurePhase,
-    map_cell_measure_to_phase_owner,
-)
+from twophase.geometry import CellMeasurePhase  # noqa: E402
 from twophase.geometry.phase_state import GeometricPhaseState  # noqa: E402
 from twophase.levelset.heaviside import heaviside  # noqa: E402
 from twophase.simulation.config_models import ExperimentConfig  # noqa: E402
@@ -187,33 +183,30 @@ def _compute(
     xp = grid.backend.xp
     cell_area = _cell_area(grid)
     q_l_runtime = np.asarray(phase_state.q, dtype=float)
-    owner_map = map_cell_measure_to_phase_owner(
-        q_l_runtime,
-        cell_area,
-        source_phase=CellMeasurePhase.LIQUID,
-        owner_phase=CellMeasurePhase.GAS,
-        capacity_tolerance=float(capacity_tolerance),
-    )
     eps = _runtime_eps(cfg)
     psi = heaviside(np, -np.asarray(phase_state.phi, dtype=float), eps)
     ccd = CCDSolver(grid, grid.backend, bc_type=cfg.grid.bc_type)
     fccd = FCCDSolver(grid, grid.backend, bc_type=cfg.grid.bc_type, ccd_solver=ccd)
     div_op = FCCDDivergenceOperator(fccd)
-    face_metric = phase_region_face_mass_metric(
+    admission = build_phase_region_force_admission_candidate(
         xp=xp,
         grid=grid,
+        fccd=fccd,
         psi=psi,
+        q_source=q_l_runtime,
+        cell_area=cell_area,
+        source_phase=CellMeasurePhase.LIQUID,
+        owner_phase=CellMeasurePhase.GAS,
         rho_l=float(cfg.physics.rho_l),
         rho_g=float(cfg.physics.rho_g),
-    )
-    cochain = closed_interface_riesz_cochain(
-        xp=xp,
-        grid=grid,
-        psi=psi,
-        fccd=fccd,
         sigma=float(cfg.physics.sigma),
-        face_weight_components=face_metric.face_weight_components,
+        capacity_tolerance=float(capacity_tolerance),
+        runtime_steps=0,
     )
+    if not admission.valid:
+        raise AssertionError(f"runtime force admission failed: {admission.reason}")
+    owner_map = admission.owner_map
+    cochain = admission.cochain
     sign_margin = float(np.min(np.abs(np.asarray(psi, dtype=float) - 0.5)))
     self_velocity = scale_face_velocity_to_fixed_stratum(
         xp=xp,

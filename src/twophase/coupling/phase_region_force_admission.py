@@ -18,6 +18,11 @@ from dataclasses import dataclass
 
 import numpy as np
 
+from twophase.geometry import AtlasValidationError
+from twophase.geometry import CellMeasurePhase
+from twophase.geometry import map_cell_measure_to_phase_owner
+
+from .closed_interface_riesz import closed_interface_riesz_cochain
 from .closed_interface_riesz import face_mass_components
 from .closed_interface_riesz import transport_increment_from_face_velocity
 from .closed_interface_stratum import array_to_numpy
@@ -43,6 +48,20 @@ class FixedStratumVelocityScale:
     delta_linf: float
     valid: bool
     reason: str
+
+
+@dataclass(frozen=True)
+class PhaseRegionForceAdmission:
+    """Zero-step PhaseRegion force candidate with explicit admission status."""
+
+    valid: bool
+    reason: str
+    force_admissible: bool
+    runtime_steps: int
+    owner_map: object | None
+    face_metric: PhaseRegionFaceMassMetric | None
+    cochain: object | None
+    metrics: dict[str, float]
 
 
 def two_phase_nodal_density(
@@ -72,6 +91,72 @@ def two_phase_nodal_density(
     if rho_l_value <= 0.0 or rho_g_value <= 0.0:
         raise ValueError("rho_l and rho_g must be positive")
     return rho_g_value + (rho_l_value - rho_g_value) * psi_arr
+
+
+def build_phase_region_force_admission_candidate(
+    *,
+    xp,
+    grid,
+    fccd,
+    psi,
+    q_source,
+    cell_area,
+    source_phase: CellMeasurePhase | int | str,
+    owner_phase: CellMeasurePhase | int | str,
+    rho_l: float,
+    rho_g: float,
+    sigma: float,
+    capacity_tolerance: float = 1.0e-12,
+    runtime_steps: int = 0,
+    phase_threshold: float = 0.5,
+) -> PhaseRegionForceAdmission:
+    """Build a zero-step force candidate without admitting it to runtime use."""
+    steps = int(runtime_steps)
+    if steps != 0:
+        return _invalid_admission("runtime_steps_must_be_zero", steps)
+    try:
+        owner_map = map_cell_measure_to_phase_owner(
+            q_source,
+            cell_area,
+            source_phase=source_phase,
+            owner_phase=owner_phase,
+            capacity_tolerance=float(capacity_tolerance),
+        )
+        face_metric = phase_region_face_mass_metric(
+            xp=xp,
+            grid=grid,
+            psi=psi,
+            rho_l=float(rho_l),
+            rho_g=float(rho_g),
+        )
+        cochain = closed_interface_riesz_cochain(
+            xp=xp,
+            grid=grid,
+            psi=psi,
+            fccd=fccd,
+            sigma=float(sigma),
+            face_weight_components=face_metric.face_weight_components,
+            phase_threshold=float(phase_threshold),
+        )
+    except (AtlasValidationError, ValueError, np.linalg.LinAlgError) as exc:
+        return _invalid_admission(str(exc), steps)
+    metrics = _candidate_metrics(
+        xp=xp,
+        runtime_steps=steps,
+        owner_map=owner_map,
+        face_metric=face_metric,
+        cochain=cochain,
+    )
+    return PhaseRegionForceAdmission(
+        valid=True,
+        reason="ok",
+        force_admissible=False,
+        runtime_steps=steps,
+        owner_map=owner_map,
+        face_metric=face_metric,
+        cochain=cochain,
+        metrics=metrics,
+    )
 
 
 def phase_region_face_mass_metric(
@@ -171,3 +256,50 @@ def scale_face_velocity_to_fixed_stratum(
         valid=True,
         reason="ok",
     )
+
+
+def _invalid_admission(reason: str, runtime_steps: int) -> PhaseRegionForceAdmission:
+    return PhaseRegionForceAdmission(
+        valid=False,
+        reason=str(reason),
+        force_admissible=False,
+        runtime_steps=int(runtime_steps),
+        owner_map=None,
+        face_metric=None,
+        cochain=None,
+        metrics={
+            "runtime_steps": float(runtime_steps),
+            "force_admissible": 0.0,
+            "valid": 0.0,
+        },
+    )
+
+
+def _candidate_metrics(
+    *,
+    xp,
+    runtime_steps: int,
+    owner_map,
+    face_metric: PhaseRegionFaceMassMetric,
+    cochain,
+) -> dict[str, float]:
+    weights = [
+        array_to_numpy(xp, component)
+        for component in face_metric.face_weight_components
+    ]
+    weight_min = min(float(np.min(component)) for component in weights)
+    weight_max = max(float(np.max(component)) for component in weights)
+    return {
+        "runtime_steps": float(runtime_steps),
+        "force_admissible": 0.0,
+        "valid": 1.0,
+        "complement_used": float(owner_map.complement_used),
+        "source_volume": float(owner_map.source_volume),
+        "owner_volume": float(owner_map.owner_volume),
+        "rho_min": float(face_metric.rho_min),
+        "rho_max": float(face_metric.rho_max),
+        "face_weight_min": weight_min,
+        "face_weight_max": weight_max,
+        "phase_threshold": float(cochain.phase_threshold),
+        "sigma": float(cochain.sigma),
+    }
