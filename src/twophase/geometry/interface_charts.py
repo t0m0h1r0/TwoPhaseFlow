@@ -4,6 +4,7 @@ Symbol mapping
 --------------
 ``Gamma_h`` -> chart-owned interface configuration.
 ``eta`` -> periodic graph-chart height coordinates.
+``X`` -> periodic closed-curve vertices.
 ``E[Gamma_h]`` -> graph segment-length surface energy.
 ``dE`` -> nodal covector of the graph segment energy.
 
@@ -63,6 +64,45 @@ class GraphEnergyGradient:
     energy: object
     nodal_gradient: object
     weights: object
+
+
+@dataclass(frozen=True)
+class ClosedRadialModeCoefficient:
+    """Cosine/sine coefficient pair for one radial closed-curve mode."""
+
+    mode: int
+    cos: object
+    sin: object
+
+
+@dataclass(frozen=True)
+class ClosedRadialChartState:
+    """Owned star-shaped closed-curve chart state."""
+
+    center: object
+    theta: object
+    radius: object
+    vertices: object
+    base_radius: object
+    modes: tuple[ClosedRadialModeCoefficient, ...]
+
+    def coefficient_map(self) -> dict[str, object]:
+        """Return a diagnostic coefficient map for radial modes."""
+        coeffs = {"base_radius": _scalar_or_array(self.base_radius)}
+        for entry in self.modes:
+            coeffs[f"cos_{entry.mode}"] = _scalar_or_array(entry.cos)
+            coeffs[f"sin_{entry.mode}"] = _scalar_or_array(entry.sin)
+        return coeffs
+
+
+@dataclass(frozen=True)
+class ClosedPolygonGeometry:
+    """Closed polygon area, length, and exact vertex covectors."""
+
+    area: object
+    length: object
+    surface_gradient: object
+    area_gradient: object
 
 
 def periodic_mode_basis(x: object, *, mode: int) -> tuple[object, object]:
@@ -173,6 +213,73 @@ def project_column_height_to_graph(
         )
     eta[..., -1] = eta[..., 0]
     return GraphChartState(eta=eta, mean=_scalar_or_array(mean), modes=tuple(coefficients))
+
+
+def closed_radial_chart_from_modes(
+    theta: object,
+    *,
+    center: object,
+    base_radius: object,
+    modes: tuple[tuple[int, float], ...],
+) -> ClosedRadialChartState:
+    """Build a star-shaped closed curve from radial cosine modes."""
+    theta_arr = np.asarray(theta, dtype=float)
+    center_arr = np.asarray(center, dtype=float)
+    if center_arr.shape[-1:] != (2,):
+        raise ValueError("center must have trailing shape (2,)")
+    base = np.asarray(base_radius, dtype=float)
+    radius = np.zeros(base.shape + theta_arr.shape, dtype=float) + base[..., None]
+    coefficients: list[ClosedRadialModeCoefficient] = []
+    for mode, amplitude in modes:
+        cos_t = np.cos(int(mode) * theta_arr)
+        radius = radius + float(amplitude) * cos_t
+        coefficients.append(
+            ClosedRadialModeCoefficient(mode=int(mode), cos=float(amplitude), sin=0.0)
+        )
+    if np.any(radius <= 0.0) or np.any(~np.isfinite(radius)):
+        raise ValueError("closed radial chart requires positive finite radii")
+    unit = np.stack((np.cos(theta_arr), np.sin(theta_arr)), axis=-1)
+    vertices = center_arr[..., None, :] + radius[..., :, None] * unit
+    return ClosedRadialChartState(
+        center=center_arr,
+        theta=theta_arr,
+        radius=_scalar_or_array(radius),
+        vertices=_scalar_or_array(vertices),
+        base_radius=_scalar_or_array(base),
+        modes=tuple(coefficients),
+    )
+
+
+def closed_polygon_geometry(vertices: object, *, sigma: float = 1.0) -> ClosedPolygonGeometry:
+    """Return polygon area, length, and exact vertex covectors."""
+    verts = np.asarray(vertices, dtype=float)
+    if verts.shape[-1:] != (2,) or verts.shape[-2] < 3:
+        raise ValueError("vertices must have shape (..., M, 2) with M >= 3")
+    edge = np.roll(verts, -1, axis=-2) - verts
+    edge_length = np.sqrt(np.sum(edge * edge, axis=-1))
+    if np.any(edge_length <= 0.0) or np.any(~np.isfinite(edge_length)):
+        raise ValueError("closed polygon edges must be positive and finite")
+    x = verts[..., :, 0]
+    y = verts[..., :, 1]
+    x_next = np.roll(x, -1, axis=-1)
+    y_next = np.roll(y, -1, axis=-1)
+    area = 0.5 * np.sum(x * y_next - y * x_next, axis=-1)
+    unit_edge = edge / edge_length[..., None]
+    surface_gradient = float(sigma) * (
+        np.roll(unit_edge, 1, axis=-2) - unit_edge
+    )
+    x_prev = np.roll(x, 1, axis=-1)
+    y_prev = np.roll(y, 1, axis=-1)
+    area_gradient = 0.5 * np.stack(
+        (y_next - y_prev, x_prev - x_next),
+        axis=-1,
+    )
+    return ClosedPolygonGeometry(
+        area=_scalar_or_array(area),
+        length=_scalar_or_array(np.sum(edge_length, axis=-1)),
+        surface_gradient=_scalar_or_array(surface_gradient),
+        area_gradient=_scalar_or_array(area_gradient),
+    )
 
 
 def _weighted_projection(values: object, basis: object, weights: object) -> object:

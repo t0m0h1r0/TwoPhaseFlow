@@ -9,13 +9,18 @@ from twophase.backend import Backend
 from twophase.config import GridConfig
 from twophase.core.grid import Grid
 from twophase.geometry.interface_charts import (
+    closed_polygon_geometry,
+    closed_radial_chart_from_modes,
     eta_from_cosine_modes,
     graph_segment_energy_gradient,
     project_column_height_to_graph,
 )
 from twophase.geometry.q_manifold_projection import (
+    closed_mode_restoring_action,
+    closed_radial_q_from_chart,
     graph_force_projection,
     graph_q_from_eta,
+    project_closed_radial_mode_f0,
     project_graph_q_f0,
 )
 
@@ -48,6 +53,36 @@ def _zero_column_cell_residual(grid: Grid, q: object, *, fraction: float) -> obj
         q_target[i, below] -= amount
         q_target[i, above] += amount
     return q_target
+
+
+def _closed_high_residual(grid: Grid, q: object, *, mode: int, fraction: float) -> object:
+    q_arr = np.asarray(q, dtype=float)
+    dx = np.diff(np.asarray(grid.coords[0], dtype=float))
+    dy = np.diff(np.asarray(grid.coords[1], dtype=float))
+    cell_area = dx[:, None] * dy[None, :]
+    theta = np.divide(q_arr, cell_area, out=np.zeros_like(q_arr), where=cell_area > 0.0)
+    mask = (theta > 1.0e-3) & (theta < 1.0 - 1.0e-3)
+    x_center = 0.5 * (np.asarray(grid.coords[0])[:-1] + np.asarray(grid.coords[0])[1:])
+    y_center = 0.5 * (np.asarray(grid.coords[1])[:-1] + np.asarray(grid.coords[1])[1:])
+    x, y = np.meshgrid(x_center, y_center, indexing="ij")
+    angle = np.mod(np.arctan2(y - 0.5, x - 0.5), 2.0 * np.pi)
+    pattern = mask * np.sin(7.0 * angle + 0.3 * np.cos(5.0 * angle))
+    basis = np.stack((mask.astype(float), mask * np.cos(int(mode) * angle)), axis=-1)
+    gram = np.einsum("ija,ijb->ab", basis, basis)
+    rhs = np.einsum("ija,ij->a", basis, pattern)
+    coeff = np.linalg.solve(gram, rhs)
+    residual = pattern - np.einsum("ija,a->ij", basis, coeff)
+    if not np.any(residual):
+        raise AssertionError("closed residual pattern vanished")
+    positive = residual > 0.0
+    negative = residual < 0.0
+    limits = []
+    if np.any(positive):
+        limits.append(np.min((cell_area - q_arr)[positive] / residual[positive]))
+    if np.any(negative):
+        limits.append(np.min(q_arr[negative] / (-residual[negative])))
+    scale = float(fraction) * max(min(limits), 0.0)
+    return q_arr + scale * residual
 
 
 def test_graph_f0_recovers_clean_and_low_mode_chart():
@@ -162,3 +197,92 @@ def test_graph_projection_fails_closed_for_device_inputs():
 
     with pytest.raises(ValueError, match="GPU execution requires"):
         project_graph_q_f0(grid, DeviceLike(), max_mode=4)
+
+
+def test_closed_polygon_area_length_and_gradients_match_finite_difference():
+    theta = np.linspace(0.0, 2.0 * np.pi, 96, endpoint=False)
+    state = closed_radial_chart_from_modes(
+        theta,
+        center=(0.5, 0.5),
+        base_radius=0.22,
+        modes=((2, 2.0e-2),),
+    )
+    geometry = closed_polygon_geometry(state.vertices, sigma=1.0)
+    direction = np.stack(
+        (np.cos(3.0 * theta), np.sin(5.0 * theta)),
+        axis=-1,
+    )
+    eps = 1.0e-7
+    plus = np.asarray(state.vertices) + eps * direction
+    minus = np.asarray(state.vertices) - eps * direction
+    geo_plus = closed_polygon_geometry(plus, sigma=1.0)
+    geo_minus = closed_polygon_geometry(minus, sigma=1.0)
+
+    fd_length = (float(geo_plus.length) - float(geo_minus.length)) / (2.0 * eps)
+    fd_area = (float(geo_plus.area) - float(geo_minus.area)) / (2.0 * eps)
+    grad_length = float(np.sum(np.asarray(geometry.surface_gradient) * direction))
+    grad_area = float(np.sum(np.asarray(geometry.area_gradient) * direction))
+
+    assert abs(fd_length - grad_length) < 1.0e-7
+    assert abs(fd_area - grad_area) < 1.0e-9
+
+
+def test_closed_radial_q_area_and_mode2_restoring_action():
+    grid = _grid(96, 96)
+    theta = np.linspace(0.0, 2.0 * np.pi, 192, endpoint=False)
+    circle = closed_radial_chart_from_modes(
+        theta,
+        center=(0.5, 0.5),
+        base_radius=0.22,
+        modes=(),
+    )
+    state = closed_radial_chart_from_modes(
+        theta,
+        center=(0.5, 0.5),
+        base_radius=0.22,
+        modes=((2, 2.0e-2),),
+    )
+    q_measure = closed_radial_q_from_chart(grid, state)
+    geometry = closed_polygon_geometry(state.vertices, sigma=1.0)
+    circle_geometry = closed_polygon_geometry(circle.vertices, sigma=1.0)
+
+    assert abs(float(np.sum(q_measure.q)) - float(geometry.area)) < 8.0e-4
+    assert float(geometry.length) > float(circle_geometry.length)
+    assert closed_mode_restoring_action(geometry, state.vertices, state.theta, mode=2) < 0.0
+
+
+def test_closed_radial_mode_projection_splits_high_residual():
+    grid = _grid(96, 96)
+    theta = np.linspace(0.0, 2.0 * np.pi, 192, endpoint=False)
+    state = closed_radial_chart_from_modes(
+        theta,
+        center=(0.5, 0.5),
+        base_radius=0.22,
+        modes=((2, 1.6e-2),),
+    )
+    q_base = closed_radial_q_from_chart(grid, state).q
+    q_high = _closed_high_residual(grid, q_base, mode=2, fraction=5.0e-2)
+
+    clean = project_closed_radial_mode_f0(
+        grid,
+        q_base,
+        center=(0.5, 0.5),
+        mode=2,
+        theta_count=192,
+    )
+    high = project_closed_radial_mode_f0(
+        grid,
+        q_high,
+        center=(0.5, 0.5),
+        mode=2,
+        theta_count=192,
+    )
+
+    assert clean.chart_kind == "closed_radial"
+    assert clean.residual_report.total_volume_abs < 1.0e-3
+    assert high.residual_report.l2 > clean.residual_report.l2
+    assert high.residual_report.total_volume_abs < 1.0e-3
+    assert abs(
+        high.gamma_state.coefficient_map()["cos_2"]
+        - clean.gamma_state.coefficient_map()["cos_2"]
+    ) < 3.0e-4
