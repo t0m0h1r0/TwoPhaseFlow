@@ -76,7 +76,7 @@ $\sigma=0.0728\,\mathrm{N/m}$ を用いる．
 $q_l=Q_h(X(A))$，$q_g=|C|-q_l$，
 外側気相を PhaseRegion 所有者とする測度，
 および固定面積多角形周長の二次変分から
-Rayleigh--Lamb の線形モードを velocity-Verlet で進める．
+Rayleigh--Lamb の線形モードを velocity-Verlet 法で進める．
 8 step，$t/T_\mathrm{RL}=1.52\times10^{-3}$ の短時間実験では，
 表~\ref{tab:ch14_phase_region_droplet_steps} の通り，
 振幅・速度・エネルギー・測度残差が解析基準と一致した．
@@ -206,7 +206,7 @@ $t\approx0,\frac14T_\mathrm{RL},\frac12T_\mathrm{RL},
 
 本ケースから得る結論は成功主張ではなく，未達として残る課題である．
 PhaseRegion 閉曲線チャートの短時間診断は，同じ
-$E_h=\sigma\,\mathrm{Per}(\Omega_h)$ の二次変分で閉じた mode-2 復元を
+$E_h=\sigma\,\mathrm{Per}(\Omega_h)$ の二次変分で閉じた 2 次モード復元を
 測度残差 0 と厳密解比較で確認した．
 しかし，標準実行経路の振動液滴は，移流・粘性項を含む
 閉界面エネルギー交換と保存量整合のベンチマークであり，

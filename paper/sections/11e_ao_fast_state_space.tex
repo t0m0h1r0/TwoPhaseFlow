@@ -13,14 +13,14 @@ $R_h=(\Omega_h,\mathcal{A}_h)$ を，第12--14章の検証へ接続する．
 第~\ref{sec:capillary_pressure_reaction_subspace}節では，
 相領域所有者，表面エネルギー仮想仕事，測度残差，
 および圧力反力部分空間 $R_p$ を理論境界として固定した．
-ここでは，その境界を実装可能な chart/atlas，測度写像，アクティブ集合，
+ここでは，その境界を実装可能なチャート/アトラス，測度写像，アクティブ集合，
 近似誤差，および標準経路への採用条件として定式化する．
 棄却された滑らか化付き $q/\phi$ 互換射影候補が失敗した理由は，
 輸送後の全セル $q_T$ を滑らかな界面多様体そのものと取り違えた点にある．
 したがって，本節の正規化は「$q$ から綺麗な $\phi$ を作る」問題ではなく，
 「どの相領域 $\Omega_h$ が界面と表面エネルギーを所有するか」を先に決める問題である．
 
-\subsubsection{状態所有者，測度，chart}
+\subsubsection{状態所有者，測度，チャート}
 \label{sec:ao_state_ownership}
 
 PhaseRegion 正規経路では，物質界面を所有する状態は
@@ -29,9 +29,9 @@ PhaseRegion 正規経路では，物質界面を所有する状態は
   \qquad
   \Gamma_h=\partial\Omega_h
 \]
-である．$\mathcal{A}_h$ は graph，closed curve，open curve，
-または局所 cut-cell chart を成分ごとに持つ boundary atlas であり，
-chart は所有者ではなく $\Gamma_h$ の座標表示である．
+である．$\mathcal{A}_h$ はグラフ，閉曲線，開曲線，
+または局所切断セルチャートを成分ごとに持つ境界アトラスであり，
+チャートは所有者ではなく $\Gamma_h$ の座標表示である．
 セルごとの有次元液相体積
 \begin{equation}
   q_C = |C|\,\theta_C,\qquad
@@ -41,9 +41,9 @@ chart は所有者ではなく $\Gamma_h$ の座標表示である．
 は $q_h=Q_h(R_h)$ として得る測度台帳である．
 正規化分率 $\theta_C$ は表示・物性補間用の読み替え量であり，
 非一様格子で $\sum_C\theta_C$ を体積として読んではならない．
-連続ゲージ $\phi$ は $\Gamma_h$ の局所 chart であり，
+連続ゲージ $\phi$ は $\Gamma_h$ の局所チャートであり，
 PhaseRegion から誘導される．
-固定正則層 $S$ 上の単一 chart では，液相領域
+固定正則層 $S$ 上の単一チャートでは，液相領域
 $\Omega_l(R_h)$ に対して
 \begin{equation}
   Q_h^S(R_h)_C
@@ -65,7 +65,7 @@ $\Omega_l(R_h)$ に対して
 ただし，式~\eqref{eq:ao_geometric_compatibility} は
 「全セル $q_T$ を正規状態として厳密保存する」条件ではない．
 $q_T=Q_h(R_h)+r_h$ の残差 $r_h$ が許容範囲を越えるとき，
-それは chart が不足しているか，輸送・投影が界面多様体から外れる成分を作ったことを示す．
+それはチャートが不足しているか，輸送・投影が界面多様体から外れる成分を作ったことを示す．
 ここで $\mathcal{A}_q$ は混合セル，直前の混合セル，
 輸送で状態が変わったセル，目標状態で $0<q_C<|C|$ となるセル，
 および符号・境界所有権判定に必要な一面隣接層からなる測度診断支持である．
@@ -109,7 +109,7 @@ $q^-=Q_h(R_h)$ と書ける滑らかな PhaseRegion 測度ではない．
 \end{equation}
 を解いていた．これは失敗知を保存するために残す式であり，
 PhaseRegion 正規経路の所有者定義ではない．
-柱状高さグラフのように graph chart から測度を読む場合でも，
+柱状高さグラフのようにグラフチャートから測度を読む場合でも，
 古い $\phi^-$ の正則層へ $q^-$ を先に押し戻してはならない．
 棄却されたグラフ候補では
 \begin{equation}
@@ -122,10 +122,10 @@ PhaseRegion 正規経路の所有者定義ではない．
 の順に，輸送された測度 $q^-$ からグラフゲージを再構成し，
 そのゲージ上で互換条件を閉じていた．
 固定正則層では $\phi^-$ は有効な予測子であるが，
-$q$-primary グラフ追跡では $\phi^-$ は古い表示であり，所有者ではない．
+$q$ 主導のグラフ追跡では $\phi^-$ は古い表示であり，所有者ではない．
 現行の PhaseRegion グラフ経路は，この式を
 「$q$ が所有する」証明ではなく，
-graph chart の exact column-integral 測度
+グラフチャートの厳密列積分測度
 $Q_h(\Omega_h)$ を作るための診断式として読む．
 線形化では $J_q=dQ_h^S/d\phi$ を用い，Schur 系
 \begin{equation}
@@ -162,7 +162,7 @@ $E_\sigma(R_h)=\sigma S_h(R_h)$ であり，
 したがって PhaseRegion 正規経路の毛管力は曲率配列の後処理ではなく，
 同じ $Q_h,J_q,T_q,dS_h,M_f$ が定める面 Hodge Riesz 代表である．
 ただし，式~\eqref{eq:ao_q_owned_graph_gauge} の柱状高さグラフを
-chart として使う場合，ここでの表面エネルギーは汎用 P1 cut-cell 長ではなく，
+チャートとして使う場合，ここでの表面エネルギーは汎用 P1 切断セル長ではなく，
 列体積が定めるグラフ端点の長さでなければならない．
 列 $i$ の液体体積を $V_i(q)=\sum_j q_{ij}$，セル幅を $\Delta x_i$ として
 \begin{equation}
@@ -235,7 +235,7 @@ HFE が切る界面は，この $q$ 所有グラフから作る
 面法則である．したがって式~\eqref{eq:ao_pressure_coordinate_split} の
 滑らかな圧力履歴座標へ保存してはならず，格子再構築のたびに
 式~\eqref{eq:ao_graph_hfe_cut}--\eqref{eq:ao_graph_hfe_face_law} から作り直す．
-したがって，グラフ追跡で汎用 P1 cut-cell の $dS_h$ を使うことは
+したがって，グラフ追跡で汎用 P1 切断セルの $dS_h$ を使うことは
 単なる曲率近似ではなく，$q$ 端点と $\phi$ 端点を混ぜる誤りである．
 この誤りは $q-Q_h(\phi)$ が小さいままでも，界面がセル層を横切るたびに
 局所的な毛管共変量スパイクを作り得る．
@@ -428,11 +428,11 @@ $q_T=Q_h(R_h)+r_h$ の残差基準を満たすこと．
 投影面へは同次元の補間だけで渡すこと．
 第六に，界面追随格子の再構築後も式~\eqref{eq:ao_face_cochain_regrid} により
 射影後の面量を新しい面計量へ移送し，節点速度補間から面フラックスを再生成しないこと．
-第七に，柱状高さグラフのように graph chart で測度を読む場合は，
+第七に，柱状高さグラフのようにグラフチャートで測度を読む場合は，
 式~\eqref{eq:ao_graph_surface_energy}--\eqref{eq:ao_graph_capillary_covector}
 の端点一致したグラフ表面仕事と
 式~\eqref{eq:ao_graph_hfe_jump}--\eqref{eq:ao_graph_hfe_face_law} の
-現在グラフ HFE 圧力ジャンプを用い，汎用 P1 cut-cell 表面微分や
+現在グラフ HFE 圧力ジャンプを用い，汎用 P1 切断セル表面微分や
 前格子の圧力ジャンプ履歴を混ぜないこと．
 第八に，式~\eqref{eq:ao_pressure_coordinate_split} の滑らかな圧力座標と
 現在時刻の圧力反力を分離し，式~\eqref{eq:ao_dc_convergence_gate} の
@@ -463,10 +463,10 @@ PhaseRegion 正規経路は，式~\eqref{eq:phase_region_owner}--\eqref{eq:phase
 過射影を棄却し，移動格子面量・圧力履歴・DC 収束判定を加えた
 最終契約を固定する．
 第~\ref{sec:val_capillary}節の毛管波は，この最終契約のうち
-PhaseRegion 所有，graph chart 測度，表面エネルギー第二変分，
+PhaseRegion 所有，グラフチャート測度，表面エネルギー第二変分，
 GPU 測度集約，および残差診断を満たす正規グラフ経路として読む．
 ただし現時点では圧力・速度消費側が未接続であり，
-力連成は \texttt{force\_admissible=0} のまま不合格停止とする．
+力連成は「未接続」を示す \texttt{force\_admissible=0} のまま不合格停止とする．
 一方で，U12 が棄却した全圧力像への過射影や，
 式~\eqref{eq:ao_face_cochain_regrid} を欠く節点速度再構成経路は，
 完走しても本節の経路とは別物である．
