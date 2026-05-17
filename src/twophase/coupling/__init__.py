@@ -53,6 +53,13 @@ from .closed_interface_trace_velocity import (
     ReconstructedNodalP1TraceVelocityMap,
     face_vertex_vjp_residual,
 )
+from .phase_region_force_admission import (
+    FixedStratumVelocityScale,
+    PhaseRegionFaceMassMetric,
+    phase_region_face_mass_metric,
+    scale_face_velocity_to_fixed_stratum,
+    two_phase_nodal_density,
+)
 from .gfm import GFMCorrector
 from .interface_stress_closure import (
     InterfaceStressContext,
@@ -73,7 +80,9 @@ __all__ = [
     "ClosedInterfaceRieszCochain",
     "ClosedInterfaceTraceRieszCochain",
     "ComponentReactionHodgeGate",
+    "FixedStratumVelocityScale",
     "PPERHSBuilderGFM",
+    "PhaseRegionFaceMassMetric",
     "ReconstructedNodalP1TraceVelocityMap",
     "TraceComponent2D",
     "TraceComponentHodgeProjection",
@@ -103,6 +112,8 @@ __all__ = [
     "interface_stress_context_is_active",
     "liquid_area_2d",
     "liquid_area_gradient_2d",
+    "phase_region_face_mass_metric",
+    "scale_face_velocity_to_fixed_stratum",
     "signed_pressure_jump_gradient",
     "trace_component_area_vertex_covectors",
     "trace_component_areas",
@@ -116,5 +127,6 @@ __all__ = [
     "trace_surface_length_gradient_2d",
     "trace_vertex_static_criticality",
     "transport_increment_from_face_velocity",
+    "two_phase_nodal_density",
     "weighted_hodge_decomposition",
 ]

@@ -40,10 +40,12 @@ from twophase.core.grid import Grid  # noqa: E402
 from twophase.coupling.closed_interface_riesz import (  # noqa: E402
     closed_interface_riesz_cochain,
     component_reaction_hodge_gate,
-    face_mass_components,
     fixed_stratum_virtual_work_check,
-    transport_increment_from_face_velocity,
     weighted_hodge_decomposition,
+)
+from twophase.coupling.phase_region_force_admission import (  # noqa: E402
+    phase_region_face_mass_metric,
+    scale_face_velocity_to_fixed_stratum,
 )
 from twophase.geometry import (  # noqa: E402
     CellMeasurePhase,
@@ -169,32 +171,6 @@ def _smooth_face_probe(grid: Grid) -> list[np.ndarray]:
     ]
 
 
-def _fixed_stratum_velocity(
-    *,
-    xp,
-    fccd: FCCDSolver,
-    psi,
-    face_velocity_components,
-    sign_margin: float,
-    fd_eps: float,
-    sign_fraction: float,
-) -> tuple[list[object], float]:
-    delta = transport_increment_from_face_velocity(
-        xp=xp,
-        fccd=fccd,
-        psi=psi,
-        face_velocity_components=face_velocity_components,
-    )
-    delta_linf = float(np.max(np.abs(np.asarray(delta, dtype=float))))
-    if delta_linf <= 0.0:
-        return list(face_velocity_components), 1.0
-    scale = min(
-        1.0,
-        float(sign_fraction) * float(sign_margin) / (float(fd_eps) * delta_linf),
-    )
-    return [scale * xp.asarray(component) for component in face_velocity_components], float(scale)
-
-
 def _compute(
     config_path: pathlib.Path,
     *,
@@ -223,34 +199,38 @@ def _compute(
     ccd = CCDSolver(grid, grid.backend, bc_type=cfg.grid.bc_type)
     fccd = FCCDSolver(grid, grid.backend, bc_type=cfg.grid.bc_type, ccd_solver=ccd)
     div_op = FCCDDivergenceOperator(fccd)
-    rho_node = float(cfg.physics.rho_g) + (
-        float(cfg.physics.rho_l) - float(cfg.physics.rho_g)
-    ) * xp.asarray(psi)
-    face_weights = face_mass_components(xp=xp, grid=grid, rho=rho_node)
+    face_metric = phase_region_face_mass_metric(
+        xp=xp,
+        grid=grid,
+        psi=psi,
+        rho_l=float(cfg.physics.rho_l),
+        rho_g=float(cfg.physics.rho_g),
+    )
     cochain = closed_interface_riesz_cochain(
         xp=xp,
         grid=grid,
         psi=psi,
         fccd=fccd,
         sigma=float(cfg.physics.sigma),
-        face_weight_components=face_weights,
+        face_weight_components=face_metric.face_weight_components,
     )
     sign_margin = float(np.min(np.abs(np.asarray(psi, dtype=float) - 0.5)))
-    self_velocity, self_velocity_scale = _fixed_stratum_velocity(
+    self_velocity = scale_face_velocity_to_fixed_stratum(
         xp=xp,
         fccd=fccd,
         psi=cochain.psi,
         face_velocity_components=cochain.surface_acceleration,
-        sign_margin=sign_margin,
         fd_eps=float(fd_eps),
         sign_fraction=float(sign_fraction),
     )
+    if not self_velocity.valid:
+        raise AssertionError(f"runtime self velocity scaling failed: {self_velocity.reason}")
     check_self = fixed_stratum_virtual_work_check(
         xp=xp,
         grid=grid,
         fccd=fccd,
         cochain=cochain,
-        face_velocity_components=self_velocity,
+        face_velocity_components=self_velocity.face_velocity_components,
         epsilon=float(fd_eps),
     )
     smooth = [xp.asarray(component) for component in _smooth_face_probe(grid)]
@@ -258,21 +238,22 @@ def _compute(
         surface + 0.125 * smooth_component
         for surface, smooth_component in zip(cochain.surface_acceleration, smooth, strict=True)
     ]
-    probe_velocity, probe_velocity_scale = _fixed_stratum_velocity(
+    probe_velocity = scale_face_velocity_to_fixed_stratum(
         xp=xp,
         fccd=fccd,
         psi=cochain.psi,
         face_velocity_components=probe,
-        sign_margin=sign_margin,
         fd_eps=float(fd_eps),
         sign_fraction=float(sign_fraction),
     )
+    if not probe_velocity.valid:
+        raise AssertionError(f"runtime probe velocity scaling failed: {probe_velocity.reason}")
     check_probe = fixed_stratum_virtual_work_check(
         xp=xp,
         grid=grid,
         fccd=fccd,
         cochain=cochain,
-        face_velocity_components=probe_velocity,
+        face_velocity_components=probe_velocity.face_velocity_components,
         epsilon=float(fd_eps),
     )
     decomposition = weighted_hodge_decomposition(
@@ -316,12 +297,12 @@ def _compute(
         "stratum_sign_margin": sign_margin,
         "self_fd_power_residual": float(check_self.finite_difference_power_residual),
         "self_riesz_residual": float(check_self.riesz_residual),
-        "self_velocity_scale": float(self_velocity_scale),
+        "self_velocity_scale": float(self_velocity.scale),
         "self_finite_difference": float(check_self.finite_difference),
         "self_capillary_power": float(check_self.capillary_power),
         "probe_fd_power_residual": float(check_probe.finite_difference_power_residual),
         "probe_riesz_residual": float(check_probe.riesz_residual),
-        "probe_velocity_scale": float(probe_velocity_scale),
+        "probe_velocity_scale": float(probe_velocity.scale),
         "probe_finite_difference": float(check_probe.finite_difference),
         "probe_capillary_power": float(check_probe.capillary_power),
         "component_weighted_l2": float(decomposition.component_weighted_l2),
