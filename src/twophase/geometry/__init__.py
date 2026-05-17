@@ -68,6 +68,10 @@ from .phase_region_measure import (
     PhaseRegionMeasurement,
     assemble_phase_region_measurement,
 )
+from .phase_region_admission import (
+    LowModeKKTResult,
+    solve_low_mode_kkt,
+)
 from .q_manifold_projection import (
     ClosedQMeasurement,
     GraphQMeasurement,
@@ -178,6 +182,7 @@ __all__ = [
     "GraphModeCoefficient",
     "GraphQMeasurement",
     "InterfaceAtlas",
+    "LowModeKKTResult",
     "MetricCellComplex",
     "P1ActiveGeometry",
     "P1ActiveVolumeGeometry",
@@ -242,6 +247,7 @@ __all__ = [
     "restore_geometric_phase_checkpoint_2d",
     "scatter_local_to_nodes",
     "solve_active_pcg",
+    "solve_low_mode_kkt",
     "transport_geometric_phase_common_flux_2d",
     "transport_geometric_phase_state_2d",
 ]
