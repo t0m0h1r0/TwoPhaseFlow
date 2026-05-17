@@ -23,6 +23,7 @@ from twophase.geometry.q_manifold_projection import (
     graph_q_from_eta,
     project_closed_radial_mode_f0,
     project_graph_q_f0,
+    project_graph_q_f1_low_mode,
 )
 
 
@@ -148,6 +149,64 @@ def test_graph_f0_recovers_clean_chart_on_nonuniform_grid():
     assert clean.residual_report.total_volume_abs < 1.0e-14
     assert clean.constraint_report["column_residual_linf"] < 1.0e-13
     assert clean.validity_report["stage"] == "F0"
+
+
+def test_graph_f1_recovers_truncated_low_mode_on_nonuniform_grid():
+    grid = _grid(alpha_grid=2.0)
+    _fit_x_nonuniform_grid(grid)
+    x_edges = np.asarray(grid.coords[0], dtype=float)
+    eta_low = eta_from_cosine_modes(
+        x_edges,
+        base_height=0.455,
+        modes=((2, 4.0e-2), (4, 2.0e-4)),
+    )
+    q_low = graph_q_from_eta(grid, eta_low).q
+
+    f0 = project_graph_q_f0(grid, q_low, max_mode=2, sigma=1.0)
+    f1 = project_graph_q_f1_low_mode(
+        grid,
+        q_low,
+        f0_max_mode=2,
+        correction_max_mode=4,
+        sigma=1.0,
+    )
+
+    assert f0.residual_report.l2 > 1.0e-5
+    assert f1.stage == "F1"
+    assert f1.validity_report["force_admissible"] is False
+    assert f1.residual_report.l2 < 1.0e-2 * f0.residual_report.l2
+    np.testing.assert_allclose(f1.gamma_state.eta, eta_low, atol=5.0e-7)
+    assert abs(f1.gamma_state.coefficient_map()["cos_4"] - 2.0e-4) < 5.0e-7
+
+
+def test_graph_f1_does_not_turn_zero_column_residual_into_shape_modes():
+    grid = _grid(alpha_grid=2.0)
+    _fit_x_nonuniform_grid(grid)
+    x_edges = np.asarray(grid.coords[0], dtype=float)
+    eta_clean = eta_from_cosine_modes(
+        x_edges,
+        base_height=0.455,
+        modes=((2, 4.0e-2),),
+    )
+    clean_q = graph_q_from_eta(grid, eta_clean).q
+    high_q = _zero_column_cell_residual(grid, clean_q, fraction=5.0e-2)
+
+    f0 = project_graph_q_f0(grid, high_q, max_mode=4, sigma=1.0)
+    f1 = project_graph_q_f1_low_mode(
+        grid,
+        high_q,
+        f0_max_mode=4,
+        correction_max_mode=4,
+        sigma=1.0,
+    )
+
+    assert f1.residual_report.l2 >= 0.99 * f0.residual_report.l2
+    f0_coeffs = f0.gamma_state.coefficient_map()
+    f1_coeffs = f1.gamma_state.coefficient_map()
+    for key, value in f0_coeffs.items():
+        if key == "mean":
+            continue
+        assert abs(float(f1_coeffs[key]) - float(value)) < 1.0e-10
 
 
 def test_graph_column_projection_has_batched_scalar_parity():

@@ -7,7 +7,7 @@ Symbol mapping
 ``Q_h(Gamma*)`` -> measured physical cell volume ``q_phys``.
 ``r`` -> exposed off-manifold residual ``q_T - q_phys``.
 
-Graph F0 and closed radial F0 oracle projections are implemented here.
+Graph F0/F1 and closed radial F0 oracle projections are implemented here.
 Runtime adapters, nonlinear optimization, and face-cochain force coupling are
 separate gates and intentionally absent.
 """
@@ -24,12 +24,15 @@ from .interface_charts import (
     ClosedPolygonGeometry,
     GraphChartState,
     GraphEnergyGradient,
+    GraphModeCoefficient,
     closed_polygon_geometry,
     closed_radial_chart_from_modes,
     graph_segment_energy_gradient,
+    periodic_mode_basis,
     project_column_height_to_graph,
 )
 from .p1_cut_geometry import cut_geometry_2d
+from .phase_region_admission import solve_low_mode_kkt
 
 
 @dataclass(frozen=True)
@@ -189,6 +192,138 @@ def project_graph_q_f0(
     return ProjectionResult(
         chart_kind="graph",
         stage="F0",
+        gamma_state=gamma_state,
+        q_phys=q_phys,
+        residual=residual,
+        constraint_report=constraint_report,
+        energy_report=energy_report,
+        residual_report=residual_report,
+        validity_report=validity_report,
+    )
+
+
+def project_graph_q_f1_low_mode(
+    grid,
+    q_target: object,
+    *,
+    f0_max_mode: int,
+    correction_max_mode: int,
+    sigma: float = 1.0,
+    level: float = 0.0,
+    finite_difference_step: float = 1.0e-6,
+) -> ProjectionResult:
+    """Apply one graph F1 low-mode KKT correction after F0 admission.
+
+    The KKT unknowns are the graph mean and low Fourier coefficients up to
+    ``correction_max_mode``.  ``J_Q`` maps those coefficients to low column
+    residual moments, not to all cell residuals.  This prevents cell-scale
+    off-manifold noise from being promoted into geometry and keeps
+    ``force_admissible`` false.
+    """
+    reject_gpu_namespace(grid.xp, context="graph q-manifold F1 projection")
+    reject_device_value(q_target, context="graph q-manifold F1 projection")
+    if int(f0_max_mode) < 0:
+        raise ValueError("f0_max_mode must be nonnegative")
+    if int(correction_max_mode) < int(f0_max_mode):
+        raise ValueError("correction_max_mode must be at least f0_max_mode")
+    step = float(finite_difference_step)
+    if not np.isfinite(step) or step <= 0.0:
+        raise ValueError("finite_difference_step must be positive and finite")
+
+    q_arr = np.asarray(q_target, dtype=float)
+    if q_arr.shape != tuple(grid.N):
+        raise ValueError("q_target must have shape grid.N")
+
+    f0 = project_graph_q_f0(
+        grid,
+        q_arr,
+        max_mode=int(f0_max_mode),
+        sigma=float(sigma),
+        level=float(level),
+    )
+    x_edges = np.asarray(grid.coords[0], dtype=float)
+    coeffs = _graph_coeff_vector_from_state(
+        f0.gamma_state,
+        max_mode=int(correction_max_mode),
+    )
+    jacobian = _graph_low_mode_moment_jacobian(
+        grid,
+        x_edges,
+        coeffs,
+        max_mode=int(correction_max_mode),
+        finite_difference_step=step,
+        level=float(level),
+    )
+    residual_moments = _graph_low_mode_moment_vector(
+        grid,
+        f0.residual,
+        max_mode=int(correction_max_mode),
+    )
+    kkt = solve_low_mode_kkt(
+        jacobian,
+        residual_moments,
+    )
+    delta = np.asarray(kkt.delta, dtype=float)
+    corrected_coeffs = coeffs + delta
+    pre_volume_state = _graph_state_from_coeff_vector(
+        x_edges,
+        corrected_coeffs,
+        max_mode=int(correction_max_mode),
+    )
+    pre_volume_q = graph_q_from_eta(grid, pre_volume_state.eta, level=float(level)).q
+    domain_length = float(x_edges[-1] - x_edges[0])
+    volume_correction = (
+        float(np.sum(q_arr)) - float(np.sum(pre_volume_q))
+    ) / max(domain_length, 1.0e-30)
+    corrected_coeffs = corrected_coeffs.copy()
+    corrected_coeffs[0] += volume_correction
+    gamma_state = _graph_state_from_coeff_vector(
+        x_edges,
+        corrected_coeffs,
+        max_mode=int(correction_max_mode),
+    )
+    measurement = graph_q_from_eta(grid, gamma_state.eta, level=float(level))
+    q_phys = np.asarray(measurement.q, dtype=float)
+    residual = q_arr - q_phys
+    energy = graph_segment_energy_gradient(
+        x_edges,
+        np.asarray(gamma_state.eta, dtype=float),
+        sigma=float(sigma),
+    )
+    residual_report = residual_report_for_q(grid, residual=residual, q_target=q_arr)
+    column_residual = column_height_from_q(grid, residual)
+    constraint_report = {
+        "target_volume": float(np.sum(q_arr)),
+        "f0_physical_volume": float(np.sum(f0.q_phys)),
+        "physical_volume": float(np.sum(q_phys)),
+        "f0_residual_volume": float(np.sum(f0.residual)),
+        "residual_volume": float(np.sum(residual)),
+        "column_residual_linf": float(np.max(np.abs(column_residual))),
+    }
+    energy_report = {
+        "surface_energy": float(energy.energy),
+        "nodal_gradient": energy.nodal_gradient,
+        "weights": energy.weights,
+    }
+    validity_report = {
+        "chart_regular": True,
+        "sign_margin": float(measurement.sign_margin),
+        "backend": "cpu",
+        "stage": "F1",
+        "f0_max_mode": int(f0_max_mode),
+        "correction_max_mode": int(correction_max_mode),
+        "finite_difference_step": step,
+        "f0_residual_l2": float(f0.residual_report.l2),
+        "kkt_predicted_residual_l2": float(kkt.residual_l2),
+        "f0_residual_moment_l2": float(np.sqrt(np.sum(residual_moments * residual_moments))),
+        "kkt_objective": float(kkt.objective),
+        "volume_correction": float(volume_correction),
+        "correction_l2": float(np.sqrt(np.sum((corrected_coeffs - coeffs) ** 2))),
+        "force_admissible": bool(kkt.force_admissible),
+    }
+    return ProjectionResult(
+        chart_kind="graph",
+        stage="F1",
         gamma_state=gamma_state,
         q_phys=q_phys,
         residual=residual,
@@ -360,6 +495,101 @@ def graph_force_projection(
     if denom <= 0.0:
         return 0.0
     return float(np.sum(weights * force * cos_mode) / denom)
+
+
+def _graph_coeff_vector_from_state(state: GraphChartState, *, max_mode: int) -> object:
+    coeffs = np.zeros(1 + 2 * int(max_mode), dtype=float)
+    coeffs[0] = float(state.mean)
+    for entry in state.modes:
+        if int(entry.mode) > int(max_mode):
+            continue
+        idx = 1 + 2 * (int(entry.mode) - 1)
+        coeffs[idx] = float(entry.cos)
+        coeffs[idx + 1] = float(entry.sin)
+    return coeffs
+
+
+def _graph_state_from_coeff_vector(
+    x_edges: object,
+    coeffs: object,
+    *,
+    max_mode: int,
+) -> GraphChartState:
+    x_arr = np.asarray(x_edges, dtype=float)
+    c = np.asarray(coeffs, dtype=float)
+    expected = 1 + 2 * int(max_mode)
+    if c.shape != (expected,):
+        raise ValueError("graph coefficient vector has wrong shape")
+    eta = np.full_like(x_arr, float(c[0]), dtype=float)
+    modes: list[GraphModeCoefficient] = []
+    for mode in range(1, int(max_mode) + 1):
+        idx = 1 + 2 * (mode - 1)
+        cos_coef = float(c[idx])
+        sin_coef = float(c[idx + 1])
+        cos_e, sin_e = periodic_mode_basis(x_arr, mode=mode)
+        eta = eta + cos_coef * cos_e + sin_coef * sin_e
+        modes.append(GraphModeCoefficient(mode=mode, cos=cos_coef, sin=sin_coef))
+    eta[-1] = eta[0]
+    return GraphChartState(eta=eta, mean=float(c[0]), modes=tuple(modes))
+
+
+def _graph_low_mode_moment_vector(grid, q: object, *, max_mode: int) -> object:
+    height = column_height_from_q(grid, q)
+    x_edges = np.asarray(grid.coords[0], dtype=float)
+    dx = np.diff(x_edges)
+    basis_columns = [np.ones_like(dx, dtype=float)]
+    for mode in range(1, int(max_mode) + 1):
+        cos_e, sin_e = periodic_mode_basis(x_edges, mode=mode)
+        basis_columns.extend(
+            (
+                0.5 * (cos_e[:-1] + cos_e[1:]),
+                0.5 * (sin_e[:-1] + sin_e[1:]),
+            )
+        )
+    basis = np.stack(basis_columns, axis=-1)
+    return np.einsum("n,n,nk->k", height, dx, basis)
+
+
+def _graph_low_mode_moment_jacobian(
+    grid,
+    x_edges: object,
+    coeffs: object,
+    *,
+    max_mode: int,
+    finite_difference_step: float,
+    level: float,
+) -> object:
+    c = np.asarray(coeffs, dtype=float)
+    base_moment = _graph_low_mode_moment_vector(
+        grid,
+        graph_q_from_eta(
+            grid,
+            _graph_state_from_coeff_vector(x_edges, c, max_mode=int(max_mode)).eta,
+            level=float(level),
+        ).q,
+        max_mode=int(max_mode),
+    )
+    jacobian = np.empty((base_moment.size, c.size), dtype=float)
+    step = float(finite_difference_step)
+    for column in range(c.size):
+        plus = c.copy()
+        minus = c.copy()
+        plus[column] += step
+        minus[column] -= step
+        q_plus = graph_q_from_eta(
+            grid,
+            _graph_state_from_coeff_vector(x_edges, plus, max_mode=int(max_mode)).eta,
+            level=float(level),
+        ).q
+        q_minus = graph_q_from_eta(
+            grid,
+            _graph_state_from_coeff_vector(x_edges, minus, max_mode=int(max_mode)).eta,
+            level=float(level),
+        ).q
+        moment_plus = _graph_low_mode_moment_vector(grid, q_plus, max_mode=int(max_mode))
+        moment_minus = _graph_low_mode_moment_vector(grid, q_minus, max_mode=int(max_mode))
+        jacobian[:, column] = (moment_plus - moment_minus) / (2.0 * step)
+    return jacobian
 
 
 def _closed_radial_radius_at_theta(state: ClosedRadialChartState, theta: object) -> object:

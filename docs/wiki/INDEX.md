@@ -1,4 +1,4 @@
-# Wiki Index — 417 entries
+# Wiki Index — 418 entries
 
 ## Active Retrieval Gate
 
@@ -97,6 +97,9 @@ acceptance metrics, stop conditions, and the next nonuniform graph F0 gate.
 Use [WIKI-L-055](code/WIKI-L-055.md) before connecting graph F1 low-mode KKT
 because it removes the uniform-x graph F0 blocker with a weighted P1
 cell-average low-mode solve and validates a real x-nonuniform oracle.
+Use [WIKI-L-056](code/WIKI-L-056.md) before extending F1 to other charts or
+atlas components because it records the low-moment graph F1 KKT connection and
+the rejected all-cell KKT failure mode.
 Before implementing or reviewing an
 established-theory change, use [WIKI-L-046](code/WIKI-L-046.md) as the
 equation-to-code contract gate. Older cards remain listed for
@@ -516,7 +519,7 @@ support.
 | [WIKI-M-034](meta/WIKI-M-034.md) | Paper Review Revisions Should Reduce Cognitive Load, Not Add Decoration |
 | [WIKI-M-035](meta/WIKI-M-035.md) | Meta-Prompt Deployment Needs Project Boundaries, Native Adapters, and Token ROI Gates |
 
-## Code (55)
+## Code (56)
 
 | REF-ID | Title |
 |--------|-------|
@@ -575,3 +578,4 @@ support.
 | [WIKI-L-053](code/WIKI-L-053.md) | Ch14 PhaseRegion Low-Mode KKT PASS |
 | [WIKI-L-054](code/WIKI-L-054.md) | Ch14 PhaseRegion Boundary and Nonuniform Audit PASS |
 | [WIKI-L-055](code/WIKI-L-055.md) | Ch14 Nonuniform Graph F0 Admission PASS |
+| [WIKI-L-056](code/WIKI-L-056.md) | Ch14 Graph F1 Low-Mode KKT PASS |

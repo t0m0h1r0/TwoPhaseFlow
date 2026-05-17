@@ -84,6 +84,7 @@ from .q_manifold_projection import (
     graph_q_from_eta,
     project_closed_radial_mode_f0,
     project_graph_q_f0,
+    project_graph_q_f1_low_mode,
     residual_report_for_q,
 )
 from .compatibility_projection import (
@@ -239,6 +240,7 @@ __all__ = [
     "project_closed_radial_mode_f0",
     "project_column_height_to_graph",
     "project_graph_q_f0",
+    "project_graph_q_f1_low_mode",
     "periodic_mode_basis",
     "residual_report_for_q",
     "refresh_active_geometry_2d",

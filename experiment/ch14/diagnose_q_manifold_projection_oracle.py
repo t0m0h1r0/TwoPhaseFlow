@@ -40,6 +40,7 @@ from twophase.geometry.q_manifold_projection import (  # noqa: E402
     graph_force_projection,
     graph_q_from_eta,
     project_graph_q_f0,
+    project_graph_q_f1_low_mode,
 )
 from twophase.tools.experiment import (  # noqa: E402
     COLORS,
@@ -163,6 +164,70 @@ def _case_metrics(
     }
 
 
+def _f1_case_metrics(
+    grid: Grid,
+    *,
+    name: str,
+    eta_reference: np.ndarray,
+    q_target: np.ndarray,
+    f0_max_mode: int,
+    correction_max_mode: int,
+    sigma: float,
+    force_mode: int,
+) -> dict[str, np.ndarray | float | str]:
+    x_edges = np.asarray(grid.coords[0], dtype=float)
+    x_unique = x_edges[:-1]
+    dx = np.diff(x_edges)
+    projection = project_graph_q_f1_low_mode(
+        grid,
+        q_target,
+        f0_max_mode=int(f0_max_mode),
+        correction_max_mode=int(correction_max_mode),
+        sigma=sigma,
+    )
+    eta_star = np.asarray(projection.gamma_state.eta, dtype=float)
+    q_phys = np.asarray(projection.q_phys, dtype=float)
+    residual = np.asarray(projection.residual, dtype=float)
+    residual_column = column_height_from_q(grid, residual)
+    energy = float(projection.energy_report["surface_energy"])
+    weights = np.asarray(projection.energy_report["weights"], dtype=float)
+    cos_force, _sin_force = periodic_mode_basis(x_unique, mode=force_mode)
+    eta_mode = _weighted_projection(
+        eta_star[:-1] - float(np.sum(dx * eta_star[:-1]) / np.sum(dx)),
+        cos_force,
+        weights,
+    )
+    force_projection = graph_force_projection(
+        projection.energy_report,
+        x_edges,
+        mode=force_mode,
+    )
+    reference_delta = eta_star - eta_reference
+    coeffs = projection.gamma_state.coefficient_map()
+    return {
+        "name": name,
+        "eta_star": eta_star,
+        "q_target": q_target,
+        "q_phys": q_phys,
+        "residual": residual,
+        "residual_column": residual_column,
+        "energy": energy,
+        "residual_l2": projection.residual_report.l2,
+        "residual_rel": projection.residual_report.relative_l2,
+        "residual_column_linf": projection.residual_report.column_linf,
+        "eta_delta_linf": float(np.max(np.abs(reference_delta))),
+        "eta_mode": eta_mode,
+        "force_mode": force_projection,
+        "force_sign_product": eta_mode * force_projection,
+        "f0_residual_l2": float(projection.validity_report["f0_residual_l2"]),
+        "kkt_predicted_residual_l2": float(
+            projection.validity_report["kkt_predicted_residual_l2"]
+        ),
+        "correction_l2": float(projection.validity_report["correction_l2"]),
+        **{f"coef_{key}": value for key, value in coeffs.items()},
+    }
+
+
 def _compute(args) -> dict:
     backend = Backend(use_gpu=False)
     grid = Grid(
@@ -194,8 +259,17 @@ def _compute(args) -> dict:
             (int(args.low_mode), float(args.low_amplitude)),
         ),
     )
+    eta_f1 = eta_from_cosine_modes(
+        x_edges,
+        base_height=float(args.base_height),
+        modes=(
+            (int(args.base_mode), float(args.base_amplitude)),
+            (int(args.low_mode), float(args.f1_amplitude)),
+        ),
+    )
     q_clean = graph_q_from_eta(grid, eta_clean).q
     q_low = graph_q_from_eta(grid, eta_low).q
+    q_f1 = graph_q_from_eta(grid, eta_f1).q
     q_high = _add_zero_column_cell_residual(
         grid,
         q_clean,
@@ -230,11 +304,22 @@ def _compute(args) -> dict:
             sigma=float(args.sigma),
             force_mode=int(args.base_mode),
         ),
+        "f1_truncated": _f1_case_metrics(
+            grid,
+            name="f1_truncated",
+            eta_reference=eta_f1,
+            q_target=q_f1,
+            f0_max_mode=int(args.base_mode),
+            correction_max_mode=int(args.max_mode),
+            sigma=float(args.sigma),
+            force_mode=int(args.base_mode),
+        ),
     }
 
     clean = cases["clean"]
     low = cases["low_mode"]
     high = cases["high_residual"]
+    f1 = cases["f1_truncated"]
     clean_tol = float(args.clean_tolerance)
     if float(clean["residual_l2"]) > clean_tol:
         raise AssertionError(f"clean case residual {clean['residual_l2']:.3e} exceeds tolerance")
@@ -246,6 +331,10 @@ def _compute(args) -> dict:
         raise AssertionError("zero-column high residual changed the projected smooth graph")
     if float(high["residual_column_linf"]) > clean_tol:
         raise AssertionError("high residual projection failed to preserve column volume")
+    if float(f1["residual_l2"]) >= 1.0e-2 * float(f1["f0_residual_l2"]):
+        raise AssertionError("F1 failed to reduce the admitted low-mode residual")
+    if float(f1["eta_delta_linf"]) > 5.0e-7:
+        raise AssertionError("F1 failed to recover the admitted low-mode graph")
     for name, case in cases.items():
         if float(case["force_sign_product"]) >= 0.0:
             raise AssertionError(f"{name} restoring force does not oppose the base mode")
@@ -272,8 +361,8 @@ def _compute(args) -> dict:
 def _plot(results: dict) -> pathlib.Path:
     x_edges = np.asarray(results["x_edges"], dtype=float)
     y_edges = np.asarray(results["y_edges"], dtype=float)
-    fig, axes = plt.subplots(3, 3, figsize=(10.8, 8.4), constrained_layout=True)
-    case_names = ("clean", "low_mode", "high_residual")
+    case_names = ("clean", "low_mode", "high_residual", "f1_truncated")
+    fig, axes = plt.subplots(len(case_names), 3, figsize=(10.8, 10.8), constrained_layout=True)
     for row, name in enumerate(case_names):
         eta_star = np.asarray(results[f"{name}"]["eta_star"], dtype=float)
         q_target = np.asarray(results[f"{name}"]["q_target"], dtype=float)
@@ -326,7 +415,7 @@ def _print_summary(results: dict, figure_path: pathlib.Path) -> None:
     print("dx_min", f"{float(results['dx_min']):.12e}", sep=",")
     print("dx_max", f"{float(results['dx_max']):.12e}", sep=",")
     print("case,residual_l2,residual_rel,residual_column_linf,eta_delta_linf,force_sign_product")
-    for name in ("clean", "low_mode", "high_residual"):
+    for name in ("clean", "low_mode", "high_residual", "f1_truncated"):
         case = results[name]
         print(
             name,
@@ -337,6 +426,14 @@ def _print_summary(results: dict, figure_path: pathlib.Path) -> None:
             f"{float(case['force_sign_product']):.12e}",
             sep=",",
         )
+    f1 = results["f1_truncated"]
+    print(
+        "f1_kkt",
+        f"{float(f1['f0_residual_l2']):.12e}",
+        f"{float(f1['kkt_predicted_residual_l2']):.12e}",
+        f"{float(f1['correction_l2']):.12e}",
+        sep=",",
+    )
     print(f"figure,{figure_path}")
     print(f"==> q-manifold projection oracle PASS; outputs in {OUT}")
 
@@ -351,6 +448,7 @@ def main() -> None:
     parser.add_argument("--base-amplitude", type=float, default=4.0e-2)
     parser.add_argument("--low-mode", type=int, default=4)
     parser.add_argument("--low-amplitude", type=float, default=1.2e-2)
+    parser.add_argument("--f1-amplitude", type=float, default=2.0e-4)
     parser.add_argument("--max-mode", type=int, default=4)
     parser.add_argument("--high-fraction", type=float, default=5.0e-2)
     parser.add_argument("--sigma", type=float, default=1.0)
