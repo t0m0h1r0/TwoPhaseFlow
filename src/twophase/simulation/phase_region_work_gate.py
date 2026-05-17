@@ -21,7 +21,10 @@ from twophase.coupling.phase_region_force_admission import (
     PhaseRegionForceAdapterDecision,
     PhaseRegionForceAdmission,
 )
-from twophase.coupling.closed_interface_riesz import weighted_hodge_decomposition
+from twophase.coupling.closed_interface_riesz import (
+    fixed_stratum_virtual_work_check,
+    weighted_hodge_decomposition,
+)
 from twophase.coupling.closed_interface_stratum import array_to_numpy
 
 from .face_boundary import (
@@ -69,6 +72,23 @@ class PhaseRegionPressureVelocityG1Report:
     surface_component_weighted_l2: float
     surface_hodge_ratio: float
     surface_hodge_divergence_linf: float
+    metrics: dict[str, float]
+
+
+@dataclass(frozen=True)
+class PhaseRegionPressureVelocityG2Report:
+    """Virtual-work report under the same face metric as G0/G1."""
+
+    valid: bool
+    reason: str
+    force_admissible: bool
+    finite_difference: float
+    capillary_power: float
+    pressure_velocity_work: float
+    work_closure_residual: float
+    riesz_residual: float
+    same_weight_surface_work_residual: float
+    pressure_work_finite: bool
     metrics: dict[str, float]
 
 
@@ -326,6 +346,103 @@ def build_phase_region_pressure_velocity_g1_report(
     )
 
 
+def build_phase_region_pressure_velocity_g2_report(
+    *,
+    xp,
+    grid,
+    fccd,
+    admission: PhaseRegionForceAdmission,
+    g0_report: PhaseRegionPressureVelocityG0Report,
+    g1_report: PhaseRegionPressureVelocityG1Report,
+    runtime_face_velocity_components,
+    fd_eps: float = 1.0e-7,
+    fd_power_tolerance: float = 1.0e-5,
+    riesz_tolerance: float = 1.0e-12,
+    same_weight_tolerance: float = 1.0e-12,
+) -> PhaseRegionPressureVelocityG2Report:
+    """Check ``dE[T_h(u_f)] + <s_f,u_f>_M = 0`` for admitted faces."""
+    if not g0_report.valid:
+        return _invalid_g2_report(reason=f"g0:{g0_report.reason}")
+    if not g1_report.valid:
+        return _invalid_g2_report(reason=f"g1:{g1_report.reason}")
+    if not admission.valid or admission.cochain is None:
+        return _invalid_g2_report(reason=f"candidate:{admission.reason}")
+    if (
+        admission.force_admissible
+        or g0_report.force_admissible
+        or g1_report.force_admissible
+    ):
+        return _invalid_g2_report(reason="force_admissible_true")
+    fd_tol = float(fd_power_tolerance)
+    rz_tol = float(riesz_tolerance)
+    same_tol = float(same_weight_tolerance)
+    eps = float(fd_eps)
+    if not np.isfinite(eps) or eps <= 0.0:
+        return _invalid_g2_report(reason="fd_eps_invalid")
+    if not np.isfinite(fd_tol) or fd_tol < 0.0:
+        return _invalid_g2_report(reason="fd_power_tolerance_invalid")
+    if not np.isfinite(rz_tol) or rz_tol < 0.0:
+        return _invalid_g2_report(reason="riesz_tolerance_invalid")
+    if not np.isfinite(same_tol) or same_tol < 0.0:
+        return _invalid_g2_report(reason="same_weight_tolerance_invalid")
+
+    work = fixed_stratum_virtual_work_check(
+        xp=xp,
+        grid=grid,
+        fccd=fccd,
+        cochain=admission.cochain,
+        face_velocity_components=runtime_face_velocity_components,
+        epsilon=eps,
+    )
+    if not work.valid:
+        return _invalid_g2_report(reason=f"virtual_work:{work.reason}")
+
+    same_weight_residual = _relative_residual(
+        float(g0_report.surface_velocity_work),
+        float(work.capillary_power),
+    )
+    pressure_work_finite = bool(np.isfinite(float(g0_report.pressure_velocity_work)))
+    valid = True
+    reason = "ok"
+    if work.finite_difference_power_residual > fd_tol:
+        valid = False
+        reason = "work_closure_residual"
+    elif work.riesz_residual > rz_tol:
+        valid = False
+        reason = "riesz_residual"
+    elif same_weight_residual > same_tol:
+        valid = False
+        reason = "same_weight_surface_work_residual"
+    elif not pressure_work_finite:
+        valid = False
+        reason = "pressure_velocity_work_not_finite"
+
+    metrics = {
+        "g2_valid": float(valid),
+        "force_admissible": 0.0,
+        "finite_difference": float(work.finite_difference),
+        "capillary_power": float(work.capillary_power),
+        "pressure_velocity_work": float(g0_report.pressure_velocity_work),
+        "work_closure_residual": float(work.finite_difference_power_residual),
+        "riesz_residual": float(work.riesz_residual),
+        "same_weight_surface_work_residual": float(same_weight_residual),
+        "pressure_work_finite": float(pressure_work_finite),
+    }
+    return PhaseRegionPressureVelocityG2Report(
+        valid=bool(valid),
+        reason=reason,
+        force_admissible=False,
+        finite_difference=float(work.finite_difference),
+        capillary_power=float(work.capillary_power),
+        pressure_velocity_work=float(g0_report.pressure_velocity_work),
+        work_closure_residual=float(work.finite_difference_power_residual),
+        riesz_residual=float(work.riesz_residual),
+        same_weight_surface_work_residual=float(same_weight_residual),
+        pressure_work_finite=pressure_work_finite,
+        metrics=metrics,
+    )
+
+
 def _invalid_g0_report(
     *,
     reason: str,
@@ -377,6 +494,25 @@ def _invalid_g1_report(*, reason: str) -> PhaseRegionPressureVelocityG1Report:
         surface_hodge_divergence_linf=float("nan"),
         metrics={
             "g1_valid": 0.0,
+            "force_admissible": 0.0,
+        },
+    )
+
+
+def _invalid_g2_report(*, reason: str) -> PhaseRegionPressureVelocityG2Report:
+    return PhaseRegionPressureVelocityG2Report(
+        valid=False,
+        reason=str(reason),
+        force_admissible=False,
+        finite_difference=float("nan"),
+        capillary_power=float("nan"),
+        pressure_velocity_work=float("nan"),
+        work_closure_residual=float("nan"),
+        riesz_residual=float("nan"),
+        same_weight_surface_work_residual=float("nan"),
+        pressure_work_finite=False,
+        metrics={
+            "g2_valid": 0.0,
             "force_admissible": 0.0,
         },
     )
@@ -436,3 +572,8 @@ def _weighted_l2(xp, components, weights) -> float:
     if dot < 0.0:
         return float("nan")
     return float(np.sqrt(dot))
+
+
+def _relative_residual(left: float, right: float) -> float:
+    scale = max(abs(float(left)), abs(float(right)), 1.0)
+    return abs(float(left) - float(right)) / scale

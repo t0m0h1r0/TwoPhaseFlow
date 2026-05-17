@@ -1,4 +1,4 @@
-# Wiki Index — 436 entries
+# Wiki Index — 437 entries
 
 ## Active Retrieval Gate
 
@@ -149,6 +149,10 @@ Use [WIKI-L-069](code/WIKI-L-069.md) before any pressure-range or projection
 oracle because it records the diagnostic-only G1 gate: pressure faces must lie
 in `range(M_f^{-1}D_f^T)` under the same PhaseRegion face metric, while the
 capillary Hodge component remains diagnostic and unconverted.
+Use [WIKI-L-070](code/WIKI-L-070.md) before any face-projection oracle because
+it records the diagnostic-only G2 gate for
+`dE[T_h(u_f)] + <s_f,u_f>_M = 0`, same-weight work closure, and fixed-stratum
+velocity rejection.
 Use [WIKI-E-071](experiment/WIKI-E-071.md) before implementing a PhaseRegion
 runtime dry-run adapter because it records that existing runtime
 `GeometricPhaseState.q` is liquid volume while the current PhaseRegion theory
@@ -595,7 +599,7 @@ support.
 | [WIKI-M-034](meta/WIKI-M-034.md) | Paper Review Revisions Should Reduce Cognitive Load, Not Add Decoration |
 | [WIKI-M-035](meta/WIKI-M-035.md) | Meta-Prompt Deployment Needs Project Boundaries, Native Adapters, and Token ROI Gates |
 
-## Code (69)
+## Code (70)
 
 | REF-ID | Title |
 |--------|-------|
@@ -668,3 +672,4 @@ support.
 | [WIKI-L-067](code/WIKI-L-067.md) | Ch14 Pressure/Velocity Work-Gate Design |
 | [WIKI-L-068](code/WIKI-L-068.md) | Ch14 Pressure/Velocity G0 Face-Space Gate PASS |
 | [WIKI-L-069](code/WIKI-L-069.md) | Ch14 Pressure/Velocity G1 Pressure-Range Gate PASS |
+| [WIKI-L-070](code/WIKI-L-070.md) | Ch14 Pressure/Velocity G2 Work-Closure Gate PASS |

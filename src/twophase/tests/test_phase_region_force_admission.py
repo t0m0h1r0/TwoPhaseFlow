@@ -31,6 +31,7 @@ from twophase.coupling.phase_region_force_admission import (
 from twophase.geometry import CellMeasurePhase
 from twophase.simulation.divergence_ops import FCCDDivergenceOperator
 from twophase.simulation.phase_region_work_gate import (
+    build_phase_region_pressure_velocity_g2_report,
     build_phase_region_pressure_velocity_g1_report,
     build_phase_region_pressure_velocity_g0_report,
 )
@@ -923,6 +924,169 @@ def test_pressure_velocity_g1_report_rejects_nonrange_pressure_faces():
     assert not g1.valid
     assert g1.reason == "pressure_hodge_weighted_l2"
     assert g1.force_admissible is False
+
+
+def test_pressure_velocity_g2_report_accepts_fixed_stratum_work_closure():
+    grid, backend, fccd, admission, report = _valid_admission_and_report()
+    decision = build_phase_region_force_adapter_decision(
+        admission=admission,
+        report=report,
+    )
+    div_op = FCCDDivergenceOperator(fccd)
+    xp = backend.xp
+    velocity_faces = admission.diagnostics.self_velocity.face_velocity_components
+    pressure_range_faces = _manufactured_pressure_range_faces(
+        backend,
+        div_op,
+        admission,
+    )
+    g0 = build_phase_region_pressure_velocity_g0_report(
+        xp=xp,
+        admission=admission,
+        decision=decision,
+        runtime_face_velocity_components=velocity_faces,
+        pressure_face_components=pressure_range_faces,
+        bc_type=fccd.bc_type,
+        boundary_face_space="full_face",
+    )
+    g1 = build_phase_region_pressure_velocity_g1_report(
+        xp=xp,
+        div_op=div_op,
+        admission=admission,
+        g0_report=g0,
+        pressure_face_components=pressure_range_faces,
+    )
+
+    g2 = build_phase_region_pressure_velocity_g2_report(
+        xp=xp,
+        grid=grid,
+        fccd=fccd,
+        admission=admission,
+        g0_report=g0,
+        g1_report=g1,
+        runtime_face_velocity_components=velocity_faces,
+    )
+
+    assert g0.valid, g0.reason
+    assert g1.valid, g1.reason
+    assert g2.valid, g2.reason
+    assert g2.force_admissible is False
+    assert g2.finite_difference + g2.capillary_power == pytest.approx(
+        0.0,
+        abs=1.0e-8,
+    )
+    assert g2.capillary_power == pytest.approx(g0.surface_velocity_work)
+    assert g2.pressure_velocity_work == pytest.approx(g0.pressure_velocity_work)
+    assert g2.work_closure_residual < 1.0e-5
+    assert g2.riesz_residual < 1.0e-12
+    assert g2.same_weight_surface_work_residual == pytest.approx(0.0)
+    assert g2.pressure_work_finite is True
+    assert g2.metrics["g2_valid"] == 1.0
+    assert g2.metrics["force_admissible"] == 0.0
+
+
+def test_pressure_velocity_g2_report_rejects_mismatched_work_scalar():
+    grid, backend, fccd, admission, report = _valid_admission_and_report()
+    decision = build_phase_region_force_adapter_decision(
+        admission=admission,
+        report=report,
+    )
+    div_op = FCCDDivergenceOperator(fccd)
+    xp = backend.xp
+    velocity_faces = admission.diagnostics.self_velocity.face_velocity_components
+    pressure_range_faces = _manufactured_pressure_range_faces(
+        backend,
+        div_op,
+        admission,
+    )
+    g0 = build_phase_region_pressure_velocity_g0_report(
+        xp=xp,
+        admission=admission,
+        decision=decision,
+        runtime_face_velocity_components=velocity_faces,
+        pressure_face_components=pressure_range_faces,
+        bc_type=fccd.bc_type,
+        boundary_face_space="full_face",
+    )
+    g1 = build_phase_region_pressure_velocity_g1_report(
+        xp=xp,
+        div_op=div_op,
+        admission=admission,
+        g0_report=g0,
+        pressure_face_components=pressure_range_faces,
+    )
+    mismatched_g0 = replace(
+        g0,
+        surface_velocity_work=g0.surface_velocity_work + 1.0,
+    )
+
+    g2 = build_phase_region_pressure_velocity_g2_report(
+        xp=xp,
+        grid=grid,
+        fccd=fccd,
+        admission=admission,
+        g0_report=mismatched_g0,
+        g1_report=g1,
+        runtime_face_velocity_components=velocity_faces,
+    )
+
+    assert g0.valid, g0.reason
+    assert g1.valid, g1.reason
+    assert not g2.valid
+    assert g2.reason == "same_weight_surface_work_residual"
+    assert g2.force_admissible is False
+
+
+def test_pressure_velocity_g2_report_rejects_velocity_outside_fixed_stratum():
+    grid, backend, fccd, admission, report = _valid_admission_and_report()
+    decision = build_phase_region_force_adapter_decision(
+        admission=admission,
+        report=report,
+    )
+    div_op = FCCDDivergenceOperator(fccd)
+    xp = backend.xp
+    velocity_faces = [
+        1.0e8 * np.asarray(component)
+        for component in admission.cochain.surface_acceleration
+    ]
+    pressure_range_faces = _manufactured_pressure_range_faces(
+        backend,
+        div_op,
+        admission,
+    )
+    g0 = build_phase_region_pressure_velocity_g0_report(
+        xp=xp,
+        admission=admission,
+        decision=decision,
+        runtime_face_velocity_components=velocity_faces,
+        pressure_face_components=pressure_range_faces,
+        bc_type=fccd.bc_type,
+        boundary_face_space="full_face",
+    )
+    g1 = build_phase_region_pressure_velocity_g1_report(
+        xp=xp,
+        div_op=div_op,
+        admission=admission,
+        g0_report=g0,
+        pressure_face_components=pressure_range_faces,
+    )
+
+    g2 = build_phase_region_pressure_velocity_g2_report(
+        xp=xp,
+        grid=grid,
+        fccd=fccd,
+        admission=admission,
+        g0_report=g0,
+        g1_report=g1,
+        runtime_face_velocity_components=velocity_faces,
+        fd_eps=1.0,
+    )
+
+    assert g0.valid, g0.reason
+    assert g1.valid, g1.reason
+    assert not g2.valid
+    assert g2.reason.startswith("virtual_work:")
+    assert g2.force_admissible is False
 
 
 def test_phase_region_face_metric_rejects_cell_density_shape():
