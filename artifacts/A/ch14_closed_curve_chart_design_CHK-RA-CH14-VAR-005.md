@@ -141,4 +141,3 @@ is not admissible as the first closed-chart test.
   face-cochain diagnostics.
 - Do not introduce tolerance weakening, smoothing, damping, curvature caps,
   CFL retuning, rebuild skipping, FD/WENO/PPE fallback, or hidden CPU fallback.
-

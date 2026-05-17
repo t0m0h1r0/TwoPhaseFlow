@@ -86,4 +86,3 @@ Key metrics:
 - Do not use this oracle to justify tolerance weakening, smoothing, damping,
   CFL retuning, rebuild skipping, FD/WENO/PPE family fallback, or hidden CPU
   fallback in production runtime.
-
