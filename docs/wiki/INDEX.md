@@ -1,4 +1,4 @@
-# Wiki Index — 409 entries
+# Wiki Index — 410 entries
 
 ## Active Retrieval Gate
 
@@ -74,7 +74,9 @@ interface design because it lifts ownership to `PhaseRegion/Omega_h` and
 treats graph/closed/open charts as an `InterfaceAtlas`; use
 [WIKI-T-177](theory/WIKI-T-177.md) before force coupling because it fixes the
 PhaseRegion variational axioms and requires a mixed closed-bubble/top-layer
-atlas smoke oracle first. Before implementing or reviewing an
+atlas smoke oracle first; use [WIKI-L-050](code/WIKI-L-050.md) before adding
+PhaseRegion/InterfaceAtlas code because it fixes the vectorized packed atlas
+layout and F0/F1 fast-admission ladder. Before implementing or reviewing an
 established-theory change, use [WIKI-L-046](code/WIKI-L-046.md) as the
 equation-to-code contract gate. Older cards remain listed for
 provenance, but cards marked
@@ -491,7 +493,7 @@ support.
 | [WIKI-M-034](meta/WIKI-M-034.md) | Paper Review Revisions Should Reduce Cognitive Load, Not Add Decoration |
 | [WIKI-M-035](meta/WIKI-M-035.md) | Meta-Prompt Deployment Needs Project Boundaries, Native Adapters, and Token ROI Gates |
 
-## Code (49)
+## Code (50)
 
 | REF-ID | Title |
 |--------|-------|
@@ -544,3 +546,4 @@ support.
 | [WIKI-L-047](code/WIKI-L-047.md) | Ch14 q-Manifold Projection Implementation Contract |
 | [WIKI-L-048](code/WIKI-L-048.md) | Ch14 Graph q-Manifold Helper Implementation PASS |
 | [WIKI-L-049](code/WIKI-L-049.md) | Ch14 q-Manifold Vectorized Geometry Parity PASS |
+| [WIKI-L-050](code/WIKI-L-050.md) | Ch14 PhaseRegion InterfaceAtlas Implementation Design |
