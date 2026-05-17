@@ -718,23 +718,27 @@ def build_phase_region_pressure_velocity_g5_report(
     dt: float,
     projection_tolerance: float = 1.0e-12,
     force_consistency_tolerance: float = 1.0e-12,
+    force_component_tolerance: float = 1.0e-12,
 ) -> PhaseRegionPressureVelocityG5Report:
     """Consume an admitted face force without nodal reconstruction or state update."""
     if not g4_report.valid:
         return _invalid_g5_report(reason=f"g4:{g4_report.reason}")
     if not g4_report.force_admissible or g4_report.face_force_components is None:
         return _invalid_g5_report(reason="g4_force_not_admissible")
-    if not admission.valid or admission.face_metric is None:
+    if not admission.valid or admission.cochain is None or admission.face_metric is None:
         return _invalid_g5_report(reason=f"candidate:{admission.reason}")
     dt_value = float(dt)
     tol = float(projection_tolerance)
     force_tol = float(force_consistency_tolerance)
+    force_component_tol = float(force_component_tolerance)
     if not np.isfinite(dt_value) or dt_value <= 0.0:
         return _invalid_g5_report(reason="dt_invalid")
     if not np.isfinite(tol) or tol < 0.0:
         return _invalid_g5_report(reason="projection_tolerance_invalid")
     if not np.isfinite(force_tol) or force_tol < 0.0:
         return _invalid_g5_report(reason="force_consistency_tolerance_invalid")
+    if not np.isfinite(force_component_tol) or force_component_tol < 0.0:
+        return _invalid_g5_report(reason="force_component_tolerance_invalid")
 
     velocity_faces = tuple(xp.asarray(face) for face in runtime_face_velocity_components)
     pressure_faces = tuple(xp.asarray(face) for face in pressure_face_components)
@@ -751,6 +755,19 @@ def build_phase_region_pressure_velocity_g5_report(
         return _invalid_g5_report(reason="force_face_shape_mismatch")
     if _component_shapes(weights) != force_shapes:
         return _invalid_g5_report(reason="metric_face_shape_mismatch")
+
+    admitted_force_faces = tuple(
+        xp.asarray(face) for face in admission.cochain.surface_acceleration
+    )
+    if _component_shapes(admitted_force_faces) != force_shapes:
+        return _invalid_g5_report(reason="admitted_force_face_shape_mismatch")
+    force_component_linf = _component_linf_difference(
+        xp,
+        force_faces,
+        admitted_force_faces,
+    )
+    if force_component_linf > force_component_tol:
+        return _invalid_g5_report(reason="face_force_component_linf")
 
     force_l2 = _weighted_l2(xp, force_faces, weights)
     force_consistency_residual = _relative_residual(
@@ -791,6 +808,7 @@ def build_phase_region_pressure_velocity_g5_report(
         "g5_valid": float(valid),
         "force_admissible": 1.0 if valid else 0.0,
         "face_force_consumed": 1.0 if valid else 0.0,
+        "face_force_component_linf": float(force_component_linf),
         "face_force_weighted_l2": float(force_l2),
         "face_force_consistency_residual": float(force_consistency_residual),
         "face_projection_identity_linf": float(identity_linf),

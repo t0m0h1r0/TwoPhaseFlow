@@ -22,6 +22,7 @@ The helper:
 ```text
 requires g4.force_admissible=true
 requires face-shaped u_f, p_f, s_f, M_f
+checks s_f(consumed) equals the admitted face cochain componentwise
 checks ||s_f(consumed)||_M equals G4's admitted face-force norm
 rejects nodal-shaped velocity input
 calls apply_pressure_projection on face arrays
@@ -49,6 +50,7 @@ make test PYTEST_ARGS='twophase/tests/test_phase_region_force_admission.py -q'
 
 make cycle EXP=experiment/ch14/diagnose_phase_region_runtime_force_dry_run.py
 = PASS: g5_valid=1, face_force_consumed=1,
+        face_force_component_linf=0,
         face_force_consistency_residual=0, force_admissible=1
 ```
 

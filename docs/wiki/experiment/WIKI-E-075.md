@@ -94,7 +94,7 @@ probe_riesz_residual           = 0.000000000000e+00
 hodge_divergence_linf          = 1.083435563487e-09
 reaction_residual_ratio        = 7.097851774750e-01
 reaction_residual_divergence_linf = 2.313299773959e-09
-force_admissible               = 0.0
+force_admissible               = 1.000000000000e+00
 ```
 
 Updated G0--G5 metrics:
@@ -112,6 +112,7 @@ projection_identity_linf       = 2.081668171172e-17
 face_force_exposed             = 1.000000000000e+00
 face_force_consumed            = 1.000000000000e+00
 surface_update_consistency_residual = 0.000000000000e+00
+face_force_component_linf      = 0.000000000000e+00
 face_force_consistency_residual = 0.000000000000e+00
 face_projection_identity_linf  = 2.081668171172e-17
 force_admissible               = 1.0

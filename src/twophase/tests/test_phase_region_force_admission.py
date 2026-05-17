@@ -1467,6 +1467,7 @@ def test_pressure_velocity_g5_report_consumes_admitted_face_force():
     assert g5.metrics["face_force_weighted_l2"] == pytest.approx(
         g4.face_force_weighted_l2
     )
+    assert g5.metrics["face_force_component_linf"] == pytest.approx(0.0)
     assert g5.metrics["face_force_consistency_residual"] == pytest.approx(0.0)
     assert g5.metrics["g5_valid"] == 1.0
     assert g5.metrics["face_force_consumed"] == 1.0
@@ -1540,7 +1541,7 @@ def test_pressure_velocity_g5_report_rejects_mutated_g4_face_payload():
     mutated_g4 = replace(
         g4,
         face_force_components=tuple(
-            1.125 * np.asarray(component)
+            -np.asarray(component)
             for component in g4.face_force_components
         ),
     )
@@ -1555,7 +1556,7 @@ def test_pressure_velocity_g5_report_rejects_mutated_g4_face_payload():
     )
 
     assert not g5.valid
-    assert g5.reason == "face_force_consistency_residual"
+    assert g5.reason == "face_force_component_linf"
     assert g5.force_admissible is False
     assert g5.projected_face_components is None
 
