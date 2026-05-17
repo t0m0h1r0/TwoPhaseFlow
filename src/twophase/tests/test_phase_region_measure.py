@@ -147,6 +147,21 @@ def test_assemble_phase_region_measurement_fails_closed_on_bad_shapes_and_capaci
             cell_area=np.ones((2, 2)),
         )
 
+    bad_negative = component_q.copy()
+    bad_negative[0, 0, 0] = -1.0e-2
+    with pytest.raises(AtlasValidationError, match="component_q is below zero"):
+        assemble_phase_region_measurement(region, bad_negative, np.ones(3))
+
+    bad_component_capacity = np.zeros_like(component_q)
+    bad_component_capacity[0, 0, 0] = 2.0
+    with pytest.raises(AtlasValidationError, match="component_q exceeds cell capacity"):
+        assemble_phase_region_measurement(
+            region,
+            bad_component_capacity,
+            np.ones(3),
+            cell_area=np.ones((2, 2)),
+        )
+
     with pytest.raises(AtlasValidationError, match="q_target shape"):
         assemble_phase_region_measurement(
             region,
@@ -154,4 +169,3 @@ def test_assemble_phase_region_measurement_fails_closed_on_bad_shapes_and_capaci
             np.ones(3),
             q_target=np.ones((3, 3)),
         )
-

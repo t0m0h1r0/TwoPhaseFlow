@@ -63,9 +63,12 @@ OUT = experiment_dir(__file__)
 NPZ = OUT / "data.npz"
 
 
-def _grid(n: int) -> Grid:
+def _grid(n: int, *, alpha_grid: float) -> Grid:
     backend = Backend(use_gpu=False)
-    return Grid(GridConfig(ndim=2, N=(int(n), int(n)), L=(1.0, 1.0), alpha_grid=1.0), backend)
+    return Grid(
+        GridConfig(ndim=2, N=(int(n), int(n)), L=(1.0, 1.0), alpha_grid=float(alpha_grid)),
+        backend,
+    )
 
 
 def _top_layer_eta(x_edges: np.ndarray, *, height: float, amplitude: float, mode: int) -> np.ndarray:
@@ -196,7 +199,7 @@ def _build_region(
 
 
 def _compute(args) -> dict[str, object]:
-    grid = _grid(int(args.n))
+    grid = _grid(int(args.n), alpha_grid=float(args.alpha_grid))
     x_edges = np.asarray(grid.coords[0], dtype=float)
     cell_area = _cell_area(grid)
     theta = np.linspace(0.0, 2.0 * np.pi, int(args.theta_count), endpoint=False)
@@ -282,6 +285,7 @@ def _compute(args) -> dict[str, object]:
         "bubble_fd_residual": bubble_fd,
         "layer_fd_residual": layer_fd,
         "force_admissible": 0.0,
+        "alpha_grid": float(args.alpha_grid),
     }
 
 
@@ -333,6 +337,7 @@ def _plot(results: dict[str, object]) -> pathlib.Path:
         "\n".join(
             (
                 "PhaseRegion atlas smoke oracle",
+                f"alpha_grid = {float(results['alpha_grid']):.4g}",
                 f"bubble volume = {float(results['bubble_volume']):.8e}",
                 f"layer volume = {float(results['layer_volume']):.8e}",
                 f"total perimeter = {float(results['total_perimeter']):.8e}",
@@ -362,6 +367,7 @@ def _print_summary(results: dict[str, object], figure_path: pathlib.Path) -> Non
         "bubble_fd_residual",
         "layer_fd_residual",
         "force_admissible",
+        "alpha_grid",
     ):
         print(key, f"{float(results[key]):.12e}", sep=",")
     print("component_counts", np.asarray(results["component_counts"]).tolist(), sep=",")
@@ -373,6 +379,7 @@ def _print_summary(results: dict[str, object], figure_path: pathlib.Path) -> Non
 def main() -> None:
     parser = experiment_argparser(__doc__)
     parser.add_argument("--n", type=int, default=96)
+    parser.add_argument("--alpha-grid", type=float, default=1.0)
     parser.add_argument("--theta-count", type=int, default=192)
     parser.add_argument("--bubble-radius", type=float, default=0.12)
     parser.add_argument("--bubble-amplitude", type=float, default=9.0e-3)

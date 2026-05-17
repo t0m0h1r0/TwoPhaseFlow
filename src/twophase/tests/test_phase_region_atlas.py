@@ -95,6 +95,26 @@ def test_atlas_rejects_closed_component_with_boundary_attachment():
         )
 
 
+def test_atlas_rejects_graph_component_without_boundary_attachment():
+    atlas = _atlas()
+
+    with pytest.raises(AtlasValidationError, match="graph/open"):
+        InterfaceAtlas(
+            batch_size=atlas.batch_size,
+            component_offsets=atlas.component_offsets,
+            component_to_batch=atlas.component_to_batch,
+            chart_type=atlas.chart_type,
+            topology=atlas.topology,
+            attachment=enum_values((BoundaryAttachment.NONE, BoundaryAttachment.NONE)),
+            orientation=atlas.orientation,
+            phase_role=atlas.phase_role,
+            constraint_policy=atlas.constraint_policy,
+            dof_offsets=atlas.dof_offsets,
+            vertex_offsets=atlas.vertex_offsets,
+            active_cell_offsets=atlas.active_cell_offsets,
+        )
+
+
 def test_atlas_rejects_offsets_that_do_not_match_packed_arrays():
     atlas = _atlas()
 

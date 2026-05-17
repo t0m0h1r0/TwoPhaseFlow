@@ -91,27 +91,30 @@ def solve_low_mode_kkt(
         batch_size,
         mode_count,
     )
-    if constraints is None:
-        delta = np.linalg.solve(normal, rhs[..., None])[..., 0]
-        multipliers = None
-        constraint_residual_linf = None
-    else:
-        c_jac, c_rhs = constraints
-        constraint_count = c_jac.shape[1]
-        zeros = np.zeros((batch_size, constraint_count, constraint_count), dtype=float)
-        kkt = np.concatenate(
-            (
-                np.concatenate((normal, np.swapaxes(c_jac, -1, -2)), axis=-1),
-                np.concatenate((c_jac, zeros), axis=-1),
-            ),
-            axis=-2,
-        )
-        kkt_rhs = np.concatenate((rhs, c_rhs), axis=-1)
-        solution = np.linalg.solve(kkt, kkt_rhs[..., None])[..., 0]
-        delta = solution[:, :mode_count]
-        multipliers = solution[:, mode_count:]
-        constraint_residual = np.einsum("bpk,bk->bp", c_jac, delta) - c_rhs
-        constraint_residual_linf = np.max(np.abs(constraint_residual), axis=-1)
+    try:
+        if constraints is None:
+            delta = np.linalg.solve(normal, rhs[..., None])[..., 0]
+            multipliers = None
+            constraint_residual_linf = None
+        else:
+            c_jac, c_rhs = constraints
+            constraint_count = c_jac.shape[1]
+            zeros = np.zeros((batch_size, constraint_count, constraint_count), dtype=float)
+            kkt = np.concatenate(
+                (
+                    np.concatenate((normal, np.swapaxes(c_jac, -1, -2)), axis=-1),
+                    np.concatenate((c_jac, zeros), axis=-1),
+                ),
+                axis=-2,
+            )
+            kkt_rhs = np.concatenate((rhs, c_rhs), axis=-1)
+            solution = np.linalg.solve(kkt, kkt_rhs[..., None])[..., 0]
+            delta = solution[:, :mode_count]
+            multipliers = solution[:, mode_count:]
+            constraint_residual = np.einsum("bpk,bk->bp", c_jac, delta) - c_rhs
+            constraint_residual_linf = np.max(np.abs(constraint_residual), axis=-1)
+    except np.linalg.LinAlgError as exc:
+        raise AtlasValidationError("low-mode KKT system is singular") from exc
 
     predicted_residual = residual_b - np.einsum("bmk,bk->bm", j_q, delta)
     residual_l2 = np.sqrt(np.sum(predicted_residual * predicted_residual, axis=-1))
@@ -193,6 +196,10 @@ def _as_batched_hessian(hessian: object | None, batch_size: int, mode_count: int
         raise AtlasValidationError("energy_hessian must be finite")
     if not np.allclose(h, np.swapaxes(h, -1, -2), rtol=1.0e-12, atol=1.0e-14):
         raise AtlasValidationError("energy_hessian must be symmetric")
+    if h.size:
+        eig_min = np.min(np.linalg.eigvalsh(h), axis=-1)
+        if np.any(eig_min < -1.0e-12):
+            raise AtlasValidationError("energy_hessian must be positive semidefinite")
     return h
 
 

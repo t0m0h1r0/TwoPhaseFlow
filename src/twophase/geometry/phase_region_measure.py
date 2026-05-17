@@ -77,6 +77,9 @@ def assemble_phase_region_measurement(
         raise AtlasValidationError("component_q first axis must match atlas components")
     if not np.all(np.isfinite(q_comp)):
         raise AtlasValidationError("component_q must be finite")
+    tol = float(capacity_tolerance)
+    if np.min(q_comp) < -tol:
+        raise AtlasValidationError("component_q is below zero beyond tolerance")
 
     perimeters = np.asarray(component_perimeters, dtype=float)
     if perimeters.shape != (region.n_components,):
@@ -111,7 +114,8 @@ def assemble_phase_region_measurement(
             raise AtlasValidationError("cell_area must be positive and finite")
         q_min = float(np.min(q_phys))
         capacity_excess_linf = float(np.max(q_phys - area[None, ...]))
-        tol = float(capacity_tolerance)
+        if float(np.max(q_comp - area[None, ...])) > tol:
+            raise AtlasValidationError("component_q exceeds cell capacity beyond tolerance")
         if q_min < -tol:
             raise AtlasValidationError("q_phys is below zero beyond tolerance")
         if capacity_excess_linf > tol:
@@ -153,4 +157,3 @@ def _target_with_batch_axis(target: object, batch_size: int, grid_shape: tuple[i
     if arr.shape == (int(batch_size),) + grid_shape:
         return arr
     raise AtlasValidationError("q_target shape must be grid_shape or (batch_size, *grid_shape)")
-

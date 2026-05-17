@@ -1,4 +1,4 @@
-# Wiki Index — 414 entries
+# Wiki Index — 415 entries
 
 ## Active Retrieval Gate
 
@@ -88,6 +88,9 @@ records the component-measure reduction and residual-report helper.
 Use [WIKI-L-053](code/WIKI-L-053.md) before chart-specific F1 admission
 because it records the low-mode KKT kernel and keeps nonlinear optimization out
 of the runtime default.
+Use [WIKI-L-054](code/WIKI-L-054.md) before boundary/nonuniform atlas admission
+because it records fail-closed attachment, component-q, KKT, and alpha-grid=2
+smoke validation, plus the remaining uniform-graph-F0 blocker.
 Before implementing or reviewing an
 established-theory change, use [WIKI-L-046](code/WIKI-L-046.md) as the
 equation-to-code contract gate. Older cards remain listed for
@@ -506,7 +509,7 @@ support.
 | [WIKI-M-034](meta/WIKI-M-034.md) | Paper Review Revisions Should Reduce Cognitive Load, Not Add Decoration |
 | [WIKI-M-035](meta/WIKI-M-035.md) | Meta-Prompt Deployment Needs Project Boundaries, Native Adapters, and Token ROI Gates |
 
-## Code (53)
+## Code (54)
 
 | REF-ID | Title |
 |--------|-------|
@@ -563,3 +566,4 @@ support.
 | [WIKI-L-051](code/WIKI-L-051.md) | Ch14 PhaseRegion InterfaceAtlas Schema PASS |
 | [WIKI-L-052](code/WIKI-L-052.md) | Ch14 PhaseRegion Measure Reduction PASS |
 | [WIKI-L-053](code/WIKI-L-053.md) | Ch14 PhaseRegion Low-Mode KKT PASS |
+| [WIKI-L-054](code/WIKI-L-054.md) | Ch14 PhaseRegion Boundary and Nonuniform Audit PASS |

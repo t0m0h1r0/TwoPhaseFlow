@@ -397,6 +397,8 @@ def _validate_chart_topology(
     if np.any((chart_type == int(ChartType.GRAPH)) & closed):
         raise AtlasValidationError("graph charts must not declare CLOSED topology")
     graph_or_open = (chart_type == int(ChartType.GRAPH)) | (chart_type == int(ChartType.OPEN_CURVE))
+    if np.any(graph_or_open & (attachment == int(BoundaryAttachment.NONE))):
+        raise AtlasValidationError("graph/open components must declare boundary attachment")
     allowed_open_roles = np.isin(
         phase_role,
         (int(PhaseRole.GAS_ABOVE), int(PhaseRole.GAS_BELOW)),

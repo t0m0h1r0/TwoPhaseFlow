@@ -86,6 +86,13 @@ def test_low_mode_kkt_fails_closed_on_invalid_inputs():
             energy_hessian=np.array(((1.0, 2.0), (0.0, 1.0))),
         )
 
+    with pytest.raises(AtlasValidationError, match="positive semidefinite"):
+        solve_low_mode_kkt(
+            np.eye(2),
+            np.ones(2),
+            energy_hessian=np.array(((1.0, 0.0), (0.0, -1.0))),
+        )
+
     with pytest.raises(AtlasValidationError, match="constraint_jacobian"):
         solve_low_mode_kkt(
             np.eye(2),
@@ -93,3 +100,6 @@ def test_low_mode_kkt_fails_closed_on_invalid_inputs():
             constraint_jacobian=np.ones((1, 3)),
             constraint_rhs=np.ones(1),
         )
+
+    with pytest.raises(AtlasValidationError, match="singular"):
+        solve_low_mode_kkt(np.zeros((2, 2)), np.ones(2))
