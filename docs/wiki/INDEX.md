@@ -1,4 +1,4 @@
-# Wiki Index — 406 entries
+# Wiki Index — 407 entries
 
 ## Active Retrieval Gate
 
@@ -65,7 +65,10 @@ closed radial residual-classification work, then use
 T/8 oscillating-droplet run because it records the closed radial residual
 classification PASS; use [WIKI-L-049](code/WIKI-L-049.md) before adding
 runtime adapters or batched projection paths because it records scalar-vs-batch
-closed-chart geometry parity. Before implementing or reviewing an
+closed-chart geometry parity; use
+[WIKI-E-068](experiment/WIKI-E-068.md) before force-coupling probes or any T/8
+attempt because it records the first runtime-facing q-manifold admission
+snapshot and keeps `force_admissible=0`. Before implementing or reviewing an
 established-theory change, use [WIKI-L-046](code/WIKI-L-046.md) as the
 equation-to-code contract gate. Older cards remain listed for
 provenance, but cards marked
@@ -338,7 +341,7 @@ support.
 | [WIKI-X-055](cross-domain/WIKI-X-055.md) | Theory-First Deliberation Best Practices |
 | [WIKI-X-056](cross-domain/WIKI-X-056.md) | Ch14 Capillary Origin-Reset Handoff Protocol |
 
-## Experiment (67)
+## Experiment (68)
 
 | REF-ID | Title |
 |--------|-------|
@@ -409,6 +412,7 @@ support.
 | [WIKI-E-065](experiment/WIKI-E-065.md) | Ch14 Variational Capillary Graph Oracle PASS |
 | [WIKI-E-066](experiment/WIKI-E-066.md) | Ch14 q-Manifold Projection Graph Oracle PASS |
 | [WIKI-E-067](experiment/WIKI-E-067.md) | Ch14 Closed Radial q-Manifold Oracle PASS |
+| [WIKI-E-068](experiment/WIKI-E-068.md) | Ch14 q-Manifold Runtime Admission Snapshot Probe PASS |
 
 ## Paper (24)
 
