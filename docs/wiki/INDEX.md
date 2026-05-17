@@ -1,4 +1,4 @@
-# Wiki Index — 455 entries
+# Wiki Index — 456 entries
 
 ## Active Retrieval Gate
 
@@ -265,7 +265,10 @@ sections, use [WIKI-P-022](paper/WIKI-P-022.md) so equations are introduced
 through ownership, update, output, and diagnostic ledgers rather than as
 standalone symbol sequences. For paper placement-review passes, use
 [WIKI-P-023](paper/WIKI-P-023.md) so correct details are checked against their
-chapter/front-matter responsibility before they are kept in place. For
+chapter/front-matter responsibility before they are kept in place. For paper
+reviews after reduced benchmark or route-boundary evidence changes, use
+[WIKI-P-026](paper/WIKI-P-026.md) so reduced diagnostics, standard execution
+claims, and unconnected paths are not collapsed into one front-matter claim. For
 presentation deck creation or review, use [WIKI-P-024](paper/WIKI-P-024.md)
 so every slide is checked as a source-grounded claim-proof unit with visible
 reading order, evidence boundaries, and rendered convergence. For paper citation-survey passes, use
@@ -608,7 +611,7 @@ support.
 | [WIKI-E-084](experiment/WIKI-E-084.md) | Ch13 Closed-Interface Volume Admission Gate |
 | [WIKI-E-085](experiment/WIKI-E-085.md) | Ch14 Corrected YAML-Owned PhaseRegion Capillary One-Period PASS |
 
-## Paper (25)
+## Paper (26)
 
 | REF-ID | Title |
 |--------|-------|
@@ -637,6 +640,7 @@ support.
 | [WIKI-P-023](paper/WIKI-P-023.md) | Paper Placement Review Keeps Front Matter and Chapters Responsible |
 | [WIKI-P-024](paper/WIKI-P-024.md) | Research Presentation Decks Need Claim-Proof Slides and Rendered Convergence |
 | [WIKI-P-025](paper/WIKI-P-025.md) | Chapter 14.2 Evidence Must Come From Canonical ch14_capillary.yaml Outputs |
+| [WIKI-P-026](paper/WIKI-P-026.md) | Paper Reviews Must Separate Reduced Diagnostics From Standard Execution Claims |
 
 ## Meta (35)
 
