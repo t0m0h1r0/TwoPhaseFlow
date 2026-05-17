@@ -1,4 +1,4 @@
-# Wiki Index — 422 entries
+# Wiki Index — 423 entries
 
 ## Active Retrieval Gate
 
@@ -115,6 +115,10 @@ Use [WIKI-E-071](experiment/WIKI-E-071.md) before implementing a PhaseRegion
 runtime dry-run adapter because it records that existing runtime
 `GeometricPhaseState.q` is liquid volume while the current PhaseRegion theory
 names `Omega_g`, so the phase-owner map must be explicit first.
+Use [WIKI-E-072](experiment/WIKI-E-072.md) before any runtime micro-step or
+force-coupling probe because it records the first PhaseRegion runtime dry-run
+adapter PASS with explicit `q_l -> q_g` owner map, visible residual, perimeter,
+and `force_admissible=0`.
 Before implementing or reviewing an
 established-theory change, use [WIKI-L-046](code/WIKI-L-046.md) as the
 equation-to-code contract gate. Older cards remain listed for
@@ -390,7 +394,7 @@ support.
 | [WIKI-X-055](cross-domain/WIKI-X-055.md) | Theory-First Deliberation Best Practices |
 | [WIKI-X-056](cross-domain/WIKI-X-056.md) | Ch14 Capillary Origin-Reset Handoff Protocol |
 
-## Experiment (71)
+## Experiment (72)
 
 | REF-ID | Title |
 |--------|-------|
@@ -465,6 +469,7 @@ support.
 | [WIKI-E-069](experiment/WIKI-E-069.md) | Ch14 PhaseRegion Atlas Smoke Oracle PASS |
 | [WIKI-E-070](experiment/WIKI-E-070.md) | Ch14 PhaseRegion Experiment Readiness Gate |
 | [WIKI-E-071](experiment/WIKI-E-071.md) | Ch14 Runtime Phase-Owner Gate |
+| [WIKI-E-072](experiment/WIKI-E-072.md) | Ch14 PhaseRegion Runtime Dry-Run Adapter PASS |
 
 ## Paper (24)
 
