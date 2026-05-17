@@ -1,4 +1,4 @@
-"""Tests for graph q-manifold projection helpers."""
+"""Tests for q-manifold projection helpers."""
 
 from __future__ import annotations
 
@@ -225,6 +225,43 @@ def test_closed_polygon_area_length_and_gradients_match_finite_difference():
 
     assert abs(fd_length - grad_length) < 1.0e-7
     assert abs(fd_area - grad_area) < 1.0e-9
+
+
+def test_closed_radial_chart_and_polygon_geometry_have_batched_scalar_parity():
+    theta = np.linspace(0.0, 2.0 * np.pi, 96, endpoint=False)
+    centers = np.array(((0.5, 0.5), (0.48, 0.52)))
+    base_radii = np.array((0.22, 0.19))
+    modes = ((2, 1.5e-2),)
+
+    batched_state = closed_radial_chart_from_modes(
+        theta,
+        center=centers,
+        base_radius=base_radii,
+        modes=modes,
+    )
+    batched_geometry = closed_polygon_geometry(batched_state.vertices, sigma=1.0)
+
+    for batch_index, (center, base_radius) in enumerate(zip(centers, base_radii)):
+        scalar_state = closed_radial_chart_from_modes(
+            theta,
+            center=center,
+            base_radius=float(base_radius),
+            modes=modes,
+        )
+        scalar_geometry = closed_polygon_geometry(scalar_state.vertices, sigma=1.0)
+
+        np.testing.assert_allclose(batched_state.vertices[batch_index], scalar_state.vertices)
+        np.testing.assert_allclose(batched_state.radius[batch_index], scalar_state.radius)
+        np.testing.assert_allclose(batched_geometry.area[batch_index], scalar_geometry.area)
+        np.testing.assert_allclose(batched_geometry.length[batch_index], scalar_geometry.length)
+        np.testing.assert_allclose(
+            batched_geometry.surface_gradient[batch_index],
+            scalar_geometry.surface_gradient,
+        )
+        np.testing.assert_allclose(
+            batched_geometry.area_gradient[batch_index],
+            scalar_geometry.area_gradient,
+        )
 
 
 def test_closed_radial_q_area_and_mode2_restoring_action():

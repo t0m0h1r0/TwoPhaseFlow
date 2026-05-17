@@ -1,4 +1,4 @@
-# Wiki Index — 405 entries
+# Wiki Index — 406 entries
 
 ## Active Retrieval Gate
 
@@ -63,7 +63,9 @@ backend boundary, and no-code-before-oracle gates; use
 closed radial residual-classification work, then use
 [WIKI-E-067](experiment/WIKI-E-067.md) before any runtime admission probe or
 T/8 oscillating-droplet run because it records the closed radial residual
-classification PASS. Before implementing or reviewing an
+classification PASS; use [WIKI-L-049](code/WIKI-L-049.md) before adding
+runtime adapters or batched projection paths because it records scalar-vs-batch
+closed-chart geometry parity. Before implementing or reviewing an
 established-theory change, use [WIKI-L-046](code/WIKI-L-046.md) as the
 equation-to-code contract gate. Older cards remain listed for
 provenance, but cards marked
@@ -477,7 +479,7 @@ support.
 | [WIKI-M-034](meta/WIKI-M-034.md) | Paper Review Revisions Should Reduce Cognitive Load, Not Add Decoration |
 | [WIKI-M-035](meta/WIKI-M-035.md) | Meta-Prompt Deployment Needs Project Boundaries, Native Adapters, and Token ROI Gates |
 
-## Code (48)
+## Code (49)
 
 | REF-ID | Title |
 |--------|-------|
@@ -529,3 +531,4 @@ support.
 | [WIKI-L-046](code/WIKI-L-046.md) | Theory-Established Implementation Review Gate |
 | [WIKI-L-047](code/WIKI-L-047.md) | Ch14 q-Manifold Projection Implementation Contract |
 | [WIKI-L-048](code/WIKI-L-048.md) | Ch14 Graph q-Manifold Helper Implementation PASS |
+| [WIKI-L-049](code/WIKI-L-049.md) | Ch14 q-Manifold Vectorized Geometry Parity PASS |
