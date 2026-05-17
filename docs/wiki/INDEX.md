@@ -1,4 +1,4 @@
-# Wiki Index — 415 entries
+# Wiki Index — 416 entries
 
 ## Active Retrieval Gate
 
@@ -91,6 +91,9 @@ of the runtime default.
 Use [WIKI-L-054](code/WIKI-L-054.md) before boundary/nonuniform atlas admission
 because it records fail-closed attachment, component-q, KKT, and alpha-grid=2
 smoke validation, plus the remaining uniform-graph-F0 blocker.
+Use [WIKI-E-070](experiment/WIKI-E-070.md) before starting new Ch14
+PhaseRegion capillary experiments because it freezes the PASS/FAIL evidence,
+acceptance metrics, stop conditions, and the next nonuniform graph F0 gate.
 Before implementing or reviewing an
 established-theory change, use [WIKI-L-046](code/WIKI-L-046.md) as the
 equation-to-code contract gate. Older cards remain listed for
@@ -366,7 +369,7 @@ support.
 | [WIKI-X-055](cross-domain/WIKI-X-055.md) | Theory-First Deliberation Best Practices |
 | [WIKI-X-056](cross-domain/WIKI-X-056.md) | Ch14 Capillary Origin-Reset Handoff Protocol |
 
-## Experiment (69)
+## Experiment (70)
 
 | REF-ID | Title |
 |--------|-------|
@@ -439,6 +442,7 @@ support.
 | [WIKI-E-067](experiment/WIKI-E-067.md) | Ch14 Closed Radial q-Manifold Oracle PASS |
 | [WIKI-E-068](experiment/WIKI-E-068.md) | Ch14 q-Manifold Runtime Admission Snapshot Probe PASS |
 | [WIKI-E-069](experiment/WIKI-E-069.md) | Ch14 PhaseRegion Atlas Smoke Oracle PASS |
+| [WIKI-E-070](experiment/WIKI-E-070.md) | Ch14 PhaseRegion Experiment Readiness Gate |
 
 ## Paper (24)
 
