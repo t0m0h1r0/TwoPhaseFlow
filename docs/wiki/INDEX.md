@@ -1,4 +1,4 @@
-# Wiki Index — 396 entries
+# Wiki Index — 398 entries
 
 ## Active Retrieval Gate
 
@@ -41,7 +41,10 @@ session-level synthesis of the final active-geometry capillary contracts,
 RCA order, U12/V11 additions, and GPU lessons, use
 [WIKI-X-054](cross-domain/WIKI-X-054.md); for the remaining AO-Fast GPU
 efficiency bottleneck, use
-[WIKI-L-045](code/WIKI-L-045.md). Before implementing or reviewing an
+[WIKI-L-045](code/WIKI-L-045.md). For a fresh Ch14 capillary origin reset
+after q/phi rebuild failures, use [WIKI-T-174](theory/WIKI-T-174.md) to choose
+the owned state and [WIKI-X-056](cross-domain/WIKI-X-056.md) for the
+oracle-first handoff protocol before continuing implementation. Before implementing or reviewing an
 established-theory change, use [WIKI-L-046](code/WIKI-L-046.md) as the
 equation-to-code contract gate. Older cards remain listed for
 provenance, but cards marked
@@ -73,7 +76,7 @@ reading order, evidence boundaries, and rendered convergence. For paper citation
 claim-level source verification and are placed at the manuscript claim they
 support.
 
-## Theory (173)
+## Theory (174)
 
 | REF-ID | Title |
 |--------|-------|
@@ -250,8 +253,9 @@ support.
 | [WIKI-T-171](theory/WIKI-T-171.md) | GPU-Resident Interface-Fitted Grid Rebuild Theory |
 | [WIKI-T-172](theory/WIKI-T-172.md) | AO-Fast Moving-Grid Face-Cochain and Pressure-History Contract |
 | [WIKI-T-173](theory/WIKI-T-173.md) | Capillary-Wave Surface-Tension Literature Survey and AO-Fast Route |
+| [WIKI-T-174](theory/WIKI-T-174.md) | Capillary State Ownership: Interface Configuration or Cell Volume |
 
-## Cross-Domain (55)
+## Cross-Domain (56)
 
 | REF-ID | Title |
 |--------|-------|
@@ -310,6 +314,7 @@ support.
 | [WIKI-X-053](cross-domain/WIKI-X-053.md) | Ch14 Capillary Zero-Base RCA: Boundary-Constrained Face State |
 | [WIKI-X-054](cross-domain/WIKI-X-054.md) | Ch14 Active-Geometry Capillary Session Synthesis |
 | [WIKI-X-055](cross-domain/WIKI-X-055.md) | Theory-First Deliberation Best Practices |
+| [WIKI-X-056](cross-domain/WIKI-X-056.md) | Ch14 Capillary Origin-Reset Handoff Protocol |
 
 ## Experiment (63)
 
