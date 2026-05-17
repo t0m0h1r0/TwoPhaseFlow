@@ -1,14 +1,23 @@
-# Rayleigh-Lamb n=2 oscillating droplet benchmark on the ch14 base stack.
-# SI scale: 20 mm x 20 mm tank with a 10 mm-class droplet.
-# The true ellipse uses semi-axes a=5.5 mm, b=4.5 mm. With water-air
-# properties at about 20 C (rho_l=998.2, rho_g=1.204, sigma=0.0728),
-# the area-equivalent radius sqrt(ab)=4.974937 mm gives
-# omega0=59.578473371 and T=0.105460663082 s.
-# YAML ownership: scheme choices, numerical parameters, and initial state are
-# user-owned and explicit below; code only validates and derives internal ledgers.
+# New PhaseRegion-primary closed-chart oscillating-droplet route.
+#
+# This file name is intentionally the canonical Rayleigh-Lamb n=2 droplet entry
+# point.  It does not invoke experiment/run.py.  It is consumed by
+# experiment/ch14/diagnose_phase_region_oscillating_droplet_steps.py, whose
+# route is:
+#
+#   X(theta; A) -> q_l = Q_h(X)
+#   q_g = |C| - q_l
+#   PhaseRegionBatch(GAS_OUTSIDE closed radial chart)
+#   E_h second-variation modal step
+#
+# SI scale: 20 mm x 20 mm tank with a 10 mm-class droplet.  The initial ellipse
+# uses semi-axes a=5.5 mm, b=4.5 mm. With water-air properties at about 20 C
+# (rho_l=998.2, rho_g=1.204, sigma=0.0728), the area-equivalent radius
+# sqrt(ab)=4.974937 mm gives omega0=59.578473371 and T=0.105460663082 s.
+# The canonical route, run length, and paper-facing output contract live here.
 
 experiment:
-  type: ellipse
+  type: phase_region_oscillating_droplet
 
 grid:
   cells: [32, 32]
@@ -169,7 +178,7 @@ numerics:
           kind: direct
 
 output:
-  dir: results/ch14_oscillating_droplet
+  dir: results/diagnose_phase_region_oscillating_droplet_steps
   save_npz: true
   snapshots:
     times: [0.0, 0.026365165771, 0.052730331541, 0.079095497312, 0.105460663082]
@@ -209,8 +218,14 @@ output:
       file: kinetic_energy.pdf
 
     - type: snapshot_series
-      field: psi
-      file_prefix: psi_t
+      field: phi
+      shared_scale: true
+      symmetric_scale: true
+      color_scale: max
+      colorbar_label: "$\\phi$"
+      x_ticks: [0.0, 0.005, 0.010, 0.015, 0.020]
+      y_ticks: [0.0, 0.005, 0.010, 0.015, 0.020]
+      file_prefix: phi_t
 
     - type: snapshot_series
       field: velocity
@@ -230,13 +245,27 @@ output:
       arrow_outline_color: "#ffffff"
       arrow_alpha: 1.0
       arrow_outline_alpha: 0.9
+      x_ticks: [0.0, 0.005, 0.010, 0.015, 0.020]
+      y_ticks: [0.0, 0.005, 0.010, 0.015, 0.020]
       file_prefix: velocity_t
 
     - type: snapshot_series
       field: pressure
+      pressure_reference: mean
       shared_scale: true
       symmetric_scale: true
+      color_scale: robust
+      color_vmax_percentile: 99.0
+      colorbar_label: "$p - \\langle p \\rangle$"
+      x_ticks: [0.0, 0.005, 0.010, 0.015, 0.020]
+      y_ticks: [0.0, 0.005, 0.010, 0.015, 0.020]
       file_prefix: pressure_t
+
+    - type: phase_region_droplet_summary
+      file: phase_region_oscillating_droplet_steps.pdf
+    - type: phase_region_droplet_snapshot_series
+      fields: [q_l, q_g]
+      file: phase_region_oscillating_droplet_yaml_snapshots.pdf
 
 diagnostics: [volume_conservation, kinetic_energy, signed_deformation]
 
@@ -250,3 +279,16 @@ initial_condition:
 
 initial_velocity: null
 boundary_condition: null
+
+phase_region_droplet:
+  owner: gas_outside
+  chart: closed_radial
+  q_measurement: closed_radial_cell_integral_total_volume_closed
+  phase_owner_map: exact_complement
+  energy: closed_perimeter_second_variation_fixed_area
+  dynamics: velocity_verlet_linear_rayleigh_lamb_mode
+  pressure_velocity: not_connected
+  diagnostic_fields: linear_rayleigh_lamb_potential
+  force_admissible: false
+  backend:
+    use_gpu: false

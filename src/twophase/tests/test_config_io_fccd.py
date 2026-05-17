@@ -16,6 +16,14 @@ def _is_phase_region_capillary_route(raw: dict) -> bool:
     return isinstance(experiment, dict) and experiment.get("type") == "phase_region_capillary_graph"
 
 
+def _is_phase_region_droplet_route(raw: dict) -> bool:
+    experiment = raw.get("experiment", {})
+    return (
+        isinstance(experiment, dict)
+        and experiment.get("type") == "phase_region_oscillating_droplet"
+    )
+
+
 def _deep_update(base: dict, patch: dict) -> dict:
     for key, value in patch.items():
         if key == "solver":
@@ -496,6 +504,24 @@ def test_ch14_oscillating_droplet_yaml_uses_signed_deformation_only():
         Path(__file__).resolve().parents[3]
         / "experiment/ch14/config/ch14_oscillating_droplet.yaml"
     )
+    import yaml
+
+    raw = yaml.safe_load(path.read_text())
+    assert _is_phase_region_droplet_route(raw)
+    route = raw["phase_region_droplet"]
+    assert route["owner"] == "gas_outside"
+    assert route["chart"] == "closed_radial"
+    assert route["q_measurement"] == "closed_radial_cell_integral_total_volume_closed"
+    assert route["phase_owner_map"] == "exact_complement"
+    assert route["energy"] == "closed_perimeter_second_variation_fixed_area"
+    assert route["dynamics"] == "velocity_verlet_linear_rayleigh_lamb_mode"
+    assert route["pressure_velocity"] == "not_connected"
+    assert route["diagnostic_fields"] == "linear_rayleigh_lamb_potential"
+    assert route["force_admissible"] is False
+    assert route["backend"]["use_gpu"] is False
+    assert raw["run"]["time"]["final"] == pytest.approx(0.105460663082)
+    assert raw["run"]["time"]["cfl"] == pytest.approx(1.0)
+    assert "dt" not in raw["run"]["time"]
     cfg = ExperimentConfig.from_yaml(path)
 
     objects = cfg.initial_condition["objects"]
@@ -523,12 +549,16 @@ def test_ch14_oscillating_droplet_yaml_uses_signed_deformation_only():
     assert cfg.run.capillary_force_source == "bundle_virtual_work"
     assert cfg.run.capillary_closed_interface_endpoint == "geometric_cell_fraction"
     assert cfg.run.capillary_closed_interface_constraints == ("cell_volume",)
-    pressure_figs = [
-        fig
-        for fig in cfg.output.figures
-        if fig.get("type") == "snapshot_series" and fig.get("file_prefix") == "pressure_t"
-    ]
-    assert pressure_figs[0]["field"] == "pressure"
+    figure_files = {figure["file"] for figure in raw["output"]["figures"] if "file" in figure}
+    figure_prefixes = {
+        figure["file_prefix"] for figure in raw["output"]["figures"] if "file_prefix" in figure
+    }
+    figure_fields = {figure.get("field") for figure in raw["output"]["figures"]}
+    assert {"phi", "velocity", "pressure"} <= figure_fields
+    assert {"phi_t", "velocity_t", "pressure_t"} <= figure_prefixes
+    assert "signed_deformation.pdf" in figure_files
+    assert "phase_region_oscillating_droplet_steps.pdf" in figure_files
+    assert "phase_region_oscillating_droplet_yaml_snapshots.pdf" in figure_files
     assert "signed_deformation" in cfg.diagnostics
     assert "deformation" not in cfg.diagnostics
 

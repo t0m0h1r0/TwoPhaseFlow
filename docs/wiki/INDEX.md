@@ -232,7 +232,11 @@ canonical YAML ownership, physical-time outputs, old-data deletion, and
 failure preservation. Use [WIKI-E-085](experiment/WIKI-E-085.md) as the
 current paper-facing one-period PhaseRegion graph evidence after the YAML
 ownership review restored `cfl=1.0`, `interface`, `numerics`, and
-`phi`/velocity/pressure outputs. Use [WIKI-L-075](code/WIKI-L-075.md) before
+`phi`/velocity/pressure outputs. Use [WIKI-E-086](experiment/WIKI-E-086.md)
+before citing the canonical reduced oscillating-droplet PhaseRegion one-period
+run because it records the YAML-owned closed-chart route, exact-reference
+metrics, physical-time `phi`/velocity/pressure snapshots, and the
+total-volume-closed finite-volume measure. Use [WIKI-L-075](code/WIKI-L-075.md) before
 editing YAML loading or snapshot plotting because it fixes the code-level
 output contract and plot-only behavior. Use [WIKI-P-025](paper/WIKI-P-025.md)
 before editing Chapter 14.2 because the paper figures and prose must come from
@@ -521,7 +525,7 @@ support.
 | [WIKI-X-056](cross-domain/WIKI-X-056.md) | Ch14 Capillary Origin-Reset Handoff Protocol |
 | [WIKI-X-057](cross-domain/WIKI-X-057.md) | Ch14 Capillary Session Lessons: YAML Ownership, Route Hygiene, and Failure Preservation |
 
-## Experiment (85)
+## Experiment (86)
 
 | REF-ID | Title |
 |--------|-------|
@@ -610,6 +614,7 @@ support.
 | [WIKI-E-083](experiment/WIKI-E-083.md) | Ch14 PhaseRegion Graph YAML One-Period PASS |
 | [WIKI-E-084](experiment/WIKI-E-084.md) | Ch13 Closed-Interface Volume Admission Gate |
 | [WIKI-E-085](experiment/WIKI-E-085.md) | Ch14 Corrected YAML-Owned PhaseRegion Capillary One-Period PASS |
+| [WIKI-E-086](experiment/WIKI-E-086.md) | Ch14 PhaseRegion Droplet YAML One-Period PASS |
 
 ## Paper (26)
 

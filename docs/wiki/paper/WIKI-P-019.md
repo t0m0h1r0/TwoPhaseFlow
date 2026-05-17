@@ -10,7 +10,9 @@ sources:
   - path: paper/figures/ch14_capillary_yaml/
     description: "YAML-generated capillary-wave time-series and snapshot PDFs copied for paper use"
   - path: paper/sections/14b_oscillating_droplet.tex
-    description: "PhaseRegion closed-chart short-step result and production runtime boundary"
+    description: "Canonical Chapter 14 PhaseRegion closed-chart oscillating-droplet benchmark and YAML-output figures"
+  - path: paper/figures/ch14_droplet_yaml/
+    description: "YAML-generated oscillating-droplet time-series and snapshot PDFs copied for paper use"
   - path: paper/sections/13e2_ao_capillary_split_gate.tex
     description: "V11 integration gate separating PhaseRegion chart diagnostics from pressure/velocity force admission"
   - path: paper/sections/12u12_ao_capillary_split_gate.tex
@@ -19,9 +21,12 @@ sources:
     description: "Canonical ch14_capillary.yaml PhaseRegion graph one-period PASS"
   - path: docs/wiki/code/WIKI-L-074.md
     description: "PhaseRegion graph GPU hot path PASS"
+  - path: docs/wiki/experiment/WIKI-E-086.md
+    description: "Canonical ch14_oscillating_droplet.yaml PhaseRegion closed-chart one-period PASS"
 depends_on:
   - "[[WIKI-P-018]]"
   - "[[WIKI-E-083]]"
+  - "[[WIKI-E-086]]"
   - "[[WIKI-L-074]]"
   - "[[WIKI-T-176]]"
   - "[[WIKI-T-177]]"
@@ -61,11 +66,13 @@ GPU hot path
 force_admissible = 0
 ```
 
-The oscillating-droplet paper claim is narrower:
+The oscillating-droplet paper claim is:
 
 ```text
-PhaseRegion closed chart few-step PASS
-production one-period runtime remains not accepted
+PhaseRegion closed chart
+closed-radial Q_h closed by total phase volume
+closed-perimeter second variation at fixed area
+velocity-Verlet linear Rayleigh-Lamb mode
 force_admissible = 0
 ```
 
@@ -119,17 +126,52 @@ paper/figures/ch14_capillary_yaml/pressure_t0.035.pdf
 paper/figures/ch14_capillary_yaml/pressure_t0.047.pdf
 ```
 
-PhaseRegion closed-chart droplet few-step result:
+Canonical droplet YAML:
 
 ```text
-steps                 = 8
-t_over_T              = 1.517153366218e-03
-max_amplitude_error   = 2.687954026026e-15
-max_velocity_error    = 3.359899413812e-11
-max_energy_drift      = 3.225430493134e-11
-max_residual_l2       = 0
-max_volume_drift      = 5.428131902296e-13
-force_admissible      = 0
+experiment/ch14/config/ch14_oscillating_droplet.yaml
+```
+
+Remote one-period PhaseRegion closed-chart droplet run:
+
+```text
+steps                              = 3977
+dt                                 = 2.651764221323e-05
+dt_cfl_limit                       = 2.652412244614e-05
+t_over_T                           = 9.999999999903e-01
+max_amplitude_error                = 2.503547743871e-10
+max_velocity_error                 = 2.046056174314e-08
+max_energy_drift                   = 6.240056085825e-07
+max_residual_l2                    = 0
+max_volume_drift                   = 1.084202172486e-19
+max_q_volume_closure_raw_abs       = 1.822318492916e-07
+max_q_volume_closure_closed_abs    = 2.710505431214e-20
+max_step_wall_seconds              = 3.064271062613e-03
+force_admissible                   = 0
+```
+
+Droplet YAML-output figures used in Chapter 14.2:
+
+```text
+paper/figures/ch14_droplet_yaml/signed_deformation.pdf
+paper/figures/ch14_droplet_yaml/volume_drift.pdf
+paper/figures/ch14_droplet_yaml/kinetic_energy.pdf
+paper/figures/ch14_phase_region_oscillating_droplet_yaml_snapshots.pdf
+paper/figures/ch14_droplet_yaml/phi_t0.000.pdf
+paper/figures/ch14_droplet_yaml/phi_t0.026.pdf
+paper/figures/ch14_droplet_yaml/phi_t0.053.pdf
+paper/figures/ch14_droplet_yaml/phi_t0.079.pdf
+paper/figures/ch14_droplet_yaml/phi_t0.105.pdf
+paper/figures/ch14_droplet_yaml/velocity_t0.000.pdf
+paper/figures/ch14_droplet_yaml/velocity_t0.026.pdf
+paper/figures/ch14_droplet_yaml/velocity_t0.053.pdf
+paper/figures/ch14_droplet_yaml/velocity_t0.079.pdf
+paper/figures/ch14_droplet_yaml/velocity_t0.105.pdf
+paper/figures/ch14_droplet_yaml/pressure_t0.000.pdf
+paper/figures/ch14_droplet_yaml/pressure_t0.026.pdf
+paper/figures/ch14_droplet_yaml/pressure_t0.053.pdf
+paper/figures/ch14_droplet_yaml/pressure_t0.079.pdf
+paper/figures/ch14_droplet_yaml/pressure_t0.105.pdf
 ```
 
 ## Wording Guardrails
@@ -142,6 +184,9 @@ Use these phrases or equivalents:
 - capillary wave and closed droplet are chart differences of the same
   perimeter variation;
 - reduced chart result, not pressure/velocity force consumption;
+- raw P1 closed-radial gauge volume and owned PhaseRegion volume are distinct;
+- total-volume-closed cell measure is a state-ownership correction, not
+  tolerance weakening;
 - YAML-generated pressure/velocity snapshots are diagnostics at configured
   output times, not arbitrary evidence for force admission;
 - `force_admissible=0` is a fail-closed success condition for the current
@@ -155,6 +200,7 @@ Avoid these claims:
 - screened graph-q failure has been repaired by tolerance, smoothing, damping,
   CFL retuning, or rebuild skipping;
 - closed droplets and graph waves use different theories;
+- the raw P1 closed-radial gauge integral is itself the exact volume owner;
 - PhaseRegion face force is already admitted into production PPE/corrector.
 
 ## Update Rule
@@ -162,4 +208,4 @@ Avoid these claims:
 If a future change connects PhaseRegion face cochains to pressure/velocity
 state, updates `force_admissible`, changes `ch14_capillary.yaml`, or replaces
 the graph/closed chart diagnostics, update this card, [[WIKI-E-083]],
-[[WIKI-L-074]], and the Chapter 14 paper text together.
+[[WIKI-E-086]], [[WIKI-L-074]], and the Chapter 14 paper text together.
