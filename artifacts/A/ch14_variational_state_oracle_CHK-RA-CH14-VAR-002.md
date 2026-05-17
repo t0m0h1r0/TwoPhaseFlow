@@ -96,6 +96,53 @@ sign to `eta`.  The oracle acceptance is:
 | Phase | `eta > 0` crest gives downward restoring force; trough gives upward restoring force. |
 | Visualization | PDF includes interface geometry, `q`, variation/force modes, and energy trend. |
 
+## Oracle Result
+
+Implemented:
+
+```text
+experiment/ch14/diagnose_variational_capillary_oracle.py
+```
+
+Remote-first validation command:
+
+```text
+make cycle EXP=experiment/ch14/diagnose_variational_capillary_oracle.py
+```
+
+Result: PASS.  The run saved:
+
+```text
+experiment/ch14/results/diagnose_variational_capillary_oracle/data.npz
+experiment/ch14/results/diagnose_variational_capillary_oracle/variational_capillary_oracle.pdf
+```
+
+Key metrics:
+
+| Metric | Value | Interpretation |
+|---|---:|---|
+| `eta_mode` | `4.000000000000e-02` | owned graph amplitude |
+| `force_mode` | `-5.780870211894e+00` | restoring force opposes the graph height mode |
+| `force_sign_product` | `-2.312348084758e-01` | force/height sign gate PASS |
+| `d_energy_d_amp_exact` | `2.890435105947e+00` | exact discrete graph-energy derivative |
+| `d_energy_d_amp_fd` | `2.890435105984e+00` | finite-difference derivative |
+| `fd_rel_error` | `1.295792449794e-11` | variation gate PASS |
+| `q_height_error_linf` | `2.220446049250e-15` | `Q_h(eta)` column-height gate PASS |
+| `q_mode_error` | `1.387778780781e-17` | derived q mode gate PASS |
+| `surface_error` | `0.000000000000e+00` | P1 surface length equals graph segment length |
+| `variation_sine` | `-5.273559366969e-16` | cosine symmetry gate PASS |
+| `mirror_error` | `6.021849685567e-13` | periodic mirror-symmetry gate PASS |
+| `volume_error` | `2.220446049250e-16` | derived volume gate PASS |
+
+Two rejected setup choices were useful but not promoted as theory:
+
+- `base_height + amplitude = 0.5` put the graph exactly on a y-node, violating
+  the existing P1 regular-stratum gate.  The oracle now defaults to
+  `base_height=0.455` to avoid a gauge singularity.
+- the first finite-difference derivative check used a too-large amplitude
+  perturbation and produced a truncation error of `6.435e-08`; the final oracle
+  uses a smaller derivative probe and agrees with the exact discrete gradient.
+
 ## Closed-Curve Chart Plan
 
 After the graph oracle passes, use the same principle with a closed curve
@@ -117,9 +164,9 @@ validated by the graph oracle before it is wired into Ch14 T/8 runtime.
 | Transported `q` contains degrees of freedom not representable by a smooth phi/graph chart. | Screened graph-q runtime fails hard residual `1.630e-08 > 1.000e-11`; topology movement appears in exploratory probes. | Exact q preservation and smooth graph geometry can conflict. | Compare `Q_h(eta)` from an analytic chart with a transported q field under the same chart projection. | Supported as a live explanation; not fully isolated. |
 | `compat_linf=0` after graph rebuild redefines `q` instead of preserving pre-rebuild `q`. | Baseline reports `compat_linf=0` while it is admitted and visually usable. | A chart-owned rebuild can erase incompatible q modes if diagnostics use post-rebuild `Q_h(phi)`. | Store pre-rebuild q, post-rebuild q, and `Q_h(phi)` before any overwrite. | Open; must be checked before runtime connection. |
 | Exact q projection makes the interface jagged because q is treated as absolute. | Screened route fails while forming topology carrier; loose probes suggest topology-moving updates. | For q not on the smooth chart manifold, exact q constraints drive jagged or topological chart changes. | Project analytic q versus transported q and compare smoothness/topology at equal residual target. | Supported as negative-knowledge hypothesis. |
-| Surface-energy variation and transport do not use the same primary state. | Hybrid path conserves q, rebuilds phi/graph, then computes capillary geometry from the rebuilt chart. | Small residuals can still give wrong force sign, phase, or energy trend. | Graph oracle: compute `E[eta]`, `delta E/delta eta`, force sign, and energy trend without transported q. | This artifact selects a probe; verdict pending. |
+| Surface-energy variation and transport do not use the same primary state. | Hybrid path conserves q, rebuilds phi/graph, then computes capillary geometry from the rebuilt chart. | Small residuals can still give wrong force sign, phase, or energy trend. | Graph oracle: compute `E[eta]`, `delta E/delta eta`, force sign, and energy trend without transported q. | Graph-chart oracle PASS: owned `Gamma_h` gives correct restoring sign, energy derivative, symmetry, and derived `Q_h`. Runtime transport still open. |
 | Moving-grid rebuild tracks gauge reconstruction rather than the material interface. | Prior handoff reports moving rebuild/topology carrier sensitivity. | Grid motion can follow a reconstructed phi instead of `Gamma_h`, hiding material-state drift. | Before moving-grid runtime, compare material `Gamma_h`, gauge `phi`, and derived `Q_h(Gamma_h)` across rebuild. | Open; runtime gate only after oracle PASS. |
-| Capillary wave and closed droplet are being treated as unrelated theories. | Earlier route accumulated branch-specific graph/closed endpoint conditions. | Chart-specific conditions will fail outside their chart if not derived from one energy. | Derive graph and closed chart from `E=sigma |Gamma_h|`; compare signs and volume reactions. | Partially resolved by this theory choice; closed-chart implementation pending. |
+| Capillary wave and closed droplet are being treated as unrelated theories. | Earlier route accumulated branch-specific graph/closed endpoint conditions. | Chart-specific conditions will fail outside their chart if not derived from one energy. | Derive graph and closed chart from `E=sigma |Gamma_h|`; compare signs and volume reactions. | Graph chart resolved by oracle PASS; closed-curve chart implementation pending. |
 | Pressure, velocity, face cochain, and boundary-condition spaces do not match. | Baseline raw/balanced acceleration signs differ; screened route exposes periodic quotient constraints. | Projection can cancel or flip capillary work if the face-space metric/reaction space is inconsistent. | After graph oracle, connect one short runtime probe and measure face cochain, pressure reaction, boundary trace, and energy sign together. | Open; not tested by the oracle alone. |
 
 ## Equation -> Discretization -> Code Plan
@@ -134,4 +181,3 @@ validated by the graph oracle before it is wired into Ch14 T/8 runtime.
 | visualization | project-standard PDF output under `experiment/ch14/results/diagnose_variational_capillary_oracle/` | `twophase.tools.experiment.save_figure` |
 
 No runtime Ch14 T/8 experiment is admissible until this oracle passes.
-
