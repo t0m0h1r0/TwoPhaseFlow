@@ -1,4 +1,4 @@
-# Wiki Index — 433 entries
+# Wiki Index — 434 entries
 
 ## Active Retrieval Gate
 
@@ -139,6 +139,9 @@ produce only a diagnostic decision with `force_components=None` and
 Use [WIKI-L-066](code/WIKI-L-066.md) before designing pressure/velocity work
 gates because it implements the blocked adapter decision and keeps valid
 diagnostic force candidates from exposing face-cochain force arrays.
+Use [WIKI-L-067](code/WIKI-L-067.md) before implementing any pressure/velocity
+work-gate oracle because it records that PhaseRegion `s_f` is already a face
+cochain and must not be passed through nodal `force_components`.
 Use [WIKI-E-071](experiment/WIKI-E-071.md) before implementing a PhaseRegion
 runtime dry-run adapter because it records that existing runtime
 `GeometricPhaseState.q` is liquid volume while the current PhaseRegion theory
@@ -585,7 +588,7 @@ support.
 | [WIKI-M-034](meta/WIKI-M-034.md) | Paper Review Revisions Should Reduce Cognitive Load, Not Add Decoration |
 | [WIKI-M-035](meta/WIKI-M-035.md) | Meta-Prompt Deployment Needs Project Boundaries, Native Adapters, and Token ROI Gates |
 
-## Code (66)
+## Code (67)
 
 | REF-ID | Title |
 |--------|-------|
@@ -655,3 +658,4 @@ support.
 | [WIKI-L-064](code/WIKI-L-064.md) | Ch14 PhaseRegion Force Admission Report PASS |
 | [WIKI-L-065](code/WIKI-L-065.md) | Ch14 PhaseRegion Force Adapter Consumer Design |
 | [WIKI-L-066](code/WIKI-L-066.md) | Ch14 PhaseRegion Force Adapter Decision PASS |
+| [WIKI-L-067](code/WIKI-L-067.md) | Ch14 Pressure/Velocity Work-Gate Design |
