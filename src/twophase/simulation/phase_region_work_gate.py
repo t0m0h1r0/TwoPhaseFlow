@@ -21,6 +21,7 @@ from twophase.coupling.phase_region_force_admission import (
     PhaseRegionForceAdapterDecision,
     PhaseRegionForceAdmission,
 )
+from twophase.coupling.closed_interface_riesz import weighted_hodge_decomposition
 from twophase.coupling.closed_interface_stratum import array_to_numpy
 
 from .face_boundary import (
@@ -48,6 +49,26 @@ class PhaseRegionPressureVelocityG0Report:
     surface_weighted_l2: float
     velocity_weighted_l2: float
     pressure_weighted_l2: float
+    metrics: dict[str, float]
+
+
+@dataclass(frozen=True)
+class PhaseRegionPressureVelocityG1Report:
+    """Pressure-range report under the same face metric as G0."""
+
+    valid: bool
+    reason: str
+    force_admissible: bool
+    pressure_hodge_weighted_l2: float
+    pressure_range_weighted_l2: float
+    pressure_component_weighted_l2: float
+    pressure_hodge_ratio: float
+    pressure_hodge_divergence_linf: float
+    surface_hodge_weighted_l2: float
+    surface_range_weighted_l2: float
+    surface_component_weighted_l2: float
+    surface_hodge_ratio: float
+    surface_hodge_divergence_linf: float
     metrics: dict[str, float]
 
 
@@ -207,6 +228,104 @@ def build_phase_region_pressure_velocity_g0_report(
     )
 
 
+def build_phase_region_pressure_velocity_g1_report(
+    *,
+    xp,
+    div_op,
+    admission: PhaseRegionForceAdmission,
+    g0_report: PhaseRegionPressureVelocityG0Report,
+    pressure_face_components,
+    pressure_hodge_tolerance: float = 1.0e-10,
+    divergence_tolerance: float = 1.0e-8,
+) -> PhaseRegionPressureVelocityG1Report:
+    """Check that pressure faces are in ``range(M_f^{-1}D_f^T)``.
+
+    The capillary surface cochain is decomposed with the same ``D_f`` and
+    ``M_f`` only as a diagnostic; its Hodge component is not modified or
+    projected into the pressure range.
+    """
+    if not g0_report.valid:
+        return _invalid_g1_report(reason=f"g0:{g0_report.reason}")
+    if not admission.valid or admission.cochain is None or admission.face_metric is None:
+        return _invalid_g1_report(reason=f"candidate:{admission.reason}")
+    if admission.force_admissible or g0_report.force_admissible:
+        return _invalid_g1_report(reason="force_admissible_true")
+    hodge_tol = float(pressure_hodge_tolerance)
+    div_tol = float(divergence_tolerance)
+    if not np.isfinite(hodge_tol) or hodge_tol < 0.0:
+        return _invalid_g1_report(reason="pressure_hodge_tolerance_invalid")
+    if not np.isfinite(div_tol) or div_tol < 0.0:
+        return _invalid_g1_report(reason="divergence_tolerance_invalid")
+
+    weights = admission.face_metric.face_weight_components
+    pressure_hodge = weighted_hodge_decomposition(
+        xp=xp,
+        div_op=div_op,
+        face_components=pressure_face_components,
+        face_weight_components=weights,
+    )
+    surface_hodge = weighted_hodge_decomposition(
+        xp=xp,
+        div_op=div_op,
+        face_components=admission.cochain.surface_acceleration,
+        face_weight_components=weights,
+    )
+    pressure_ratio = pressure_hodge.hodge_weighted_l2 / max(
+        pressure_hodge.component_weighted_l2,
+        1.0e-30,
+    )
+    surface_ratio = surface_hodge.hodge_weighted_l2 / max(
+        surface_hodge.component_weighted_l2,
+        1.0e-30,
+    )
+    valid = True
+    reason = "ok"
+    if pressure_hodge.hodge_weighted_l2 > hodge_tol:
+        valid = False
+        reason = "pressure_hodge_weighted_l2"
+    elif pressure_hodge.hodge_divergence_linf > div_tol:
+        valid = False
+        reason = "pressure_hodge_divergence_linf"
+    metrics = {
+        "g1_valid": float(valid),
+        "force_admissible": 0.0,
+        "pressure_hodge_weighted_l2": float(pressure_hodge.hodge_weighted_l2),
+        "pressure_range_weighted_l2": float(pressure_hodge.range_weighted_l2),
+        "pressure_component_weighted_l2": float(
+            pressure_hodge.component_weighted_l2
+        ),
+        "pressure_hodge_ratio": float(pressure_ratio),
+        "pressure_hodge_divergence_linf": float(
+            pressure_hodge.hodge_divergence_linf
+        ),
+        "surface_hodge_weighted_l2": float(surface_hodge.hodge_weighted_l2),
+        "surface_range_weighted_l2": float(surface_hodge.range_weighted_l2),
+        "surface_component_weighted_l2": float(
+            surface_hodge.component_weighted_l2
+        ),
+        "surface_hodge_ratio": float(surface_ratio),
+        "surface_hodge_divergence_linf": float(
+            surface_hodge.hodge_divergence_linf
+        ),
+    }
+    return PhaseRegionPressureVelocityG1Report(
+        valid=bool(valid),
+        reason=reason,
+        force_admissible=False,
+        pressure_hodge_weighted_l2=float(pressure_hodge.hodge_weighted_l2),
+        pressure_range_weighted_l2=float(pressure_hodge.range_weighted_l2),
+        pressure_component_weighted_l2=float(pressure_hodge.component_weighted_l2),
+        pressure_hodge_ratio=float(pressure_ratio),
+        pressure_hodge_divergence_linf=float(pressure_hodge.hodge_divergence_linf),
+        surface_hodge_weighted_l2=float(surface_hodge.hodge_weighted_l2),
+        surface_range_weighted_l2=float(surface_hodge.range_weighted_l2),
+        surface_component_weighted_l2=float(surface_hodge.component_weighted_l2),
+        surface_hodge_ratio=float(surface_ratio),
+        surface_hodge_divergence_linf=float(surface_hodge.hodge_divergence_linf),
+        metrics=metrics,
+    )
+
+
 def _invalid_g0_report(
     *,
     reason: str,
@@ -236,6 +355,28 @@ def _invalid_g0_report(
         pressure_weighted_l2=float("nan"),
         metrics={
             "g0_valid": 0.0,
+            "force_admissible": 0.0,
+        },
+    )
+
+
+def _invalid_g1_report(*, reason: str) -> PhaseRegionPressureVelocityG1Report:
+    return PhaseRegionPressureVelocityG1Report(
+        valid=False,
+        reason=str(reason),
+        force_admissible=False,
+        pressure_hodge_weighted_l2=float("nan"),
+        pressure_range_weighted_l2=float("nan"),
+        pressure_component_weighted_l2=float("nan"),
+        pressure_hodge_ratio=float("nan"),
+        pressure_hodge_divergence_linf=float("nan"),
+        surface_hodge_weighted_l2=float("nan"),
+        surface_range_weighted_l2=float("nan"),
+        surface_component_weighted_l2=float("nan"),
+        surface_hodge_ratio=float("nan"),
+        surface_hodge_divergence_linf=float("nan"),
+        metrics={
+            "g1_valid": 0.0,
             "force_admissible": 0.0,
         },
     )

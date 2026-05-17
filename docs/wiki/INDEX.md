@@ -1,4 +1,4 @@
-# Wiki Index — 435 entries
+# Wiki Index — 436 entries
 
 ## Active Retrieval Gate
 
@@ -145,6 +145,10 @@ cochain and must not be passed through nodal `force_components`.
 Use [WIKI-L-068](code/WIKI-L-068.md) before any PhaseRegion pressure/velocity
 force-coupling probe because it records the diagnostic-only G0 face-space gate
 for shape, boundary, nonuniform metric, and same-weight work checks.
+Use [WIKI-L-069](code/WIKI-L-069.md) before any pressure-range or projection
+oracle because it records the diagnostic-only G1 gate: pressure faces must lie
+in `range(M_f^{-1}D_f^T)` under the same PhaseRegion face metric, while the
+capillary Hodge component remains diagnostic and unconverted.
 Use [WIKI-E-071](experiment/WIKI-E-071.md) before implementing a PhaseRegion
 runtime dry-run adapter because it records that existing runtime
 `GeometricPhaseState.q` is liquid volume while the current PhaseRegion theory
@@ -591,7 +595,7 @@ support.
 | [WIKI-M-034](meta/WIKI-M-034.md) | Paper Review Revisions Should Reduce Cognitive Load, Not Add Decoration |
 | [WIKI-M-035](meta/WIKI-M-035.md) | Meta-Prompt Deployment Needs Project Boundaries, Native Adapters, and Token ROI Gates |
 
-## Code (68)
+## Code (69)
 
 | REF-ID | Title |
 |--------|-------|
@@ -663,3 +667,4 @@ support.
 | [WIKI-L-066](code/WIKI-L-066.md) | Ch14 PhaseRegion Force Adapter Decision PASS |
 | [WIKI-L-067](code/WIKI-L-067.md) | Ch14 Pressure/Velocity Work-Gate Design |
 | [WIKI-L-068](code/WIKI-L-068.md) | Ch14 Pressure/Velocity G0 Face-Space Gate PASS |
+| [WIKI-L-069](code/WIKI-L-069.md) | Ch14 Pressure/Velocity G1 Pressure-Range Gate PASS |

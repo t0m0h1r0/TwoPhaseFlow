@@ -13,6 +13,9 @@ from twophase.ccd.fccd import FCCDSolver
 from twophase.config import GridConfig
 from twophase.core.grid import Grid
 from twophase.coupling.closed_interface_riesz import (
+    _dense_divergence_matrix,
+    _flatten_face_components,
+    _unflatten_face_components,
     face_measure_components,
     transport_increment_from_face_velocity,
 )
@@ -28,6 +31,7 @@ from twophase.coupling.phase_region_force_admission import (
 from twophase.geometry import CellMeasurePhase
 from twophase.simulation.divergence_ops import FCCDDivergenceOperator
 from twophase.simulation.phase_region_work_gate import (
+    build_phase_region_pressure_velocity_g1_report,
     build_phase_region_pressure_velocity_g0_report,
 )
 
@@ -211,6 +215,23 @@ def _runtime_pressure_velocity_faces(grid, backend, fccd, admission):
         boundary_face_space="full_face",
     )
     return backend.xp, runtime_faces, pressure_faces
+
+
+def _manufactured_pressure_range_faces(backend, div_op, admission):
+    xp = backend.xp
+    weights = admission.face_metric.face_weight_components
+    D, shapes, sizes = _dense_divergence_matrix(
+        xp=xp,
+        div_op=div_op,
+        face_templates=weights,
+    )
+    weight_flat = _flatten_face_components(xp, weights)
+    potential = np.arange(np.prod(admission.cochain.psi.shape), dtype=float).reshape(
+        admission.cochain.psi.shape
+    )
+    potential = np.sin(0.17 * potential) + 0.23 * np.cos(0.31 * potential)
+    range_flat = (D.T @ potential.ravel()) / weight_flat
+    return _unflatten_face_components(xp, range_flat, shapes, sizes)
 
 
 def test_two_phase_nodal_density_matches_runtime_indicator_formula():
@@ -815,6 +836,93 @@ def test_pressure_velocity_g0_report_fails_closed_on_pressure_shape_mismatch():
     assert not g0.valid
     assert g0.reason == "pressure_face_shape_mismatch"
     assert g0.force_admissible is False
+
+
+def test_pressure_velocity_g1_report_accepts_manufactured_pressure_range():
+    grid, backend, fccd, admission, report = _valid_admission_and_report()
+    decision = build_phase_region_force_adapter_decision(
+        admission=admission,
+        report=report,
+    )
+    div_op = FCCDDivergenceOperator(fccd)
+    xp, runtime_faces, _pressure_faces = _runtime_pressure_velocity_faces(
+        grid,
+        backend,
+        fccd,
+        admission,
+    )
+    pressure_range_faces = _manufactured_pressure_range_faces(
+        backend,
+        div_op,
+        admission,
+    )
+    g0 = build_phase_region_pressure_velocity_g0_report(
+        xp=xp,
+        admission=admission,
+        decision=decision,
+        runtime_face_velocity_components=runtime_faces,
+        pressure_face_components=pressure_range_faces,
+        bc_type=fccd.bc_type,
+        boundary_face_space="full_face",
+    )
+
+    g1 = build_phase_region_pressure_velocity_g1_report(
+        xp=xp,
+        div_op=div_op,
+        admission=admission,
+        g0_report=g0,
+        pressure_face_components=pressure_range_faces,
+    )
+
+    assert g0.valid, g0.reason
+    assert g1.valid, g1.reason
+    assert g1.force_admissible is False
+    assert g1.pressure_hodge_weighted_l2 < 1.0e-10
+    assert g1.pressure_hodge_ratio < 1.0e-10
+    assert g1.surface_hodge_weighted_l2 > 0.0
+    assert g1.metrics["g1_valid"] == 1.0
+    assert g1.metrics["force_admissible"] == 0.0
+
+
+def test_pressure_velocity_g1_report_rejects_nonrange_pressure_faces():
+    grid, backend, fccd, admission, report = _valid_admission_and_report()
+    decision = build_phase_region_force_adapter_decision(
+        admission=admission,
+        report=report,
+    )
+    div_op = FCCDDivergenceOperator(fccd)
+    xp, runtime_faces, _pressure_faces = _runtime_pressure_velocity_faces(
+        grid,
+        backend,
+        fccd,
+        admission,
+    )
+    nonrange_pressure_faces = [
+        np.array(component, copy=True)
+        for component in admission.cochain.surface_acceleration
+    ]
+    g0 = build_phase_region_pressure_velocity_g0_report(
+        xp=xp,
+        admission=admission,
+        decision=decision,
+        runtime_face_velocity_components=runtime_faces,
+        pressure_face_components=nonrange_pressure_faces,
+        bc_type=fccd.bc_type,
+        boundary_face_space="full_face",
+    )
+
+    g1 = build_phase_region_pressure_velocity_g1_report(
+        xp=xp,
+        div_op=div_op,
+        admission=admission,
+        g0_report=g0,
+        pressure_face_components=nonrange_pressure_faces,
+    )
+
+    assert g0.valid, g0.reason
+    assert not g1.valid
+    assert g1.reason == "pressure_hodge_weighted_l2"
+    assert g1.force_admissible is False
 
 
 def test_phase_region_face_metric_rejects_cell_density_shape():
