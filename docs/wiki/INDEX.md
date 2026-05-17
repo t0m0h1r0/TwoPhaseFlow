@@ -1,4 +1,4 @@
-# Wiki Index — 440 entries
+# Wiki Index — 441 entries
 
 ## Active Retrieval Gate
 
@@ -187,6 +187,11 @@ validates the zero-step Ch14 runtime force dry-run with explicit `q_l -> q_g`
 ownership, runtime nodal-density face metric, fixed-stratum work pairing, and
 G0--G5 pressure/velocity gate metrics; the admitted payload and projection
 probe remain face-shaped and are not connected to runtime velocity update.
+Use [WIKI-E-076](experiment/WIKI-E-076.md) before any dynamic nonuniform
+oscillating-droplet micro-step or T/8 attempt because it records that short
+capillary-wave runtime probes pass, the droplet YAML runner saves a one-step
+result, but two-step dynamic nonuniform droplet runtime fails closed at
+projection-native face-history reprojection across grid rebuild.
 Before implementing or reviewing an
 established-theory change, use [WIKI-L-046](code/WIKI-L-046.md) as the
 equation-to-code contract gate. Older cards remain listed for
@@ -462,7 +467,7 @@ support.
 | [WIKI-X-055](cross-domain/WIKI-X-055.md) | Theory-First Deliberation Best Practices |
 | [WIKI-X-056](cross-domain/WIKI-X-056.md) | Ch14 Capillary Origin-Reset Handoff Protocol |
 
-## Experiment (75)
+## Experiment (76)
 
 | REF-ID | Title |
 |--------|-------|
@@ -541,6 +546,7 @@ support.
 | [WIKI-E-073](experiment/WIKI-E-073.md) | Ch14 PhaseRegion Force/Work Oracle PASS |
 | [WIKI-E-074](experiment/WIKI-E-074.md) | Ch14 PhaseRegion Face-Cochain Work Oracle PASS |
 | [WIKI-E-075](experiment/WIKI-E-075.md) | Ch14 PhaseRegion Runtime Force Dry-Run PASS |
+| [WIKI-E-076](experiment/WIKI-E-076.md) | Ch14 Short Capillary/Droplet Runtime Probe |
 
 ## Paper (24)
 
