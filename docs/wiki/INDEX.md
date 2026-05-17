@@ -1,4 +1,4 @@
-# Wiki Index — 450 entries
+# Wiki Index — 455 entries
 
 ## Active Retrieval Gate
 
@@ -223,6 +223,20 @@ Use [WIKI-E-084](experiment/WIKI-E-084.md) before citing the Chapter 13
 closed-interface volume admission gate or claiming that the Section 14.2
 oscillating-droplet production route still uses
 `sharp_phase_volume` / Ridge--Eikonal.
+Use [WIKI-T-178](theory/WIKI-T-178.md) as the current Ch14 capillary
+state-ownership closure: `PhaseRegion` owns the state, `q` is a measure,
+`phi` is a gauge, and capillary work must use the same endpoint/face metric.
+Use [WIKI-X-057](cross-domain/WIKI-X-057.md) before rerunning or publishing
+Ch14 capillary data because it records the session's route-hygiene lessons:
+canonical YAML ownership, physical-time outputs, old-data deletion, and
+failure preservation. Use [WIKI-E-085](experiment/WIKI-E-085.md) as the
+current paper-facing one-period PhaseRegion graph evidence after the YAML
+ownership review restored `cfl=1.0`, `interface`, `numerics`, and
+`phi`/velocity/pressure outputs. Use [WIKI-L-075](code/WIKI-L-075.md) before
+editing YAML loading or snapshot plotting because it fixes the code-level
+output contract and plot-only behavior. Use [WIKI-P-025](paper/WIKI-P-025.md)
+before editing Chapter 14.2 because the paper figures and prose must come from
+canonical `ch14_capillary.yaml` outputs.
 Use [WIKI-L-074](code/WIKI-L-074.md) before optimizing or reviewing the
 PhaseRegion graph GPU route because it records the exact graph column-integral
 hot path, the device-aware owner/measurement reductions, and the validated
@@ -259,7 +273,7 @@ reading order, evidence boundaries, and rendered convergence. For paper citation
 claim-level source verification and are placed at the manuscript claim they
 support.
 
-## Theory (177)
+## Theory (178)
 
 | REF-ID | Title |
 |--------|-------|
@@ -440,8 +454,9 @@ support.
 | [WIKI-T-175](theory/WIKI-T-175.md) | Fast Vectorized Manifold Projection for Ch14 Capillary Charts |
 | [WIKI-T-176](theory/WIKI-T-176.md) | PhaseRegion-Primary InterfaceAtlas for Multi-Component Ch14 Capillarity |
 | [WIKI-T-177](theory/WIKI-T-177.md) | PhaseRegion Variational Axioms Before Ch14 Force Coupling |
+| [WIKI-T-178](theory/WIKI-T-178.md) | Ch14 PhaseRegion Route Closure Needs One Owner for State, Measure, Energy, and Work |
 
-## Cross-Domain (56)
+## Cross-Domain (57)
 
 | REF-ID | Title |
 |--------|-------|
@@ -501,8 +516,9 @@ support.
 | [WIKI-X-054](cross-domain/WIKI-X-054.md) | Ch14 Active-Geometry Capillary Session Synthesis |
 | [WIKI-X-055](cross-domain/WIKI-X-055.md) | Theory-First Deliberation Best Practices |
 | [WIKI-X-056](cross-domain/WIKI-X-056.md) | Ch14 Capillary Origin-Reset Handoff Protocol |
+| [WIKI-X-057](cross-domain/WIKI-X-057.md) | Ch14 Capillary Session Lessons: YAML Ownership, Route Hygiene, and Failure Preservation |
 
-## Experiment (84)
+## Experiment (85)
 
 | REF-ID | Title |
 |--------|-------|
@@ -590,8 +606,9 @@ support.
 | [WIKI-E-082](experiment/WIKI-E-082.md) | Ch14 Production Capillary YAML One-Period PASS |
 | [WIKI-E-083](experiment/WIKI-E-083.md) | Ch14 PhaseRegion Graph YAML One-Period PASS |
 | [WIKI-E-084](experiment/WIKI-E-084.md) | Ch13 Closed-Interface Volume Admission Gate |
+| [WIKI-E-085](experiment/WIKI-E-085.md) | Ch14 Corrected YAML-Owned PhaseRegion Capillary One-Period PASS |
 
-## Paper (24)
+## Paper (25)
 
 | REF-ID | Title |
 |--------|-------|
@@ -619,6 +636,7 @@ support.
 | [WIKI-P-022](paper/WIKI-P-022.md) | Formula-Heavy Paper Sections Need Ownership-Ledger Prose |
 | [WIKI-P-023](paper/WIKI-P-023.md) | Paper Placement Review Keeps Front Matter and Chapters Responsible |
 | [WIKI-P-024](paper/WIKI-P-024.md) | Research Presentation Decks Need Claim-Proof Slides and Rendered Convergence |
+| [WIKI-P-025](paper/WIKI-P-025.md) | Chapter 14.2 Evidence Must Come From Canonical ch14_capillary.yaml Outputs |
 
 ## Meta (35)
 
@@ -660,7 +678,7 @@ support.
 | [WIKI-M-034](meta/WIKI-M-034.md) | Paper Review Revisions Should Reduce Cognitive Load, Not Add Decoration |
 | [WIKI-M-035](meta/WIKI-M-035.md) | Meta-Prompt Deployment Needs Project Boundaries, Native Adapters, and Token ROI Gates |
 
-## Code (74)
+## Code (75)
 
 | REF-ID | Title |
 |--------|-------|
@@ -738,3 +756,4 @@ support.
 | [WIKI-L-072](code/WIKI-L-072.md) | Ch14 Pressure/Velocity G4 Face-Force Admission PASS |
 | [WIKI-L-073](code/WIKI-L-073.md) | Ch14 Pressure/Velocity G5 Face-Force Projection Probe PASS |
 | [WIKI-L-074](code/WIKI-L-074.md) | Ch14 PhaseRegion Graph GPU Hot Path PASS |
+| [WIKI-L-075](code/WIKI-L-075.md) | Ch14 Capillary YAML Output Contract and Snapshot Plotter PASS |

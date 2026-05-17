@@ -3,6 +3,7 @@
 Symbol mapping
 --------------
 ``psi`` -> conservative level-set field ``ψ``
+``phi`` -> interface gauge field ``φ``
 ``u``   -> x-velocity
 ``v``   -> y-velocity
 ``p``   -> stored scalar pressure representative
@@ -129,6 +130,20 @@ def pressure_difference_field(pressure: np.ndarray, spec: dict) -> np.ndarray:
         "pressure_reference must be 'raw', 'mean', 'spatial_mean', 'median', "
         "or a numeric pressure_reference_value"
     )
+
+
+def apply_snapshot_axes(
+    ax: plt.Axes,
+    cfg: "ExperimentConfig",
+    spec: dict,
+) -> None:
+    """Apply shared coordinate limits and optional tick locations."""
+    ax.set_xlim(float(spec.get("xlim_min", 0.0)), float(spec.get("xlim_max", cfg.grid.LX)))
+    ax.set_ylim(float(spec.get("ylim_min", 0.0)), float(spec.get("ylim_max", cfg.grid.LY)))
+    if "x_ticks" in spec:
+        ax.set_xticks([float(value) for value in spec["x_ticks"]])
+    if "y_ticks" in spec:
+        ax.set_yticks([float(value) for value in spec["y_ticks"]])
 
 
 def pressure_plot_field(context: SnapshotPlotContext, spec: dict) -> np.ndarray:
@@ -275,6 +290,8 @@ def snapshot_series_field_array(
         return color_field
     if field == "psi":
         return context.psi
+    if field == "phi":
+        return remap_snapshot_field(context, context.snap["phi"])
     if field == "pressure":
         return pressure_plot_field(context, spec)
     if field == "pressure_hodge":
@@ -392,6 +409,18 @@ def build_snapshot_series_shared_spec(
         shared.setdefault("vmax", spec.get("vmax", 1.0))
         return shared
 
+    if field == "phi":
+        if "vmin" not in spec or "vmax" not in spec:
+            vmin, vmax = finite_min_max(arrays)
+            if bool(spec.get("symmetric_scale", True)):
+                bound = max(abs(vmin), abs(vmax), 1.0e-14)
+                shared.setdefault("vmin", -bound)
+                shared.setdefault("vmax", bound)
+            else:
+                shared.setdefault("vmin", vmin)
+                shared.setdefault("vmax", vmax)
+        return shared
+
     if "vmin" not in spec or "vmax" not in spec:
         vmin, vmax = finite_min_max(arrays)
         shared.setdefault("vmin", vmin)
@@ -429,6 +458,49 @@ def snapshot(spec: dict, results: dict, cfg: "ExperimentConfig") -> plt.Figure:
     ax.set_aspect("equal")
     ax.set_xlabel(xlabel)
     ax.set_ylabel(ylabel)
+    apply_snapshot_axes(ax, cfg, spec)
+    ax.set_title(title)
+    return fig
+
+
+def phi_snapshot(spec: dict, results: dict, cfg: "ExperimentConfig") -> plt.Figure:
+    """Render an interface gauge ``phi`` snapshot."""
+    context = build_snapshot_plot_context(spec, results, cfg)
+    grid = cfg.grid
+    phi = remap_snapshot_field(context, context.snap["phi"])
+    title = spec.get("title", f"phi at t = {context.t_val:.3f}")
+    cmap = spec.get("cmap", "RdBu_r")
+    vmin = spec.get("vmin")
+    vmax = spec.get("vmax")
+    if vmin is None or vmax is None:
+        finite = phi[np.isfinite(phi)]
+        if finite.size:
+            bound = max(abs(float(np.min(finite))), abs(float(np.max(finite))), 1.0e-14)
+        else:
+            bound = 1.0
+        vmin = -bound
+        vmax = bound
+
+    fig, ax = plt.subplots(figsize=(4, 4 * grid.LY / grid.LX))
+    im = ax.pcolormesh(
+        context.X,
+        context.Y,
+        phi.T,
+        cmap=cmap,
+        vmin=vmin,
+        vmax=vmax,
+        shading="nearest",
+    )
+    if spec.get("contour", True):
+        ax.contour(
+            context.X, context.Y, phi.T, levels=[0.0], colors="k", linewidths=0.8
+        )
+    if spec.get("colorbar", True):
+        fig.colorbar(im, ax=ax, label=spec.get("colorbar_label", "$\\phi$"))
+    ax.set_aspect("equal")
+    ax.set_xlabel(spec.get("xlabel", "x"))
+    ax.set_ylabel(spec.get("ylabel", "y"))
+    apply_snapshot_axes(ax, cfg, spec)
     ax.set_title(title)
     return fig
 
@@ -542,6 +614,7 @@ def velocity_snapshot(
     ax.set_aspect("equal")
     ax.set_xlabel(spec.get("xlabel", "x"))
     ax.set_ylabel(spec.get("ylabel", "y"))
+    apply_snapshot_axes(ax, cfg, spec)
     ax.set_title(title)
     return fig
 
@@ -577,6 +650,7 @@ def pressure_snapshot(
     ax.set_aspect("equal")
     ax.set_xlabel(spec.get("xlabel", "x"))
     ax.set_ylabel(spec.get("ylabel", "y"))
+    apply_snapshot_axes(ax, cfg, spec)
     ax.set_title(title)
     return fig
 
@@ -711,6 +785,9 @@ def build_snapshot_series_renderers() -> dict[str, Callable]:
             velocity_snapshot, snap, cfg, spec
         ),
         "psi": lambda snap, cfg, spec=None: render_snapshot(snapshot, snap, cfg, spec),
+        "phi": lambda snap, cfg, spec=None: render_snapshot(
+            phi_snapshot, snap, cfg, spec
+        ),
         "pressure": lambda snap, cfg, spec=None: render_snapshot(
             pressure_snapshot, snap, cfg, spec
         ),
