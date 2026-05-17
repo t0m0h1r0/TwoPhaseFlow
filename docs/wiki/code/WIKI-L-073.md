@@ -22,6 +22,7 @@ The helper:
 ```text
 requires g4.force_admissible=true
 requires face-shaped u_f, p_f, s_f, M_f
+checks ||s_f(consumed)||_M equals G4's admitted face-force norm
 rejects nodal-shaped velocity input
 calls apply_pressure_projection on face arrays
 returns projected_face_components only on a valid identity residual
@@ -37,16 +38,18 @@ Artifact:
 
 ```text
 artifacts/A/ch14_pressure_velocity_g5_face_force_projection_probe_CHK-RA-CH14-VAR-048.md
+artifacts/A/ch14_g5_exact_theory_review_CHK-RA-CH14-VAR-049.md
 ```
 
 Validation:
 
 ```text
 make test PYTEST_ARGS='twophase/tests/test_phase_region_force_admission.py -q'
-= PASS: 865 passed, 35 skipped
+= PASS: 866 passed, 35 skipped
 
 make cycle EXP=experiment/ch14/diagnose_phase_region_runtime_force_dry_run.py
-= PASS: g5_valid=1, face_force_consumed=1, force_admissible=1
+= PASS: g5_valid=1, face_force_consumed=1,
+        face_force_consistency_residual=0, force_admissible=1
 ```
 
 ## Boundary

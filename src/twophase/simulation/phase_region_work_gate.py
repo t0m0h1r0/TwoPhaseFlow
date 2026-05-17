@@ -717,6 +717,7 @@ def build_phase_region_pressure_velocity_g5_report(
     pressure_face_components,
     dt: float,
     projection_tolerance: float = 1.0e-12,
+    force_consistency_tolerance: float = 1.0e-12,
 ) -> PhaseRegionPressureVelocityG5Report:
     """Consume an admitted face force without nodal reconstruction or state update."""
     if not g4_report.valid:
@@ -727,10 +728,13 @@ def build_phase_region_pressure_velocity_g5_report(
         return _invalid_g5_report(reason=f"candidate:{admission.reason}")
     dt_value = float(dt)
     tol = float(projection_tolerance)
+    force_tol = float(force_consistency_tolerance)
     if not np.isfinite(dt_value) or dt_value <= 0.0:
         return _invalid_g5_report(reason="dt_invalid")
     if not np.isfinite(tol) or tol < 0.0:
         return _invalid_g5_report(reason="projection_tolerance_invalid")
+    if not np.isfinite(force_tol) or force_tol < 0.0:
+        return _invalid_g5_report(reason="force_consistency_tolerance_invalid")
 
     velocity_faces = tuple(xp.asarray(face) for face in runtime_face_velocity_components)
     pressure_faces = tuple(xp.asarray(face) for face in pressure_face_components)
@@ -747,6 +751,18 @@ def build_phase_region_pressure_velocity_g5_report(
         return _invalid_g5_report(reason="force_face_shape_mismatch")
     if _component_shapes(weights) != force_shapes:
         return _invalid_g5_report(reason="metric_face_shape_mismatch")
+
+    force_l2 = _weighted_l2(xp, force_faces, weights)
+    force_consistency_residual = _relative_residual(
+        float(g4_report.face_force_weighted_l2),
+        float(force_l2),
+    )
+    if (
+        not np.isfinite(force_l2)
+        or not np.isfinite(float(g4_report.face_force_weighted_l2))
+        or force_consistency_residual > force_tol
+    ):
+        return _invalid_g5_report(reason="face_force_consistency_residual")
 
     projected_faces = tuple(
         apply_pressure_projection(
@@ -775,6 +791,8 @@ def build_phase_region_pressure_velocity_g5_report(
         "g5_valid": float(valid),
         "force_admissible": 1.0 if valid else 0.0,
         "face_force_consumed": 1.0 if valid else 0.0,
+        "face_force_weighted_l2": float(force_l2),
+        "face_force_consistency_residual": float(force_consistency_residual),
         "face_projection_identity_linf": float(identity_linf),
         "face_projected_weighted_l2": _weighted_l2(xp, projected_faces, weights),
     }

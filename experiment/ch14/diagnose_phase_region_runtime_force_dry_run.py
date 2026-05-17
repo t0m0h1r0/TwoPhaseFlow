@@ -556,6 +556,7 @@ def _print_summary(results: dict[str, object], figure_path: pathlib.Path) -> Non
         "surface_update_consistency_residual",
         "g5_valid",
         "face_force_consumed",
+        "face_force_consistency_residual",
         "face_projection_identity_linf",
         "face_projected_weighted_l2",
         "projection_dt",

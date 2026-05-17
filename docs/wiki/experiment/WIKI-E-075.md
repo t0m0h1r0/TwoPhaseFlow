@@ -112,6 +112,7 @@ projection_identity_linf       = 2.081668171172e-17
 face_force_exposed             = 1.000000000000e+00
 face_force_consumed            = 1.000000000000e+00
 surface_update_consistency_residual = 0.000000000000e+00
+face_force_consistency_residual = 0.000000000000e+00
 face_projection_identity_linf  = 2.081668171172e-17
 force_admissible               = 1.0
 ```

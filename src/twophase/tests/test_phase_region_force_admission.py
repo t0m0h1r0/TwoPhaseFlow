@@ -1452,8 +1452,22 @@ def test_pressure_velocity_g5_report_consumes_admitted_face_force():
     ):
         expected = np.asarray(velocity) - dt * np.asarray(pressure) + dt * np.asarray(force)
         np.testing.assert_allclose(projected, expected)
+    expected_projected_l2 = np.sqrt(
+        sum(
+            float(np.sum(np.asarray(weight) * np.asarray(projected) ** 2))
+            for weight, projected in zip(
+                admission.face_metric.face_weight_components,
+                g5.projected_face_components,
+                strict=True,
+            )
+        )
+    )
     assert g5.projection_identity_linf <= 1.0e-12
-    assert g5.projected_weighted_l2 > 0.0
+    assert g5.projected_weighted_l2 == pytest.approx(expected_projected_l2)
+    assert g5.metrics["face_force_weighted_l2"] == pytest.approx(
+        g4.face_force_weighted_l2
+    )
+    assert g5.metrics["face_force_consistency_residual"] == pytest.approx(0.0)
     assert g5.metrics["g5_valid"] == 1.0
     assert g5.metrics["face_force_consumed"] == 1.0
     assert g5.metrics["force_admissible"] == 1.0
@@ -1510,6 +1524,38 @@ def test_pressure_velocity_g5_report_rejects_invalid_g4_admission():
 
     assert not g5.valid
     assert g5.reason == "g4:work_closure_residual"
+    assert g5.force_admissible is False
+    assert g5.projected_face_components is None
+
+
+def test_pressure_velocity_g5_report_rejects_mutated_g4_face_payload():
+    (
+        _grid,
+        backend,
+        admission,
+        velocity_faces,
+        pressure_faces,
+        g4,
+    ) = _valid_pressure_velocity_g4_chain_with_faces()
+    mutated_g4 = replace(
+        g4,
+        face_force_components=tuple(
+            1.125 * np.asarray(component)
+            for component in g4.face_force_components
+        ),
+    )
+
+    g5 = build_phase_region_pressure_velocity_g5_report(
+        xp=backend.xp,
+        admission=admission,
+        g4_report=mutated_g4,
+        runtime_face_velocity_components=velocity_faces,
+        pressure_face_components=pressure_faces,
+        dt=2.5e-4,
+    )
+
+    assert not g5.valid
+    assert g5.reason == "face_force_consistency_residual"
     assert g5.force_admissible is False
     assert g5.projected_face_components is None
 
