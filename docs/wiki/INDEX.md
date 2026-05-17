@@ -1,4 +1,4 @@
-# Wiki Index — 441 entries
+# Wiki Index — 442 entries
 
 ## Active Retrieval Gate
 
@@ -192,6 +192,10 @@ oscillating-droplet micro-step or T/8 attempt because it records that short
 capillary-wave runtime probes pass, the droplet YAML runner saves a one-step
 result, but two-step dynamic nonuniform droplet runtime fails closed at
 projection-native face-history reprojection across grid rebuild.
+Use [WIKI-E-077](experiment/WIKI-E-077.md) before claiming graph capillary
+waves and closed droplets share the PhaseRegion owner route, because it records
+the capillary-wave `q_l -> q_g` GAS_ABOVE graph dry-run PASS while keeping
+`force_admissible=0` until the graph-chart G0--G5 face-force path exists.
 Before implementing or reviewing an
 established-theory change, use [WIKI-L-046](code/WIKI-L-046.md) as the
 equation-to-code contract gate. Older cards remain listed for
@@ -467,7 +471,7 @@ support.
 | [WIKI-X-055](cross-domain/WIKI-X-055.md) | Theory-First Deliberation Best Practices |
 | [WIKI-X-056](cross-domain/WIKI-X-056.md) | Ch14 Capillary Origin-Reset Handoff Protocol |
 
-## Experiment (76)
+## Experiment (77)
 
 | REF-ID | Title |
 |--------|-------|
@@ -547,6 +551,7 @@ support.
 | [WIKI-E-074](experiment/WIKI-E-074.md) | Ch14 PhaseRegion Face-Cochain Work Oracle PASS |
 | [WIKI-E-075](experiment/WIKI-E-075.md) | Ch14 PhaseRegion Runtime Force Dry-Run PASS |
 | [WIKI-E-076](experiment/WIKI-E-076.md) | Ch14 Short Capillary/Droplet Runtime Probe |
+| [WIKI-E-077](experiment/WIKI-E-077.md) | Ch14 PhaseRegion Capillary Graph Dry-Run PASS |
 
 ## Paper (24)
 
