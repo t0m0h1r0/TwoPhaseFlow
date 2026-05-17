@@ -1,4 +1,4 @@
-# Wiki Index — 400 entries
+# Wiki Index — 401 entries
 
 ## Active Retrieval Gate
 
@@ -49,7 +49,10 @@ oracle-first handoff protocol before continuing implementation; use
 graph-q runtime evidence preserved from the discarded source branch; and use
 [WIKI-E-065](experiment/WIKI-E-065.md) for the first validated
 interface-configuration primary graph oracle before designing the closed-curve
-chart or any T/8 runtime connection. Before implementing or reviewing an
+chart or any T/8 runtime connection. Use
+[WIKI-E-066](experiment/WIKI-E-066.md) before testing transported runtime
+`q_T`, because it records the first graph-chart split of physical low modes
+from non-geometric residual `r`. Before implementing or reviewing an
 established-theory change, use [WIKI-L-046](code/WIKI-L-046.md) as the
 equation-to-code contract gate. Older cards remain listed for
 provenance, but cards marked
@@ -321,7 +324,7 @@ support.
 | [WIKI-X-055](cross-domain/WIKI-X-055.md) | Theory-First Deliberation Best Practices |
 | [WIKI-X-056](cross-domain/WIKI-X-056.md) | Ch14 Capillary Origin-Reset Handoff Protocol |
 
-## Experiment (65)
+## Experiment (66)
 
 | REF-ID | Title |
 |--------|-------|
@@ -390,6 +393,7 @@ support.
 | [WIKI-E-063](experiment/WIKI-E-063.md) | U12/V11 AO-Fast Capillary Split Gates |
 | [WIKI-E-064](experiment/WIKI-E-064.md) | Capillary Runtime Baseline and Screened Graph-q Failure |
 | [WIKI-E-065](experiment/WIKI-E-065.md) | Ch14 Variational Capillary Graph Oracle PASS |
+| [WIKI-E-066](experiment/WIKI-E-066.md) | Ch14 q-Manifold Projection Graph Oracle PASS |
 
 ## Paper (24)
 

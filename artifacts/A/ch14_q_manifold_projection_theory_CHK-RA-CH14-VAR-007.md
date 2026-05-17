@@ -167,6 +167,55 @@ Expected outcomes:
 Visualization is required: `eta_0`, `eta*`, `q_T`, `Q_h(eta*)`, `r`, energy
 sweep, and mode spectra.
 
+## Quick Graph-Chart Validation
+
+Implemented:
+
+```text
+experiment/ch14/diagnose_q_manifold_projection_oracle.py
+```
+
+Remote-first validation command:
+
+```text
+make cycle EXP=experiment/ch14/diagnose_q_manifold_projection_oracle.py
+```
+
+Result: PASS.  The run saved:
+
+```text
+experiment/ch14/results/diagnose_q_manifold_projection_oracle/data.npz
+experiment/ch14/results/diagnose_q_manifold_projection_oracle/q_manifold_projection_oracle.pdf
+```
+
+This oracle uses a low-mode graph chart for `eta*`.  It projects `q_T` by
+matching column-volume modes, then defines:
+
+```text
+r = q_T - Q_h(eta*).
+```
+
+The three synthetic cases behaved as the theory predicts:
+
+| Case | `residual_l2` | `residual_column_linf` | `eta_delta_linf` | `force_sign_product` | Verdict |
+|---|---:|---:|---:|---:|---|
+| clean | `1.262190153575e-16` | `3.552713678801e-15` | `7.216449660064e-16` | `-2.312348084758e-01` | clean `Q_h(eta)` lies on `M_h` |
+| low_mode | `1.578050209727e-16` | `3.552713678801e-15` | `4.440892098501e-16` | `-2.199623647695e-01` | representable low mode is absorbed into `eta*` |
+| high_residual | `1.381067932005e-04` | `3.553364200104e-15` | `7.216449660064e-16` | `-2.312348084758e-01` | zero-column cell-scale residue remains in `r`, not in `eta*` |
+
+The key point is that the high-residual case preserves column volume to
+roundoff and leaves the smooth graph unchanged, while `r` remains visible in
+the cell field.  This is exactly the desired separation:
+
+```text
+physical graph modes -> Gamma*
+non-geometric cell modes -> r
+```
+
+This is still a graph-chart smoke test, not a production runtime admission.
+The next required validation is the same residual classification in the
+closed-curve chart.
+
 ## Closed-Curve Extension
 
 After the graph projection oracle passes, repeat the same decomposition for
