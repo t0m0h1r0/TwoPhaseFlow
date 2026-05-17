@@ -1,4 +1,4 @@
-# Wiki Index — 423 entries
+# Wiki Index — 424 entries
 
 ## Active Retrieval Gate
 
@@ -119,6 +119,11 @@ Use [WIKI-E-072](experiment/WIKI-E-072.md) before any runtime micro-step or
 force-coupling probe because it records the first PhaseRegion runtime dry-run
 adapter PASS with explicit `q_l -> q_g` owner map, visible residual, perimeter,
 and `force_admissible=0`.
+Use [WIKI-E-073](experiment/WIKI-E-073.md) before any runtime force-coupling,
+pressure/velocity coupling, micro-step, or T/8 probe because it validates the
+closed-chart capillary force as the area-reaction-free negative variation of
+the same surface energy and records that the pressure/velocity work metric is
+still the next gate.
 Before implementing or reviewing an
 established-theory change, use [WIKI-L-046](code/WIKI-L-046.md) as the
 equation-to-code contract gate. Older cards remain listed for
@@ -394,7 +399,7 @@ support.
 | [WIKI-X-055](cross-domain/WIKI-X-055.md) | Theory-First Deliberation Best Practices |
 | [WIKI-X-056](cross-domain/WIKI-X-056.md) | Ch14 Capillary Origin-Reset Handoff Protocol |
 
-## Experiment (72)
+## Experiment (73)
 
 | REF-ID | Title |
 |--------|-------|
@@ -470,6 +475,7 @@ support.
 | [WIKI-E-070](experiment/WIKI-E-070.md) | Ch14 PhaseRegion Experiment Readiness Gate |
 | [WIKI-E-071](experiment/WIKI-E-071.md) | Ch14 Runtime Phase-Owner Gate |
 | [WIKI-E-072](experiment/WIKI-E-072.md) | Ch14 PhaseRegion Runtime Dry-Run Adapter PASS |
+| [WIKI-E-073](experiment/WIKI-E-073.md) | Ch14 PhaseRegion Force/Work Oracle PASS |
 
 ## Paper (24)
 
