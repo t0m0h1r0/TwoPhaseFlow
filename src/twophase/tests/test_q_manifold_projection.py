@@ -8,6 +8,7 @@ import pytest
 from twophase.backend import Backend
 from twophase.config import GridConfig
 from twophase.core.grid import Grid
+from twophase.ccd.ccd_solver import CCDSolver
 from twophase.geometry.interface_charts import (
     closed_polygon_geometry,
     closed_radial_chart_from_modes,
@@ -25,9 +26,22 @@ from twophase.geometry.q_manifold_projection import (
 )
 
 
-def _grid(nx: int = 64, ny: int = 64) -> Grid:
+def _grid(nx: int = 64, ny: int = 64, *, alpha_grid: float = 1.0) -> Grid:
     backend = Backend(use_gpu=False)
-    return Grid(GridConfig(ndim=2, N=(nx, ny), L=(1.0, 1.0), alpha_grid=1.0), backend)
+    return Grid(
+        GridConfig(ndim=2, N=(nx, ny), L=(1.0, 1.0), alpha_grid=float(alpha_grid)),
+        backend,
+    )
+
+
+def _fit_x_nonuniform_grid(grid: Grid) -> None:
+    x_nodes = np.asarray(grid.coords[0], dtype=float)
+    y_nodes = np.asarray(grid.coords[1], dtype=float)
+    x, _y = np.meshgrid(x_nodes, y_nodes, indexing="ij")
+    eps = 1.5 * (float(grid.L[0]) / int(grid.N[0]))
+    phi = x - 0.5 * float(grid.L[0])
+    psi = 1.0 / (1.0 + np.exp(-phi / eps))
+    grid.update_from_levelset(psi, eps=eps, ccd=CCDSolver(grid, grid.backend, bc_type="wall"))
 
 
 def _zero_column_cell_residual(grid: Grid, q: object, *, fraction: float) -> object:
@@ -112,6 +126,28 @@ def test_graph_f0_recovers_clean_and_low_mode_chart():
     assert abs(low.gamma_state.coefficient_map()["cos_4"] - 1.2e-2) < 1.0e-12
     assert clean.stage == "F0"
     assert clean.chart_kind == "graph"
+
+
+def test_graph_f0_recovers_clean_chart_on_nonuniform_grid():
+    grid = _grid(alpha_grid=2.0)
+    _fit_x_nonuniform_grid(grid)
+    x_edges = np.asarray(grid.coords[0], dtype=float)
+    dx = np.diff(x_edges)
+    assert float(np.max(dx) - np.min(dx)) > 1.0e-4
+    eta_clean = eta_from_cosine_modes(
+        x_edges,
+        base_height=0.455,
+        modes=((2, 4.0e-2), (4, 1.2e-2)),
+    )
+    clean_q = graph_q_from_eta(grid, eta_clean).q
+
+    clean = project_graph_q_f0(grid, clean_q, max_mode=4, sigma=1.0)
+
+    np.testing.assert_allclose(clean.gamma_state.eta, eta_clean, atol=1.0e-11)
+    assert clean.residual_report.l2 < 1.0e-12
+    assert clean.residual_report.total_volume_abs < 1.0e-14
+    assert clean.constraint_report["column_residual_linf"] < 1.0e-13
+    assert clean.validity_report["stage"] == "F0"
 
 
 def test_graph_column_projection_has_batched_scalar_parity():

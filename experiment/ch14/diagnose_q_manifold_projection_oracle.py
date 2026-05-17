@@ -28,6 +28,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "src"))
 
 from twophase.backend import Backend  # noqa: E402
+from twophase.ccd.ccd_solver import CCDSolver  # noqa: E402
 from twophase.config import GridConfig  # noqa: E402
 from twophase.core.grid import Grid  # noqa: E402
 from twophase.geometry.interface_charts import (  # noqa: E402
@@ -54,6 +55,18 @@ apply_style()
 
 OUT = experiment_dir(__file__)
 NPZ = OUT / "data.npz"
+
+
+def _fit_x_nonuniform_grid(grid: Grid) -> None:
+    """Create a real nonuniform x-spacing probe before graph admission."""
+    x_nodes = np.asarray(grid.coords[0], dtype=float)
+    y_nodes = np.asarray(grid.coords[1], dtype=float)
+    x, _y = np.meshgrid(x_nodes, y_nodes, indexing="ij")
+    eps = 1.5 * (float(grid.L[0]) / int(grid.N[0]))
+    phi = x - 0.5 * float(grid.L[0])
+    psi = 1.0 / (1.0 + np.exp(-phi / eps))
+    grid.update_from_levelset(psi, eps=eps, ccd=CCDSolver(grid, grid.backend, bc_type="wall"))
+
 
 def _weighted_projection(values: np.ndarray, basis: np.ndarray, weights: np.ndarray) -> float:
     denom = float(np.sum(weights * basis * basis))
@@ -153,9 +166,16 @@ def _case_metrics(
 def _compute(args) -> dict:
     backend = Backend(use_gpu=False)
     grid = Grid(
-        GridConfig(ndim=2, N=(int(args.nx), int(args.ny)), L=(1.0, 1.0), alpha_grid=1.0),
+        GridConfig(
+            ndim=2,
+            N=(int(args.nx), int(args.ny)),
+            L=(1.0, 1.0),
+            alpha_grid=float(args.alpha_grid),
+        ),
         backend,
     )
+    if float(args.alpha_grid) > 1.0:
+        _fit_x_nonuniform_grid(grid)
     x_edges = np.asarray(grid.coords[0], dtype=float)
     dx = np.diff(x_edges)
     y_edges = np.asarray(grid.coords[1], dtype=float)
@@ -236,6 +256,9 @@ def _compute(args) -> dict:
         "cell_area": cell_area,
         "eta_clean": eta_clean,
         "eta_low": eta_low,
+        "alpha_grid": float(args.alpha_grid),
+        "dx_min": float(np.min(dx)),
+        "dx_max": float(np.max(dx)),
     }
     for name, case in cases.items():
         results[name] = {
@@ -299,6 +322,9 @@ def _plot(results: dict) -> pathlib.Path:
 
 
 def _print_summary(results: dict, figure_path: pathlib.Path) -> None:
+    print("alpha_grid", f"{float(results['alpha_grid']):.12e}", sep=",")
+    print("dx_min", f"{float(results['dx_min']):.12e}", sep=",")
+    print("dx_max", f"{float(results['dx_max']):.12e}", sep=",")
     print("case,residual_l2,residual_rel,residual_column_linf,eta_delta_linf,force_sign_product")
     for name in ("clean", "low_mode", "high_residual"):
         case = results[name]
@@ -319,6 +345,7 @@ def main() -> None:
     parser = experiment_argparser(__doc__)
     parser.add_argument("--nx", type=int, default=64)
     parser.add_argument("--ny", type=int, default=64)
+    parser.add_argument("--alpha-grid", type=float, default=1.0)
     parser.add_argument("--base-height", type=float, default=0.455)
     parser.add_argument("--base-mode", type=int, default=2)
     parser.add_argument("--base-amplitude", type=float, default=4.0e-2)

@@ -167,9 +167,11 @@ def project_column_height_to_graph(
 ) -> GraphChartState:
     """Project column heights to admitted low graph modes.
 
-    This is the F0 graph-chart projection from ``WIKI-T-175``.  It assumes a
-    uniform periodic x-grid, because the cell-average correction from column
-    centers to edge modes is analytic only on that chart.
+    This is the F0 graph-chart projection from ``WIKI-T-175``.  Column heights
+    are interpreted as P1 graph cell averages.  The admitted low-mode
+    coefficients are found by a weighted small least-squares solve in the
+    chart space, so nonuniform x-spacing changes only the projection metric,
+    not the state owner.
     """
     x_arr = np.asarray(x_edges, dtype=float)
     height = np.asarray(column_height, dtype=float)
@@ -180,30 +182,45 @@ def project_column_height_to_graph(
         raise ValueError("max_mode must be nonnegative")
     if np.any(dx <= 0.0):
         raise ValueError("graph projection requires strictly increasing x_edges")
-    if not np.allclose(dx, dx[0], rtol=1.0e-13, atol=1.0e-15):
-        raise ValueError("graph F0 mode projection currently requires uniform x spacing")
 
-    x_center = 0.5 * (x_arr[:-1] + x_arr[1:])
     mean = np.sum(dx * height, axis=-1) / np.sum(dx)
     eta = np.zeros(height.shape[:-1] + x_arr.shape, dtype=float)
-    eta = eta + np.asarray(mean, dtype=float)[..., None]
-    centered = height - np.asarray(mean, dtype=float)[..., None]
-    n = int(height.shape[-1])
+    if int(max_mode) == 0:
+        eta = eta + np.asarray(mean, dtype=float)[..., None]
+        eta[..., -1] = eta[..., 0]
+        return GraphChartState(eta=eta, mean=_scalar_or_array(mean), modes=())
+
+    cell_basis_columns = []
+    edge_basis_columns = []
     coefficients: list[GraphModeCoefficient] = []
     for mode in range(1, int(max_mode) + 1):
-        cos_c, sin_c = periodic_mode_basis(x_center, mode=mode)
-        cos_coef_center = _weighted_projection(centered, cos_c, dx)
-        sin_coef_center = _weighted_projection(centered, sin_c, dx)
-        cell_average_factor = np.cos(pi * mode / n)
-        if abs(cell_average_factor) < 1.0e-14:
-            cos_coef = 0.0
-            sin_coef = 0.0
-        else:
-            cos_coef = cos_coef_center / cell_average_factor
-            sin_coef = sin_coef_center / cell_average_factor
         cos_e, sin_e = periodic_mode_basis(x_arr, mode=mode)
-        eta = eta + np.asarray(cos_coef)[..., None] * cos_e
-        eta = eta + np.asarray(sin_coef)[..., None] * sin_e
+        edge_basis_columns.extend((cos_e, sin_e))
+        cell_basis_columns.extend(
+            (
+                0.5 * (cos_e[:-1] + cos_e[1:]),
+                0.5 * (sin_e[:-1] + sin_e[1:]),
+            )
+        )
+    cell_basis = np.stack(cell_basis_columns, axis=-1)
+    edge_basis = np.stack(edge_basis_columns, axis=-1)
+    basis_mean = np.sum(dx[:, None] * cell_basis, axis=0) / np.sum(dx)
+    centered_basis = cell_basis - basis_mean[None, :]
+    centered_height = height - np.asarray(mean, dtype=float)[..., None]
+    gram = np.einsum("nk,nl,n->kl", centered_basis, centered_basis, dx)
+    rhs = np.einsum("nk,...n,n->...k", centered_basis, centered_height, dx)
+    try:
+        flat_rhs = rhs.reshape((-1, rhs.shape[-1]))
+        flat_coeffs = np.linalg.solve(gram, flat_rhs.T).T
+    except np.linalg.LinAlgError as exc:
+        raise ValueError("graph F0 mode projection basis is singular") from exc
+    coeffs = flat_coeffs.reshape(rhs.shape)
+    corrected_mean = mean - np.einsum("...k,k->...", coeffs, basis_mean)
+    eta = eta + np.asarray(corrected_mean, dtype=float)[..., None]
+    eta = eta + np.einsum("...k,nk->...n", coeffs, edge_basis)
+    for mode_index, mode in enumerate(range(1, int(max_mode) + 1)):
+        cos_coef = coeffs[..., 2 * mode_index]
+        sin_coef = coeffs[..., 2 * mode_index + 1]
         coefficients.append(
             GraphModeCoefficient(
                 mode=int(mode),
