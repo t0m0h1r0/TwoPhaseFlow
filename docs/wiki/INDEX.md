@@ -1,4 +1,4 @@
-# Wiki Index — 442 entries
+# Wiki Index — 443 entries
 
 ## Active Retrieval Gate
 
@@ -196,6 +196,10 @@ Use [WIKI-E-077](experiment/WIKI-E-077.md) before claiming graph capillary
 waves and closed droplets share the PhaseRegion owner route, because it records
 the capillary-wave `q_l -> q_g` GAS_ABOVE graph dry-run PASS while keeping
 `force_admissible=0` until the graph-chart G0--G5 face-force path exists.
+Use [WIKI-E-078](experiment/WIKI-E-078.md) before extending the graph route
+from admission to force coupling, because it records the reduced PhaseRegion
+graph few-step PASS against the exact linear capillary wave while still
+withholding production face-force admission.
 Before implementing or reviewing an
 established-theory change, use [WIKI-L-046](code/WIKI-L-046.md) as the
 equation-to-code contract gate. Older cards remain listed for
@@ -471,7 +475,7 @@ support.
 | [WIKI-X-055](cross-domain/WIKI-X-055.md) | Theory-First Deliberation Best Practices |
 | [WIKI-X-056](cross-domain/WIKI-X-056.md) | Ch14 Capillary Origin-Reset Handoff Protocol |
 
-## Experiment (77)
+## Experiment (78)
 
 | REF-ID | Title |
 |--------|-------|
@@ -552,6 +556,7 @@ support.
 | [WIKI-E-075](experiment/WIKI-E-075.md) | Ch14 PhaseRegion Runtime Force Dry-Run PASS |
 | [WIKI-E-076](experiment/WIKI-E-076.md) | Ch14 Short Capillary/Droplet Runtime Probe |
 | [WIKI-E-077](experiment/WIKI-E-077.md) | Ch14 PhaseRegion Capillary Graph Dry-Run PASS |
+| [WIKI-E-078](experiment/WIKI-E-078.md) | Ch14 PhaseRegion Capillary Graph Few-Step PASS |
 
 ## Paper (24)
 
